@@ -1,0 +1,6 @@
+@Devken.CBC.SchoolManagement.API_HostAddress = http://localhost:5167
+
+GET {{Devken.CBC.SchoolManagement.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

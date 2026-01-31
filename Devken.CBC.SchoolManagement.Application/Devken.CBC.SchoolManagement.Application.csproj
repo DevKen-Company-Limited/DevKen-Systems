@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Common\Models\" />
+    <Folder Include="Common\Behaviors\" />
+    <Folder Include="Common\Interfaces\" />
+    <Folder Include="DTOs\" />
+    <Folder Include="Features\Assessments\Commands\Commands\" />
+    <Folder Include="Features\Assessments\Commands\Queries\" />
+    <Folder Include="Features\Curriculum\Commands\" />
+    <Folder Include="Features\Curriculum\Queries\" />
+    <Folder Include="Features\Finance\Commands\" />
+    <Folder Include="Features\Finance\Queries\" />
+    <Folder Include="Features\Students\Commands\" />
+    <Folder Include="Features\Students\Queries\" />
+    <Folder Include="Features\Teachers\Commands\" />
+    <Folder Include="Features\Teachers\Queries\" />
+    <Folder Include="RepositoryManagers\Interfaces\" />
+    <Folder Include="RepositoryManagers\AssessmentSpecifications\" />
+    <Folder Include="RepositoryManagers\Specifications\" />
+    <Folder Include="Validators\AssessmentValidators\" />
+    <Folder Include="Validators\PaymentValidators\" />
+    <Folder Include="Validators\StudentValidators\" />
+  </ItemGroup>
+
+</Project>
