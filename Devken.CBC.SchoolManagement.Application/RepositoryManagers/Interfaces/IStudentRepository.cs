@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Configurations
+namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces
 {
-    internal class StudentConfiguration
+    internal class IStudentRepository
     {
     }
 }
