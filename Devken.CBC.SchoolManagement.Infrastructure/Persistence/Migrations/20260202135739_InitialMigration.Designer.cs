@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260202101445_InitialMigration")]
+    [Migration("20260202135739_InitialMigration")]
     partial class InitialMigration
     {
         /// <inheritdoc />
@@ -75,21 +75,53 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("Schools");
+                });
 
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("14fff7e7-8af6-4906-8396-f637f28168ea"),
-                            Address = "Default Address",
-                            CreatedOn = new DateTime(2026, 2, 2, 10, 14, 45, 520, DateTimeKind.Utc).AddTicks(5279),
-                            Email = "info@defaultschool.com",
-                            IsActive = true,
-                            Name = "Default School",
-                            PhoneNumber = "0000000000",
-                            SlugName = "default-school",
-                            Status = 1,
-                            UpdatedOn = new DateTime(2026, 2, 2, 10, 14, 45, 520, DateTimeKind.Utc).AddTicks(5281)
-                        });
+            modelBuilder.Entity("Devken.CBC.SchoolManagement.Domain.Entities.Administration.SuperAdminRefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("IpAddress")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("SuperAdminId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SuperAdminId");
+
+                    b.ToTable("SuperAdminRefreshTokens");
                 });
 
             modelBuilder.Entity("Devken.CBC.SchoolManagement.Domain.Entities.Identity.Permission", b =>
@@ -241,18 +273,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("Roles");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("0b4a6661-4ee2-444b-b0c2-3baf0c43d68f"),
-                            CreatedOn = new DateTime(2026, 2, 2, 10, 14, 45, 520, DateTimeKind.Utc).AddTicks(5381),
-                            IsSystemRole = false,
-                            Name = "SchoolAdmin",
-                            Status = 1,
-                            TenantId = new Guid("14fff7e7-8af6-4906-8396-f637f28168ea"),
-                            UpdatedOn = new DateTime(2026, 2, 2, 10, 14, 45, 520, DateTimeKind.Utc).AddTicks(5381)
-                        });
                 });
 
             modelBuilder.Entity("Devken.CBC.SchoolManagement.Domain.Entities.Identity.RolePermission", b =>
@@ -333,20 +353,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("SuperAdmins");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("fb831b1a-c483-4014-98ba-d4655b2a5ef4"),
-                            CreatedOn = new DateTime(2026, 2, 2, 10, 14, 45, 561, DateTimeKind.Utc).AddTicks(7866),
-                            Email = "superadmin@devken.com",
-                            FirstName = "Super",
-                            IsActive = true,
-                            LastName = "Admin",
-                            PasswordHash = "AQAAAAIAAYagAAAAEIQohgfiz9dEsduIbRz5W3KL7gBRAmG9Y7+CiCcclky2WYja7Son6W68TjbZJN7z/A==",
-                            Status = 1,
-                            UpdatedOn = new DateTime(2026, 2, 2, 10, 14, 45, 561, DateTimeKind.Utc).AddTicks(7867)
-                        });
                 });
 
             modelBuilder.Entity("Devken.CBC.SchoolManagement.Domain.Entities.Identity.User", b =>
@@ -424,25 +430,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("Users");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("6e2715b9-5885-46ca-85d8-620355e470ff"),
-                            CreatedOn = new DateTime(2026, 2, 2, 10, 14, 45, 520, DateTimeKind.Utc).AddTicks(5388),
-                            Email = "admin@defaultschool.com",
-                            FailedLoginAttempts = 0,
-                            FirstName = "Default",
-                            IsActive = true,
-                            IsEmailVerified = true,
-                            LastName = "Admin",
-                            PasswordHash = "AQAAAAIAAYagAAAAEPD0gkD0Arfc/ueApACS6TFyzU3/mJCwpAO0RJFZy3rebQKrujSLY3GX9b+XJdJ14Q==",
-                            PhoneNumber = "0000000000",
-                            RequirePasswordChange = false,
-                            Status = 1,
-                            TenantId = new Guid("14fff7e7-8af6-4906-8396-f637f28168ea"),
-                            UpdatedOn = new DateTime(2026, 2, 2, 10, 14, 45, 520, DateTimeKind.Utc).AddTicks(5388)
-                        });
                 });
 
             modelBuilder.Entity("Devken.CBC.SchoolManagement.Domain.Entities.Identity.UserRole", b =>
@@ -487,18 +474,17 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("UserRoles");
+                });
 
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("a3c1ee4d-ca42-42af-9ff9-4a6615ecd703"),
-                            CreatedOn = new DateTime(2026, 2, 2, 10, 14, 45, 561, DateTimeKind.Utc).AddTicks(7845),
-                            RoleId = new Guid("0b4a6661-4ee2-444b-b0c2-3baf0c43d68f"),
-                            Status = 1,
-                            TenantId = new Guid("00000000-0000-0000-0000-000000000000"),
-                            UpdatedOn = new DateTime(2026, 2, 2, 10, 14, 45, 561, DateTimeKind.Utc).AddTicks(7848),
-                            UserId = new Guid("6e2715b9-5885-46ca-85d8-620355e470ff")
-                        });
+            modelBuilder.Entity("Devken.CBC.SchoolManagement.Domain.Entities.Administration.SuperAdminRefreshToken", b =>
+                {
+                    b.HasOne("Devken.CBC.SchoolManagement.Domain.Entities.Identity.SuperAdmin", "SuperAdmin")
+                        .WithMany()
+                        .HasForeignKey("SuperAdminId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SuperAdmin");
                 });
 
             modelBuilder.Entity("Devken.CBC.SchoolManagement.Domain.Entities.Identity.RefreshToken", b =>

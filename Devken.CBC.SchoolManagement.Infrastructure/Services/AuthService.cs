@@ -2,7 +2,6 @@
 using Devken.CBC.SchoolManagement.Application.Service;
 using Devken.CBC.SchoolManagement.Domain.Entities.Administration;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
-using Devken.CBC.SchoolManagement.Infrastructure.Data;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF;
 using Devken.CBC.SchoolManagement.Infrastructure.Security;
 using Microsoft.AspNetCore.Identity;
@@ -14,7 +13,6 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 
-
 namespace Devken.CBC.SchoolManagement.Infrastructure.Services
 {
     public class AuthService : IAuthService
@@ -24,6 +22,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
         private readonly JwtSettings _jwtSettings;
         private readonly IPermissionSeedService _permissionSeedService;
         private readonly ILogger<AuthService> _logger;
+
+        private static readonly string[] SuperAdminRoles = { "SuperAdmin" };
+        private static readonly List<string> SuperAdminPermissions =
+            PermissionCatalogue.All.Select(p => p.Key).Distinct().ToList();
 
         public AuthService(
             AppDbContext context,
@@ -39,134 +41,115 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
             _logger = logger;
         }
 
-        // ── REGISTER SCHOOL ───────────────────────────────
+        // ─────────────────────────────────────────────────────────
+        // REGISTER SCHOOL
+        // ─────────────────────────────────────────────────────────
         public async Task<RegisterSchoolResponse?> RegisterSchoolAsync(RegisterSchoolRequest request)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            using var tx = await _context.Database.BeginTransactionAsync();
+
+            if (await _context.Schools.AnyAsync(s => s.SlugName == request.SchoolSlug))
+                return null;
+
+            if (await _context.Users.AnyAsync(u => u.Email == request.AdminEmail))
+                return null;
+
+            var school = new School
             {
-                _logger.LogInformation("Starting school registration for {SchoolName}", request.SchoolName);
+                Id = Guid.NewGuid(),
+                Name = request.SchoolName,
+                SlugName = request.SchoolSlug,
+                Email = request.SchoolEmail,
+                PhoneNumber = request.SchoolPhone,
+                Address = request.SchoolAddress,
+                IsActive = true
+            };
 
-                if (await _context.Schools.AnyAsync(s => s.SlugName == request.SchoolSlug))
-                    return null;
+            _context.Schools.Add(school);
+            await _context.SaveChangesAsync();
 
-                if (await _context.Users.AnyAsync(u => u.Email == request.AdminEmail))
-                    return null;
+            var roleId = await _permissionSeedService.SeedPermissionsAndRolesAsync(school.Id);
 
-                var school = new School
-                {
-                    Id = Guid.NewGuid(),
-                    Name = request.SchoolName,
-                    SlugName = request.SchoolSlug,
-                    Email = request.SchoolEmail,
-                    PhoneNumber = request.SchoolPhone,
-                    Address = request.SchoolAddress,
-                    IsActive = true,
-                    CreatedOn = DateTime.UtcNow,
-                    UpdatedOn = DateTime.UtcNow
-                };
-                _context.Schools.Add(school);
-                await _context.SaveChangesAsync();
+            var names = request.AdminFullName.Split(' ', 2);
 
-                var schoolAdminRoleId = await _permissionSeedService.SeedPermissionsAndRolesAsync(school.Id);
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                Email = request.AdminEmail,
+                FirstName = names[0],
+                LastName = names.Length > 1 ? names[1] : null,
+                Tenant = school,
+                IsActive = true,
+                IsEmailVerified = true
+            };
 
-                var names = request.AdminFullName.Split(' ', 2);
-                var adminUser = new User
-                {
-                    Id = Guid.NewGuid(),
-                    Email = request.AdminEmail,
-                    FirstName = names.FirstOrDefault(),
-                    LastName = names.Length > 1 ? names[1] : null,
-                    PhoneNumber = request.AdminPhone,
-                    Tenant = school,
-                    IsActive = true,
-                    IsEmailVerified = true,
-                    RequirePasswordChange = false,
-                    CreatedOn = DateTime.UtcNow,
-                    UpdatedOn = DateTime.UtcNow
-                };
-                adminUser.PasswordHash = _passwordHasher.HashPassword(adminUser, request.AdminPassword);
+            user.PasswordHash = _passwordHasher.HashPassword(user, request.AdminPassword);
 
-                _context.Users.Add(adminUser);
-                await _context.SaveChangesAsync();
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
 
-                var userRole = new UserRole
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = adminUser.Id,
-                    RoleId = schoolAdminRoleId,
-                    CreatedOn = DateTime.UtcNow,
-                    UpdatedOn = DateTime.UtcNow
-                };
-                _context.UserRoles.Add(userRole);
-                await _context.SaveChangesAsync();
+            _context.UserRoles.Add(new UserRole
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                RoleId = roleId
+            });
 
-                var permissions = await GetUserPermissionsAsync(adminUser.Id, school.Id);
+            await _context.SaveChangesAsync();
 
-                var accessToken = GenerateAccessToken(adminUser, permissions);
-                var refreshToken = await GenerateAndStoreRefreshTokenAsync(adminUser.Id);
+            var permissions = await GetUserPermissionsAsync(user.Id, school.Id);
+            var accessToken = GenerateAccessToken(user, permissions);
+            var refreshToken = await GenerateAndStoreRefreshTokenAsync(user.Id);
 
-                await transaction.CommitAsync();
+            await tx.CommitAsync();
 
-                return new RegisterSchoolResponse(
+            return new RegisterSchoolResponse(
+                school.Id,
+                accessToken,
+                refreshToken,
+                new UserDto(
+                    user.Id,
+                    user.Email,
+                    $"{user.FirstName} {user.LastName}".Trim(),
                     school.Id,
-                    accessToken,
-                    refreshToken,
-                    new UserDto(
-                        adminUser.Id,
-                        adminUser.Email,
-                        $"{adminUser.FirstName} {adminUser.LastName}".Trim(),
-                        school.Id,
-                        school.Name,
-                        new[] { "SchoolAdmin" },
-                        permissions
-                    )
-                );
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+                    school.Name,
+                    new[] { "SchoolAdmin" },
+                    permissions
+                )
+            );
         }
 
-        // ── LOGIN ─────────────────────────────────────────
-        public async Task<LoginResponse?> LoginAsync(LoginRequest req, string? ipAddress = null)
+        // ─────────────────────────────────────────────────────────
+        // USER LOGIN
+        // ─────────────────────────────────────────────────────────
+        public async Task<LoginResponse?> LoginAsync(LoginRequest request, string? ipAddress = null)
         {
-            var school = await _context.Schools.FirstOrDefaultAsync(s => s.SlugName == req.TenantSlug && s.IsActive);
+            var school = await _context.Schools
+                .FirstOrDefaultAsync(s => s.SlugName == request.TenantSlug && s.IsActive);
+
             if (school == null) return null;
 
             var user = await _context.Users
                 .Include(u => u.Tenant)
-                .FirstOrDefaultAsync(u => u.Email == req.Email && u.Tenant.Id == school.Id && u.IsActive);
+                .FirstOrDefaultAsync(u =>
+                    u.Email == request.Email &&
+                    u.Tenant!.Id == school.Id &&
+                    u.IsActive);
 
-            if (user == null || user.IsLockedOut) return null;
+            if (user == null) return null;
 
-            var verify = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, req.Password);
+            var verify = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
             if (verify == PasswordVerificationResult.Failed)
-            {
-                user.FailedLoginAttempts++;
-                if (user.FailedLoginAttempts >= _jwtSettings.MaxFailedLoginAttempts)
-                    user.LockedUntil = DateTime.UtcNow.AddMinutes(_jwtSettings.LockoutDurationMinutes);
-
-                _context.Users.Update(user);
-                await _context.SaveChangesAsync();
                 return null;
-            }
-
-            user.FailedLoginAttempts = 0;
-            user.LockedUntil = null;
-            _context.Users.Update(user);
-            await _context.SaveChangesAsync();
 
             var permissions = await GetUserPermissionsAsync(user.Id, school.Id);
             var roles = await _context.UserRoles
                 .Where(ur => ur.UserId == user.Id)
-                .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name)
+                .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (_, r) => r.Name)
                 .ToListAsync();
 
             var accessToken = GenerateAccessToken(user, permissions);
-            var refreshToken = await GenerateAndStoreRefreshTokenAsync(user.Id);
+            var refreshToken = await GenerateAndStoreRefreshTokenAsync(user.Id, ipAddress);
 
             return new LoginResponse(
                 accessToken,
@@ -183,124 +166,162 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
             );
         }
 
-        // ── REFRESH TOKEN ───────────────────────────────
-        public async Task<RefreshTokenResponse?> RefreshTokenAsync(RefreshTokenRequest req)
+        // ─────────────────────────────────────────────────────────
+        // USER REFRESH TOKEN
+        // ─────────────────────────────────────────────────────────
+        public async Task<RefreshTokenResponse?> RefreshTokenAsync(RefreshTokenRequest request)
         {
-            var oldToken = await _context.RefreshTokens
-                .FirstOrDefaultAsync(t => t.Token == req.RefreshToken && !t.IsRevoked && t.ExpiresAt > DateTime.UtcNow);
-            if (oldToken == null) return null;
+            // ✅ Use RevokedAt == null for EF Core
+            var old = await _context.RefreshTokens
+                .FirstOrDefaultAsync(t =>
+                    t.Token == request.RefreshToken &&
+                    t.RevokedAt == null &&
+                    t.ExpiresAt > DateTime.UtcNow);
+
+            if (old == null) return null;
+
+            old.Revoke();
 
             var user = await _context.Users
                 .Include(u => u.Tenant)
-                .FirstOrDefaultAsync(u => u.Id == oldToken.UserId && u.IsActive);
+                .FirstOrDefaultAsync(u => u.Id == old.UserId && u.IsActive);
+
             if (user == null) return null;
 
-            // Use Revoke() method instead of direct assignment
-            oldToken.Revoke();
-            _context.RefreshTokens.Update(oldToken);
-
-            var newRefreshToken = await GenerateAndStoreRefreshTokenAsync(user.Id, oldToken.IpAddress);
+            var newToken = await GenerateAndStoreRefreshTokenAsync(user.Id, old.IpAddress);
             var permissions = await GetUserPermissionsAsync(user.Id, user.Tenant!.Id);
             var accessToken = GenerateAccessToken(user, permissions);
 
             await _context.SaveChangesAsync();
-            return new RefreshTokenResponse(accessToken, newRefreshToken, _jwtSettings.AccessTokenLifetimeMinutes * 60);
+
+            return new RefreshTokenResponse(accessToken, newToken, _jwtSettings.AccessTokenLifetimeMinutes * 60);
         }
 
-        // ── LOGOUT ───────────────────────────────────────
+        // ─────────────────────────────────────────────────────────
+        // USER LOGOUT
+        // ─────────────────────────────────────────────────────────
         public async Task<bool> LogoutAsync(string refreshToken)
         {
-            var token = await _context.RefreshTokens.FirstOrDefaultAsync(t => t.Token == refreshToken && !t.IsRevoked);
+            var token = await _context.RefreshTokens
+                .FirstOrDefaultAsync(t => t.Token == refreshToken && t.RevokedAt == null);
+
             if (token == null) return false;
 
             token.Revoke();
-            _context.RefreshTokens.Update(token);
             await _context.SaveChangesAsync();
             return true;
         }
 
-        // ── CHANGE PASSWORD ─────────────────────────────
-        public async Task<AuthResult> ChangePasswordAsync(Guid userId, Guid tenantId, ChangePasswordRequest req)
+        // ─────────────────────────────────────────────────────────
+        // CHANGE PASSWORD
+        // ─────────────────────────────────────────────────────────
+        public async Task<AuthResult> ChangePasswordAsync(Guid userId, Guid tenantId, ChangePasswordRequest request)
         {
             var user = await _context.Users
                 .Include(u => u.Tenant)
                 .FirstOrDefaultAsync(u => u.Id == userId && u.Tenant!.Id == tenantId);
-            if (user == null) return new AuthResult(false, "User not found");
 
-            var verify = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, req.CurrentPassword);
+            if (user == null)
+                return new AuthResult(false, "User not found");
+
+            var verify = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.CurrentPassword);
             if (verify == PasswordVerificationResult.Failed)
-                return new AuthResult(false, "Current password is incorrect");
+                return new AuthResult(false, "Invalid password");
 
-            user.PasswordHash = _passwordHasher.HashPassword(user, req.NewPassword);
-            user.RequirePasswordChange = false;
-            _context.Users.Update(user);
+            user.PasswordHash = _passwordHasher.HashPassword(user, request.NewPassword);
 
             var tokens = await _context.RefreshTokens.Where(t => t.UserId == userId).ToListAsync();
-            foreach (var t in tokens) t.Revoke();
-            _context.RefreshTokens.UpdateRange(tokens);
+            tokens.ForEach(t => t.Revoke());
 
             await _context.SaveChangesAsync();
             return new AuthResult(true);
         }
 
-        // ── SUPER ADMIN LOGIN ──────────────────────────
+        // ─────────────────────────────────────────────────────────
+        // SUPER ADMIN LOGIN
+        // ─────────────────────────────────────────────────────────
         public async Task<SuperAdminLoginResponse?> SuperAdminLoginAsync(SuperAdminLoginRequest req)
         {
-            var admin = await _context.SuperAdmins.FirstOrDefaultAsync(a => a.Email == req.Email && a.IsActive);
+            var admin = await _context.SuperAdmins
+                .FirstOrDefaultAsync(a => a.Email == req.Email && a.IsActive);
+
             if (admin == null) return null;
 
-            var fakeUser = new User();
-            var verify = _passwordHasher.VerifyHashedPassword(fakeUser, admin.PasswordHash, req.Password);
-            if (verify == PasswordVerificationResult.Failed) return null;
+            var verify = new PasswordHasher<SuperAdmin>()
+                .VerifyHashedPassword(admin, admin.PasswordHash, req.Password);
 
-            var token = GenerateSuperAdminAccessToken(admin);
-            return new SuperAdminLoginResponse(token);
-        }
+            if (verify == PasswordVerificationResult.Failed)
+                return null;
 
-        // ── PRIVATE HELPERS ─────────────────────────────
-        private async Task<List<string>> GetUserPermissionsAsync(Guid userId, Guid tenantId)
-        {
-            return await _context.UserRoles
-                .Where(ur => ur.UserId == userId)
-                .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r)
-                .Where(r => r.TenantId == tenantId)
-                .SelectMany(r => r.RolePermissions)
-                .Select(rp => rp.Permission!.Key)
-                .Distinct()
-                .ToListAsync();
-        }
+            var accessToken = GenerateSuperAdminAccessToken(admin);
+            var refreshToken = await GenerateAndStoreSuperAdminRefreshTokenAsync(admin.Id);
 
-        private string GenerateAccessToken(User user, List<string> permissions)
-        {
-            var claims = new List<System.Security.Claims.Claim>
-            {
-                new(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-                new(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Email, user.Email),
-                new(System.Security.Claims.ClaimTypes.Name, $"{user.FirstName} {user.LastName}".Trim()),
-                new(CustomClaimTypes.UserId, user.Id.ToString()),
-                new(CustomClaimTypes.TenantId, user.Tenant!.Id.ToString())
-            };
-            claims.AddRange(permissions.Select(p => new System.Security.Claims.Claim(CustomClaimTypes.Permissions, p)));
-
-            var key = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
-            var creds = new Microsoft.IdentityModel.Tokens.SigningCredentials(key, Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha256);
-
-            var token = new System.IdentityModel.Tokens.Jwt.JwtSecurityToken(
-                issuer: _jwtSettings.Issuer,
-                audience: _jwtSettings.Audience,
-                claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenLifetimeMinutes),
-                signingCredentials: creds
+            return new SuperAdminLoginResponse(
+                accessToken,
+                _jwtSettings.AccessTokenLifetimeMinutes * 60,
+                new SuperAdminDto(admin.Id, admin.Email, admin.FirstName, admin.LastName),
+                SuperAdminRoles,
+                SuperAdminPermissions,
+                refreshToken
             );
-
-            return new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().WriteToken(token);
         }
 
-        private async Task<string> GenerateAndStoreRefreshTokenAsync(Guid userId, string? ipAddress = null)
+        // ─────────────────────────────────────────────────────────
+        // SUPER ADMIN REFRESH
+        // ─────────────────────────────────────────────────────────
+        public async Task<RefreshTokenResponse?> SuperAdminRefreshTokenAsync(RefreshTokenRequest req)
+        {
+            var old = await _context.SuperAdminRefreshTokens
+                .FirstOrDefaultAsync(t => t.Token == req.RefreshToken && t.RevokedAt == null);
+
+            if (old == null) return null;
+
+            old.Revoke();
+
+            var admin = await _context.SuperAdmins
+                .FirstOrDefaultAsync(a => a.Id == old.SuperAdminId && a.IsActive);
+
+            if (admin == null) return null;
+
+            var newToken = await GenerateAndStoreSuperAdminRefreshTokenAsync(admin.Id, old.IpAddress);
+            var accessToken = GenerateSuperAdminAccessToken(admin);
+
+            await _context.SaveChangesAsync();
+
+            return new RefreshTokenResponse(accessToken, newToken, _jwtSettings.AccessTokenLifetimeMinutes * 60);
+        }
+
+        // ─────────────────────────────────────────────────────────
+        // SUPER ADMIN LOGOUT
+        // ─────────────────────────────────────────────────────────
+        public async Task<bool> SuperAdminLogoutAsync(string refreshToken)
+        {
+            var token = await _context.SuperAdminRefreshTokens
+                .FirstOrDefaultAsync(t => t.Token == refreshToken && t.RevokedAt == null);
+
+            if (token == null) return false;
+
+            token.Revoke();
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        // ─────────────────────────────────────────────────────────
+        // HELPERS
+        // ─────────────────────────────────────────────────────────
+        private async Task<string> GenerateAndStoreSuperAdminRefreshTokenAsync(Guid superAdminId, string? ipAddress = null)
         {
             var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
-            var entity = new RefreshToken(userId, token, DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenLifetimeDays), ipAddress);
-            _context.RefreshTokens.Add(entity);
+
+            _context.SuperAdminRefreshTokens.Add(new SuperAdminRefreshToken
+            {
+                Id = Guid.NewGuid(),
+                SuperAdminId = superAdminId,
+                Token = token,
+                IpAddress = ipAddress,
+                ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenLifetimeDays)
+            });
+
             await _context.SaveChangesAsync();
             return token;
         }
@@ -311,21 +332,58 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
             {
                 new(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub, admin.Id.ToString()),
                 new(System.Security.Claims.ClaimTypes.Email, admin.Email),
-                new(System.Security.Claims.ClaimTypes.Name, $"{admin.FirstName} {admin.LastName}".Trim())
+                new(System.Security.Claims.ClaimTypes.Name, $"{admin.FirstName} {admin.LastName}".Trim()),
+                new(CustomClaimTypes.IsSuperAdmin, "true")
             };
 
-            var key = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
-            var creds = new Microsoft.IdentityModel.Tokens.SigningCredentials(key, Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha256);
+            claims.AddRange(
+                SuperAdminPermissions.Select(p =>
+                    new System.Security.Claims.Claim(CustomClaimTypes.Permissions, p)));
 
-            var token = new System.IdentityModel.Tokens.Jwt.JwtSecurityToken(
-                issuer: _jwtSettings.Issuer,
-                audience: _jwtSettings.Audience,
-                claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenLifetimeMinutes),
-                signingCredentials: creds
-            );
+            return JwtTokenBuilder.BuildToken(_jwtSettings, claims);
+        }
 
-            return new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().WriteToken(token);
+        private string GenerateAccessToken(User user, List<string> permissions)
+        {
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new(CustomClaimTypes.UserId, user.Id.ToString()),
+                new(CustomClaimTypes.TenantId, user.Tenant!.Id.ToString()),
+                new(System.Security.Claims.ClaimTypes.Email, user.Email),
+                new(System.Security.Claims.ClaimTypes.Name, $"{user.FirstName} {user.LastName}".Trim())
+            };
+
+            claims.AddRange(
+                permissions.Select(p =>
+                    new System.Security.Claims.Claim(CustomClaimTypes.Permissions, p)));
+
+            return JwtTokenBuilder.BuildToken(_jwtSettings, claims);
+        }
+
+        private async Task<List<string>> GetUserPermissionsAsync(Guid userId, Guid tenantId)
+        {
+            return await _context.UserRoles
+                .Where(ur => ur.UserId == userId)
+                .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (_, r) => r)
+                .Where(r => r.TenantId == tenantId)
+                .SelectMany(r => r.RolePermissions)
+                .Select(rp => rp.Permission!.Key)
+                .Distinct()
+                .ToListAsync();
+        }
+
+        private async Task<string> GenerateAndStoreRefreshTokenAsync(Guid userId, string? ipAddress = null)
+        {
+            var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
+
+            _context.RefreshTokens.Add(new RefreshToken(
+                userId,
+                token,
+                DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenLifetimeDays),
+                ipAddress));
+
+            await _context.SaveChangesAsync();
+            return token;
         }
     }
 }

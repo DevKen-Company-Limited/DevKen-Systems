@@ -122,6 +122,34 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "SuperAdminRefreshTokens",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    SuperAdminId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Token = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ExpiresAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    RevokedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IpAddress = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Status = table.Column<int>(type: "int", nullable: false),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    UpdatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    TenantId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SuperAdminRefreshTokens", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_SuperAdminRefreshTokens_SuperAdmins_SuperAdminId",
+                        column: x => x.SuperAdminId,
+                        principalTable: "SuperAdmins",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "RefreshTokens",
                 columns: table => new
                 {
@@ -267,31 +295,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
                         principalColumn: "Id");
                 });
 
-            migrationBuilder.InsertData(
-                table: "Schools",
-                columns: new[] { "Id", "Address", "CreatedBy", "CreatedOn", "Email", "IsActive", "LogoUrl", "Name", "PhoneNumber", "SlugName", "Status", "UpdatedBy", "UpdatedOn" },
-                values: new object[] { new Guid("14fff7e7-8af6-4906-8396-f637f28168ea"), "Default Address", null, new DateTime(2026, 2, 2, 10, 14, 45, 520, DateTimeKind.Utc).AddTicks(5279), "info@defaultschool.com", true, null, "Default School", "0000000000", "default-school", 1, null, new DateTime(2026, 2, 2, 10, 14, 45, 520, DateTimeKind.Utc).AddTicks(5281) });
-
-            migrationBuilder.InsertData(
-                table: "SuperAdmins",
-                columns: new[] { "Id", "CreatedBy", "CreatedOn", "Email", "FirstName", "IsActive", "LastName", "PasswordHash", "Status", "UpdatedBy", "UpdatedOn" },
-                values: new object[] { new Guid("fb831b1a-c483-4014-98ba-d4655b2a5ef4"), null, new DateTime(2026, 2, 2, 10, 14, 45, 561, DateTimeKind.Utc).AddTicks(7866), "superadmin@devken.com", "Super", true, "Admin", "AQAAAAIAAYagAAAAEIQohgfiz9dEsduIbRz5W3KL7gBRAmG9Y7+CiCcclky2WYja7Son6W68TjbZJN7z/A==", 1, null, new DateTime(2026, 2, 2, 10, 14, 45, 561, DateTimeKind.Utc).AddTicks(7867) });
-
-            migrationBuilder.InsertData(
-                table: "Roles",
-                columns: new[] { "Id", "CreatedBy", "CreatedOn", "Description", "IsSystemRole", "Name", "Status", "TenantId", "UpdatedBy", "UpdatedOn" },
-                values: new object[] { new Guid("0b4a6661-4ee2-444b-b0c2-3baf0c43d68f"), null, new DateTime(2026, 2, 2, 10, 14, 45, 520, DateTimeKind.Utc).AddTicks(5381), null, false, "SchoolAdmin", 1, new Guid("14fff7e7-8af6-4906-8396-f637f28168ea"), null, new DateTime(2026, 2, 2, 10, 14, 45, 520, DateTimeKind.Utc).AddTicks(5381) });
-
-            migrationBuilder.InsertData(
-                table: "Users",
-                columns: new[] { "Id", "CreatedBy", "CreatedOn", "Email", "FailedLoginAttempts", "FirstName", "IsActive", "IsEmailVerified", "LastName", "LockedUntil", "PasswordHash", "PhoneNumber", "ProfileImageUrl", "RequirePasswordChange", "ResetToken", "ResetTokenExpiresAt", "Status", "TenantId", "UpdatedBy", "UpdatedOn" },
-                values: new object[] { new Guid("6e2715b9-5885-46ca-85d8-620355e470ff"), null, new DateTime(2026, 2, 2, 10, 14, 45, 520, DateTimeKind.Utc).AddTicks(5388), "admin@defaultschool.com", 0, "Default", true, true, "Admin", null, "AQAAAAIAAYagAAAAEPD0gkD0Arfc/ueApACS6TFyzU3/mJCwpAO0RJFZy3rebQKrujSLY3GX9b+XJdJ14Q==", "0000000000", null, false, null, null, 1, new Guid("14fff7e7-8af6-4906-8396-f637f28168ea"), null, new DateTime(2026, 2, 2, 10, 14, 45, 520, DateTimeKind.Utc).AddTicks(5388) });
-
-            migrationBuilder.InsertData(
-                table: "UserRoles",
-                columns: new[] { "Id", "CreatedBy", "CreatedOn", "RoleId", "Status", "TenantId", "UpdatedBy", "UpdatedOn", "UserId" },
-                values: new object[] { new Guid("a3c1ee4d-ca42-42af-9ff9-4a6615ecd703"), null, new DateTime(2026, 2, 2, 10, 14, 45, 561, DateTimeKind.Utc).AddTicks(7845), new Guid("0b4a6661-4ee2-444b-b0c2-3baf0c43d68f"), 1, new Guid("00000000-0000-0000-0000-000000000000"), null, new DateTime(2026, 2, 2, 10, 14, 45, 561, DateTimeKind.Utc).AddTicks(7848), new Guid("6e2715b9-5885-46ca-85d8-620355e470ff") });
-
             migrationBuilder.CreateIndex(
                 name: "IX_Permissions_Key",
                 table: "Permissions",
@@ -360,6 +363,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_SuperAdminRefreshTokens_SuperAdminId",
+                table: "SuperAdminRefreshTokens",
+                column: "SuperAdminId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_UserRoles_CreatedBy",
                 table: "UserRoles",
                 column: "CreatedBy");
@@ -407,13 +415,16 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
                 name: "RolePermissions");
 
             migrationBuilder.DropTable(
-                name: "SuperAdmins");
+                name: "SuperAdminRefreshTokens");
 
             migrationBuilder.DropTable(
                 name: "UserRoles");
 
             migrationBuilder.DropTable(
                 name: "Permissions");
+
+            migrationBuilder.DropTable(
+                name: "SuperAdmins");
 
             migrationBuilder.DropTable(
                 name: "Roles");

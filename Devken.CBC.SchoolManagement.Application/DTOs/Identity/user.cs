@@ -69,10 +69,31 @@ namespace Devken.CBC.SchoolManagement.Application.Dtos
         IEnumerable<string> Roles,
         IEnumerable<string> Permissions
     );
+    public class RefreshTokenRequestDto
+    {
+        public string Token { get; set; } = default!;
+    }
+
 
     // ── SUPER ADMIN LOGIN ───────────────────────────────
     public record SuperAdminLoginRequest(string Email, string Password);
-    public record SuperAdminLoginResponse(string AccessToken);
+    public record SuperAdminLoginResponse(
+        string AccessToken,
+        int AccessTokenExpiresInSeconds,
+        SuperAdminDto User,
+        string[] Roles,
+        List<string> Permissions,
+        string RefreshToken
+    );
+
+    public record SuperAdminDto(
+    Guid Id,
+    string Email,
+    string FirstName,
+    string LastName
+);
+
+
 
     // ── CHANGE PASSWORD ────────────────────────────────
     public record ChangePasswordRequest(string CurrentPassword, string NewPassword);

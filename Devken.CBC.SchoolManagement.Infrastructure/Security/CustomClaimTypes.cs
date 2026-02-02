@@ -6,14 +6,26 @@ using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Security
 {
-    /// <summary>
-    /// Custom claim types used throughout the application.
-    /// </summary>
     public static class CustomClaimTypes
     {
+        // ───────────────
+        // COMMON
+        // ───────────────
+        public const string Permissions = "permissions";   // repeated claim
+        public const string Roles = "roles";               // repeated claim
+        public const string IsSuperAdmin = "is_super_admin";
+
+        // ───────────────
+        // TENANT USER
+        // ───────────────
         public const string TenantId = "tenant_id";
         public const string UserId = "user_id";
         public const string UserEmail = "user_email";
-        public const string Permissions = "permissions";  // repeated claim
+
+        // ───────────────
+        // SUPER ADMIN
+        // ───────────────
+        public const string SuperAdminId = "super_admin_id";
+        public const string SuperAdminEmail = "super_admin_email";
     }
 }

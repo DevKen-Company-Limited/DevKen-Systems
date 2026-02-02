@@ -2,14 +2,12 @@
 using Devken.CBC.SchoolManagement.API.Registration;
 using Devken.CBC.SchoolManagement.API.Services;
 using Devken.CBC.SchoolManagement.Application.Service;
-using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
 using Devken.CBC.SchoolManagement.Infrastructure;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF;
 using Devken.CBC.SchoolManagement.Infrastructure.Middleware;
-using Devken.CBC.SchoolManagement.Infrastructure.Security;
+using Devken.CBC.SchoolManagement.Infrastructure.Seed;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
 using System.Globalization;
 using System.Reflection;
@@ -18,145 +16,181 @@ StartupErrorHandler.Initialize();
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ══════════════════════════════════════════════════════════════
+// CORS Configuration
+// ══════════════════════════════════════════════════════════════
 var angularCorsPolicy = "AngularDevCors";
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy(name: angularCorsPolicy, policy =>
+    options.AddPolicy(angularCorsPolicy, policy =>
     {
-        policy.WithOrigins("http://localhost:4200")
+        policy.WithOrigins("https://localhost:5167")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
     });
 });
 
-try
+// ══════════════════════════════════════════════════════════════
+// Controllers
+// ══════════════════════════════════════════════════════════════
+builder.Services.AddControllers();
+
+// ══════════════════════════════════════════════════════════════
+// Database Configuration
+// ══════════════════════════════════════════════════════════════
+builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    Console.WriteLine("📦 Registering Controllers...");
-    builder.Services.AddControllers();
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    if (string.IsNullOrWhiteSpace(connectionString))
+        throw new InvalidOperationException("Connection string 'DefaultConnection' is missing.");
 
-    Console.WriteLine("🗄️  Configuring Database Context...");
-    builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(
+        connectionString,
+        sql => sql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName)
+    );
+
+    if (builder.Environment.IsDevelopment())
     {
-        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-        if (string.IsNullOrWhiteSpace(connectionString))
-            throw new InvalidOperationException("Connection string 'DefaultConnection' is missing.");
+        options.EnableDetailedErrors();
+        options.EnableSensitiveDataLogging();
+    }
+});
 
-        options.UseSqlServer(
-            connectionString,
-            sql => sql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName)
-        );
+// ══════════════════════════════════════════════════════════════
+// Swagger Configuration
+// ══════════════════════════════════════════════════════════════
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "DevKen School Management API",
+        Version = "v1",
+        Description = "CBC School Management System API"
+    });
 
-        if (builder.Environment.IsDevelopment())
+    // JWT Bearer Authentication in Swagger
+    var securityScheme = new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Enter your JWT token. Do NOT include 'Bearer ' prefix - it will be added automatically."
+    };
+
+    c.AddSecurityDefinition("Bearer", securityScheme);
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
         {
-            options.EnableDetailedErrors();
-            options.EnableSensitiveDataLogging();
-
-            AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>
+            new OpenApiSecurityScheme
             {
-                if (args.Name.StartsWith("Microsoft.Data.SqlClient.resources"))
-                    return null;
-                return null;
-            };
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
         }
     });
 
-    Console.WriteLine("🌐 Registering API Services...");
-    builder.Services.AddApiServices(builder.Configuration);
+    // Include XML comments for Swagger documentation
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+        c.IncludeXmlComments(xmlPath);
+});
 
-    builder.Services.AddSwaggerGen(c =>
-    {
-        c.SwaggerDoc("v1", new OpenApiInfo
-        {
-            Title = "DevKen School Management API",
-            Version = "v1"
-        });
+// ══════════════════════════════════════════════════════════════
+// Application Services Registration
+// ══════════════════════════════════════════════════════════════
+builder.Services.AddApiServices(builder.Configuration);
+builder.Services.AddSchoolManagement(builder.Configuration);
 
-        var securityScheme = new OpenApiSecurityScheme
-        {
-            Name = "Authorization",
-            Type = SecuritySchemeType.Http,
-            Scheme = "Bearer",
-            BearerFormat = "JWT",
-            In = ParameterLocation.Header,
-            Description = "Enter 'Bearer {token}' to authenticate"
-        };
+// ══════════════════════════════════════════════════════════════
+// Infrastructure Services (includes JWT Authentication & Authorization)
+// This is the CRITICAL configuration that sets up JWT authentication
+// ══════════════════════════════════════════════════════════════
+builder.Services.AddInfrastructure(builder.Configuration);
 
-        c.AddSecurityDefinition("Bearer", securityScheme);
-        c.AddSecurityRequirement(new OpenApiSecurityRequirement
-        {
-            { securityScheme, Array.Empty<string>() }
-        });
-    });
+// ══════════════════════════════════════════════════════════════
+// Culture Configuration
+// ══════════════════════════════════════════════════════════════
+var supportedCultures = new[] { new CultureInfo("en-US") };
+CultureInfo.DefaultThreadCurrentCulture = supportedCultures[0];
+CultureInfo.DefaultThreadCurrentUICulture = supportedCultures[0];
 
-    Console.WriteLine("⚙️  Registering Application Services...");
-    builder.Services.AddSchoolManagement(builder.Configuration);
-
-    Console.WriteLine("🧭 Registering Navigation Services...");
-    builder.Services.AddScoped<INavigationService, NavigationService>();
-
-    Console.WriteLine("🔧 Registering Infrastructure Services...");
-    builder.Services.AddInfrastructure(builder.Configuration);
-
-    Console.WriteLine("🔐 Configuring JWT Settings...");
-    var jwtSection = builder.Configuration.GetSection("JwtSettings");
-    if (!jwtSection.Exists())
-        throw new InvalidOperationException("JwtSettings section not found in configuration.");
-
-    builder.Services.Configure<JwtSettings>(jwtSection);
-    builder.Services.AddSingleton<JwtSettings>(sp =>
-        sp.GetRequiredService<IOptions<JwtSettings>>().Value
-    );
-
-    Console.WriteLine("🛠️  Configuring default culture...");
-    var supportedCultures = new[] { new CultureInfo("en-US") };
-    CultureInfo.DefaultThreadCurrentCulture = supportedCultures[0];
-    CultureInfo.DefaultThreadCurrentUICulture = supportedCultures[0];
-
-    Console.ForegroundColor = ConsoleColor.Green;
-    Console.WriteLine("✅ Service registration completed successfully.");
-    Console.ResetColor();
-}
-catch (ReflectionTypeLoadException ex)
-{
-    Console.ForegroundColor = ConsoleColor.Red;
-    Console.WriteLine("🔥 ReflectionTypeLoadException during startup");
-    foreach (var loaderException in ex.LoaderExceptions.Where(e => e != null))
-    {
-        Console.WriteLine(loaderException!.Message);
-    }
-    Console.ResetColor();
-    throw;
-}
-catch (Exception ex)
-{
-    Console.ForegroundColor = ConsoleColor.Red;
-    Console.WriteLine("🔥 Startup exception:");
-    Console.WriteLine(ex);
-    Console.ResetColor();
-    throw;
-}
-
-Console.WriteLine("🏗️  Building application...");
+// ══════════════════════════════════════════════════════════════
+// Build Application
+// ══════════════════════════════════════════════════════════════
 var app = builder.Build();
 
+// ══════════════════════════════════════════════════════════════
+// Database Seeding
+// ══════════════════════════════════════════════════════════════
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    var pendingMigrations = dbContext.Database.GetPendingMigrations().ToList();
+    var logger = app.Logger;
 
-    if (pendingMigrations.Any())
+    try
     {
-        Console.WriteLine("🛠️  Applying pending migrations...");
-        dbContext.Database.Migrate();
+        logger.LogInformation("Starting database initialization...");
+
+        // Run pending migrations
+        var pendingMigrations = dbContext.Database.GetPendingMigrations().ToList();
+        if (pendingMigrations.Any())
+        {
+            logger.LogInformation("Applying {Count} pending migrations...", pendingMigrations.Count);
+            dbContext.Database.Migrate();
+            logger.LogInformation("Migrations applied successfully.");
+        }
+        else
+        {
+            logger.LogInformation("Database is up to date. No pending migrations.");
+        }
+
+        // Seed database
+        await dbContext.SeedDatabaseAsync(logger);
+
+        // Seed permissions for default school
+        var defaultSchool = await dbContext.Schools
+            .FirstOrDefaultAsync(s => s.SlugName == "default-school");
+
+        if (defaultSchool != null)
+        {
+            var permissionSeeder = scope.ServiceProvider.GetRequiredService<IPermissionSeedService>();
+            await permissionSeeder.SeedPermissionsAndRolesAsync(defaultSchool.Id);
+            logger.LogInformation("Default school permissions seeded successfully.");
+        }
+        else
+        {
+            logger.LogWarning("Default school not found. Skipping permission seeding.");
+        }
+
+        logger.LogInformation("Database initialization completed successfully.");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "An error occurred during database initialization.");
+        throw;
     }
 }
 
+// ══════════════════════════════════════════════════════════════
+// Middleware Pipeline Configuration
+// CRITICAL: Order matters! Each middleware must be in the correct position
+// ══════════════════════════════════════════════════════════════
+
+// 1. CORS - Must be early in pipeline, before authentication
 app.UseCors(angularCorsPolicy);
 
-Console.WriteLine("🔌 Configuring middleware pipeline...");
+// 2. Custom API Pipeline (exception handling, request logging, etc.)
 app.UseApiPipeline();
 
+// 3. Localization
 var localizationOptions = new RequestLocalizationOptions
 {
     DefaultRequestCulture = new RequestCulture("en-US"),
@@ -165,32 +199,72 @@ var localizationOptions = new RequestLocalizationOptions
 };
 app.UseRequestLocalization(localizationOptions);
 
+// 4. AUTHENTICATION - Validates JWT token and populates User.Identity
+//    This MUST come before TenantMiddleware and Authorization
 app.UseAuthentication();
+
+// 5. TENANT MIDDLEWARE - Extracts tenant information from authenticated user's claims
+//    This MUST come after Authentication and before Authorization
 app.UseMiddleware<TenantMiddleware>();
+
+// 6. AUTHORIZATION - Checks user permissions against required permissions
+//    This MUST come after Authentication and TenantMiddleware
 app.UseAuthorization();
 
-app.UseSwagger();
-app.UseSwaggerUI(c =>
+// ══════════════════════════════════════════════════════════════
+// Swagger UI (Development Only)
+// ══════════════════════════════════════════════════════════════
+if (app.Environment.IsDevelopment())
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "DevKen School Management API v1");
-    c.RoutePrefix = string.Empty;
-});
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "DevKen School Management API v1");
+        c.RoutePrefix = string.Empty; // Swagger at root URL
+        c.DocumentTitle = "DevKen School Management API";
+        c.DisplayRequestDuration(); // Show request duration in Swagger UI
+    });
 
+    app.Logger.LogInformation("Swagger UI is available at: https://localhost:7258");
+}
+
+// ══════════════════════════════════════════════════════════════
+// Map Controllers
+// ══════════════════════════════════════════════════════════════
 app.MapControllers();
 
+// ══════════════════════════════════════════════════════════════
+// Angular Development Server Launcher (Development Only)
+// ══════════════════════════════════════════════════════════════
 if (builder.Environment.IsDevelopment())
 {
     var relativeAngularPath = @"Devken.CBC.SchoolManagment.UI\School-System-UI";
-    AngularLauncher.Launch(relativeAngularPath);
 
-    app.Lifetime.ApplicationStopping.Register(() =>
+    try
     {
-        AngularLauncher.Close();
-    });
+        AngularLauncher.Launch(relativeAngularPath);
+        app.Logger.LogInformation("Angular development server launched successfully.");
+
+        app.Lifetime.ApplicationStopping.Register(() =>
+        {
+            app.Logger.LogInformation("Stopping Angular development server...");
+            AngularLauncher.Close();
+        });
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogWarning(ex, "Failed to launch Angular development server. You may need to start it manually.");
+    }
 }
 
-Console.ForegroundColor = ConsoleColor.Green;
-Console.WriteLine("🚀 DevKen School Management API started successfully.");
-Console.ResetColor();
+// ══════════════════════════════════════════════════════════════
+// Application Startup Complete
+// ══════════════════════════════════════════════════════════════
+app.Logger.LogInformation("DevKen School Management API is starting...");
+app.Logger.LogInformation("Environment: {Environment}", app.Environment.EnvironmentName);
+app.Logger.LogInformation("Application started successfully. Press Ctrl+C to shut down.");
 
+// ══════════════════════════════════════════════════════════════
+// Run Application
+// ══════════════════════════════════════════════════════════════
 app.Run();

@@ -14,6 +14,9 @@ namespace Devken.CBC.SchoolManagement.Application.Service
         Task<RefreshTokenResponse?> RefreshTokenAsync(RefreshTokenRequest request);
         Task<bool> LogoutAsync(string refreshToken);
         Task<AuthResult> ChangePasswordAsync(Guid userId, Guid tenantId, ChangePasswordRequest request);
-        Task<SuperAdminLoginResponse?> SuperAdminLoginAsync(SuperAdminLoginRequest request);
+        //Task<SuperAdminLoginResponse?> SuperAdminLoginAsync(SuperAdminLoginRequest request);
+        Task<SuperAdminLoginResponse?> SuperAdminLoginAsync(SuperAdminLoginRequest req);
+        Task<RefreshTokenResponse?> SuperAdminRefreshTokenAsync(RefreshTokenRequest req);
+        Task<bool> SuperAdminLogoutAsync(string refreshToken);
     }
 }
