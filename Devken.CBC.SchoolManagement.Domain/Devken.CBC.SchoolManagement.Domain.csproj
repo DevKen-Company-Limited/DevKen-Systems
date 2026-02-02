@@ -9,11 +9,9 @@
   <ItemGroup>
     <Folder Include="Entities\Academic\" />
     <Folder Include="Entities\Curriculum\" />
-    <Folder Include="Entities\Administration\" />
     <Folder Include="Entities\Assessment\" />
     <Folder Include="Entities\Finance\" />
     <Folder Include="Entities\Common\" />
-    <Folder Include="Enums\" />
     <Folder Include="Exceptions\" />
     <Folder Include="Interfaces\" />
   </ItemGroup>

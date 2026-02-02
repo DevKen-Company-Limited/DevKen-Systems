@@ -1,0 +1,214 @@
+﻿using Devken.CBC.SchoolManagement.Application.Service;
+using Devken.CBC.SchoolManagement.Domain.Entities.Administration;
+using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.EF;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
+namespace Devken.CBC.SchoolManagement.Infrastructure.Services
+{
+    public class PermissionSeedService : IPermissionSeedService
+    {
+        private readonly AppDbContext _context;
+        private readonly ILogger<PermissionSeedService> _logger;
+
+        // Default SchoolAdmin credentials
+        private const string DefaultAdminEmail = "admin@defaultschool.com";
+        private const string DefaultAdminPassword = "Admin@123";
+
+        public PermissionSeedService(
+            AppDbContext context,
+            ILogger<PermissionSeedService> logger)
+        {
+            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
+        /// <summary>
+        /// Seeds permissions, roles, and default school admin for a tenant
+        /// </summary>
+        /// <param name="tenantId">The school tenant ID</param>
+        /// <returns>The SchoolAdmin role ID</returns>
+        public async Task<Guid> SeedPermissionsAndRolesAsync(Guid tenantId)
+        {
+            _logger.LogInformation("Seeding permissions and roles for tenant {TenantId}", tenantId);
+
+            try
+            {
+                // Step 1: Seed all permissions (global)
+                var permissionMap = await SeedPermissionsAsync();
+
+                // Step 2: Seed default roles for tenant
+                var roleMap = await SeedDefaultRolesAsync(tenantId);
+
+                // Step 3: Assign permissions to roles
+                await AssignPermissionsToRolesAsync(roleMap, permissionMap);
+
+                // Step 4: Create default SchoolAdmin user if missing
+                await SeedDefaultSchoolAdminAsync(tenantId, roleMap["SchoolAdmin"]);
+
+                // Save all changes
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation(
+                    "Successfully seeded {PermissionCount} permissions and {RoleCount} roles for tenant {TenantId}",
+                    permissionMap.Count, roleMap.Count, tenantId);
+
+                return roleMap["SchoolAdmin"];
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error seeding permissions and roles for tenant {TenantId}", tenantId);
+                throw;
+            }
+        }
+
+        private async Task<Dictionary<string, Guid>> SeedPermissionsAsync()
+        {
+            var permissionMap = new Dictionary<string, Guid>();
+
+            foreach (var (key, display, group, desc) in PermissionCatalogue.All)
+            {
+                var existing = await _context.Permissions.FirstOrDefaultAsync(p => p.Key == key);
+                if (existing != null)
+                {
+                    permissionMap[key] = existing.Id;
+                    continue;
+                }
+
+                var permission = new Permission
+                {
+                    Id = Guid.NewGuid(),
+                    Key = key,
+                    DisplayName = display,
+                    GroupName = group,
+                    Description = desc,
+                    CreatedOn = DateTime.UtcNow,
+                    UpdatedOn = DateTime.UtcNow
+                };
+
+                _context.Permissions.Add(permission);
+                permissionMap[key] = permission.Id;
+
+                _logger.LogDebug("Created permission: {PermissionKey}", key);
+            }
+
+            return permissionMap;
+        }
+
+        private async Task<Dictionary<string, Guid>> SeedDefaultRolesAsync(Guid tenantId)
+        {
+            var roleMap = new Dictionary<string, Guid>();
+
+            foreach (var (roleName, description, isSystem, _) in DefaultRoles.All)
+            {
+                var existing = await _context.Roles.FirstOrDefaultAsync(r => r.Name == roleName && r.TenantId == tenantId);
+                if (existing != null)
+                {
+                    roleMap[roleName] = existing.Id;
+                    continue;
+                }
+
+                var role = new Role
+                {
+                    Id = Guid.NewGuid(),
+                    Name = roleName,
+                    Description = description,
+                    IsSystemRole = isSystem,
+                    TenantId = tenantId,
+                    CreatedOn = DateTime.UtcNow,
+                    UpdatedOn = DateTime.UtcNow
+                };
+
+                _context.Roles.Add(role);
+                roleMap[roleName] = role.Id;
+
+                _logger.LogDebug("Created role: {RoleName} for tenant {TenantId}", roleName, tenantId);
+            }
+
+            return roleMap;
+        }
+
+        private async Task AssignPermissionsToRolesAsync(
+            Dictionary<string, Guid> roleMap,
+            Dictionary<string, Guid> permissionMap)
+        {
+            foreach (var (roleName, _, _, permissions) in DefaultRoles.All)
+            {
+                if (!roleMap.ContainsKey(roleName)) continue;
+
+                var roleId = roleMap[roleName];
+
+                foreach (var key in permissions)
+                {
+                    if (!permissionMap.ContainsKey(key))
+                    {
+                        _logger.LogWarning("Permission {PermissionKey} not found for role {RoleName}", key, roleName);
+                        continue;
+                    }
+
+                    var exists = await _context.RolePermissions
+                        .AnyAsync(rp => rp.RoleId == roleId && rp.PermissionId == permissionMap[key]);
+
+                    if (exists) continue;
+
+                    _context.RolePermissions.Add(new RolePermission
+                    {
+                        Id = Guid.NewGuid(),
+                        RoleId = roleId,
+                        PermissionId = permissionMap[key],
+                        CreatedOn = DateTime.UtcNow,
+                        UpdatedOn = DateTime.UtcNow
+                    });
+                }
+
+                _logger.LogDebug("Assigned {PermissionCount} permissions to role {RoleName}", permissions.Length, roleName);
+            }
+        }
+
+        private async Task SeedDefaultSchoolAdminAsync(Guid tenantId, Guid schoolAdminRoleId)
+        {
+            var existingAdmin = await _context.Users.FirstOrDefaultAsync(u => u.Email == DefaultAdminEmail && u.TenantId == tenantId);
+            if (existingAdmin != null)
+            {
+                _logger.LogInformation("Default SchoolAdmin already exists for tenant {TenantId}", tenantId);
+                return;
+            }
+
+            var admin = new User
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenantId,
+                Email = DefaultAdminEmail,
+                FirstName = "Default",
+                LastName = "Admin",
+                PhoneNumber = "0000000000",
+                IsActive = true,
+                IsEmailVerified = true,
+                RequirePasswordChange = false,
+                CreatedOn = DateTime.UtcNow,
+                UpdatedOn = DateTime.UtcNow
+            };
+
+            admin.PasswordHash = new PasswordHasher<User>().HashPassword(admin, DefaultAdminPassword);
+
+            _context.Users.Add(admin);
+
+            // Assign SchoolAdmin role
+            _context.UserRoles.Add(new UserRole
+            {
+                Id = Guid.NewGuid(),
+                UserId = admin.Id,
+                RoleId = schoolAdminRoleId,
+                CreatedOn = DateTime.UtcNow,
+                UpdatedOn = DateTime.UtcNow
+            });
+
+            _logger.LogInformation("Created Default SchoolAdmin for tenant {TenantId} with email {Email}", tenantId, DefaultAdminEmail);
+        }
+    }
+}

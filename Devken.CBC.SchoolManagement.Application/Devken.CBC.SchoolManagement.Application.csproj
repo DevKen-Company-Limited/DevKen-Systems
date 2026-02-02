@@ -7,10 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Common\Models\" />
-    <Folder Include="Common\Behaviors\" />
-    <Folder Include="Common\Interfaces\" />
-    <Folder Include="DTOs\" />
+    <Folder Include="DTOs\Assessments\" />
+    <Folder Include="DTOs\Curriculum\" />
+    <Folder Include="DTOs\Finance\" />
+    <Folder Include="DTOs\Teachers\" />
+    <Folder Include="DTOs\Students\" />
     <Folder Include="Features\Assessments\Commands\Commands\" />
     <Folder Include="Features\Assessments\Commands\Queries\" />
     <Folder Include="Features\Curriculum\Commands\" />
@@ -21,12 +22,18 @@
     <Folder Include="Features\Students\Queries\" />
     <Folder Include="Features\Teachers\Commands\" />
     <Folder Include="Features\Teachers\Queries\" />
-    <Folder Include="RepositoryManagers\Interfaces\" />
     <Folder Include="RepositoryManagers\AssessmentSpecifications\" />
-    <Folder Include="RepositoryManagers\Specifications\" />
     <Folder Include="Validators\AssessmentValidators\" />
     <Folder Include="Validators\PaymentValidators\" />
     <Folder Include="Validators\StudentValidators\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Devken.CBC.SchoolManagement.Domain\Devken.CBC.SchoolManagement.Domain.csproj" />
   </ItemGroup>
 
 </Project>
