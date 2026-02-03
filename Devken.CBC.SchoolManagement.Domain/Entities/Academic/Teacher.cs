@@ -3,7 +3,6 @@ using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
 using Devken.CBC.SchoolManagement.Domain.Entities.Helpers;
 using Devken.CBC.SchoolManagement.Domain.Entities.Reports;
 using Devken.CBC.SchoolManagement.Domain.Enums;
-using Devken.CBC.SchoolManagement.Domain.Enums.Students;
 using System.ComponentModel.DataAnnotations;
 
 namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
@@ -96,7 +95,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
         public Class? CurrentClass { get; set; }
         public ICollection<Class> Classes { get; set; } = new List<Class>();
         public ICollection<Subject> Subjects { get; set; } = new List<Subject>();
-        public ICollection<Assessment> AssessmentsCreated { get; set; } = new List<Assessment>();
+        public ICollection<Assessment1> AssessmentsCreated { get; set; } = new List<Assessment1>();
         public ICollection<ProgressReport> ProgressReportsReviewed { get; set; } = new List<ProgressReport>();
 
         #endregion

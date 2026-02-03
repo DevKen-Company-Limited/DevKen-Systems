@@ -2,9 +2,9 @@
 using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
 using System.ComponentModel.DataAnnotations;
 
-namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessment
+namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
 {
-    public class FormativeAssessment : Assessment
+    public class FormativeAssessment : Assessment1
     {
         [MaxLength(50)]
         public string? FormativeType { get; set; } // Quiz, Assignment, Project, Presentation

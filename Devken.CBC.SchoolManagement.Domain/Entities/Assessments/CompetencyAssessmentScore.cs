@@ -1,10 +1,8 @@
 ﻿using Devken.CBC.SchoolManagement.Domain.Common;
 using Devken.CBC.SchoolManagement.Domain.Entities.Academic;
-using Devken.CBC.SchoolManagement.Domain.Entities.Assessment;
-using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
 using System.ComponentModel.DataAnnotations;
 
-namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessment
+namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
 {
     public class CompetencyAssessmentScore : TenantBaseEntity<Guid>
     {

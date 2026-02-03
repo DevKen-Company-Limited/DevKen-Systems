@@ -1,4 +1,4 @@
-﻿using Devken.CBC.SchoolManagement.Domain.Enums.Students;
+﻿using Devken.CBC.SchoolManagement.Domain.Enums;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;

@@ -1,7 +1,6 @@
 ﻿using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
 using Devken.CBC.SchoolManagement.Domain.Entities.Academic;
 using Devken.CBC.SchoolManagement.Domain.Enums;
-using Devken.CBC.SchoolManagement.Domain.Enums.Students;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;

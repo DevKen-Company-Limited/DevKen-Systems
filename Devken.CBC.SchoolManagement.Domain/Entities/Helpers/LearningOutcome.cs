@@ -1,6 +1,7 @@
 ﻿using Devken.CBC.SchoolManagement.Domain.Common;
 using Devken.CBC.SchoolManagement.Domain.Entities.Assessment;
-using Devken.CBC.SchoolManagement.Domain.Enums.Students;
+using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
+using Devken.CBC.SchoolManagement.Domain.Enums;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;

@@ -1,17 +1,13 @@
 ﻿using Devken.CBC.SchoolManagement.Domain.Common;
 using Devken.CBC.SchoolManagement.Domain.Entities.Administration;
-using Devken.CBC.SchoolManagement.Domain.Entities.Assessment;
 using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
 using Devken.CBC.SchoolManagement.Domain.Entities.Finance;
+using Devken.CBC.SchoolManagement.Domain.Entities.Helpers;
 using Devken.CBC.SchoolManagement.Domain.Entities.Reports;
 using Devken.CBC.SchoolManagement.Domain.Enums;
-using Devken.CBC.SchoolManagement.Domain.Enums.Students;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Diagnostics;
-using System.Reflection;
-using System.Security.Claims;
 
 namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
 {
@@ -86,6 +82,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
 
         [MaxLength(500)]
         public string? LeavingReason { get; set; }
+        public StudentStatus StudentStatus { get; set; }
 
         #endregion
 
@@ -170,26 +167,30 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
 
         #region Navigation Properties
 
+        // School & Basic Relationships
         public School? School { get; set; }
 
-        public Class? CurrentClass { get; set; }
+        // Parent Relationship
+        public Guid? ParentId { get; set; }
+        public Parent? Parent { get; set; }
 
+        // Academic Relationships
+        public Class? CurrentClass { get; set; }
         public AcademicYear? CurrentAcademicYear { get; set; }
 
+        // Assessment Relationships
         public ICollection<Grade> Grades { get; set; } = new List<Grade>();
 
-        public ICollection<Assessment> Assessments { get; set; } = new List<Assessment>();
+        // Assessment Score Relationships (Student-specific results)
+        public ICollection<FormativeAssessmentScore> FormativeAssessmentScores { get; set; } = new List<FormativeAssessmentScore>();
+        public ICollection<SummativeAssessmentScore> SummativeAssessmentScores { get; set; } = new List<SummativeAssessmentScore>();
+        public ICollection<CompetencyAssessmentScore> CompetencyAssessmentScores { get; set; } = new List<CompetencyAssessmentScore>();
 
-        public ICollection<FormativeAssessment> FormativeAssessments { get; set; } = new List<FormativeAssessment>();
-
-        public ICollection<SummativeAssessment> SummativeAssessments { get; set; } = new List<SummativeAssessment>();
-
-        public ICollection<CompetencyAssessment> CompetencyAssessments { get; set; } = new List<CompetencyAssessment>();
-
+        // Report Relationships
         public ICollection<ProgressReport> ProgressReports { get; set; } = new List<ProgressReport>();
 
+        // Finance Relationships
         public ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
-
         public ICollection<Payment> Payments { get; set; } = new List<Payment>();
 
         #endregion
@@ -212,5 +213,85 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
         public string DisplayName => $"{AdmissionNumber} - {FullName}";
 
         #endregion
+
+        #region Helper Methods
+
+        /// <summary>
+        /// Gets the student's current academic performance summary
+        /// </summary>
+        public AcademicPerformance GetAcademicPerformance()
+        {
+            return new AcademicPerformance
+            {
+                StudentId = Id,
+                StudentName = FullName,
+                AdmissionNumber = AdmissionNumber,
+                CurrentLevel = CurrentLevel,
+                ClassName = CurrentClass?.Name ?? "Not Assigned"
+            };
+        }
+
+        /// <summary>
+        /// Checks if student has any pending fees
+        /// </summary>
+        public bool HasPendingFees()
+        {
+            // This would typically query the database
+            // For now, return a placeholder logic
+            return false;
+        }
+
+        /// <summary>
+        /// Gets student's guardian information for emergency contacts
+        /// </summary>
+        public GuardianInfo GetGuardianInfo()
+        {
+            return new GuardianInfo
+            {
+                PrimaryGuardian = PrimaryGuardianName,
+                PrimaryGuardianPhone = PrimaryGuardianPhone,
+                PrimaryGuardianRelationship = PrimaryGuardianRelationship,
+                SecondaryGuardian = SecondaryGuardianName,
+                SecondaryGuardianPhone = SecondaryGuardianPhone,
+                EmergencyContact = EmergencyContactName,
+                EmergencyContactPhone = EmergencyContactPhone
+            };
+        }
+
+        #endregion
     }
+
+    #region Helper Classes
+
+    /// <summary>
+    /// Represents student's academic performance summary
+    /// </summary>
+    public class AcademicPerformance
+    {
+        public Guid StudentId { get; set; }
+        public string StudentName { get; set; } = null!;
+        public string AdmissionNumber { get; set; } = null!;
+        public CBCLevel CurrentLevel { get; set; }
+        public string ClassName { get; set; } = null!;
+        public decimal? AverageScore { get; set; }
+        public string? OverallGrade { get; set; }
+        public int? ClassRank { get; set; }
+        public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Represents student's guardian/contact information
+    /// </summary>
+    public class GuardianInfo
+    {
+        public string? PrimaryGuardian { get; set; }
+        public string? PrimaryGuardianPhone { get; set; }
+        public string? PrimaryGuardianRelationship { get; set; }
+        public string? SecondaryGuardian { get; set; }
+        public string? SecondaryGuardianPhone { get; set; }
+        public string? EmergencyContact { get; set; }
+        public string? EmergencyContactPhone { get; set; }
+    }
+
+    #endregion
 }

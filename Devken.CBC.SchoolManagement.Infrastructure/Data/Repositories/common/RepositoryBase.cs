@@ -12,7 +12,11 @@ using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.common
 {
-    internal class RepositoryBase<T, TId> : IRepositoryBase<T, TId>
+    /// <summary>
+    /// Base repository implementation for all entities
+    /// Changed from internal to public to allow inheritance by public repositories
+    /// </summary>
+    public class RepositoryBase<T, TId> : IRepositoryBase<T, TId>
             where T : BaseEntity<TId>
             where TId : IEquatable<TId>
     {

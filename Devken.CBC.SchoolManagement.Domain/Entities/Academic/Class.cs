@@ -1,6 +1,6 @@
 ﻿using Devken.CBC.SchoolManagement.Domain.Common;
 using Devken.CBC.SchoolManagement.Domain.Entities.Helpers;
-using Devken.CBC.SchoolManagement.Domain.Enums.Students;
+using Devken.CBC.SchoolManagement.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
 namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
@@ -29,6 +29,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
 
         // Navigation Properties
         public Teacher? ClassTeacher { get; set; }
+        public Guid AcademicYearId { get; set; }
         public AcademicYear? AcademicYear { get; set; }
         public ICollection<Student> Students { get; set; } = new List<Student>();
         public ICollection<Subject> Subjects { get; set; } = new List<Subject>();

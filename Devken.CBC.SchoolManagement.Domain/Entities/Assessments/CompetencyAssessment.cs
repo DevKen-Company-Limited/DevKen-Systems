@@ -1,12 +1,11 @@
 ﻿using Devken.CBC.SchoolManagement.Domain.Common;
 using Devken.CBC.SchoolManagement.Domain.Entities.Assessment;
 using Devken.CBC.SchoolManagement.Domain.Enums;
-using Devken.CBC.SchoolManagement.Domain.Enums.Students;
 using System.ComponentModel.DataAnnotations;
 
 namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
 {
-    public class CompetencyAssessment : Assessment
+    public class CompetencyAssessment : Assessment1
     {
         [MaxLength(100)]
         public string CompetencyName { get; set; } = null!;

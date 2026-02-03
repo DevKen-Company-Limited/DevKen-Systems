@@ -1,5 +1,5 @@
 ﻿using Devken.CBC.SchoolManagement.Domain.Common;
-using Devken.CBC.SchoolManagement.Domain.Enums.Students;
+using Devken.CBC.SchoolManagement.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
 namespace Devken.CBC.SchoolManagement.Domain.Entities.Finance

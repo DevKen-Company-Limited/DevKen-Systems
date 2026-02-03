@@ -6,7 +6,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
 {
-    public class Assessment : TenantBaseEntity<Guid>
+    public class Assessment1 : TenantBaseEntity<Guid>
     {
         [Required]
         [MaxLength(200)]
@@ -18,6 +18,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
         public Guid SubjectId { get; set; }
 
         public Guid ClassId { get; set; }
+
 
         public Guid TermId { get; set; }
 

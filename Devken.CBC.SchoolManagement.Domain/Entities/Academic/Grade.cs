@@ -36,6 +36,6 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
         public Student Student { get; set; } = null!;
         public Subject Subject { get; set; } = null!;
         public Term? Term { get; set; }
-        public Assessment? Assessment { get; set; }
+        public Assessment1? Assessment { get; set; }
     }
 }

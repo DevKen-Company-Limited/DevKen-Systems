@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessment
 {
-    public class SummativeAssessment : Assessment
+    public class SummativeAssessment : Assessment1
     {
         [MaxLength(50)]
         public string? ExamType { get; set; } // EndTerm, MidTerm, Final

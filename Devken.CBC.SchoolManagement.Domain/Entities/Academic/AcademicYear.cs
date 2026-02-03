@@ -29,7 +29,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
         // Navigation Properties
         public ICollection<Class> Classes { get; set; } = new List<Class>();
         public ICollection<Student> Students { get; set; } = new List<Student>();
-        public ICollection<Assessment> Assessments { get; set; } = new List<Assessment>();
+        public ICollection<Assessment1> Assessments { get; set; } = new List<Assessment1>();
         public ICollection<Term> Terms { get; set; } = new List<Term>();
 
         // Computed Properties

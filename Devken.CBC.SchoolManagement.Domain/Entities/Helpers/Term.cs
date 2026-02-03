@@ -34,7 +34,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Helpers
 
         // Navigation Properties
         public AcademicYear AcademicYear { get; set; } = null!;
-        public ICollection<Assessment> Assessments { get; set; } = new List<Assessment>();
+        public ICollection<Assessment1> Assessments { get; set; } = new List<Assessment1>();
         public ICollection<ProgressReport> ProgressReports { get; set; } = new List<ProgressReport>();
     }
 }

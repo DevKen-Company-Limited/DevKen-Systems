@@ -29,7 +29,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Finance
         [MaxLength(500)]
         public string? Description { get; set; }
 
-        public PaymentStatus Status { get; set; } = PaymentStatus.Completed;
+        public PaymentStatus StatusPayment { get; set; } = PaymentStatus.Completed;
 
         public DateTime? ReceivedDate { get; set; }
 
