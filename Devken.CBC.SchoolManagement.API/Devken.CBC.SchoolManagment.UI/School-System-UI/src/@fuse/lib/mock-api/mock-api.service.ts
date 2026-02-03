@@ -16,9 +16,32 @@ export class FuseMockApiService {
         options: new Map<string, FuseMockApiHandler>(),
     };
 
-    // -----------------------------------------------------------------------------------------------------
-    // @ Public methods
-    // -----------------------------------------------------------------------------------------------------
+    // URLs that should bypass mock and go to real API
+    private _passThroughUrls: Set<string> = new Set([
+        'api/common/navigation',
+        // Add more URLs as needed
+    ]);
+
+    /**
+     * Add a URL pattern to pass through to real API
+     */
+    addPassThroughUrl(url: string): void {
+        this._passThroughUrls.add(url);
+    }
+
+    /**
+     * Remove a URL pattern from pass through list
+     */
+    removePassThroughUrl(url: string): void {
+        this._passThroughUrls.delete(url);
+    }
+
+    /**
+     * Check if a URL should pass through to real API
+     */
+    isPassThroughUrl(url: string): boolean {
+        return this._passThroughUrls.has(url);
+    }
 
     /**
      * Find the handler from the service
@@ -33,15 +56,26 @@ export class FuseMockApiService {
     ): {
         handler: FuseMockApiHandler | undefined;
         urlParams: { [key: string]: string };
+        isPassThrough: boolean;
     } {
+        // Check if this URL should pass through
+        const isPassThrough = this.isPassThroughUrl(url);
+
         // Prepare the return object
         const matchingHandler: {
             handler: FuseMockApiHandler | undefined;
             urlParams: { [key: string]: string };
+            isPassThrough: boolean;
         } = {
             handler: undefined,
             urlParams: {},
+            isPassThrough,
         };
+
+        // If pass through, don't look for mock handler
+        if (isPassThrough) {
+            return matchingHandler;
+        }
 
         // Split the url
         const urlParts = url.split('/');

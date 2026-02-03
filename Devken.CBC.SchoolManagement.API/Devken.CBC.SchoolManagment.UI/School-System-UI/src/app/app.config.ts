@@ -1,9 +1,10 @@
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import {
     ApplicationConfig,
     inject,
     isDevMode,
     provideAppInitializer,
+    InjectionToken,
 } from '@angular/core';
 import { LuxonDateAdapter } from '@angular/material-luxon-adapter';
 import { DateAdapter, MAT_DATE_FORMATS } from '@angular/material/core';
@@ -17,15 +18,27 @@ import { provideIcons } from 'app/core/icons/icons.provider';
 import { MockApiService } from 'app/mock-api';
 import { firstValueFrom } from 'rxjs';
 import { TranslocoHttpLoader } from './core/transloco/transloco.http-loader';
+import { mockApiInterceptor } from '@fuse/lib/mock-api';
+
+// API Base URL Injection Token
+export const API_BASE_URL = new InjectionToken<string>('API_BASE_URL');
 
 export const appConfig: ApplicationConfig = {
     providers: [
         provideAnimations(),
-        provideHttpClient(),
+        provideHttpClient(
+            withInterceptors([mockApiInterceptor])
+        ),
         provideRouter(
             appRoutes,
             withInMemoryScrolling({ scrollPositionRestoration: 'enabled' })
         ),
+
+        // Provide API Base URL
+        {
+            provide: API_BASE_URL,
+            useValue: 'http://localhost:5167',
+        },
 
         // Material Date Adapter
         {

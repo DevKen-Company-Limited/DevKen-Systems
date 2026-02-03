@@ -1,88 +1,51 @@
-import { Injectable } from '@angular/core';
-import { FuseNavigationItem } from '@fuse/components/navigation';
+import { Injectable, inject } from '@angular/core';
 import { FuseMockApiService } from '@fuse/lib/mock-api';
-import {
-    compactNavigation,
-    defaultNavigation,
-    futuristicNavigation,
-    horizontalNavigation,
-} from 'app/mock-api/common/navigation/data';
-import { cloneDeep } from 'lodash-es';
+
+import { map, catchError } from 'rxjs/operators';
+import { of } from 'rxjs';
+import { NavigationService } from '@fuse/lib/mock-api/NavigationService';
 
 @Injectable({ providedIn: 'root' })
 export class NavigationMockApi {
-    private readonly _compactNavigation: FuseNavigationItem[] =
-        compactNavigation;
-    private readonly _defaultNavigation: FuseNavigationItem[] =
-        defaultNavigation;
-    private readonly _futuristicNavigation: FuseNavigationItem[] =
-        futuristicNavigation;
-    private readonly _horizontalNavigation: FuseNavigationItem[] =
-        horizontalNavigation;
+    private readonly _fuseMockApiService = inject(FuseMockApiService);
+    private readonly _navigationService = inject(NavigationService);
 
-    /**
-     * Constructor
-     */
-    constructor(private _fuseMockApiService: FuseMockApiService) {
-        // Register Mock API handlers
+    constructor() {
         this.registerHandlers();
     }
 
-    // -----------------------------------------------------------------------------------------------------
-    // @ Public methods
-    // -----------------------------------------------------------------------------------------------------
-
-    /**
-     * Register Mock API handlers
-     */
     registerHandlers(): void {
-        // -----------------------------------------------------------------------------------------------------
-        // @ Navigation - GET
-        // -----------------------------------------------------------------------------------------------------
-        this._fuseMockApiService.onGet('api/common/navigation').reply(() => {
-            // Fill compact navigation children using the default navigation
-            this._compactNavigation.forEach((compactNavItem) => {
-                this._defaultNavigation.forEach((defaultNavItem) => {
-                    if (defaultNavItem.id === compactNavItem.id) {
-                        compactNavItem.children = cloneDeep(
-                            defaultNavItem.children
-                        );
-                    }
-                });
+        // Register the handler for navigation
+        this._fuseMockApiService
+            .onGet('api/common/navigation')
+            .reply(() => {
+                // Use the NavigationService to fetch from real API
+                return this._navigationService.loadNavigation().pipe(
+                    map((response) => {
+                        // Return in the format expected by mock API [statusCode, data]
+                        if (response.success) {
+                            return [200, response.data];
+                        }
+                        return [500, {
+                            compact: [],
+                            default: [],
+                            futuristic: [],
+                            horizontal: [],
+                        }];
+                    }),
+                    catchError((error) => {
+                        console.error('Error fetching navigation:', error);
+                        return of([
+                            500,
+                            {
+                                compact: [],
+                                default: [],
+                                futuristic: [],
+                                horizontal: [],
+                            },
+                        ]);
+                    })
+                );
             });
-
-            // Fill futuristic navigation children using the default navigation
-            this._futuristicNavigation.forEach((futuristicNavItem) => {
-                this._defaultNavigation.forEach((defaultNavItem) => {
-                    if (defaultNavItem.id === futuristicNavItem.id) {
-                        futuristicNavItem.children = cloneDeep(
-                            defaultNavItem.children
-                        );
-                    }
-                });
-            });
-
-            // Fill horizontal navigation children using the default navigation
-            this._horizontalNavigation.forEach((horizontalNavItem) => {
-                this._defaultNavigation.forEach((defaultNavItem) => {
-                    if (defaultNavItem.id === horizontalNavItem.id) {
-                        horizontalNavItem.children = cloneDeep(
-                            defaultNavItem.children
-                        );
-                    }
-                });
-            });
-
-            // Return the response
-            return [
-                200,
-                {
-                    compact: cloneDeep(this._compactNavigation),
-                    default: cloneDeep(this._defaultNavigation),
-                    futuristic: cloneDeep(this._futuristicNavigation),
-                    horizontal: cloneDeep(this._horizontalNavigation),
-                },
-            ];
-        });
     }
 }
