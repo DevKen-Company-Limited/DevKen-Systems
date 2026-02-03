@@ -19,11 +19,12 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Finance
 
         public decimal UnitPrice { get; set; }
 
-        public decimal Total => Quantity * UnitPrice;
+        // ✅ EF can now map these computed columns because of private setter
+        public decimal Total { get; private set; }
 
         public decimal Discount { get; set; } = 0.0m;
 
-        public decimal NetAmount => Total - Discount;
+        public decimal NetAmount { get; private set; }
 
         public bool IsTaxable { get; set; } = false;
 

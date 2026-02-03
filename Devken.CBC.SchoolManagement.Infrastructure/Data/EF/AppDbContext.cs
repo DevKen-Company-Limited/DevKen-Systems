@@ -123,12 +123,27 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             // Assessment Configurations
             mb.ApplyConfiguration(new GradeConfiguration(_tenantContext));
             mb.ApplyConfiguration(new AssessmentConfiguration(_tenantContext));
-            mb.ApplyConfiguration(new FormativeAssessmentConfiguration(_tenantContext));
-            mb.ApplyConfiguration(new SummativeAssessmentConfiguration(_tenantContext));
-            mb.ApplyConfiguration(new CompetencyAssessmentConfiguration(_tenantContext));
-            mb.ApplyConfiguration(new FormativeAssessmentScoreConfiguration(_tenantContext));
+      
+
+
             mb.ApplyConfiguration(new SummativeAssessmentScoreConfiguration(_tenantContext));
-            mb.ApplyConfiguration(new CompetencyAssessmentScoreConfiguration(_tenantContext));
+          
+
+
+
+
+
+            // Root entity with tenant filter
+            mb.ApplyConfiguration(new AssessmentConfiguration(_tenantContext));
+
+            // Derived entities (no tenant filter in constructor)
+            mb.ApplyConfiguration(new SummativeAssessmentConfiguration());
+            mb.ApplyConfiguration(new FormativeAssessmentConfiguration());
+            mb.ApplyConfiguration(new CompetencyAssessmentConfiguration());
+
+            // Score entities (child entities, no tenant filter)
+            mb.ApplyConfiguration(new FormativeAssessmentScoreConfiguration());
+            mb.ApplyConfiguration(new CompetencyAssessmentScoreConfiguration());
 
             // Report Configurations
             mb.ApplyConfiguration(new ProgressReportConfiguration(_tenantContext));

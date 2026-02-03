@@ -20,9 +20,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
 
             builder.HasKey(sas => sas.Id);
 
-            builder.HasQueryFilter(sas =>
-                _tenantContext.TenantId == null ||
-                sas.TenantId == _tenantContext.TenantId);
+            //builder.HasQueryFilter(sas =>
+            //    _tenantContext.TenantId == null ||
+            //    sas.TenantId == _tenantContext.TenantId);
 
             // Indexes
             builder.HasIndex(sas => new { sas.TenantId, sas.SummativeAssessmentId, sas.StudentId })

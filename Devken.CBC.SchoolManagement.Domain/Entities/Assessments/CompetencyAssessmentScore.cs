@@ -6,7 +6,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
 {
     public class CompetencyAssessmentScore : TenantBaseEntity<Guid>
     {
-        public Guid CompetencyAssessmentId { get; set; }
+        public Guid? CompetencyAssessmentId { get; set; }
 
         public Guid StudentId { get; set; }
 
@@ -48,7 +48,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
         public string? SpecificLearningOutcome { get; set; }
 
         // Navigation Properties
-        public CompetencyAssessment CompetencyAssessment { get; set; } = null!;
+        public CompetencyAssessment? CompetencyAssessment { get; set; } = null!;
         public Student Student { get; set; } = null!;
         public Teacher? Assessor { get; set; }
 

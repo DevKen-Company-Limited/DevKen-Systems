@@ -1,5 +1,4 @@
 ﻿using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
-using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -7,26 +6,17 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
 {
     public class CompetencyAssessmentScoreConfiguration : IEntityTypeConfiguration<CompetencyAssessmentScore>
     {
-        private readonly TenantContext _tenantContext;
-
-        public CompetencyAssessmentScoreConfiguration(TenantContext tenantContext)
-        {
-            _tenantContext = tenantContext;
-        }
-
         public void Configure(EntityTypeBuilder<CompetencyAssessmentScore> builder)
         {
             builder.ToTable("CompetencyAssessmentScores");
 
             builder.HasKey(cas => cas.Id);
 
-            builder.HasQueryFilter(cas =>
-                _tenantContext.TenantId == null ||
-                cas.TenantId == _tenantContext.TenantId);
+            // ❌ Remove tenant filter from here
 
             // Indexes
             builder.HasIndex(cas => new { cas.TenantId, cas.CompetencyAssessmentId, cas.StudentId })
-                .IsUnique();
+                   .IsUnique();
 
             builder.HasIndex(cas => new { cas.TenantId, cas.StudentId });
 

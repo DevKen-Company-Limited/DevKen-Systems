@@ -20,6 +20,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
 
             builder.HasKey(a => a.Id);
 
+            // ✅ Apply tenant filter at root level
             builder.HasQueryFilter(a =>
                 _tenantContext.TenantId == null ||
                 a.TenantId == _tenantContext.TenantId);

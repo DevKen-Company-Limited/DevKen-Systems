@@ -1,5 +1,4 @@
 ﻿using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
-using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -7,13 +6,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
 {
     public class CompetencyAssessmentConfiguration : IEntityTypeConfiguration<CompetencyAssessment>
     {
-        private readonly TenantContext _tenantContext;
-
-        public CompetencyAssessmentConfiguration(TenantContext tenantContext)
-        {
-            _tenantContext = tenantContext;
-        }
-
         public void Configure(EntityTypeBuilder<CompetencyAssessment> builder)
         {
             builder.ToTable("CompetencyAssessments");
@@ -21,10 +13,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
             // ❌ Do NOT configure HasKey on derived type
             // builder.HasKey(ca => ca.Id);
 
-            // Multi-tenant filter
-            builder.HasQueryFilter(ca =>
-                _tenantContext.TenantId == null ||
-                ca.TenantId == _tenantContext.TenantId);
+            // ❌ Remove tenant filter from here
 
             // Properties
             builder.Property(ca => ca.CompetencyName)

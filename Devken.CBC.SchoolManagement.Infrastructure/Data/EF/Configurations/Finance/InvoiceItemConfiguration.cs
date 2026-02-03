@@ -44,10 +44,12 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Fina
 
             // Computed Columns
             builder.Property(ii => ii.Total)
-                .HasComputedColumnSql("[Quantity] * [UnitPrice]");
+                .HasComputedColumnSql("[Quantity] * [UnitPrice]")
+                .ValueGeneratedOnAddOrUpdate();
 
             builder.Property(ii => ii.NetAmount)
-                .HasComputedColumnSql("([Quantity] * [UnitPrice]) - [Discount]");
+                .HasComputedColumnSql("([Quantity] * [UnitPrice]) - [Discount]")
+                .ValueGeneratedOnAddOrUpdate();
 
             // Relationships
             builder.HasOne(ii => ii.Invoice)

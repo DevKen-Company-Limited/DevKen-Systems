@@ -7,7 +7,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
 {
     public class SummativeAssessmentScore : TenantBaseEntity<Guid>
     {
-        public Guid SummativeAssessmentId { get; set; }
+        public Guid? SummativeAssessmentId { get; set; }
 
         public Guid StudentId { get; set; }
 
@@ -45,7 +45,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
         public string? Comments { get; set; }
 
         // Navigation Properties
-        public SummativeAssessment SummativeAssessment { get; set; } = null!;
+        public SummativeAssessment? SummativeAssessment { get; set; } = null!;
         public Student Student { get; set; } = null!;
         public Teacher? GradedBy { get; set; }
 

@@ -7,7 +7,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
 {
     public class FormativeAssessmentScore : TenantBaseEntity<Guid>
     {
-        public Guid FormativeAssessmentId { get; set; }
+        public Guid? FormativeAssessmentId { get; set; }
 
         public Guid StudentId { get; set; }
 
@@ -47,7 +47,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
         public bool CompetencyAchieved { get; set; } = false;
 
         // Navigation Properties
-        public FormativeAssessment FormativeAssessment { get; set; } = null!;
+        public FormativeAssessment? FormativeAssessment { get; set; } = null!;
         public Student Student { get; set; } = null!;
         public Teacher? GradedBy { get; set; }
     }

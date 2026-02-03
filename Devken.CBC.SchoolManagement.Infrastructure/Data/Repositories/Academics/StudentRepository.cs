@@ -498,9 +498,9 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Academic
             // Combine all assessment IDs
             var allAssessmentIds = new List<Guid>();
             allAssessmentIds.AddRange(gradeAssessmentIds);
-            allAssessmentIds.AddRange(formativeAssessmentIds);
-            allAssessmentIds.AddRange(summativeAssessmentIds);
-            allAssessmentIds.AddRange(competencyAssessmentIds);
+            allAssessmentIds.AddRange((IEnumerable<Guid>)formativeAssessmentIds);
+            allAssessmentIds.AddRange((IEnumerable<Guid>)summativeAssessmentIds);
+            allAssessmentIds.AddRange((IEnumerable<Guid>)competencyAssessmentIds);
             allAssessmentIds = allAssessmentIds.Distinct().ToList();
 
             return await _context.Assessments

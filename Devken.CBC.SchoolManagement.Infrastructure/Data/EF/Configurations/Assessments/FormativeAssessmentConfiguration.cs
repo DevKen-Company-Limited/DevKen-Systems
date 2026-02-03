@@ -1,5 +1,4 @@
 ﻿using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
-using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -7,13 +6,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
 {
     public class FormativeAssessmentConfiguration : IEntityTypeConfiguration<FormativeAssessment>
     {
-        private readonly TenantContext _tenantContext;
-
-        public FormativeAssessmentConfiguration(TenantContext tenantContext)
-        {
-            _tenantContext = tenantContext;
-        }
-
         public void Configure(EntityTypeBuilder<FormativeAssessment> builder)
         {
             builder.ToTable("FormativeAssessments");
@@ -21,10 +13,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
             // ❌ Remove HasKey because it's defined on Assessment1
             // builder.HasKey(fa => fa.Id);
 
-            // Tenant filter
-            builder.HasQueryFilter(fa =>
-                _tenantContext.TenantId == null ||
-                fa.TenantId == _tenantContext.TenantId);
+            // ❌ Remove tenant filter from derived type
 
             // Properties
             builder.Property(fa => fa.FormativeType)
