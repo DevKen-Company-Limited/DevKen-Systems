@@ -16,13 +16,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
         private readonly AppDbContext _context;
         private readonly ILogger<PermissionSeedService> _logger;
 
-        // Default SchoolAdmin credentials
         private const string DefaultAdminEmail = "admin@defaultschool.com";
         private const string DefaultAdminPassword = "Admin@123";
 
-        public PermissionSeedService(
-            AppDbContext context,
-            ILogger<PermissionSeedService> logger)
+        public PermissionSeedService(AppDbContext context, ILogger<PermissionSeedService> logger)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -39,19 +36,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
 
             try
             {
-                // Step 1: Seed all permissions (global)
                 var permissionMap = await SeedPermissionsAsync();
-
-                // Step 2: Seed default roles for tenant
                 var roleMap = await SeedDefaultRolesAsync(tenantId);
-
-                // Step 3: Assign permissions to roles
                 await AssignPermissionsToRolesAsync(roleMap, permissionMap);
-
-                // Step 4: Create default SchoolAdmin user if missing
                 await SeedDefaultSchoolAdminAsync(tenantId, roleMap["SchoolAdmin"]);
 
-                // Save all changes
                 await _context.SaveChangesAsync();
 
                 _logger.LogInformation(
@@ -77,7 +66,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
                 if (existing != null)
                 {
                     permissionMap[key] = existing.Id;
-                    continue;
+                    continue; // Skip duplicate
                 }
 
                 var permission = new Permission
@@ -110,7 +99,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
                 if (existing != null)
                 {
                     roleMap[roleName] = existing.Id;
-                    continue;
+                    _logger.LogDebug("Role {RoleName} already exists for tenant {TenantId}, skipping.", roleName, tenantId);
+                    continue; // Skip duplicate
                 }
 
                 var role = new Role
@@ -133,9 +123,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
             return roleMap;
         }
 
-        private async Task AssignPermissionsToRolesAsync(
-            Dictionary<string, Guid> roleMap,
-            Dictionary<string, Guid> permissionMap)
+        private async Task AssignPermissionsToRolesAsync(Dictionary<string, Guid> roleMap, Dictionary<string, Guid> permissionMap)
         {
             foreach (var (roleName, _, _, permissions) in DefaultRoles.All)
             {
@@ -153,8 +141,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
 
                     var exists = await _context.RolePermissions
                         .AnyAsync(rp => rp.RoleId == roleId && rp.PermissionId == permissionMap[key]);
-
-                    if (exists) continue;
+                    if (exists) continue; // Skip duplicate
 
                     _context.RolePermissions.Add(new RolePermission
                     {
@@ -176,7 +163,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
             if (existingAdmin != null)
             {
                 _logger.LogInformation("Default SchoolAdmin already exists for tenant {TenantId}", tenantId);
-                return;
+                return; // Skip duplicate
             }
 
             var admin = new User
@@ -198,7 +185,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
 
             _context.Users.Add(admin);
 
-            // Assign SchoolAdmin role
             _context.UserRoles.Add(new UserRole
             {
                 Id = Guid.NewGuid(),

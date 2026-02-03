@@ -1,8 +1,10 @@
 ﻿using Devken.CBC.SchoolManagement.Domain.Entities.Administration;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
+using Devken.CBC.SchoolManagement.Domain.Entities.Subscription;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Identity;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.SchoolConf;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Subscription;
 using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -35,8 +37,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         public DbSet<UserRole> UserRoles => Set<UserRole>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         public DbSet<SuperAdminRefreshToken> SuperAdminRefreshTokens { get; set; } = null!;
+        public DbSet<Subscription> Subscriptions => Set<Subscription>();
         #endregion
-
+        public DbSet<UserActivity> UserActivities => Set<UserActivity>();
         protected override void OnModelCreating(ModelBuilder mb)
         {
             base.OnModelCreating(mb);
@@ -55,6 +58,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             mb.ApplyConfiguration(new RolePermissionConfiguration(_tenantContext));
             mb.ApplyConfiguration(new UserRoleConfiguration(_tenantContext));
             mb.ApplyConfiguration(new RefreshTokenConfiguration(_tenantContext));
+            mb.ApplyConfiguration(new SubscriptionConfiguration(_tenantContext));
+
 
             // Note: Do NOT seed dynamic data like Users or hashed passwords here.
             // All dynamic seeding will be handled via PermissionSeedService and app startup.
