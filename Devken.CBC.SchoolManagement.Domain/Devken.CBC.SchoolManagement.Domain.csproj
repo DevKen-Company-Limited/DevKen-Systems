@@ -12,6 +12,7 @@
     <Folder Include="Entities\Assessment\" />
     <Folder Include="Entities\Finance\" />
     <Folder Include="Entities\Common\" />
+    <Folder Include="Enums\NewFolder1\" />
     <Folder Include="Exceptions\" />
     <Folder Include="Interfaces\" />
   </ItemGroup>

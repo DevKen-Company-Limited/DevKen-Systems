@@ -1,7 +1,9 @@
 ﻿using Devken.CBC.SchoolManagement.Application.Dtos;
 using Devken.CBC.SchoolManagement.Application.Service;
+using Devken.CBC.SchoolManagement.Application.Service.Isubscription;
 using Devken.CBC.SchoolManagement.Domain.Entities.Administration;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
+using Devken.CBC.SchoolManagement.Domain.Enums;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF;
 using Devken.CBC.SchoolManagement.Infrastructure.Security;
 using Microsoft.AspNetCore.Identity;
@@ -21,6 +23,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
         private readonly IPasswordHasher<User> _passwordHasher;
         private readonly JwtSettings _jwtSettings;
         private readonly IPermissionSeedService _permissionSeedService;
+        private readonly ISubscriptionSeedService _subscriptionSeedService;
         private readonly ILogger<AuthService> _logger;
 
         private static readonly string[] SuperAdminRoles = { "SuperAdmin" };
@@ -32,95 +35,134 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
             IPasswordHasher<User> passwordHasher,
             JwtSettings jwtSettings,
             IPermissionSeedService permissionSeedService,
+            ISubscriptionSeedService subscriptionSeedService,
             ILogger<AuthService> logger)
         {
             _context = context;
             _passwordHasher = passwordHasher;
             _jwtSettings = jwtSettings;
             _permissionSeedService = permissionSeedService;
+            _subscriptionSeedService = subscriptionSeedService;
             _logger = logger;
         }
 
         // ─────────────────────────────────────────────────────────
-        // REGISTER SCHOOL
+        // REGISTER SCHOOL (with trial subscription)
         // ─────────────────────────────────────────────────────────
         public async Task<RegisterSchoolResponse?> RegisterSchoolAsync(RegisterSchoolRequest request)
         {
             using var tx = await _context.Database.BeginTransactionAsync();
 
-            if (await _context.Schools.AnyAsync(s => s.SlugName == request.SchoolSlug))
-                return null;
-
-            if (await _context.Users.AnyAsync(u => u.Email == request.AdminEmail))
-                return null;
-
-            var school = new School
+            try
             {
-                Id = Guid.NewGuid(),
-                Name = request.SchoolName,
-                SlugName = request.SchoolSlug,
-                Email = request.SchoolEmail,
-                PhoneNumber = request.SchoolPhone,
-                Address = request.SchoolAddress,
-                IsActive = true
-            };
+                // 1️⃣ Check uniqueness
+                if (await _context.Schools.AnyAsync(s => s.SlugName == request.SchoolSlug))
+                {
+                    _logger.LogWarning("School registration failed: Slug {Slug} already exists", request.SchoolSlug);
+                    return null;
+                }
 
-            _context.Schools.Add(school);
-            await _context.SaveChangesAsync();
+                if (await _context.Users.AnyAsync(u => u.Email == request.AdminEmail))
+                {
+                    _logger.LogWarning("School registration failed: Email {Email} already exists", request.AdminEmail);
+                    return null;
+                }
 
-            var roleId = await _permissionSeedService.SeedPermissionsAndRolesAsync(school.Id);
+                // 2️⃣ Create school
+                var school = new School
+                {
+                    Id = Guid.NewGuid(),
+                    Name = request.SchoolName,
+                    SlugName = request.SchoolSlug,
+                    Email = request.SchoolEmail,
+                    PhoneNumber = request.SchoolPhone,
+                    Address = request.SchoolAddress,
+                    IsActive = true
+                };
 
-            var names = request.AdminFullName.Split(' ', 2);
+                _context.Schools.Add(school);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("School created: {SchoolId} - {SchoolName}", school.Id, school.Name);
 
-            var user = new User
-            {
-                Id = Guid.NewGuid(),
-                Email = request.AdminEmail,
-                FirstName = names[0],
-                LastName = names.Length > 1 ? names[1] : null,
-                Tenant = school,
-                IsActive = true,
-                IsEmailVerified = true
-            };
+                // 3️⃣ Seed permissions and roles
+                var roleId = await _permissionSeedService.SeedPermissionsAndRolesAsync(school.Id);
 
-            user.PasswordHash = _passwordHasher.HashPassword(user, request.AdminPassword);
+                // 4️⃣ Create admin user
+                var names = request.AdminFullName.Split(' ', 2);
+                var user = new User
+                {
+                    Id = Guid.NewGuid(),
+                    Email = request.AdminEmail,
+                    FirstName = names[0],
+                    LastName = names.Length > 1 ? names[1] : null,
+                    Tenant = school,
+                    IsActive = true,
+                    IsEmailVerified = true,
+                    RequirePasswordChange = true // ✨ force password change for first login
+                };
 
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+                user.PasswordHash = _passwordHasher.HashPassword(user, request.AdminPassword);
 
-            _context.UserRoles.Add(new UserRole
-            {
-                Id = Guid.NewGuid(),
-                UserId = user.Id,
-                RoleId = roleId
-            });
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Admin user created: {UserId} - {Email}", user.Id, user.Email);
 
-            await _context.SaveChangesAsync();
+                // 5️⃣ Assign admin role
+                _context.UserRoles.Add(new UserRole
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = user.Id,
+                    RoleId = roleId
+                });
+                await _context.SaveChangesAsync();
 
-            var permissions = await GetUserPermissionsAsync(user.Id, school.Id);
-            var accessToken = GenerateAccessToken(user, permissions);
-            var refreshToken = await GenerateAndStoreRefreshTokenAsync(user.Id);
-
-            await tx.CommitAsync();
-
-            return new RegisterSchoolResponse(
-                school.Id,
-                accessToken,
-                refreshToken,
-                new UserDto(
-                    user.Id,
-                    user.Email,
-                    $"{user.FirstName} {user.LastName}".Trim(),
+                // 6️⃣ Create trial subscription
+                var trialSubscription = await _subscriptionSeedService.SeedTrialSubscriptionAsync(school.Id);
+                _logger.LogInformation(
+                    "Trial subscription created for school {SchoolId}. Expires: {ExpiryDate}",
                     school.Id,
-                    school.Name,
-                    new[] { "SchoolAdmin" },
-                    permissions
-                )
-            );
+                    trialSubscription.ExpiryDate);
+
+                // 7️⃣ Generate tokens
+                var permissions = await GetUserPermissionsAsync(user.Id, school.Id);
+                var accessToken = GenerateAccessToken(user, permissions);
+                var refreshToken = await GenerateAndStoreRefreshTokenAsync(user.Id);
+
+                // 8️⃣ Commit transaction
+                await tx.CommitAsync();
+
+                _logger.LogInformation(
+                    "School registration completed successfully: {SchoolId} - {SchoolName}",
+                    school.Id,
+                    school.Name);
+
+                return new RegisterSchoolResponse(
+                     school.Id,
+                     accessToken,
+                     refreshToken,
+                     new UserDto(
+                         user.Id,
+                         user.Email,
+                         $"{user.FirstName} {user.LastName}".Trim(),
+                         school.Id,       // SchoolId
+                         school,          // School object
+                         school.Name,     // SchoolName
+                         new[] { "SchoolAdmin" },
+                         permissions,
+                         user.RequirePasswordChange
+                     )
+                 );
+            }
+            catch (Exception ex)
+            {
+                await tx.RollbackAsync();
+                _logger.LogError(ex, "Error during school registration for {Email}", request.AdminEmail);
+                throw;
+            }
         }
 
         // ─────────────────────────────────────────────────────────
-        // USER LOGIN
+        // LOGIN
         // ─────────────────────────────────────────────────────────
         public async Task<LoginResponse?> LoginAsync(LoginRequest request, string? ipAddress = null)
         {
@@ -161,17 +203,17 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
                     user.Email,
                     $"{user.FirstName} {user.LastName}".Trim(),
                     roles,
-                    permissions
+                    permissions,
+                    user.RequirePasswordChange
                 )
             );
         }
 
         // ─────────────────────────────────────────────────────────
-        // USER REFRESH TOKEN
+        // REFRESH TOKEN
         // ─────────────────────────────────────────────────────────
         public async Task<RefreshTokenResponse?> RefreshTokenAsync(RefreshTokenRequest request)
         {
-            // ✅ Use RevokedAt == null for EF Core
             var old = await _context.RefreshTokens
                 .FirstOrDefaultAsync(t =>
                     t.Token == request.RefreshToken &&
@@ -198,7 +240,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
         }
 
         // ─────────────────────────────────────────────────────────
-        // USER LOGOUT
+        // LOGOUT
         // ─────────────────────────────────────────────────────────
         public async Task<bool> LogoutAsync(string refreshToken)
         {
@@ -213,42 +255,61 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
         }
 
         // ─────────────────────────────────────────────────────────
-        // CHANGE PASSWORD
+        // CHANGE PASSWORD - ✅ FIXED TO MATCH INTERFACE
         // ─────────────────────────────────────────────────────────
-        public async Task<AuthResult> ChangePasswordAsync(Guid userId, Guid tenantId, ChangePasswordRequest request)
+        public async Task<AuthResult> ChangePasswordAsync(Guid userId, Guid? tenantId, ChangePasswordRequest request)
         {
+            // ✅ Handle nullable tenantId
+            if (tenantId == null)
+            {
+                _logger.LogWarning("Password change failed: Tenant ID is null for user {UserId}", userId);
+                return new AuthResult(false, "Tenant ID is required");
+            }
+
             var user = await _context.Users
                 .Include(u => u.Tenant)
-                .FirstOrDefaultAsync(u => u.Id == userId && u.Tenant!.Id == tenantId);
+                .FirstOrDefaultAsync(u => u.Id == userId && u.Tenant!.Id == tenantId.Value);
 
             if (user == null)
+            {
+                _logger.LogWarning("Password change failed: User {UserId} not found in tenant {TenantId}", userId, tenantId);
                 return new AuthResult(false, "User not found");
+            }
 
             var verify = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.CurrentPassword);
             if (verify == PasswordVerificationResult.Failed)
-                return new AuthResult(false, "Invalid password");
+            {
+                _logger.LogWarning("Password change failed: Invalid current password for user {UserId}", userId);
+                return new AuthResult(false, "Invalid current password");
+            }
 
+            // Update password
             user.PasswordHash = _passwordHasher.HashPassword(user, request.NewPassword);
+            user.RequirePasswordChange = false; // ✨ Reset flag after password change
 
+            // Revoke all existing refresh tokens for security
             var tokens = await _context.RefreshTokens.Where(t => t.UserId == userId).ToListAsync();
             tokens.ForEach(t => t.Revoke());
 
             await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Password changed successfully for user {UserId}", userId);
+
             return new AuthResult(true);
         }
 
         // ─────────────────────────────────────────────────────────
         // SUPER ADMIN LOGIN
         // ─────────────────────────────────────────────────────────
-        public async Task<SuperAdminLoginResponse?> SuperAdminLoginAsync(SuperAdminLoginRequest req)
+        public async Task<SuperAdminLoginResponse?> SuperAdminLoginAsync(SuperAdminLoginRequest request)
         {
             var admin = await _context.SuperAdmins
-                .FirstOrDefaultAsync(a => a.Email == req.Email && a.IsActive);
+                .FirstOrDefaultAsync(a => a.Email == request.Email && a.IsActive);
 
             if (admin == null) return null;
 
             var verify = new PasswordHasher<SuperAdmin>()
-                .VerifyHashedPassword(admin, admin.PasswordHash, req.Password);
+                .VerifyHashedPassword(admin, admin.PasswordHash, request.Password);
 
             if (verify == PasswordVerificationResult.Failed)
                 return null;
@@ -267,12 +328,12 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
         }
 
         // ─────────────────────────────────────────────────────────
-        // SUPER ADMIN REFRESH
+        // SUPER ADMIN REFRESH TOKEN
         // ─────────────────────────────────────────────────────────
-        public async Task<RefreshTokenResponse?> SuperAdminRefreshTokenAsync(RefreshTokenRequest req)
+        public async Task<RefreshTokenResponse?> SuperAdminRefreshTokenAsync(RefreshTokenRequest request)
         {
             var old = await _context.SuperAdminRefreshTokens
-                .FirstOrDefaultAsync(t => t.Token == req.RefreshToken && t.RevokedAt == null);
+                .FirstOrDefaultAsync(t => t.Token == request.RefreshToken && t.RevokedAt == null);
 
             if (old == null) return null;
 
@@ -309,6 +370,48 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
         // ─────────────────────────────────────────────────────────
         // HELPERS
         // ─────────────────────────────────────────────────────────
+        private async Task<List<string>> GetUserPermissionsAsync(Guid userId, Guid tenantId)
+        {
+            return await _context.UserRoles
+                .Where(ur => ur.UserId == userId)
+                .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (_, r) => r)
+                .Where(r => r.TenantId == tenantId)
+                .SelectMany(r => r.RolePermissions)
+                .Select(rp => rp.Permission!.Key)
+                .Distinct()
+                .ToListAsync();
+        }
+
+        private string GenerateAccessToken(User user, List<string> permissions)
+        {
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new(CustomClaimTypes.UserId, user.Id.ToString()),
+                new(CustomClaimTypes.TenantId, user.Tenant!.Id.ToString()),
+                new(System.Security.Claims.ClaimTypes.Email, user.Email),
+                new(System.Security.Claims.ClaimTypes.Name, $"{user.FirstName} {user.LastName}".Trim())
+            };
+
+            claims.AddRange(permissions.Select(p =>
+                new System.Security.Claims.Claim(CustomClaimTypes.Permissions, p)));
+
+            return JwtTokenBuilder.BuildToken(_jwtSettings, claims);
+        }
+
+        private async Task<string> GenerateAndStoreRefreshTokenAsync(Guid userId, string? ipAddress = null)
+        {
+            var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
+
+            _context.RefreshTokens.Add(new RefreshToken(
+                userId,
+                token,
+                DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenLifetimeDays),
+                ipAddress));
+
+            await _context.SaveChangesAsync();
+            return token;
+        }
+
         private async Task<string> GenerateAndStoreSuperAdminRefreshTokenAsync(Guid superAdminId, string? ipAddress = null)
         {
             var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
@@ -336,54 +439,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
                 new(CustomClaimTypes.IsSuperAdmin, "true")
             };
 
-            claims.AddRange(
-                SuperAdminPermissions.Select(p =>
-                    new System.Security.Claims.Claim(CustomClaimTypes.Permissions, p)));
+            claims.AddRange(SuperAdminPermissions.Select(p =>
+                new System.Security.Claims.Claim(CustomClaimTypes.Permissions, p)));
 
             return JwtTokenBuilder.BuildToken(_jwtSettings, claims);
-        }
-
-        private string GenerateAccessToken(User user, List<string> permissions)
-        {
-            var claims = new List<System.Security.Claims.Claim>
-            {
-                new(CustomClaimTypes.UserId, user.Id.ToString()),
-                new(CustomClaimTypes.TenantId, user.Tenant!.Id.ToString()),
-                new(System.Security.Claims.ClaimTypes.Email, user.Email),
-                new(System.Security.Claims.ClaimTypes.Name, $"{user.FirstName} {user.LastName}".Trim())
-            };
-
-            claims.AddRange(
-                permissions.Select(p =>
-                    new System.Security.Claims.Claim(CustomClaimTypes.Permissions, p)));
-
-            return JwtTokenBuilder.BuildToken(_jwtSettings, claims);
-        }
-
-        private async Task<List<string>> GetUserPermissionsAsync(Guid userId, Guid tenantId)
-        {
-            return await _context.UserRoles
-                .Where(ur => ur.UserId == userId)
-                .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (_, r) => r)
-                .Where(r => r.TenantId == tenantId)
-                .SelectMany(r => r.RolePermissions)
-                .Select(rp => rp.Permission!.Key)
-                .Distinct()
-                .ToListAsync();
-        }
-
-        private async Task<string> GenerateAndStoreRefreshTokenAsync(Guid userId, string? ipAddress = null)
-        {
-            var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
-
-            _context.RefreshTokens.Add(new RefreshToken(
-                userId,
-                token,
-                DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenLifetimeDays),
-                ipAddress));
-
-            await _context.SaveChangesAsync();
-            return token;
         }
     }
 }
