@@ -1,4 +1,5 @@
-﻿using Devken.CBC.SchoolManagement.Infrastructure.Security;
+﻿using Devken.CBC.SchoolManagement.Application.Service;
+using Devken.CBC.SchoolManagement.Application.Service.Activities;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -8,53 +9,41 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
     [Produces("application/json")]
     public abstract class BaseApiController : ControllerBase
     {
-        /// <summary>
-        /// Gets the current user's ID from the JWT token
-        /// </summary>
+        private readonly IUserActivityService? _activityService;
+
+        protected BaseApiController(IUserActivityService? activityService = null)
+        {
+            _activityService = activityService;
+        }
+
+        #region Current User Info
+
         protected Guid CurrentUserId
         {
             get
             {
-                // Try custom claim first (tenant users)
                 var userIdClaim = User.FindFirst("user_id")?.Value
                     ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                     ?? User.FindFirst("sub")?.Value;
 
                 if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
-                {
                     throw new UnauthorizedAccessException("User ID not found in token");
-                }
+
                 return userId;
             }
         }
 
-        /// <summary>
-        /// Gets the current tenant ID from the JWT token (null for SuperAdmin)
-        /// </summary>
         protected Guid? CurrentTenantId
         {
             get
             {
                 var tenantIdClaim = User.FindFirst("tenant_id")?.Value;
-
-                // SuperAdmin won't have tenant_id
-                if (string.IsNullOrEmpty(tenantIdClaim))
-                {
-                    return null;
-                }
-
-                if (Guid.TryParse(tenantIdClaim, out var tenantId))
-                {
-                    return tenantId;
-                }
-
+                if (string.IsNullOrEmpty(tenantIdClaim)) return null;
+                if (Guid.TryParse(tenantIdClaim, out var tenantId)) return tenantId;
                 return null;
             }
         }
 
-        /// <summary>
-        /// Gets the current user's email from the JWT token
-        /// </summary>
         protected string CurrentUserEmail
         {
             get
@@ -63,16 +52,12 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
                     ?? User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")?.Value;
 
                 if (string.IsNullOrEmpty(email))
-                {
                     throw new UnauthorizedAccessException("Email not found in token");
-                }
+
                 return email;
             }
         }
 
-        /// <summary>
-        /// Gets the current user's name from the JWT token
-        /// </summary>
         protected string CurrentUserName
         {
             get
@@ -85,206 +70,79 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
             }
         }
 
-        /// <summary>
-        /// Gets all permissions for the current user from the JWT token
-        /// </summary>
-        protected IEnumerable<string> CurrentUserPermissions
-        {
-            get
-            {
-                // Get all permission claims (the claim type is "permissions" from JwtService)
-                var permissions = User.FindAll("permissions")
-                    .Select(c => c.Value)
-                    .Where(p => !string.IsNullOrWhiteSpace(p))
-                    .Distinct()
-                    .ToList();
+        protected IEnumerable<string> CurrentUserPermissions =>
+            User.FindAll("permissions").Select(c => c.Value).Where(p => !string.IsNullOrWhiteSpace(p)).Distinct();
 
-                return permissions;
-            }
+        protected IEnumerable<string> CurrentUserRoles =>
+            User.FindAll(ClaimTypes.Role).Select(c => c.Value).Where(r => !string.IsNullOrWhiteSpace(r)).Distinct();
+
+        protected bool IsSuperAdmin =>
+            User.FindFirst("is_super_admin")?.Value?.ToLower() == "true"
+            || CurrentUserRoles.Contains("SuperAdmin");
+
+        #endregion
+
+        #region Permissions & Roles
+
+        protected bool HasPermission(string permission) =>
+            !string.IsNullOrWhiteSpace(permission) && (IsSuperAdmin || CurrentUserPermissions.Contains(permission, StringComparer.OrdinalIgnoreCase));
+
+        protected bool HasAllPermissions(params string[] permissions) =>
+            permissions == null || permissions.Length == 0 || IsSuperAdmin || permissions.All(p => CurrentUserPermissions.Contains(p, StringComparer.OrdinalIgnoreCase));
+
+        protected bool HasAnyPermission(params string[] permissions) =>
+            permissions != null && (IsSuperAdmin || permissions.Any(p => CurrentUserPermissions.Contains(p, StringComparer.OrdinalIgnoreCase)));
+
+        protected bool HasRole(string role) =>
+            !string.IsNullOrWhiteSpace(role) && CurrentUserRoles.Contains(role, StringComparer.OrdinalIgnoreCase);
+
+        #endregion
+
+        #region User Activity Logging
+
+        // Overload for authenticated requests (uses claims from JWT)
+        protected async Task LogUserActivityAsync(string activityType, string? details = null)
+        {
+            if (_activityService == null) return;
+            await _activityService.LogActivityAsync(CurrentUserId, CurrentTenantId, activityType, details);
         }
 
-        /// <summary>
-        /// Gets all roles for the current user from the JWT token
-        /// </summary>
-        protected IEnumerable<string> CurrentUserRoles
+        // Overload for unauthenticated requests (login/register) where user ID comes from the auth result
+        protected async Task LogUserActivityAsync(Guid userId, Guid? tenantId, string activityType, string? details = null)
         {
-            get
-            {
-                return User.FindAll(ClaimTypes.Role)
-                    .Select(c => c.Value)
-                    .Where(r => !string.IsNullOrWhiteSpace(r))
-                    .Distinct()
-                    .ToList();
-            }
+            if (_activityService == null) return;
+            await _activityService.LogActivityAsync(userId, tenantId, activityType, details);
         }
 
-        /// <summary>
-        /// Checks if the current user is a SuperAdmin
-        /// </summary>
-        protected bool IsSuperAdmin
-        {
-            get
-            {
-                var isSuperAdminClaim = User.FindFirst("is_super_admin")?.Value;
-                return isSuperAdminClaim?.ToLower() == "true"
-                    || CurrentUserRoles.Contains("SuperAdmin");
-            }
-        }
+        #endregion
 
-        /// <summary>
-        /// Checks if the user has a specific permission
-        /// </summary>
-        protected bool HasPermission(string permission)
-        {
-            if (string.IsNullOrWhiteSpace(permission))
-                return false;
+        #region Standardized Responses
 
-            // SuperAdmin has all permissions
-            if (IsSuperAdmin)
-                return true;
+        protected IActionResult SuccessResponse<T>(T data, string message = "Success") =>
+            Ok(new { Success = true, Message = message, Data = data });
 
-            return CurrentUserPermissions.Contains(permission, StringComparer.OrdinalIgnoreCase);
-        }
+        protected IActionResult ErrorResponse(string message, int statusCode = 400) =>
+            StatusCode(statusCode, new { Success = false, Message = message, Data = (object)null });
 
-        /// <summary>
-        /// Checks if the user has all specified permissions
-        /// </summary>
-        protected bool HasAllPermissions(params string[] permissions)
-        {
-            if (permissions == null || permissions.Length == 0)
-                return true;
+        protected IActionResult ValidationErrorResponse(IDictionary<string, string[]> errors) =>
+            BadRequest(new { Success = false, Message = "Validation failed", Errors = errors, Data = (object)null });
 
-            // SuperAdmin has all permissions
-            if (IsSuperAdmin)
-                return true;
+        protected IActionResult NotFoundResponse(string message = "Resource not found") =>
+            NotFound(new { Success = false, Message = message, Data = (object)null });
 
-            var userPermissions = new HashSet<string>(
-                CurrentUserPermissions,
-                StringComparer.OrdinalIgnoreCase
-            );
+        protected IActionResult UnauthorizedResponse(string message = "Unauthorized access") =>
+            Unauthorized(new { Success = false, Message = message, Data = (object)null });
 
-            return permissions.All(p => userPermissions.Contains(p));
-        }
+        protected IActionResult ForbiddenResponse(string message = "Access forbidden") =>
+            StatusCode(403, new { Success = false, Message = message, Data = (object)null });
 
-        /// <summary>
-        /// Checks if the user has any of the specified permissions
-        /// </summary>
-        protected bool HasAnyPermission(params string[] permissions)
-        {
-            if (permissions == null || permissions.Length == 0)
-                return false;
+        #endregion
 
-            // SuperAdmin has all permissions
-            if (IsSuperAdmin)
-                return true;
+        #region Debug Helpers
 
-            var userPermissions = new HashSet<string>(
-                CurrentUserPermissions,
-                StringComparer.OrdinalIgnoreCase
-            );
+        protected Dictionary<string, string> GetAllClaims() =>
+            User.Claims.ToDictionary(c => c.Type, c => c.Value);
 
-            return permissions.Any(p => userPermissions.Contains(p));
-        }
-
-        /// <summary>
-        /// Checks if the user has a specific role
-        /// </summary>
-        protected bool HasRole(string role)
-        {
-            if (string.IsNullOrWhiteSpace(role))
-                return false;
-
-            return CurrentUserRoles.Contains(role, StringComparer.OrdinalIgnoreCase);
-        }
-
-        /// <summary>
-        /// Returns a standardized success response
-        /// </summary>
-        protected IActionResult SuccessResponse<T>(T data, string message = "Success")
-        {
-            return Ok(new
-            {
-                Success = true,
-                Message = message,
-                Data = data
-            });
-        }
-
-        /// <summary>
-        /// Returns a standardized error response
-        /// </summary>
-        protected IActionResult ErrorResponse(string message, int statusCode = 400)
-        {
-            return StatusCode(statusCode, new
-            {
-                Success = false,
-                Message = message,
-                Data = (object)null
-            });
-        }
-
-        /// <summary>
-        /// Returns a standardized validation error response
-        /// </summary>
-        protected IActionResult ValidationErrorResponse(IDictionary<string, string[]> errors)
-        {
-            return BadRequest(new
-            {
-                Success = false,
-                Message = "Validation failed",
-                Errors = errors,
-                Data = (object)null
-            });
-        }
-
-        /// <summary>
-        /// Returns a not found response
-        /// </summary>
-        protected IActionResult NotFoundResponse(string message = "Resource not found")
-        {
-            return NotFound(new
-            {
-                Success = false,
-                Message = message,
-                Data = (object)null
-            });
-        }
-
-        /// <summary>
-        /// Returns an unauthorized response
-        /// </summary>
-        protected IActionResult UnauthorizedResponse(string message = "Unauthorized access")
-        {
-            return Unauthorized(new
-            {
-                Success = false,
-                Message = message,
-                Data = (object)null
-            });
-        }
-
-        /// <summary>
-        /// Returns a forbidden response
-        /// </summary>
-        protected IActionResult ForbiddenResponse(string message = "Access forbidden")
-        {
-            return StatusCode(403, new
-            {
-                Success = false,
-                Message = message,
-                Data = (object)null
-            });
-        }
-
-        /// <summary>
-        /// Gets all claims for debugging purposes
-        /// </summary>
-        protected Dictionary<string, string> GetAllClaims()
-        {
-            return User.Claims.ToDictionary(
-                c => c.Type,
-                c => c.Value
-            );
-        }
+        #endregion
     }
 }

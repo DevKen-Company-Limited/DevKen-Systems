@@ -10,7 +10,20 @@ using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Seed
 {
-    public static class DatabaseSeeder
+
+//    {
+//  "schoolName": "Nairobi International Academy",
+//  "schoolSlug": "nairobi-international-academy",
+//  "schoolEmail": "info@nairobiacademy.co.ke",
+//  "schoolPhone": "+254712345678",
+//  "schoolAddress": "123 Kenyatta Avenue, Nairobi, Kenya",
+//  "adminEmail": "admin@nairobiacademy.co.ke",
+//  "adminPassword": "StrongP@ssw0rd!",
+//  "adminFullName": "James Mwangi",
+//  "adminPhone": "+254798765432"
+//}
+
+public static class DatabaseSeeder
     {
         private const string DefaultSuperAdminEmail = "superadmin@devken.com";
         private const string DefaultSuperAdminPassword = "SuperAdmin@123";

@@ -29,11 +29,13 @@ namespace Devken.CBC.SchoolManagement.Application.Dtos
         string Email,
         string FullName,
         IReadOnlyList<string> Roles,
-        IReadOnlyList<string> Permissions
+        IReadOnlyList<string> Permissions,
+        bool RequirePasswordChange // ✨ added this field
     );
 
     // ── REFRESH TOKEN ─────────────────────────────────────
     public record RefreshTokenRequest(string RefreshToken);
+
     public record RefreshTokenResponse(
         string AccessToken,
         string RefreshToken,
@@ -65,18 +67,21 @@ namespace Devken.CBC.SchoolManagement.Application.Dtos
         string Email,
         string FullName,
         Guid SchoolId,
+        School School1,
         string SchoolName,
         IEnumerable<string> Roles,
-        IEnumerable<string> Permissions
+        IEnumerable<string> Permissions,
+        bool RequirePasswordChange // ✨ added this field
     );
+
     public class RefreshTokenRequestDto
     {
         public string Token { get; set; } = default!;
     }
 
-
     // ── SUPER ADMIN LOGIN ───────────────────────────────
     public record SuperAdminLoginRequest(string Email, string Password);
+
     public record SuperAdminLoginResponse(
         string AccessToken,
         int AccessTokenExpiresInSeconds,
@@ -87,13 +92,11 @@ namespace Devken.CBC.SchoolManagement.Application.Dtos
     );
 
     public record SuperAdminDto(
-    Guid Id,
-    string Email,
-    string FirstName,
-    string LastName
-);
-
-
+        Guid Id,
+        string Email,
+        string FirstName,
+        string LastName
+    );
 
     // ── CHANGE PASSWORD ────────────────────────────────
     public record ChangePasswordRequest(string CurrentPassword, string NewPassword);

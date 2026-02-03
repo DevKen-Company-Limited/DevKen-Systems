@@ -76,6 +76,60 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "UserActivities",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    TenantId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    ActivityType = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ActivityDetails = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserActivities", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Subscriptions",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    SchoolId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Plan = table.Column<int>(type: "int", nullable: false),
+                    BillingCycle = table.Column<int>(type: "int", nullable: false),
+                    StartDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ExpiryDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    AutoRenew = table.Column<bool>(type: "bit", nullable: false),
+                    MaxStudents = table.Column<int>(type: "int", nullable: false),
+                    MaxTeachers = table.Column<int>(type: "int", nullable: false),
+                    MaxStorageGB = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    EnabledFeatures = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    Amount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    Currency = table.Column<string>(type: "nvarchar(3)", maxLength: 3, nullable: false),
+                    Status = table.Column<int>(type: "int", nullable: false),
+                    GracePeriodDays = table.Column<int>(type: "int", nullable: false),
+                    AdminNotes = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedOn = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    UpdatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    TenantId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Subscriptions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Subscriptions_Schools_SchoolId",
+                        column: x => x.SchoolId,
+                        principalTable: "Schools",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Users",
                 columns: table => new
                 {
@@ -363,6 +417,16 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_Subscriptions_SchoolId_ExpiryDate",
+                table: "Subscriptions",
+                columns: new[] { "SchoolId", "ExpiryDate" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Subscriptions_TenantId_SchoolId",
+                table: "Subscriptions",
+                columns: new[] { "TenantId", "SchoolId" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_SuperAdminRefreshTokens_SuperAdminId",
                 table: "SuperAdminRefreshTokens",
                 column: "SuperAdminId");
@@ -415,7 +479,13 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
                 name: "RolePermissions");
 
             migrationBuilder.DropTable(
+                name: "Subscriptions");
+
+            migrationBuilder.DropTable(
                 name: "SuperAdminRefreshTokens");
+
+            migrationBuilder.DropTable(
+                name: "UserActivities");
 
             migrationBuilder.DropTable(
                 name: "UserRoles");
