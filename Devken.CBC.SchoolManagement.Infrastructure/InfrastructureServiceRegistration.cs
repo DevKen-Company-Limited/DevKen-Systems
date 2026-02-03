@@ -7,6 +7,7 @@ using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Identity;
 using Devken.CBC.SchoolManagement.Application.Service;
+using Devken.CBC.SchoolManagement.Application.Service.Academic;
 using Devken.CBC.SchoolManagement.Application.Service.Activities;
 using Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment;
 using Devken.CBC.SchoolManagement.Application.Service.Isubscription; // ✨ ADD THIS
@@ -136,7 +137,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             // Repositories Registration
             // ══════════════════════════════════════════════════════════════
             services.AddScoped<ISchoolRepository, SchoolRepository>();
-            services.AddScoped<IUserRepository, UserRepository>();
+            services.AddScoped<IStudentService, StudentService>();
             services.AddScoped<IRoleRepository, RoleRepository>();
             services.AddScoped<IPermissionRepository, PermissionRepository>();
             services.AddScoped<IRolePermissionRepository, RolePermissionRepository>();

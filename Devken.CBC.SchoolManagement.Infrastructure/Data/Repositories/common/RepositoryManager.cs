@@ -17,7 +17,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.common
         private readonly AppDbContext _context;
 
         private readonly Lazy<ISchoolRepository> _schoolRepository;
-        private readonly Lazy<IUserRepository> _userRepository;
         private readonly Lazy<IRoleRepository> _roleRepository;
         private readonly Lazy<IPermissionRepository> _permissionRepository;
         private readonly Lazy<IRolePermissionRepository> _rolePermissionRepository;
@@ -29,7 +28,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.common
             ILogger<RepositoryManager> logger,
             AppDbContext context,
             Lazy<ISchoolRepository> schoolRepository,
-            Lazy<IUserRepository> userRepository,
             Lazy<IRoleRepository> roleRepository,
             Lazy<IPermissionRepository> permissionRepository,
             Lazy<IRolePermissionRepository> rolePermissionRepository,
@@ -40,7 +38,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.common
             _logger = logger;
             _context = context;
             _schoolRepository = schoolRepository;
-            _userRepository = userRepository;
             _roleRepository = roleRepository;
             _permissionRepository = permissionRepository;
             _rolePermissionRepository = rolePermissionRepository;
@@ -50,7 +47,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.common
         }
 
         public ISchoolRepository School => _schoolRepository.Value;
-        public IUserRepository User => _userRepository.Value;
         public IRoleRepository Role => _roleRepository.Value;
         public IPermissionRepository Permission => _permissionRepository.Value;
         public IRolePermissionRepository RolePermission => _rolePermissionRepository.Value;

@@ -9,8 +9,7 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
 {
     public interface IRepositoryManager
     {
-        ISchoolRepository School { get; }
-        IUserRepository User { get; }
+        ISchoolRepository School { get; }  
         IRoleRepository Role { get; }
         IPermissionRepository Permission { get; }
         IRolePermissionRepository RolePermission { get; }

@@ -1,4 +1,5 @@
-﻿using Devken.CBC.SchoolManagement.Domain.Entities.Administration;
+﻿using Devken.CBC.SchoolManagement.Domain.Entities.Academic;
+using Devken.CBC.SchoolManagement.Domain.Entities.Administration;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
 using Devken.CBC.SchoolManagement.Domain.Entities.Subscription;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations;
@@ -40,6 +41,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         public DbSet<Subscription> Subscriptions => Set<Subscription>();
         #endregion
         public DbSet<UserActivity> UserActivities => Set<UserActivity>();
+        public DbSet<Student> Students { get; set; }
         protected override void OnModelCreating(ModelBuilder mb)
         {
             base.OnModelCreating(mb);
