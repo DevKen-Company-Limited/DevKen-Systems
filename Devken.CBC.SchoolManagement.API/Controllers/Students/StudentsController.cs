@@ -1,204 +1,348 @@
-﻿////sample code for a StudentsController in an ASP.NET Core Web API project for school management.
+﻿using Devken.CBC.SchoolManagement.Api.Controllers.Common;
+using Devken.CBC.SchoolManagement.Application.DTOs.Academics;
+using Devken.CBC.SchoolManagement.Application.Service.Academic;
+using Devken.CBC.SchoolManagement.Application.Service.Activities;
+using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
+using Devken.CBC.SchoolManagement.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
-//using Devken.CBC.SchoolManagement.Api.Attributes;
-//using Devken.CBC.SchoolManagement.Api.Controllers.Common;
-//using Devken.CBC.SchoolManagement.Application.Dtos;
-//using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
-//using Microsoft.AspNetCore.Authorization;
-//using Microsoft.AspNetCore.Mvc;
+namespace Devken.CBC.SchoolManagement.Api.Controllers.Academic
+{
+    [ApiController]
+    [Route("api/students")]
+    [Authorize]
+    public class StudentController : BaseApiController
+    {
+        private readonly IStudentService _studentService;
 
-//namespace Devken.CBC.SchoolManagement.Api.Controllers.Academic
-//{
-//    [ApiController]
-//    [Route("api/students")]
-//    [Authorize]
-//    [RequirePermission(PermissionKeys.StudentRead)]
-//    public class StudentsController : BaseApiController
-//    {
-//        [HttpGet]
-//        [ProducesResponseType(StatusCodes.Status200OK)]
-//        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-//        public async Task<IActionResult> GetStudents(
-//            [FromQuery] int page = 1,
-//            [FromQuery] int pageSize = 20)
-//        {
-//            var tenantId = CurrentTenantId;
-//            var userId = CurrentUserId;
+        public StudentController(
+            IStudentService studentService,
+            IUserActivityService activityService)
+            : base(activityService)
+        {
+            _studentService = studentService;
+        }
 
-//            var students = new List<object>();
+        #region Create / Update
 
-//            return SuccessResponse(new
-//            {
-//                Students = students,
-//                Page = page,
-//                PageSize = pageSize,
-//                TotalCount = students.Count
-//            });
-//        }
+        [HttpPost]
+        public async Task<IActionResult> CreateStudent([FromBody] CreateStudentRequest request)
+        {
+            if (!HasPermission(PermissionKeys.StudentWrite))
+                return ForbiddenResponse("You do not have permission to create students");
 
-//        [HttpGet("{id:guid}")]
-//        [ProducesResponseType(StatusCodes.Status200OK)]
-//        [ProducesResponseType(StatusCodes.Status404NotFound)]
-//        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-//        public async Task<IActionResult> GetStudent(Guid id)
-//        {
-//            if (!HasPermission(PermissionKeys.StudentRead))
-//            {
-//                return ErrorResponse("You do not have permission to view students", 403);
-//            }
+            if (!ModelState.IsValid)
+                return ValidationErrorResponse(ToErrorDictionary(ModelState));
 
-//            var student = new { Id = id, Name = "John Doe" };
+            if (CurrentTenantId == null)
+                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
 
-//            if (student == null)
-//            {
-//                return ErrorResponse("Student not found", 404);
-//            }
+            var (success, message, student) =
+                await _studentService.CreateStudentAsync(request, CurrentTenantId.Value);
 
-//            return SuccessResponse(student);
-//        }
+            if (!success)
+                return ErrorResponse(message, StatusCodes.Status400BadRequest);
 
-//        [HttpPost]
-//        [RequirePermission(PermissionKeys.StudentWrite)]
-//        [ProducesResponseType(StatusCodes.Status201Created)]
-//        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-//        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-//        public async Task<IActionResult> CreateStudent([FromBody] CreateStudentDto dto)
-//        {
-//            if (!ModelState.IsValid)
-//            {
-//                return ValidationErrorResponse(
-//                    ModelState.ToDictionary(
-//                        kvp => kvp.Key,
-//                        kvp => kvp.Value?.Errors.Select(e => e.ErrorMessage).ToArray() ?? Array.Empty<string>()
-//                    )
-//                );
-//            }
+            await LogUserActivityAsync("CreateStudent", $"AdmissionNumber: {request.AdmissionNumber}");
 
-//            var studentId = Guid.NewGuid();
+            return SuccessResponse(student, message);
+        }
 
-//            return CreatedAtAction(
-//                nameof(GetStudent),
-//                new { id = studentId },
-//                new { Id = studentId, Message = "Student created successfully" }
-//            );
-//        }
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateStudent(Guid id, [FromBody] UpdateStudentRequest request)
+        {
+            if (!HasPermission(PermissionKeys.StudentWrite))
+                return ForbiddenResponse("You do not have permission to update students");
 
-//        [HttpPut("{id:guid}")]
-//        [RequirePermission(PermissionKeys.StudentWrite)]
-//        [ProducesResponseType(StatusCodes.Status200OK)]
-//        [ProducesResponseType(StatusCodes.Status404NotFound)]
-//        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-//        public async Task<IActionResult> UpdateStudent(Guid id, [FromBody] UpdateStudentDto dto)
-//        {
-//            var updated = true;
+            if (!ModelState.IsValid)
+                return ValidationErrorResponse(ToErrorDictionary(ModelState));
 
-//            if (!updated)
-//            {
-//                return ErrorResponse("Student not found", 404);
-//            }
+            if (id != request.Id)
+                return ErrorResponse("ID mismatch", StatusCodes.Status400BadRequest);
 
-//            return SuccessResponse(new { Id = id }, "Student updated successfully");
-//        }
+            if (CurrentTenantId == null)
+                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
 
-//        [HttpDelete("{id:guid}")]
-//        [RequirePermission(PermissionKeys.StudentDelete)]
-//        [ProducesResponseType(StatusCodes.Status204NoContent)]
-//        [ProducesResponseType(StatusCodes.Status404NotFound)]
-//        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-//        public async Task<IActionResult> DeleteStudent(Guid id)
-//        {
-//            var deleted = true;
+            var (success, message, student) =
+                await _studentService.UpdateStudentAsync(request, CurrentTenantId.Value);
 
-//            if (!deleted)
-//            {
-//                return ErrorResponse("Student not found", 404);
-//            }
+            if (!success)
+                return ErrorResponse(message, StatusCodes.Status400BadRequest);
 
-//            return NoContent();
-//        }
+            await LogUserActivityAsync("UpdateStudent", $"StudentId: {id}");
 
-//        [HttpPost("{id:guid}/enroll")]
-//        [RequirePermission(PermissionKeys.StudentWrite, PermissionKeys.ClassRead)]
-//        [ProducesResponseType(StatusCodes.Status200OK)]
-//        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-//        public async Task<IActionResult> EnrollStudent(
-//            Guid id,
-//            [FromBody] EnrollStudentDto dto)
-//        {
-//            if (!HasAllPermissions(PermissionKeys.StudentWrite, PermissionKeys.ClassRead))
-//            {
-//                return ErrorResponse("Insufficient permissions to enroll students", 403);
-//            }
+            return SuccessResponse(student, message);
+        }
 
-//            return SuccessResponse(
-//                new { StudentId = id, ClassId = dto.ClassId },
-//                "Student enrolled successfully"
-//            );
-//        }
+        #endregion
 
-//        [HttpGet("{id:guid}/grades")]
-//        [RequireAnyPermission(PermissionKeys.StudentRead, PermissionKeys.GradeRead)]
-//        [ProducesResponseType(StatusCodes.Status200OK)]
-//        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-//        public async Task<IActionResult> GetStudentGrades(Guid id)
-//        {
-//            if (!HasAnyPermission(PermissionKeys.StudentRead, PermissionKeys.GradeRead))
-//            {
-//                return ErrorResponse("You need either Student.Read or Grade.Read permission", 403);
-//            }
+        #region Queries
 
-//            var grades = new List<object>();
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetStudentById(Guid id)
+        {
+            if (!HasPermission(PermissionKeys.StudentRead))
+                return ForbiddenResponse("You do not have permission to view students");
 
-//            return SuccessResponse(new { StudentId = id, Grades = grades });
-//        }
+            if (CurrentTenantId == null)
+                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
 
-//        [HttpGet("export")]
-//        [ProducesResponseType(StatusCodes.Status200OK)]
-//        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-//        public async Task<IActionResult> ExportStudents()
-//        {
-//            var csv =
-//                "Id,Name,Email\n" +
-//                "1,John Doe,john@example.com\n" +
-//                "2,Jane Smith,jane@example.com";
+            var student = await _studentService.GetStudentByIdAsync(id, CurrentTenantId.Value);
 
-//            var bytes = System.Text.Encoding.UTF8.GetBytes(csv);
+            return student == null
+                ? NotFoundResponse("Student not found")
+                : SuccessResponse(student, "Student retrieved successfully");
+        }
 
-//            return File(bytes, "text/csv", $"students_{DateTime.UtcNow:yyyyMMdd}.csv");
-//        }
+        [HttpGet("admission/{admissionNumber}")]
+        public async Task<IActionResult> GetStudentByAdmissionNumber(string admissionNumber)
+        {
+            if (!HasPermission(PermissionKeys.StudentRead))
+                return ForbiddenResponse("You do not have permission to view students");
 
-//        [HttpGet("my-info")]
-//        [ProducesResponseType(StatusCodes.Status200OK)]
-//        public IActionResult GetMyInfo()
-//        {
-//            return Ok(new
-//            {
-//                UserId = CurrentUserId,
-//                TenantId = CurrentTenantId,
-//                Email = CurrentUserEmail,
-//                Name = CurrentUserName,
-//                Permissions = CurrentUserPermissions.ToList()
-//            });
-//        }
-//    }
+            if (CurrentTenantId == null)
+                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
 
-//    public record CreateStudentDto(
-//        string FirstName,
-//        string LastName,
-//        string Email,
-//        DateTime DateOfBirth,
-//        Guid ClassId
-//    );
+            var student =
+                await _studentService.GetStudentByAdmissionNumberAsync(admissionNumber, CurrentTenantId.Value);
 
-//    public record UpdateStudentDto(
-//        string FirstName,
-//        string LastName,
-//        string Email,
-//        DateTime DateOfBirth
-//    );
+            return student == null
+                ? NotFoundResponse("Student not found")
+                : SuccessResponse(student, "Student retrieved successfully");
+        }
 
-//    public record EnrollStudentDto(
-//        Guid ClassId,
-//        DateTime EnrollmentDate
-//    );
-//}
+        [HttpGet]
+        public async Task<IActionResult> GetStudents([FromQuery] StudentSearchRequest request)
+        {
+            if (!HasPermission(PermissionKeys.StudentRead))
+                return ForbiddenResponse("You do not have permission to view students");
+
+            if (CurrentTenantId == null)
+                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
+
+            request.PageNumber = request.PageNumber < 1 ? 1 : request.PageNumber;
+            request.PageSize = request.PageSize is < 1 or > 100 ? 20 : request.PageSize;
+
+            var result =
+                await _studentService.GetStudentsPagedAsync(request, CurrentTenantId.Value);
+
+            return SuccessResponse(result, "Students retrieved successfully");
+        }
+
+        [HttpGet("class/{classId}")]
+        public async Task<IActionResult> GetStudentsByClass(Guid classId)
+        {
+            if (!HasPermission(PermissionKeys.StudentRead))
+                return ForbiddenResponse("You do not have permission to view students");
+
+            if (CurrentTenantId == null)
+                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
+
+            var students =
+                await _studentService.GetStudentsByClassAsync(classId, CurrentTenantId.Value);
+
+            return SuccessResponse(students, $"{students.Count} student(s) found");
+        }
+
+        [HttpGet("level/{level}")]
+        public async Task<IActionResult> GetStudentsByLevel(CBCLevel level)
+        {
+            if (!HasPermission(PermissionKeys.StudentRead))
+                return ForbiddenResponse("You do not have permission to view students");
+
+            if (CurrentTenantId == null)
+                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
+
+            var students =
+                await _studentService.GetStudentsByLevelAsync(level, CurrentTenantId.Value);
+
+            return SuccessResponse(students, $"{students.Count} student(s) found in {level}");
+        }
+
+        [HttpGet("search")]
+        public async Task<IActionResult> SearchStudents([FromQuery] string searchTerm)
+        {
+            if (!HasPermission(PermissionKeys.StudentRead))
+                return ForbiddenResponse("You do not have permission to view students");
+
+            if (string.IsNullOrWhiteSpace(searchTerm))
+                return ErrorResponse("Search term is required", StatusCodes.Status400BadRequest);
+
+            if (CurrentTenantId == null)
+                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
+
+            var students =
+                await _studentService.SearchStudentsAsync(searchTerm, CurrentTenantId.Value);
+
+            return SuccessResponse(students, $"{students.Count} student(s) found");
+        }
+
+        #endregion
+
+        #region Actions
+
+        [HttpPost("transfer")]
+        public async Task<IActionResult> TransferStudent([FromBody] TransferStudentRequest request)
+        {
+            if (!HasPermission(PermissionKeys.StudentWrite))
+                return ForbiddenResponse("You do not have permission to transfer students");
+
+            if (!ModelState.IsValid)
+                return ValidationErrorResponse(ToErrorDictionary(ModelState));
+
+            if (CurrentTenantId == null)
+                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
+
+            var (success, message) =
+                await _studentService.TransferStudentAsync(request, CurrentTenantId.Value);
+
+            if (!success)
+                return ErrorResponse(message, StatusCodes.Status400BadRequest);
+
+            await LogUserActivityAsync("TransferStudent",
+                $"StudentId: {request.StudentId}, NewClassId: {request.NewClassId}");
+
+            return SuccessResponse(new { }, message);
+        }
+
+        [HttpPost("withdraw")]
+        public async Task<IActionResult> WithdrawStudent([FromBody] WithdrawStudentRequest request)
+        {
+            if (!HasPermission(PermissionKeys.StudentWrite))
+                return ForbiddenResponse("You do not have permission to withdraw students");
+
+            if (!ModelState.IsValid)
+                return ValidationErrorResponse(ToErrorDictionary(ModelState));
+
+            if (CurrentTenantId == null)
+                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
+
+            var (success, message) =
+                await _studentService.WithdrawStudentAsync(request, CurrentTenantId.Value);
+
+            if (!success)
+                return ErrorResponse(message, StatusCodes.Status400BadRequest);
+
+            await LogUserActivityAsync("WithdrawStudent",
+                $"StudentId: {request.StudentId}, Reason: {request.Reason}");
+
+            return SuccessResponse(new { }, message);
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteStudent(Guid id)
+        {
+            if (!HasPermission(PermissionKeys.StudentDelete))
+                return ForbiddenResponse("You do not have permission to delete students");
+
+            if (CurrentTenantId == null)
+                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
+
+            var (success, message) =
+                await _studentService.DeleteStudentAsync(id, CurrentTenantId.Value);
+
+            if (!success)
+                return ErrorResponse(message, StatusCodes.Status400BadRequest);
+
+            await LogUserActivityAsync("DeleteStudent", $"StudentId: {id}");
+
+            return SuccessResponse(new { }, message);
+        }
+
+        [HttpPost("{id}/restore")]
+        public async Task<IActionResult> RestoreStudent(Guid id)
+        {
+            if (!HasPermission(PermissionKeys.StudentWrite))
+                return ForbiddenResponse("You do not have permission to restore students");
+
+            if (CurrentTenantId == null)
+                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
+
+            var (success, message) =
+                await _studentService.RestoreStudentAsync(id, CurrentTenantId.Value);
+
+            if (!success)
+                return ErrorResponse(message, StatusCodes.Status400BadRequest);
+
+            await LogUserActivityAsync("RestoreStudent", $"StudentId: {id}");
+
+            return SuccessResponse(new { }, message);
+        }
+
+        #endregion
+
+        #region Statistics & Validation
+
+        [HttpGet("statistics")]
+        public async Task<IActionResult> GetStudentStatistics()
+        {
+            if (!HasPermission(PermissionKeys.StudentRead))
+                return ForbiddenResponse("You do not have permission to view statistics");
+
+            if (CurrentTenantId == null)
+                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
+
+            var stats =
+                await _studentService.GetStudentStatisticsAsync(CurrentTenantId.Value);
+
+            return SuccessResponse(stats, "Statistics retrieved successfully");
+        }
+
+        [HttpGet("validate-admission-number")]
+        public async Task<IActionResult> ValidateAdmissionNumber(
+            [FromQuery] string admissionNumber,
+            [FromQuery] Guid? excludeStudentId = null)
+        {
+            if (string.IsNullOrWhiteSpace(admissionNumber))
+                return ErrorResponse("Admission number is required", StatusCodes.Status400BadRequest);
+
+            if (CurrentTenantId == null)
+                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
+
+            var isValid =
+                await _studentService.ValidateAdmissionNumberAsync(
+                    admissionNumber, CurrentTenantId.Value, excludeStudentId);
+
+            return SuccessResponse(new { IsValid = isValid },
+                isValid ? "Admission number is available" : "Admission number already exists");
+        }
+
+        [HttpGet("validate-nemis-number")]
+        public async Task<IActionResult> ValidateNemisNumber(
+            [FromQuery] string nemisNumber,
+            [FromQuery] Guid? excludeStudentId = null)
+        {
+            if (string.IsNullOrWhiteSpace(nemisNumber))
+                return ErrorResponse("NEMIS number is required", StatusCodes.Status400BadRequest);
+
+            if (CurrentTenantId == null)
+                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
+
+            var isValid =
+                await _studentService.ValidateNemisNumberAsync(
+                    nemisNumber, CurrentTenantId.Value, excludeStudentId);
+
+            return SuccessResponse(new { IsValid = isValid },
+                isValid ? "NEMIS number is available" : "NEMIS number already exists");
+        }
+
+        #endregion
+
+        #region Helpers
+
+        private static IDictionary<string, string[]> ToErrorDictionary(
+            Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary modelState) =>
+            modelState.ToDictionary(
+                k => k.Key,
+                v => v.Value?.Errors.Select(e => e.ErrorMessage).ToArray()
+                     ?? Array.Empty<string>());
+
+        #endregion
+    }
+}

@@ -1,23 +1,26 @@
-﻿using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces;
+﻿using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Academic;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Identity;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF;
-using Microsoft.Extensions.Logging;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Identity;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Tenant;
+using Devken.CBC.SchoolManagement.Infrastructure.Services;
+using Microsoft.EntityFrameworkCore.Storage;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
-namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.common
+namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
 {
     public class RepositoryManager : IRepositoryManager
     {
-        private readonly ILogger<RepositoryManager> _logger;
         private readonly AppDbContext _context;
+        private readonly TenantContext _tenantContext;
 
+        // Lazy Repositories
+        private readonly Lazy<IStudentRepository> _studentRepository;
         private readonly Lazy<ISchoolRepository> _schoolRepository;
-        private readonly Lazy<IUserRepository> _userRepository;
         private readonly Lazy<IRoleRepository> _roleRepository;
         private readonly Lazy<IPermissionRepository> _permissionRepository;
         private readonly Lazy<IRolePermissionRepository> _rolePermissionRepository;
@@ -25,32 +28,43 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.common
         private readonly Lazy<IRefreshTokenRepository> _refreshTokenRepository;
         private readonly Lazy<ISuperAdminRepository> _superAdminRepository;
 
-        public RepositoryManager(
-            ILogger<RepositoryManager> logger,
-            AppDbContext context,
-            Lazy<ISchoolRepository> schoolRepository,
-            Lazy<IUserRepository> userRepository,
-            Lazy<IRoleRepository> roleRepository,
-            Lazy<IPermissionRepository> permissionRepository,
-            Lazy<IRolePermissionRepository> rolePermissionRepository,
-            Lazy<IUserRoleRepository> userRoleRepository,
-            Lazy<IRefreshTokenRepository> refreshTokenRepository,
-            Lazy<ISuperAdminRepository> superAdminRepository)
+        public RepositoryManager(AppDbContext context, TenantContext tenantContext)
         {
-            _logger = logger;
-            _context = context;
-            _schoolRepository = schoolRepository;
-            _userRepository = userRepository;
-            _roleRepository = roleRepository;
-            _permissionRepository = permissionRepository;
-            _rolePermissionRepository = rolePermissionRepository;
-            _userRoleRepository = userRoleRepository;
-            _refreshTokenRepository = refreshTokenRepository;
-            _superAdminRepository = superAdminRepository;
+            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
+
+            // Academic
+            _studentRepository = new Lazy<IStudentRepository>(() =>
+                new StudentRepository(_context, (Application.Service.ICurrentUserService)_tenantContext));
+
+            // Identity
+            _schoolRepository = new Lazy<ISchoolRepository>(() =>
+                new SchoolRepository(_context, _tenantContext));
+
+            _roleRepository = new Lazy<IRoleRepository>(() =>
+                new RoleRepository(_context, _tenantContext));
+
+            _permissionRepository = new Lazy<IPermissionRepository>(() =>
+                new PermissionRepository(_context, _tenantContext));
+
+            _rolePermissionRepository = new Lazy<IRolePermissionRepository>(() =>
+                new RolePermissionRepository(_context, _tenantContext));
+
+            _userRoleRepository = new Lazy<IUserRoleRepository>(() =>
+                new UserRoleRepository(_context, _tenantContext));
+
+            _refreshTokenRepository = new Lazy<IRefreshTokenRepository>(() =>
+                new RefreshTokenRepository(_context, _tenantContext));
+
+            _superAdminRepository = new Lazy<ISuperAdminRepository>(() =>
+                new SuperAdminRepository(_context, _tenantContext));
         }
 
+        // Academic
+        public IStudentRepository Student => _studentRepository.Value;
+
+        // Identity
         public ISchoolRepository School => _schoolRepository.Value;
-        public IUserRepository User => _userRepository.Value;
         public IRoleRepository Role => _roleRepository.Value;
         public IPermissionRepository Permission => _permissionRepository.Value;
         public IRolePermissionRepository RolePermission => _rolePermissionRepository.Value;
@@ -58,10 +72,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.common
         public IRefreshTokenRepository RefreshToken => _refreshTokenRepository.Value;
         public ISuperAdminRepository SuperAdmin => _superAdminRepository.Value;
 
-        public Task SaveAsync()
-        {
-            _logger.LogDebug("RepositoryManager.SaveAsync");
-            return _context.SaveChangesAsync();
-        }
+        public async Task SaveAsync() => await _context.SaveChangesAsync();
+
+        public async Task<IDbContextTransaction> BeginTransactionAsync() =>
+            await _context.Database.BeginTransactionAsync();
     }
 }

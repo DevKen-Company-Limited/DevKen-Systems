@@ -1,16 +1,16 @@
-﻿using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Identity;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Identity;
 using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common
 {
     public interface IRepositoryManager
     {
+        // Academic Repositories
+        IStudentRepository Student { get; }
         ISchoolRepository School { get; }
-        IUserRepository User { get; }
+
+        // Identity Repositories
         IRoleRepository Role { get; }
         IPermissionRepository Permission { get; }
         IRolePermissionRepository RolePermission { get; }
