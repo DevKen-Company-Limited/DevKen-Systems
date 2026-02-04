@@ -9,9 +9,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
     {
         public void Configure(EntityTypeBuilder<SummativeAssessment> builder)
         {
-            builder.ToTable("SummativeAssessments");
+            // DO NOT call ToTable() for derived types in TPH
+            // DO NOT call HasKey() for derived types in TPH
 
-            // Configure only derived-specific properties
+            // Derived-specific properties only
             builder.Property(sa => sa.ExamType)
                 .HasMaxLength(50);
 
@@ -45,5 +46,4 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
                 .OnDelete(DeleteBehavior.Cascade);
         }
     }
-
 }

@@ -8,25 +8,20 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
     {
         public void Configure(EntityTypeBuilder<FormativeAssessment> builder)
         {
-            builder.ToTable("FormativeAssessments");
+            // DO NOT call ToTable() for derived types in TPH
+            // DO NOT call HasKey() for derived types in TPH
 
-            // ❌ Remove HasKey because it's defined on Assessment1
-            // builder.HasKey(fa => fa.Id);
+            // Derived-specific properties only
 
-            // ❌ Remove tenant filter from derived type
+            builder.Property(fa => fa.AssessmentWeight)
+                .HasPrecision(5, 2)
+                .HasDefaultValue(100.0m);
 
-            // Properties
-            builder.Property(fa => fa.FormativeType)
-                .HasMaxLength(50);
+            builder.Property(fa => fa.Criteria)
+                .HasMaxLength(500);
 
-            builder.Property(fa => fa.CompetencyArea)
-                .HasMaxLength(100);
-
-            builder.Property(fa => fa.Strand)
-                .HasMaxLength(50);
-
-            builder.Property(fa => fa.SubStrand)
-                .HasMaxLength(50);
+            builder.Property(fa => fa.Instructions)
+                .HasMaxLength(1000);
 
             // Relationships
             builder.HasMany(fa => fa.Scores)

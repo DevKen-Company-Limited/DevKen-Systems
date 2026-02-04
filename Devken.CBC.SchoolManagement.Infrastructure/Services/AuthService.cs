@@ -98,7 +98,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
                     Tenant = school,
                     IsActive = true,
                     IsEmailVerified = true,
-                    RequirePasswordChange = true // ✨ force password change for first login
+                    RequirePasswordChange = true
                 };
 
                 user.PasswordHash = _passwordHasher.HashPassword(user, request.AdminPassword);
@@ -144,11 +144,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
                          user.Id,
                          user.Email,
                          $"{user.FirstName} {user.LastName}".Trim(),
-                         school.Id,       // SchoolId
-                         school,          // School object
-                         school.Name,     // SchoolName
+                         user.Tenant!.Id,
+                         school.Name,
                          new[] { "SchoolAdmin" },
-                         permissions,
+                         permissions.ToArray(),
                          user.RequirePasswordChange
                      )
                  );
@@ -202,8 +201,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
                     school.Id,
                     user.Email,
                     $"{user.FirstName} {user.LastName}".Trim(),
-                    roles,
-                    permissions,
+                    roles.ToArray(),
+                    permissions.ToArray(),
                     user.RequirePasswordChange
                 )
             );
@@ -255,11 +254,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
         }
 
         // ─────────────────────────────────────────────────────────
-        // CHANGE PASSWORD - ✅ FIXED TO MATCH INTERFACE
+        // CHANGE PASSWORD
         // ─────────────────────────────────────────────────────────
         public async Task<AuthResult> ChangePasswordAsync(Guid userId, Guid? tenantId, ChangePasswordRequest request)
         {
-            // ✅ Handle nullable tenantId
             if (tenantId == null)
             {
                 _logger.LogWarning("Password change failed: Tenant ID is null for user {UserId}", userId);
@@ -283,11 +281,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
                 return new AuthResult(false, "Invalid current password");
             }
 
-            // Update password
             user.PasswordHash = _passwordHasher.HashPassword(user, request.NewPassword);
-            user.RequirePasswordChange = false; // ✨ Reset flag after password change
+            user.RequirePasswordChange = false;
 
-            // Revoke all existing refresh tokens for security
             var tokens = await _context.RefreshTokens.Where(t => t.UserId == userId).ToListAsync();
             tokens.ForEach(t => t.Revoke());
 
@@ -299,7 +295,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
         }
 
         // ─────────────────────────────────────────────────────────
-        // SUPER ADMIN LOGIN
+        // SUPER ADMIN METHODS
         // ─────────────────────────────────────────────────────────
         public async Task<SuperAdminLoginResponse?> SuperAdminLoginAsync(SuperAdminLoginRequest request)
         {
@@ -318,43 +314,57 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
             var refreshToken = await GenerateAndStoreSuperAdminRefreshTokenAsync(admin.Id);
 
             return new SuperAdminLoginResponse(
-                accessToken,
-                _jwtSettings.AccessTokenLifetimeMinutes * 60,
-                new SuperAdminDto(admin.Id, admin.Email, admin.FirstName, admin.LastName),
-                SuperAdminRoles,
-                SuperAdminPermissions,
-                refreshToken
-            );
+               accessToken,
+               _jwtSettings.AccessTokenLifetimeMinutes * 60,
+               new SuperAdminDto(admin.Id, admin.Email, admin.FirstName, admin.LastName),
+               SuperAdminRoles.ToArray(),        // convert to array
+               SuperAdminPermissions.ToArray(),  // convert to array
+               refreshToken
+   );
+
+
         }
 
-        // ─────────────────────────────────────────────────────────
-        // SUPER ADMIN REFRESH TOKEN
-        // ─────────────────────────────────────────────────────────
-        public async Task<RefreshTokenResponse?> SuperAdminRefreshTokenAsync(RefreshTokenRequest request)
+        public async Task<RefreshTokenResponse?> SuperAdminRefreshTokenAsync(
+            RefreshTokenRequest request)
         {
             var old = await _context.SuperAdminRefreshTokens
-                .FirstOrDefaultAsync(t => t.Token == request.RefreshToken && t.RevokedAt == null);
+                .FirstOrDefaultAsync(t =>
+                    t.Token == request.RefreshToken &&
+                    t.RevokedAt == null);
 
-            if (old == null) return null;
+            if (old == null)
+                return null;
 
+            // Revoke old token
             old.Revoke();
 
             var admin = await _context.SuperAdmins
-                .FirstOrDefaultAsync(a => a.Id == old.SuperAdminId && a.IsActive);
+                .FirstOrDefaultAsync(a =>
+                    a.Id == old.SuperAdminId &&
+                    a.IsActive);
 
-            if (admin == null) return null;
+            if (admin == null)
+                return null;
 
-            var newToken = await GenerateAndStoreSuperAdminRefreshTokenAsync(admin.Id, old.IpAddress);
+            // Prefer current IP
+            var ipAddress = old.IpAddress;
+
+            var newRefreshToken =
+                await GenerateAndStoreSuperAdminRefreshTokenAsync(admin.Id, ipAddress);
+
             var accessToken = GenerateSuperAdminAccessToken(admin);
 
             await _context.SaveChangesAsync();
 
-            return new RefreshTokenResponse(accessToken, newToken, _jwtSettings.AccessTokenLifetimeMinutes * 60);
+            return new RefreshTokenResponse(
+                accessToken,
+                newRefreshToken,
+                _jwtSettings.AccessTokenLifetimeMinutes * 60
+            );
         }
 
-        // ─────────────────────────────────────────────────────────
-        // SUPER ADMIN LOGOUT
-        // ─────────────────────────────────────────────────────────
+
         public async Task<bool> SuperAdminLogoutAsync(string refreshToken)
         {
             var token = await _context.SuperAdminRefreshTokens

@@ -8,26 +8,21 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
     {
         public void Configure(EntityTypeBuilder<CompetencyAssessment> builder)
         {
-            builder.ToTable("CompetencyAssessments");
+            // DO NOT call ToTable() for derived types in TPH
+            // DO NOT call HasKey() for derived types in TPH
 
-            // ❌ Do NOT configure HasKey on derived type
-            // builder.HasKey(ca => ca.Id);
-
-            // ❌ Remove tenant filter from here
-
-            // Properties
-            builder.Property(ca => ca.CompetencyName)
-                .IsRequired()
+            // Derived-specific properties only
+            builder.Property(ca => ca.Strand)
                 .HasMaxLength(100);
 
-            builder.Property(ca => ca.Strand)
-                .HasMaxLength(50);
-
             builder.Property(ca => ca.SubStrand)
-                .HasMaxLength(50);
+                .HasMaxLength(100);
 
-            builder.Property(ca => ca.RatingScale)
-                .HasMaxLength(20);
+            builder.Property(ca => ca.SpecificLearningOutcome)
+                .HasMaxLength(100);
+
+            builder.Property(ca => ca.Instructions)
+                .HasMaxLength(1000);
 
             // Relationships
             builder.HasMany(ca => ca.Scores)

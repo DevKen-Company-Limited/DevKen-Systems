@@ -2,12 +2,7 @@
 using Devken.CBC.SchoolManagement.Domain.Entities.Academic;
 using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
 using Devken.CBC.SchoolManagement.Domain.Entities.Reports;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Domain.Entities.Helpers
 {
@@ -34,7 +29,15 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Helpers
 
         // Navigation Properties
         public AcademicYear AcademicYear { get; set; } = null!;
-        public ICollection<Assessment1> Assessments { get; set; } = new List<Assessment1>();
-        public ICollection<ProgressReport> ProgressReports { get; set; } = new List<ProgressReport>();
+
+        public ICollection<Assessment1> Assessments { get; set; }
+            = new List<Assessment1>();
+
+        public ICollection<ProgressReport> ProgressReports { get; set; }
+            = new List<ProgressReport>();
+
+        // ✅ ADD THIS
+        public ICollection<Grade> Grades { get; set; }
+            = new List<Grade>();
     }
 }

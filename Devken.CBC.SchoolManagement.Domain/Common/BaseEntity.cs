@@ -10,6 +10,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Common
 {
     public abstract class BaseEntity<TId> where TId : IEquatable<TId>
     {
+        [Key]
         [Required]
         public TId? Id { get; set; }
         public EntityStatus Status { get; set; } = EntityStatus.Active;
