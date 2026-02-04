@@ -1,393 +1,432 @@
 ﻿using Devken.CBC.SchoolManagement.Application.Dtos;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 
 namespace Devken.CBC.SchoolManagement.Application.Service
 {
     public class NavigationService : INavigationService
     {
-        public Task<NavigationResponse> GenerateNavigationAsync(List<string> userPermissions)
+        private readonly IMemoryCache _cache;
+        private readonly ILogger<NavigationService> _logger;
+
+        private static readonly TimeSpan CacheDuration = TimeSpan.FromHours(1);
+
+        public NavigationService(
+            IMemoryCache cache,
+            ILogger<NavigationService> logger)
         {
+            _cache = cache;
+            _logger = logger;
+        }
+
+        public Task<NavigationResponse> GenerateNavigationAsync(
+            List<string>? userPermissions,
+            bool useCache = true)
+        {
+            // 🔒 NOT LOGGED IN / NO PERMISSIONS
+            if (userPermissions == null || !userPermissions.Any())
+            {
+                _logger.LogInformation(
+                    "Navigation requested without permissions. Returning empty navigation.");
+
+                return Task.FromResult(EmptyNavigation());
+            }
+
             var permissionSet = userPermissions.ToHashSet();
+            var cacheKey = GenerateCacheKey(permissionSet);
 
-            // Build the complete navigation structure
-            var defaultNav = BuildDefaultNavigation(permissionSet);
+            if (useCache &&
+                _cache.TryGetValue(cacheKey, out NavigationResponse cachedNavigation))
+            {
+                _logger.LogDebug(
+                    "Navigation loaded from cache. Key: {CacheKey}", cacheKey);
 
-            // Create response with all layout variations
-            var response = new NavigationResponse
+                return Task.FromResult(cachedNavigation);
+            }
+
+            var navigation = BuildNavigation(permissionSet);
+
+            if (useCache)
+            {
+                _cache.Set(
+                    cacheKey,
+                    navigation,
+                    new MemoryCacheEntryOptions
+                    {
+                        AbsoluteExpirationRelativeToNow = CacheDuration,
+                        SlidingExpiration = TimeSpan.FromMinutes(20)
+                    });
+
+                _logger.LogDebug(
+                    "Navigation cached successfully. Key: {CacheKey}", cacheKey);
+            }
+
+            return Task.FromResult(navigation);
+        }
+
+        public Task ClearCacheAsync(string? permissionKey = null)
+        {
+            _logger.LogInformation(
+                "Navigation cache clear requested. PermissionKey: {PermissionKey}",
+                permissionKey ?? "ALL");
+
+            // Placeholder – real implementation would track keys
+            return Task.CompletedTask;
+        }
+
+        #region Helpers
+
+        private static NavigationResponse EmptyNavigation()
+        {
+            return new NavigationResponse
+            {
+                Default = new List<NavigationItem>(),
+                Compact = new List<NavigationItem>(),
+                Futuristic = new List<NavigationItem>(),
+                Horizontal = new List<NavigationItem>()
+            };
+        }
+
+        private static string GenerateCacheKey(HashSet<string> permissions)
+        {
+            return $"nav:{string.Join(",", permissions.OrderBy(p => p))}";
+        }
+
+        #endregion
+
+        #region Navigation Builders
+
+        private NavigationResponse BuildNavigation(HashSet<string> permissions)
+        {
+            var defaultNav = BuildDefaultNavigation(permissions);
+
+            return new NavigationResponse
             {
                 Default = defaultNav,
                 Compact = BuildCompactNavigation(defaultNav),
                 Futuristic = BuildFuturisticNavigation(defaultNav),
                 Horizontal = BuildHorizontalNavigation(defaultNav)
             };
-
-            return Task.FromResult(response);
         }
 
         private List<NavigationItem> BuildDefaultNavigation(HashSet<string> permissions)
         {
-            var navigation = new List<NavigationItem>();
-
-            // Dashboard - Always visible
-            navigation.Add(new NavigationItem
+            // 🛑 Safety net
+            if (permissions.Count == 0)
             {
-                Id = "dashboard",
-                Title = "Dashboard",
-                Type = "basic",
-                Icon = "heroicons_outline:home",
-                Link = "/dashboard"
-            });
-
-            // Administration Section
-            var administrationItems = BuildAdministrationSection(permissions);
-            if (administrationItems.Children?.Any() == true)
-            {
-                navigation.Add(administrationItems);
+                return new List<NavigationItem>();
             }
 
-            // Academic Section
-            var academicItems = BuildAcademicSection(permissions);
-            if (academicItems.Children?.Any() == true)
+            var navigation = new List<NavigationItem>
             {
-                navigation.Add(academicItems);
-            }
+                CreateNavigationItem(
+                    "dashboard",
+                    "Dashboard",
+                    "basic",
+                    "heroicons_outline:home",
+                    "/dashboard"
+                )
+            };
 
-            // Assessment Section
-            var assessmentItems = BuildAssessmentSection(permissions);
-            if (assessmentItems.Children?.Any() == true)
-            {
-                navigation.Add(assessmentItems);
-            }
-
-            // Finance Section
-            var financeItems = BuildFinanceSection(permissions);
-            if (financeItems.Children?.Any() == true)
-            {
-                navigation.Add(financeItems);
-            }
-
-            // Curriculum Section
-            var curriculumItems = BuildCurriculumSection(permissions);
-            if (curriculumItems.Children?.Any() == true)
-            {
-                navigation.Add(curriculumItems);
-            }
+            AddSectionIfNotEmpty(navigation, BuildAdministrationSection(permissions));
+            AddSectionIfNotEmpty(navigation, BuildAcademicSection(permissions));
+            AddSectionIfNotEmpty(navigation, BuildAssessmentSection(permissions));
+            AddSectionIfNotEmpty(navigation, BuildFinanceSection(permissions));
+            AddSectionIfNotEmpty(navigation, BuildCurriculumSection(permissions));
 
             return navigation;
         }
+
+        private static void AddSectionIfNotEmpty(
+            List<NavigationItem> navigation,
+            NavigationItem section)
+        {
+            if (section.Children?.Any() == true)
+            {
+                navigation.Add(section);
+            }
+        }
+
+        #endregion
+
+        #region Sections
 
         private NavigationItem BuildAdministrationSection(HashSet<string> permissions)
         {
             var children = new List<NavigationItem>();
 
-            // School Settings
             if (permissions.Contains(PermissionKeys.SchoolRead))
             {
-                children.Add(new NavigationItem
-                {
-                    Id = "administration.school",
-                    Title = "School Settings",
-                    Type = "basic",
-                    Icon = "heroicons_outline:building-office",
-                    Link = "/administration/school",
-                    RequiredPermissions = new List<string> { PermissionKeys.SchoolRead }
-                });
+                children.Add(CreateNavigationItem(
+                    "administration.school",
+                    "School Settings",
+                    "basic",
+                    "heroicons_outline:building-office",
+                    "/administration/school",
+                    PermissionKeys.SchoolRead
+                ));
             }
 
-            // User Management
             if (permissions.Contains(PermissionKeys.UserRead))
             {
-                children.Add(new NavigationItem
-                {
-                    Id = "administration.users",
-                    Title = "Users",
-                    Type = "basic",
-                    Icon = "heroicons_outline:users",
-                    Link = "/administration/users",
-                    RequiredPermissions = new List<string> { PermissionKeys.UserRead }
-                });
+                children.Add(CreateNavigationItem(
+                    "administration.users",
+                    "Users",
+                    "basic",
+                    "heroicons_outline:users",
+                    "/administration/users",
+                    PermissionKeys.UserRead
+                ));
             }
 
-            // Role Management
             if (permissions.Contains(PermissionKeys.RoleRead))
             {
-                children.Add(new NavigationItem
-                {
-                    Id = "administration.roles",
-                    Title = "Roles & Permissions",
-                    Type = "basic",
-                    Icon = "heroicons_outline:shield-check",
-                    Link = "/administration/roles",
-                    RequiredPermissions = new List<string> { PermissionKeys.RoleRead }
-                });
+                children.Add(CreateNavigationItem(
+                    "administration.roles",
+                    "Roles & Permissions",
+                    "basic",
+                    "heroicons_outline:shield-check",
+                    "/administration/roles",
+                    PermissionKeys.RoleRead
+                ));
             }
 
-            return new NavigationItem
-            {
-                Id = "administration",
-                Title = "Administration",
-                Type = "collapsable",
-                Icon = "heroicons_outline:cog-6-tooth",
-                Children = children
-            };
+            return CreateNavigationItem(
+                "administration",
+                "Administration",
+                "collapsable",
+                "heroicons_outline:cog-6-tooth",
+                children: children
+            );
         }
 
         private NavigationItem BuildAcademicSection(HashSet<string> permissions)
         {
             var children = new List<NavigationItem>();
 
-            // Students
-            if (permissions.Contains(PermissionKeys.StudentRead))
+            var items = new[]
             {
-                children.Add(new NavigationItem
-                {
-                    Id = "academic.students",
-                    Title = "Students",
-                    Type = "basic",
-                    Icon = "heroicons_outline:academic-cap",
-                    Link = "/academic/students",
-                    RequiredPermissions = new List<string> { PermissionKeys.StudentRead }
-                });
-            }
-
-            // Teachers
-            if (permissions.Contains(PermissionKeys.TeacherRead))
-            {
-                children.Add(new NavigationItem
-                {
-                    Id = "academic.teachers",
-                    Title = "Teachers",
-                    Type = "basic",
-                    Icon = "heroicons_outline:user-group",
-                    Link = "/academic/teachers",
-                    RequiredPermissions = new List<string> { PermissionKeys.TeacherRead }
-                });
-            }
-
-            // Classes
-            if (permissions.Contains(PermissionKeys.ClassRead))
-            {
-                children.Add(new NavigationItem
-                {
-                    Id = "academic.classes",
-                    Title = "Classes",
-                    Type = "basic",
-                    Icon = "heroicons_outline:rectangle-group",
-                    Link = "/academic/classes",
-                    RequiredPermissions = new List<string> { PermissionKeys.ClassRead }
-                });
-            }
-
-            // Subjects
-            if (permissions.Contains(PermissionKeys.SubjectRead))
-            {
-                children.Add(new NavigationItem
-                {
-                    Id = "academic.subjects",
-                    Title = "Subjects",
-                    Type = "basic",
-                    Icon = "heroicons_outline:book-open",
-                    Link = "/academic/subjects",
-                    RequiredPermissions = new List<string> { PermissionKeys.SubjectRead }
-                });
-            }
-
-            // Grades
-            if (permissions.Contains(PermissionKeys.GradeRead))
-            {
-                children.Add(new NavigationItem
-                {
-                    Id = "academic.grades",
-                    Title = "Grades",
-                    Type = "basic",
-                    Icon = "heroicons_outline:chart-bar",
-                    Link = "/academic/grades",
-                    RequiredPermissions = new List<string> { PermissionKeys.GradeRead }
-                });
-            }
-
-            return new NavigationItem
-            {
-                Id = "academic",
-                Title = "Academic",
-                Type = "collapsable",
-                Icon = "heroicons_outline:academic-cap",
-                Children = children
+                (PermissionKeys.StudentRead, "students", "Students", "heroicons_outline:academic-cap", "/academic/students"),
+                (PermissionKeys.TeacherRead, "teachers", "Teachers", "heroicons_outline:user-group", "/academic/teachers"),
+                (PermissionKeys.ClassRead, "classes", "Classes", "heroicons_outline:rectangle-group", "/academic/classes"),
+                (PermissionKeys.SubjectRead, "subjects", "Subjects", "heroicons_outline:book-open", "/academic/subjects"),
+                (PermissionKeys.GradeRead, "grades", "Grades", "heroicons_outline:chart-bar", "/academic/grades")
             };
+
+            foreach (var (permission, id, title, icon, link) in items)
+            {
+                if (permissions.Contains(permission))
+                {
+                    children.Add(CreateNavigationItem(
+                        $"academic.{id}",
+                        title,
+                        "basic",
+                        icon,
+                        link,
+                        permission
+                    ));
+                }
+            }
+
+            return CreateNavigationItem(
+                "academic",
+                "Academic",
+                "collapsable",
+                "heroicons_outline:academic-cap",
+                children: children
+            );
         }
 
         private NavigationItem BuildAssessmentSection(HashSet<string> permissions)
         {
             var children = new List<NavigationItem>();
 
-            // Assessments
             if (permissions.Contains(PermissionKeys.AssessmentRead))
             {
-                children.Add(new NavigationItem
-                {
-                    Id = "assessment.assessments",
-                    Title = "Assessments",
-                    Type = "basic",
-                    Icon = "heroicons_outline:clipboard-document-list",
-                    Link = "/assessment/assessments",
-                    RequiredPermissions = new List<string> { PermissionKeys.AssessmentRead }
-                });
+                children.Add(CreateNavigationItem(
+                    "assessment.assessments",
+                    "Assessments",
+                    "basic",
+                    "heroicons_outline:clipboard-document-list",
+                    "/assessment/assessments",
+                    PermissionKeys.AssessmentRead
+                ));
             }
 
-            // Reports
             if (permissions.Contains(PermissionKeys.ReportRead))
             {
-                children.Add(new NavigationItem
-                {
-                    Id = "assessment.reports",
-                    Title = "Reports",
-                    Type = "basic",
-                    Icon = "heroicons_outline:document-chart-bar",
-                    Link = "/assessment/reports",
-                    RequiredPermissions = new List<string> { PermissionKeys.ReportRead }
-                });
+                children.Add(CreateNavigationItem(
+                    "assessment.reports",
+                    "Reports",
+                    "basic",
+                    "heroicons_outline:document-chart-bar",
+                    "/assessment/reports",
+                    PermissionKeys.ReportRead
+                ));
             }
 
-            return new NavigationItem
-            {
-                Id = "assessment",
-                Title = "Assessment",
-                Type = "collapsable",
-                Icon = "heroicons_outline:clipboard-document-check",
-                Children = children
-            };
+            return CreateNavigationItem(
+                "assessment",
+                "Assessment",
+                "collapsable",
+                "heroicons_outline:clipboard-document-check",
+                children: children
+            );
         }
 
         private NavigationItem BuildFinanceSection(HashSet<string> permissions)
         {
             var children = new List<NavigationItem>();
 
-            // Fee Structure
-            if (permissions.Contains(PermissionKeys.FeeRead))
+            var items = new[]
             {
-                children.Add(new NavigationItem
-                {
-                    Id = "finance.fees",
-                    Title = "Fee Structure",
-                    Type = "basic",
-                    Icon = "heroicons_outline:currency-dollar",
-                    Link = "/finance/fees",
-                    RequiredPermissions = new List<string> { PermissionKeys.FeeRead }
-                });
-            }
-
-            // Payments
-            if (permissions.Contains(PermissionKeys.PaymentRead))
-            {
-                children.Add(new NavigationItem
-                {
-                    Id = "finance.payments",
-                    Title = "Payments",
-                    Type = "basic",
-                    Icon = "heroicons_outline:credit-card",
-                    Link = "/finance/payments",
-                    RequiredPermissions = new List<string> { PermissionKeys.PaymentRead }
-                });
-            }
-
-            // Invoices
-            if (permissions.Contains(PermissionKeys.InvoiceRead))
-            {
-                children.Add(new NavigationItem
-                {
-                    Id = "finance.invoices",
-                    Title = "Invoices",
-                    Type = "basic",
-                    Icon = "heroicons_outline:document-text",
-                    Link = "/finance/invoices",
-                    RequiredPermissions = new List<string> { PermissionKeys.InvoiceRead }
-                });
-            }
-
-            return new NavigationItem
-            {
-                Id = "finance",
-                Title = "Finance",
-                Type = "collapsable",
-                Icon = "heroicons_outline:banknotes",
-                Children = children
+                (PermissionKeys.FeeRead, "fees", "Fee Structure", "heroicons_outline:currency-dollar", "/finance/fees"),
+                (PermissionKeys.PaymentRead, "payments", "Payments", "heroicons_outline:credit-card", "/finance/payments"),
+                (PermissionKeys.InvoiceRead, "invoices", "Invoices", "heroicons_outline:document-text", "/finance/invoices")
             };
+
+            foreach (var (permission, id, title, icon, link) in items)
+            {
+                if (permissions.Contains(permission))
+                {
+                    children.Add(CreateNavigationItem(
+                        $"finance.{id}",
+                        title,
+                        "basic",
+                        icon,
+                        link,
+                        permission
+                    ));
+                }
+            }
+
+            return CreateNavigationItem(
+                "finance",
+                "Finance",
+                "collapsable",
+                "heroicons_outline:banknotes",
+                children: children
+            );
         }
 
         private NavigationItem BuildCurriculumSection(HashSet<string> permissions)
         {
             var children = new List<NavigationItem>();
 
-            // Curriculum
             if (permissions.Contains(PermissionKeys.CurriculumRead))
             {
-                children.Add(new NavigationItem
-                {
-                    Id = "curriculum.structure",
-                    Title = "Curriculum Structure",
-                    Type = "basic",
-                    Icon = "heroicons_outline:squares-2x2",
-                    Link = "/curriculum/structure",
-                    RequiredPermissions = new List<string> { PermissionKeys.CurriculumRead }
-                });
+                children.Add(CreateNavigationItem(
+                    "curriculum.structure",
+                    "Curriculum Structure",
+                    "basic",
+                    "heroicons_outline:squares-2x2",
+                    "/curriculum/structure",
+                    PermissionKeys.CurriculumRead
+                ));
             }
 
-            // Lesson Plans
             if (permissions.Contains(PermissionKeys.LessonPlanRead))
             {
-                children.Add(new NavigationItem
-                {
-                    Id = "curriculum.lesson-plans",
-                    Title = "Lesson Plans",
-                    Type = "basic",
-                    Icon = "heroicons_outline:document-duplicate",
-                    Link = "/curriculum/lesson-plans",
-                    RequiredPermissions = new List<string> { PermissionKeys.LessonPlanRead }
-                });
+                children.Add(CreateNavigationItem(
+                    "curriculum.lesson-plans",
+                    "Lesson Plans",
+                    "basic",
+                    "heroicons_outline:document-duplicate",
+                    "/curriculum/lesson-plans",
+                    PermissionKeys.LessonPlanRead
+                ));
             }
 
-            return new NavigationItem
-            {
-                Id = "curriculum",
-                Title = "Curriculum",
-                Type = "collapsable",
-                Icon = "heroicons_outline:book-open",
-                Children = children
-            };
+            return CreateNavigationItem(
+                "curriculum",
+                "Curriculum",
+                "collapsable",
+                "heroicons_outline:book-open",
+                children: children
+            );
         }
 
-        private List<NavigationItem> BuildCompactNavigation(List<NavigationItem> defaultNav)
+        #endregion
+
+        #region Layout Variations
+
+        private static List<NavigationItem> BuildCompactNavigation(
+            List<NavigationItem> defaultNav)
         {
-            // For compact view, keep only top-level items with children populated from default
-            return defaultNav.Select(item => new NavigationItem
-            {
-                Id = item.Id,
-                Title = item.Title,
-                Type = item.Type,
-                Icon = item.Icon,
-                Link = item.Link,
-                Children = item.Children
-            }).ToList();
+            return defaultNav
+         .Select(item => CloneNavigationItem(item))
+         .ToList();
+
         }
 
-        private List<NavigationItem> BuildFuturisticNavigation(List<NavigationItem> defaultNav)
+        private static List<NavigationItem> BuildFuturisticNavigation(
+            List<NavigationItem> defaultNav)
         {
-            // For futuristic view, same as compact but could have different styling hints
             return BuildCompactNavigation(defaultNav);
         }
 
-        private List<NavigationItem> BuildHorizontalNavigation(List<NavigationItem> defaultNav)
+        private static List<NavigationItem> BuildHorizontalNavigation(
+            List<NavigationItem> defaultNav)
         {
-            // For horizontal view, flatten the structure slightly
-            return defaultNav.Select(item => new NavigationItem
-            {
-                Id = item.Id,
-                Title = item.Title,
-                Type = item.Type == "collapsable" ? "group" : item.Type,
-                Icon = item.Icon,
-                Link = item.Link,
-                Children = item.Children
-            }).ToList();
+            return defaultNav.Select(item =>
+                CloneNavigationItem(
+                    item,
+                    item.Type == "collapsable" ? "group" : item.Type
+                )
+            ).ToList();
         }
+
+        #endregion
+
+        #region Factory
+
+        private static NavigationItem CreateNavigationItem(
+            string id,
+            string title,
+            string type,
+            string icon,
+            string? link = null,
+            string? permission = null,
+            List<NavigationItem>? children = null)
+        {
+            var item = new NavigationItem
+            {
+                Id = id,
+                Title = title,
+                Type = type,
+                Icon = icon,
+                Link = link,
+                Children = children
+            };
+
+            if (!string.IsNullOrWhiteSpace(permission))
+            {
+                item.RequiredPermissions = new List<string> { permission };
+            }
+
+            return item;
+        }
+
+        private static NavigationItem CloneNavigationItem(
+            NavigationItem source,
+            string? type = null)
+        {
+            return new NavigationItem
+            {
+                Id = source.Id,
+                Title = source.Title,
+                Type = type ?? source.Type,
+                Icon = source.Icon,
+                Link = source.Link,
+                RequiredPermissions = source.RequiredPermissions,
+                Children = source.Children?
+                    .Select(child => CloneNavigationItem(child))
+                    .ToList()
+            };
+        }
+
+
+        #endregion
     }
 }

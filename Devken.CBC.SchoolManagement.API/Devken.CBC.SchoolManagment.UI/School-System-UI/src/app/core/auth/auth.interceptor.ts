@@ -1,62 +1,68 @@
-import {
-    HttpErrorResponse,
-    HttpEvent,
-    HttpHandlerFn,
-    HttpRequest,
-} from '@angular/common/http';
+import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { AuthService } from 'app/core/auth/auth.service';
-import { AuthUtils } from 'app/core/auth/auth.utils';
-import { Observable, catchError, throwError } from 'rxjs';
+import { catchError, switchMap, throwError } from 'rxjs';
+import { AuthService } from './auth.service';
+import { Router } from '@angular/router';
 
-/**
- * Intercept
- *
- * @param req
- * @param next
- */
-export const authInterceptor = (
-    req: HttpRequest<unknown>,
-    next: HttpHandlerFn
-): Observable<HttpEvent<unknown>> => {
+export const authInterceptor: HttpInterceptorFn = (req, next) => {
     const authService = inject(AuthService);
+    const router = inject(Router);
 
-    // Clone the request object
-    let newReq = req.clone();
+    // List of endpoints that should not include auth token or trigger refresh
+    const AUTH_ENDPOINTS = [
+        '/api/auth/login',
+        '/api/auth/refresh',
+        '/api/auth/super-admin/login',
+        '/api/auth/register',
+        '/api/auth/forgot-password',
+        '/api/auth/reset-password'
+    ];
 
-    // Request
-    //
-    // If the access token didn't expire, add the Authorization header.
-    // We won't add the Authorization header if the access token expired.
-    // This will force the server to return a "401 Unauthorized" response
-    // for the protected API routes which our response interceptor will
-    // catch and delete the access token from the local storage while logging
-    // the user out from the app.
-    if (
-        authService.accessToken &&
-        !AuthUtils.isTokenExpired(authService.accessToken)
-    ) {
-        newReq = req.clone({
-            headers: req.headers.set(
-                'Authorization',
-                'Bearer ' + authService.accessToken
-            ),
+    const isAuthEndpoint = AUTH_ENDPOINTS.some(url => req.url.includes(url));
+
+    // Add Authorization header to non-auth requests
+    if (!isAuthEndpoint && authService.accessToken) {
+        req = req.clone({
+            setHeaders: {
+                Authorization: `Bearer ${authService.accessToken}`
+            }
         });
     }
 
-    // Response
-    return next(newReq).pipe(
-        catchError((error) => {
-            // Catch "401 Unauthorized" responses
-            if (error instanceof HttpErrorResponse && error.status === 401) {
-                // Sign out
-                authService.signOut();
+    return next(req).pipe(
+        catchError((error: HttpErrorResponse) => {
+            // Only handle 401 errors for non-auth endpoints
+            if (error.status === 401 && !isAuthEndpoint) {
+                // Attempt to refresh token
+                return authService.refreshAccessToken().pipe(
+                    switchMap(success => {
+                        if (!success) {
+                            // Refresh failed - sign out and redirect
+                            authService.signOut();
+                            router.navigate(['/sign-in']);
+                            return throwError(() => error);
+                        }
 
-                // Reload the app
-                location.reload();
+                        // Refresh succeeded - retry original request with new token
+                        const retryReq = req.clone({
+                            setHeaders: {
+                                Authorization: `Bearer ${authService.accessToken}`
+                            }
+                        });
+
+                        return next(retryReq);
+                    }),
+                    catchError(refreshError => {
+                        // Refresh itself failed
+                        authService.signOut();
+                        router.navigate(['/sign-in']);
+                        return throwError(() => refreshError);
+                    })
+                );
             }
 
-            return throwError(error);
+            // For all other errors, just pass them through
+            return throwError(() => error);
         })
     );
 };

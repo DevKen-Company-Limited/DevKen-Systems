@@ -1,48 +1,9 @@
-﻿// ──────────────────────────────────────────────────────────────
-// DTOs for Authentication & School Management
-// ──────────────────────────────────────────────────────────────
-
-using Devken.CBC.SchoolManagement.Domain.Entities.Administration;
-using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace Devken.CBC.SchoolManagement.Application.Dtos
 {
-    // ── LOGIN ───────────────────────────────────────────────
-    public record LoginRequest(
-        string TenantSlug,      // identifies the school
-        string Email,
-        string Password
-    );
-
-    public record LoginResponse(
-        string AccessToken,
-        string RefreshToken,
-        int AccessTokenExpiresInSeconds,
-        UserInfo User
-    );
-
-    public record UserInfo(
-        Guid Id,
-        Guid TenantId,
-        string Email,
-        string FullName,
-        IReadOnlyList<string> Roles,
-        IReadOnlyList<string> Permissions,
-        bool RequirePasswordChange // ✨ added this field
-    );
-
-    // ── REFRESH TOKEN ─────────────────────────────────────
-    public record RefreshTokenRequest(string RefreshToken);
-
-    public record RefreshTokenResponse(
-        string AccessToken,
-        string RefreshToken,
-        int AccessTokenExpiresInSeconds
-    );
-
-    // ── REGISTER SCHOOL (First-time setup) ────────────────
+    // ── REGISTER SCHOOL ────────────────────────────────────
     public record RegisterSchoolRequest(
         string SchoolName,
         string SchoolSlug,
@@ -62,16 +23,49 @@ namespace Devken.CBC.SchoolManagement.Application.Dtos
         UserDto User
     );
 
+    // ── LOGIN ───────────────────────────────────────────────
+    public record LoginRequest(
+        string? TenantSlug,
+        string Email,
+        string Password
+    );
+
+    public record LoginResponse(
+        string AccessToken,
+        string RefreshToken,
+        int AccessTokenExpiresInSeconds,
+        UserInfo User
+    );
+
+    // ── USER INFO / DTO ───────────────────────────────────
+    public record UserInfo(
+        Guid Id,                        // User unique identifier
+        Guid TenantId,                  // Tenant (school) identifier
+        string Email,                   // User email
+        string FullName,                // User full name
+        string[] Roles,                 // User roles
+        string[] Permissions,           // User permissions
+        bool RequirePasswordChange      // Indicates if password must be changed
+    );
+
     public record UserDto(
         Guid Id,
         string Email,
         string FullName,
-        Guid SchoolId,
-        School School1,
+        Guid TenantId,
         string SchoolName,
-        IEnumerable<string> Roles,
-        IEnumerable<string> Permissions,
-        bool RequirePasswordChange // ✨ added this field
+        string[] Roles,
+        string[] Permissions,
+        bool RequirePasswordChange
+    );
+
+    // ── REFRESH TOKEN ─────────────────────────────────────
+    public record RefreshTokenRequest(string RefreshToken);
+
+    public record RefreshTokenResponse(
+        string AccessToken,
+        string RefreshToken,
+        int AccessTokenExpiresInSeconds
     );
 
     public class RefreshTokenRequestDto
@@ -79,7 +73,10 @@ namespace Devken.CBC.SchoolManagement.Application.Dtos
         public string Token { get; set; } = default!;
     }
 
-    // ── SUPER ADMIN LOGIN ───────────────────────────────
+    // ── CHANGE PASSWORD ────────────────────────────────────
+    public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
+
+    // ── SUPER ADMIN ───────────────────────────────────────
     public record SuperAdminLoginRequest(string Email, string Password);
 
     public record SuperAdminLoginResponse(
@@ -87,9 +84,27 @@ namespace Devken.CBC.SchoolManagement.Application.Dtos
         int AccessTokenExpiresInSeconds,
         SuperAdminDto User,
         string[] Roles,
-        List<string> Permissions,
+        string[] Permissions,
         string RefreshToken
     );
+
+    public class RegisterSchoolResponseDto
+    {
+        public string AccessToken { get; set; }
+        public int ExpiresInSeconds { get; set; }
+        public string RefreshToken { get; set; }
+        public UserDto User { get; set; }
+    }
+
+    public class LoginResponseDto
+    {
+        public string AccessToken { get; set; }
+        public int ExpiresInSeconds { get; set; }
+        public string RefreshToken { get; set; }
+        public UserDto User { get; set; }
+        public string Message { get; set; }
+    }
+
 
     public record SuperAdminDto(
         Guid Id,
@@ -98,13 +113,7 @@ namespace Devken.CBC.SchoolManagement.Application.Dtos
         string LastName
     );
 
-    // ── CHANGE PASSWORD ────────────────────────────────
-    public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
-
-    // ── RESULT WRAPPER ────────────────────────────────
-    public record AuthResult(bool Success, string? Error = null);
-
-    // ── CREATE USER ───────────────────────────────────
+    // ── CREATE USER ───────────────────────────────────────
     public record CreateUserDto(
         string Email,
         string? FirstName,
@@ -112,4 +121,7 @@ namespace Devken.CBC.SchoolManagement.Application.Dtos
         string TemporaryPassword,
         Guid? RoleId = null
     );
+
+    // ── RESULT WRAPPER ────────────────────────────────────
+    public record AuthResult(bool Success, string? Error = null);
 }

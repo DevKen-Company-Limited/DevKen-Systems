@@ -1,10 +1,10 @@
 ﻿using Devken.CBC.SchoolManagement.Application.Service;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -13,101 +13,82 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Security
 {
     public class JwtService : IJwtService
     {
-        private readonly JwtSettings _settings;
-        private readonly SigningCredentials _signingCredentials;
+        private readonly JwtSettings _jwtSettings;
 
-        public JwtService(JwtSettings settings)
+        public JwtService(IOptions<JwtSettings> jwtSettings)
         {
-            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
-
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.SecretKey));
-            _signingCredentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            _jwtSettings = jwtSettings.Value;
         }
 
-        public string GenerateAccessToken(User user)
+        public string GenerateToken(User user, IList<string> roles, IList<string> permissions)
         {
-            if (user == null)
-                throw new ArgumentNullException(nameof(user));
+            if (user == null) throw new ArgumentNullException(nameof(user));
 
             var claims = new List<Claim>
             {
                 new Claim("user_id", user.Id.ToString()),
-                new Claim("tenant_id", user.TenantId.ToString()),
-                new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
-                new Claim(ClaimTypes.Name, user.FullName ?? string.Empty)
+                new Claim(ClaimTypes.Name, user.Email),
+                new Claim(ClaimTypes.Email, user.Email)
             };
 
-            // Add roles
-            if (user.UserRoles != null)
+            foreach (var role in roles)
             {
-                foreach (var ur in user.UserRoles)
-                {
-                    if (!string.IsNullOrWhiteSpace(ur.Role?.Name))
-                    {
-                        claims.Add(new Claim(ClaimTypes.Role, ur.Role.Name));
-                    }
-                }
+                claims.Add(new Claim(ClaimTypes.Role, role));
             }
 
-            // Add permissions
-            if (user.UserRoles != null)
+            foreach (var permission in permissions)
             {
-                var permissions = user.UserRoles
-                    .Where(ur => ur.Role?.RolePermissions != null)
-                    .SelectMany(ur => ur.Role.RolePermissions)
-                    .Where(rp => !string.IsNullOrWhiteSpace(rp.Permission?.Key))
-                    .Select(rp => rp.Permission.Key)
-                    .Distinct()
-                    .ToList();
-
-                foreach (var perm in permissions)
-                {
-                    claims.Add(new Claim("permissions", perm));
-                }
+                claims.Add(new Claim("permission", permission));
             }
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
-                issuer: _settings.Issuer,
-                audience: _settings.Audience,
+                issuer: _jwtSettings.Issuer,
+                audience: _jwtSettings.Audience,
                 claims: claims,
-                notBefore: DateTime.UtcNow,
-                expires: DateTime.UtcNow.AddMinutes(_settings.AccessTokenLifetimeMinutes),
-                signingCredentials: _signingCredentials
+                expires: DateTime.UtcNow.Add(_jwtSettings.AccessTokenLifetime),
+                signingCredentials: creds
             );
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
-        public string GenerateSuperAdminAccessToken(SuperAdmin admin)
+        public string GenerateRefreshToken()
         {
-            if (admin == null)
-                throw new ArgumentNullException(nameof(admin));
-
-            var claims = new List<Claim>
-            {
-                new Claim("user_id", admin.Id.ToString()),
-                new Claim(ClaimTypes.Email, admin.Email ?? string.Empty),
-                new Claim(ClaimTypes.Name, admin.FirstName ?? string.Empty),
-                new Claim(ClaimTypes.Role, "SuperAdmin"),
-                new Claim("is_super_admin", "true")
-            };
-
-            var token = new JwtSecurityToken(
-                issuer: _settings.Issuer,
-                audience: _settings.Audience,
-                claims: claims,
-                notBefore: DateTime.UtcNow,
-                expires: DateTime.UtcNow.AddMinutes(_settings.AccessTokenLifetimeMinutes),
-                signingCredentials: _signingCredentials
-            );
-
-            return new JwtSecurityTokenHandler().WriteToken(token);
-        }
-
-        public string GenerateRefreshTokenString()
-        {
-            var randomBytes = RandomNumberGenerator.GetBytes(64);
+            var randomBytes = new byte[64];
+            using var rng = RandomNumberGenerator.Create();
+            rng.GetBytes(randomBytes);
             return Convert.ToBase64String(randomBytes);
+        }
+
+        public ClaimsPrincipal GetPrincipalFromExpiredToken(string token)
+        {
+            var tokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey)),
+                ValidateIssuer = true,
+                ValidIssuer = _jwtSettings.Issuer,
+                ValidateAudience = true,
+                ValidAudience = _jwtSettings.Audience,
+                ValidateLifetime = false,
+                ClockSkew = TimeSpan.Zero,
+                NameClaimType = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name",
+                RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
+            };
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out SecurityToken securityToken);
+
+            if (securityToken is not JwtSecurityToken jwtSecurityToken ||
+                !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
+            {
+                throw new SecurityTokenException("Invalid token");
+            }
+
+            return principal;
         }
     }
 }
