@@ -110,7 +110,7 @@ signIn(): void {
             
             this.alert = {
                 type: 'error',
-                message: response.error?.message || 'Wrong email or password'
+                message: response.message || 'Wrong email or password'
             };
             
             this.showAlert = true;

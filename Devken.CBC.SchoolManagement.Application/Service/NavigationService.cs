@@ -110,33 +110,58 @@ namespace Devken.CBC.SchoolManagement.Application.Service
             };
         }
 
+        private NavigationItem BuildSuperAdminSection(HashSet<string> permissions)
+        {
+            if (!permissions.Contains("SuperAdmin"))
+                return CreateNavigationItem("empty", "", "basic", "", null);
+
+            return CreateNavigationItem(
+                "superadmin.panel",
+                "Super Admin Panel",
+                "collapsable",
+                "heroicons_outline:shield-check",
+                children: new List<NavigationItem>
+                {
+            CreateNavigationItem("superadmin.settings", "Settings", "basic", "heroicons_outline:cog-6-tooth", "/superadmin/settings"),
+            CreateNavigationItem("superadmin.logs", "Activity Logs", "basic", "heroicons_outline:document-text", "/superadmin/logs")
+                }
+            );
+        }
+
         private List<NavigationItem> BuildDefaultNavigation(HashSet<string> permissions)
         {
-            // 🛑 Safety net
-            if (permissions.Count == 0)
-            {
+            if (permissions == null || permissions.Count == 0)
                 return new List<NavigationItem>();
+
+            // ✅ SuperAdmin gets everything
+            if (permissions.Contains("SuperAdmin") || permissions.Contains(PermissionKeys.SuperAdmin))
+            {
+                permissions = new HashSet<string>(Enum.GetValues(typeof(PermissionKeys))
+                    .Cast<string>()); // all permissions
             }
 
             var navigation = new List<NavigationItem>
-            {
-                CreateNavigationItem(
-                    "dashboard",
-                    "Dashboard",
-                    "basic",
-                    "heroicons_outline:home",
-                    "/dashboard"
-                )
-            };
+    {
+        CreateNavigationItem(
+            "dashboard",
+            "Dashboard",
+            "basic",
+            "heroicons_outline:home",
+            "/dashboard"
+        )
+    };
 
             AddSectionIfNotEmpty(navigation, BuildAdministrationSection(permissions));
             AddSectionIfNotEmpty(navigation, BuildAcademicSection(permissions));
+            AddSectionIfNotEmpty(navigation, BuildSuperAdminSection(permissions));
+
             AddSectionIfNotEmpty(navigation, BuildAssessmentSection(permissions));
             AddSectionIfNotEmpty(navigation, BuildFinanceSection(permissions));
             AddSectionIfNotEmpty(navigation, BuildCurriculumSection(permissions));
 
             return navigation;
         }
+
 
         private static void AddSectionIfNotEmpty(
             List<NavigationItem> navigation,

@@ -8,7 +8,10 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
 {
     public static class PermissionKeys
     {
-        // ── Administration ─────────────────────────────────
+        // ── Super Admin ───────────────────────────────────
+        public const string SuperAdmin = "SuperAdmin";
+
+        // ── Administration ────────────────────────────────
         public const string SchoolRead = "School.Read";
         public const string SchoolWrite = "School.Write";
         public const string UserRead = "User.Read";
@@ -18,7 +21,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
         public const string RoleWrite = "Role.Write";
         public const string RoleDelete = "Role.Delete";
 
-        // ── Academic ───────────────────────────────────────
+        // ── Academic ─────────────────────────────────────
         public const string StudentRead = "Student.Read";
         public const string StudentWrite = "Student.Write";
         public const string StudentDelete = "Student.Delete";
@@ -32,14 +35,14 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
         public const string GradeRead = "Grade.Read";
         public const string GradeWrite = "Grade.Write";
 
-        // ── Assessment ─────────────────────────────────────
+        // ── Assessment ───────────────────────────────────
         public const string AssessmentRead = "Assessment.Read";
         public const string AssessmentWrite = "Assessment.Write";
         public const string AssessmentDelete = "Assessment.Delete";
         public const string ReportRead = "Report.Read";
         public const string ReportWrite = "Report.Write";
 
-        // ── Finance ────────────────────────────────────────
+        // ── Finance ──────────────────────────────────────
         public const string FeeRead = "Fee.Read";
         public const string FeeWrite = "Fee.Write";
         public const string PaymentRead = "Payment.Read";
@@ -47,11 +50,33 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
         public const string InvoiceRead = "Invoice.Read";
         public const string InvoiceWrite = "Invoice.Write";
 
-        // ── Curriculum ─────────────────────────────────────
+        // ── Curriculum ───────────────────────────────────
         public const string CurriculumRead = "Curriculum.Read";
         public const string CurriculumWrite = "Curriculum.Write";
         public const string LessonPlanRead = "LessonPlan.Read";
         public const string LessonPlanWrite = "LessonPlan.Write";
-    }
 
+        /// <summary>
+        /// Returns a list of all permission keys.
+        /// Useful for granting full access to admins or super admins.
+        /// </summary>
+        public static IEnumerable<string> AllPermissions => new[]
+        {
+            SchoolRead, SchoolWrite,
+            UserRead, UserWrite, UserDelete,
+            RoleRead, RoleWrite, RoleDelete,
+            StudentRead, StudentWrite, StudentDelete,
+            TeacherRead, TeacherWrite, TeacherDelete,
+            SubjectRead, SubjectWrite,
+            ClassRead, ClassWrite,
+            GradeRead, GradeWrite,
+            AssessmentRead, AssessmentWrite, AssessmentDelete,
+            ReportRead, ReportWrite,
+            FeeRead, FeeWrite,
+            PaymentRead, PaymentWrite,
+            InvoiceRead, InvoiceWrite,
+            CurriculumRead, CurriculumWrite,
+            LessonPlanRead, LessonPlanWrite
+        };
+    }
 }
