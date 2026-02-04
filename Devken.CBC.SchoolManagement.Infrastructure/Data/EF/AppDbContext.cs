@@ -1,4 +1,5 @@
-﻿using Devken.CBC.SchoolManagement.Domain.Entities.Academic;
+﻿using Devken.CBC.SchoolManagement.Domain.Common;
+using Devken.CBC.SchoolManagement.Domain.Entities.Academic;
 using Devken.CBC.SchoolManagement.Domain.Entities.Administration;
 using Devken.CBC.SchoolManagement.Domain.Entities.Assessment;
 using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
@@ -15,11 +16,14 @@ using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Identity
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Reports;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.SchoolConf;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Subscription;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Conventions;
 using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System;
-using System.Diagnostics;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
 {
@@ -38,7 +42,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             _passwordHasher = passwordHasher;
         }
 
-        #region DbSets - Identity & Administration
+        #region DbSets
+        // Identity & Admin
         public DbSet<School> Schools => Set<School>();
         public DbSet<User> Users => Set<User>();
         public DbSet<SuperAdmin> SuperAdmins => Set<SuperAdmin>();
@@ -50,9 +55,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         public DbSet<SuperAdminRefreshToken> SuperAdminRefreshTokens => Set<SuperAdminRefreshToken>();
         public DbSet<Subscription> Subscriptions => Set<Subscription>();
         public DbSet<UserActivity> UserActivities => Set<UserActivity>();
-        #endregion
 
-        #region DbSets - Academic
+        // Academic
         public DbSet<Student> Students => Set<Student>();
         public DbSet<Teacher> Teachers => Set<Teacher>();
         public DbSet<Class> Classes => Set<Class>();
@@ -61,26 +65,20 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         public DbSet<Subject> Subjects => Set<Subject>();
         public DbSet<Parent> Parents => Set<Parent>();
         public DbSet<LearningOutcome> LearningOutcomes => Set<LearningOutcome>();
-        #endregion
 
-        #region DbSets - Assessments
-        public DbSet<Grade> Grades => Set<Grade>();
+        // Assessments (TPH: single DbSet for base type only)
         public DbSet<Assessment1> Assessments => Set<Assessment1>();
-        public DbSet<FormativeAssessment> FormativeAssessments => Set<FormativeAssessment>();
-        public DbSet<SummativeAssessment> SummativeAssessments => Set<SummativeAssessment>();
-        public DbSet<CompetencyAssessment> CompetencyAssessments => Set<CompetencyAssessment>();
+        public DbSet<Grade> Grades => Set<Grade>();
         public DbSet<FormativeAssessmentScore> FormativeAssessmentScores => Set<FormativeAssessmentScore>();
         public DbSet<SummativeAssessmentScore> SummativeAssessmentScores => Set<SummativeAssessmentScore>();
         public DbSet<CompetencyAssessmentScore> CompetencyAssessmentScores => Set<CompetencyAssessmentScore>();
-        #endregion
 
-        #region DbSets - Reports
+        // Reports
         public DbSet<ProgressReport> ProgressReports => Set<ProgressReport>();
         public DbSet<SubjectReport> SubjectReports => Set<SubjectReport>();
         public DbSet<ProgressReportComment> ProgressReportComments => Set<ProgressReportComment>();
-        #endregion
 
-        #region DbSets - Finance
+        // Finance
         public DbSet<Invoice> Invoices => Set<Invoice>();
         public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
         public DbSet<Payment> Payments => Set<Payment>();
@@ -91,16 +89,44 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         {
             base.OnModelCreating(mb);
 
-            // Configure SuperAdminRefreshToken relationship
+            // ── GLOBAL CONVENTIONS ───────────────────────────────
+            DecimalPrecisionConvention.Apply(mb);
+
+            // ── GENERIC BASE ENTITY CONFIGURATION ───────────────
+            foreach (var entityType in mb.Model.GetEntityTypes())
+            {
+                if (typeof(BaseEntity<Guid>).IsAssignableFrom(entityType.ClrType))
+                {
+                    // Skip derived types in TPH hierarchy
+                    if (entityType.BaseType == null)
+                    {
+                        mb.Entity(entityType.ClrType).HasKey("Id");
+                    }
+                }
+            }
+
+            // ── SPECIFIC RELATIONSHIPS NOT IN ENTITY CONFIGURATIONS ───────────
+            // Only configure relationships that are NOT already in entity configuration files
+
+            mb.Entity<Teacher>()
+                .HasOne(t => t.CurrentClass)
+                .WithMany()
+                .HasForeignKey(t => t.CurrentClassId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            mb.Entity<FormativeAssessment>()
+                .HasOne(f => f.LearningOutcome)
+                .WithMany(lo => lo.FormativeAssessments)
+                .HasForeignKey(f => f.LearningOutcomeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             mb.Entity<SuperAdminRefreshToken>()
-               .HasOne(t => t.SuperAdmin)
-               .WithMany()
-               .HasForeignKey(t => t.SuperAdminId)
-               .OnDelete(DeleteBehavior.Cascade);
+                .HasOne(t => t.SuperAdmin)
+                .WithMany()
+                .HasForeignKey(t => t.SuperAdminId)
+                .OnDelete(DeleteBehavior.Cascade);
 
-            // ── APPLY CONFIGURATIONS ─────────────────────────────
-
-            // Identity & Administration Configurations
+            // ── APPLY CONFIGURATIONS ───────────────────
             mb.ApplyConfiguration(new SchoolConfiguration());
             mb.ApplyConfiguration(new PermissionConfiguration());
             mb.ApplyConfiguration(new RoleConfiguration(_tenantContext));
@@ -110,7 +136,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             mb.ApplyConfiguration(new RefreshTokenConfiguration(_tenantContext));
             mb.ApplyConfiguration(new SubscriptionConfiguration(_tenantContext));
 
-            // Academic Configurations
             mb.ApplyConfiguration(new StudentConfiguration(_tenantContext));
             mb.ApplyConfiguration(new TeacherConfiguration(_tenantContext));
             mb.ApplyConfiguration(new ClassConfiguration(_tenantContext));
@@ -120,44 +145,26 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             mb.ApplyConfiguration(new ParentConfiguration(_tenantContext));
             mb.ApplyConfiguration(new LearningOutcomeConfiguration(_tenantContext));
 
-            // Assessment Configurations
             mb.ApplyConfiguration(new GradeConfiguration(_tenantContext));
+
+            // TPH Assessment configurations
             mb.ApplyConfiguration(new AssessmentConfiguration(_tenantContext));
-      
-
-
-            mb.ApplyConfiguration(new SummativeAssessmentScoreConfiguration(_tenantContext));
-          
-
-
-
-
-
-            // Root entity with tenant filter
-            mb.ApplyConfiguration(new AssessmentConfiguration(_tenantContext));
-
-            // Derived entities (no tenant filter in constructor)
-            mb.ApplyConfiguration(new SummativeAssessmentConfiguration());
             mb.ApplyConfiguration(new FormativeAssessmentConfiguration());
+            mb.ApplyConfiguration(new SummativeAssessmentConfiguration());
             mb.ApplyConfiguration(new CompetencyAssessmentConfiguration());
 
-            // Score entities (child entities, no tenant filter)
             mb.ApplyConfiguration(new FormativeAssessmentScoreConfiguration());
+            mb.ApplyConfiguration(new SummativeAssessmentScoreConfiguration(_tenantContext));
             mb.ApplyConfiguration(new CompetencyAssessmentScoreConfiguration());
 
-            // Report Configurations
             mb.ApplyConfiguration(new ProgressReportConfiguration(_tenantContext));
             mb.ApplyConfiguration(new SubjectReportConfiguration(_tenantContext));
             mb.ApplyConfiguration(new ProgressReportCommentConfiguration(_tenantContext));
 
-            // Finance Configurations
             mb.ApplyConfiguration(new InvoiceConfiguration(_tenantContext));
             mb.ApplyConfiguration(new InvoiceItemConfiguration(_tenantContext));
             mb.ApplyConfiguration(new PaymentConfiguration(_tenantContext));
             mb.ApplyConfiguration(new FeeItemConfiguration(_tenantContext));
-
-            // Note: Do NOT seed dynamic data like Users or hashed passwords here.
-            // All dynamic seeding will be handled via PermissionSeedService and app startup.
         }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
@@ -178,7 +185,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         {
             var entries = ChangeTracker.Entries()
                 .Where(e => e.Entity is IAuditableEntity &&
-                    (e.State == EntityState.Added || e.State == EntityState.Modified));
+                            (e.State == EntityState.Added || e.State == EntityState.Modified));
 
             var now = DateTime.UtcNow;
             var userId = _tenantContext?.ActingUserId;
@@ -186,13 +193,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             foreach (var entry in entries)
             {
                 var entity = (IAuditableEntity)entry.Entity;
-
                 if (entry.State == EntityState.Added)
                 {
                     entity.CreatedOn = now;
                     entity.CreatedBy = userId;
                 }
-
                 entity.UpdatedOn = now;
                 entity.UpdatedBy = userId;
             }
@@ -206,7 +211,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             foreach (var entry in entries)
             {
                 var entity = (ITenantEntity)entry.Entity;
-
                 if (entity.TenantId == Guid.Empty && _tenantContext?.TenantId != null)
                 {
                     entity.TenantId = _tenantContext.TenantId.Value;

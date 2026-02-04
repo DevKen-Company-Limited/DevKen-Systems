@@ -23,11 +23,11 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
             get
             {
                 var userIdClaim = User.FindFirst("user_id")?.Value
-                    ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                    ?? User.FindFirst("sub")?.Value;
+                                  ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                                  ?? User.FindFirst("sub")?.Value;
 
-                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
-                    throw new UnauthorizedAccessException("User ID not found in token");
+                if (string.IsNullOrWhiteSpace(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                    throw new UnauthorizedAccessException("User ID not found or invalid in token");
 
                 return userId;
             }
@@ -38,8 +38,9 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
             get
             {
                 var tenantIdClaim = User.FindFirst("tenant_id")?.Value;
-                if (string.IsNullOrEmpty(tenantIdClaim)) return null;
-                if (Guid.TryParse(tenantIdClaim, out var tenantId)) return tenantId;
+                if (Guid.TryParse(tenantIdClaim, out var tenantId))
+                    return tenantId;
+
                 return null;
             }
         }
@@ -49,9 +50,9 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
             get
             {
                 var email = User.FindFirst(ClaimTypes.Email)?.Value
-                    ?? User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")?.Value;
+                            ?? User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")?.Value;
 
-                if (string.IsNullOrEmpty(email))
+                if (string.IsNullOrWhiteSpace(email))
                     throw new UnauthorizedAccessException("Email not found in token");
 
                 return email;
@@ -63,22 +64,22 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
             get
             {
                 var name = User.FindFirst(ClaimTypes.Name)?.Value
-                    ?? User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name")?.Value
-                    ?? User.Identity?.Name;
+                           ?? User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name")?.Value
+                           ?? User.Identity?.Name;
 
                 return name ?? "Unknown";
             }
         }
 
         protected IEnumerable<string> CurrentUserPermissions =>
-            User.FindAll("permissions").Select(c => c.Value).Where(p => !string.IsNullOrWhiteSpace(p)).Distinct();
+            User.FindAll("permissions").Select(c => c.Value).Where(p => !string.IsNullOrWhiteSpace(p)).Distinct(StringComparer.OrdinalIgnoreCase);
 
         protected IEnumerable<string> CurrentUserRoles =>
-            User.FindAll(ClaimTypes.Role).Select(c => c.Value).Where(r => !string.IsNullOrWhiteSpace(r)).Distinct();
+            User.FindAll(ClaimTypes.Role).Select(c => c.Value).Where(r => !string.IsNullOrWhiteSpace(r)).Distinct(StringComparer.OrdinalIgnoreCase);
 
         protected bool IsSuperAdmin =>
-            User.FindFirst("is_super_admin")?.Value?.ToLower() == "true"
-            || CurrentUserRoles.Contains("SuperAdmin");
+            string.Equals(User.FindFirst("is_super_admin")?.Value, "true", StringComparison.OrdinalIgnoreCase)
+            || CurrentUserRoles.Contains("SuperAdmin", StringComparer.OrdinalIgnoreCase);
 
         #endregion
 
@@ -100,14 +101,12 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
 
         #region User Activity Logging
 
-        // Overload for authenticated requests (uses claims from JWT)
         protected async Task LogUserActivityAsync(string activityType, string? details = null)
         {
             if (_activityService == null) return;
             await _activityService.LogActivityAsync(CurrentUserId, CurrentTenantId, activityType, details);
         }
 
-        // Overload for unauthenticated requests (login/register) where user ID comes from the auth result
         protected async Task LogUserActivityAsync(Guid userId, Guid? tenantId, string activityType, string? details = null)
         {
             if (_activityService == null) return;

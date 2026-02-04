@@ -1,182 +1,118 @@
-// -----------------------------------------------------------------------------------------------------
-// @ AUTH UTILITIES
-//
-// Methods are derivations of the Auth0 Angular-JWT helper service methods
-// https://github.com/auth0/angular2-jwt
-// -----------------------------------------------------------------------------------------------------
-
+// auth.utils.ts
 export class AuthUtils {
-    // -----------------------------------------------------------------------------------------------------
-    // @ Public methods
-    // -----------------------------------------------------------------------------------------------------
+    // Buffer time in seconds before actual expiry to trigger refresh
+    private static readonly EXPIRY_BUFFER_SECONDS = 60; // 1 minute buffer
 
-    /**
-     * Is token expired?
-     *
-     * @param token
-     * @param offsetSeconds
-     */
-    static isTokenExpired(token: string, offsetSeconds?: number): boolean {
-        // Return if there is no token
-        if (!token || token === '') {
-            return true;
-        }
-
-        // Get the expiration date
-        const date = this._getTokenExpirationDate(token);
-
-        offsetSeconds = offsetSeconds || 0;
-
-        if (date === null) {
-            return true;
-        }
-
-        // Check if the token is expired
-        return !(date.valueOf() > new Date().valueOf() + offsetSeconds * 1000);
-    }
-
-    // -----------------------------------------------------------------------------------------------------
-    // @ Private methods
-    // -----------------------------------------------------------------------------------------------------
-
-    /**
-     * Base64 decoder
-     * Credits: https://github.com/atk
-     *
-     * @param str
-     * @private
-     */
-    private static _b64decode(str: string): string {
-        const chars =
-            'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-        let output = '';
-
-        str = String(str).replace(/=+$/, '');
-
-        if (str.length % 4 === 1) {
-            throw new Error(
-                "'atob' failed: The string to be decoded is not correctly encoded."
-            );
-        }
-
-        /* eslint-disable */
-        for (
-            // initialize result and counters
-            let bc = 0, bs: any, buffer: any, idx = 0;
-            // get next character
-            (buffer = str.charAt(idx++));
-            // character found in table? initialize bit storage and add its ascii value;
-            ~buffer &&
-            ((bs = bc % 4 ? bs * 64 + buffer : buffer),
-            // and if not first of each 4 characters,
-            // convert the first 8 bits to one ascii character
-            bc++ % 4)
-                ? (output += String.fromCharCode(255 & (bs >> ((-2 * bc) & 6))))
-                : 0
-        ) {
-            // try to find character in table (0-63, not found => -1)
-            buffer = chars.indexOf(buffer);
-        }
-        /* eslint-enable */
-
-        return output;
-    }
-
-    /**
-     * Base64 unicode decoder
-     *
-     * @param str
-     * @private
-     */
-    private static _b64DecodeUnicode(str: any): string {
-        return decodeURIComponent(
-            Array.prototype.map
-                .call(
-                    this._b64decode(str),
-                    (c: any) =>
-                        '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-                )
-                .join('')
-        );
-    }
-
-    /**
-     * URL Base 64 decoder
-     *
-     * @param str
-     * @private
-     */
-    private static _urlBase64Decode(str: string): string {
-        let output = str.replace(/-/g, '+').replace(/_/g, '/');
-        switch (output.length % 4) {
-            case 0: {
-                break;
-            }
-            case 2: {
-                output += '==';
-                break;
-            }
-            case 3: {
-                output += '=';
-                break;
-            }
-            default: {
-                throw Error('Illegal base64url string!');
-            }
-        }
-        return this._b64DecodeUnicode(output);
-    }
-
-    /**
-     * Decode token
-     *
-     * @param token
-     * @private
-     */
-    private static _decodeToken(token: string): any {
-        // Return if there is no token
-        if (!token) {
-            return null;
-        }
-
-        // Split the token
+    static isValidTokenFormat(token: string): boolean {
+        if (!token) return false;
         const parts = token.split('.');
+        return parts.length === 3 && parts.every(part => part.length > 0);
+    }
 
-        if (parts.length !== 3) {
-            throw new Error(
-                "The inspected token doesn't appear to be a JWT. Check to make sure it has three parts and see https://jwt.io for more."
-            );
+    static isTokenExpired(token: string, bufferSeconds = 0): boolean {
+        if (!token || !this.isValidTokenFormat(token)) {
+            return true;
         }
 
-        // Decode the token using the Base64 decoder
-        const decoded = this._urlBase64Decode(parts[1]);
-
-        if (!decoded) {
-            throw new Error('Cannot decode the token.');
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const expiry = payload.exp;
+            if (!expiry) return true;
+            
+            const expiryTime = expiry * 1000;
+            const currentTime = Date.now();
+            const bufferTime = bufferSeconds * 1000;
+            
+            return currentTime >= (expiryTime - bufferTime);
+        } catch {
+            return true;
         }
-
-        return JSON.parse(decoded);
     }
 
     /**
-     * Get token expiration date
-     *
-     * @param token
-     * @private
+     * Check if token will expire soon (within buffer time)
      */
-    private static _getTokenExpirationDate(token: string): Date | null {
-        // Get the decoded token
-        const decodedToken = this._decodeToken(token);
+    static shouldRefreshToken(token: string): boolean {
+        return this.isTokenExpired(token, this.EXPIRY_BUFFER_SECONDS);
+    }
 
-        // Return if the decodedToken doesn't have an 'exp' field
-        if (!decodedToken.hasOwnProperty('exp')) {
+    /**
+     * Get time until token expires in seconds
+     */
+    static getTimeUntilExpiry(token: string): number | null {
+        if (!token || !this.isValidTokenFormat(token)) {
             return null;
         }
 
-        // Convert the expiration date
-        const date = new Date(0);
-        date.setUTCSeconds(decodedToken.exp);
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const expiry = payload.exp;
+            if (!expiry) return null;
+            
+            const expiryTime = expiry * 1000;
+            const currentTime = Date.now();
+            const timeLeft = Math.floor((expiryTime - currentTime) / 1000);
+            
+            return timeLeft > 0 ? timeLeft : 0;
+        } catch {
+            return null;
+        }
+    }
 
-        return date;
+    private static getTokenPayload(token: string): any {
+        try {
+            if (!this.isValidTokenFormat(token)) return null;
+            return JSON.parse(atob(token.split('.')[1]));
+        } catch {
+            return null;
+        }
+    }
+
+    static getUserIdFromToken(token: string): string | null {
+        const payload = this.getTokenPayload(token);
+        return payload?.sub || payload?.user_id || payload?.userId || null;
+    }
+
+    static getUserEmailFromToken(token: string): string | null {
+        const payload = this.getTokenPayload(token);
+        return payload?.email || null;
+    }
+
+    static getUserNameFromToken(token: string): string | null {
+        const payload = this.getTokenPayload(token);
+        return payload?.name || payload?.fullName || null;
+    }
+
+    static getUserRolesFromToken(token: string): string[] {
+        const payload = this.getTokenPayload(token);
+        if (!payload) return [];
+        
+        const roles = payload.role || payload.roles || [];
+        return Array.isArray(roles) ? roles : [roles].filter(Boolean);
+    }
+
+    static getUserPermissionsFromToken(token: string): string[] {
+        const payload = this.getTokenPayload(token);
+        if (!payload) return [];
+        
+        const perms = payload.permission || payload.permissions || [];
+        return Array.isArray(perms) ? perms : [perms].filter(Boolean);
+    }
+
+    static isSuperAdmin(token: string): boolean {
+        const payload = this.getTokenPayload(token);
+        if (!payload) return false;
+        
+        return payload.is_super_admin === true || 
+               payload.isSuperAdmin === true ||
+               (payload.roles && (
+                   payload.roles.includes('SuperAdmin') ||
+                   payload.roles.includes('super_admin')
+               ));
+    }
+
+    static getTenantIdFromToken(token: string): string | null {
+        const payload = this.getTokenPayload(token);
+        return payload?.tenant_id || payload?.tenantId || null;
     }
 }

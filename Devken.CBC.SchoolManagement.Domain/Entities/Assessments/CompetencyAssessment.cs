@@ -31,18 +31,25 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
         [MaxLength(500)]
         public string? ToolsRequired { get; set; }
 
+        // ✅ Newly added to match configuration
+        [MaxLength(1000)]
+        public string? Instructions { get; set; }
+
+        [MaxLength(1000)]
+        public string? SpecificLearningOutcome { get; set; }
+
         // Navigation Properties
         public ICollection<CompetencyAssessmentScore> Scores { get; set; } = new List<CompetencyAssessmentScore>();
     }
-}
 
-public enum AssessmentMethod
-{
-    Observation = 1,
-    OralQuestioning = 2,
-    WrittenTask = 3,
-    PracticalTask = 4,
-    Portfolio = 5,
-    Project = 6,
-    Other = 7
+    public enum AssessmentMethod
+    {
+        Observation = 1,
+        OralQuestioning = 2,
+        WrittenTask = 3,
+        PracticalTask = 4,
+        Portfolio = 5,
+        Project = 6,
+        Other = 7
+    }
 }

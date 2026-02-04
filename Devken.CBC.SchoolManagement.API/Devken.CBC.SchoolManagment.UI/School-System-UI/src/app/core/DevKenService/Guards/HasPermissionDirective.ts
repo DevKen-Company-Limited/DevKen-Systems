@@ -1,61 +1,104 @@
-import { Directive, Input, OnInit, TemplateRef, ViewContainerRef } from '@angular/core';
+import {
+    Directive,
+    Input,
+    TemplateRef,
+    ViewContainerRef,
+    OnDestroy
+} from '@angular/core';
 import { AuthService } from 'app/core/auth/auth.service';
+import { Subject, combineLatest, takeUntil } from 'rxjs';
 
 @Directive({
     selector: '[hasPermission]',
-    standalone: true,
+    standalone: true
 })
-export class HasPermissionDirective implements OnInit {
+export class HasPermissionDirective implements OnDestroy {
+
     private permissions: string[] = [];
     private requireAll = true;
+    private hasView = false;
+
+    private readonly _destroy$ = new Subject<void>();
 
     constructor(
         private templateRef: TemplateRef<any>,
         private viewContainer: ViewContainerRef,
         private authService: AuthService
-    ) {}
+    ) {
+        // React to login, logout, and permissions updates
+        combineLatest([
+            this.authService['_authenticated'], // BehaviorSubject<boolean>
+            this.authService.permissions$ || new Subject<string[]>() // optional observable if available
+        ])
+        .pipe(takeUntil(this._destroy$))
+        .subscribe(() => this.updateView());
+    }
 
+    // ---------------------------------------------------------------------
+    // REQUIRED PERMISSIONS
+    // ---------------------------------------------------------------------
     @Input()
-    set hasPermission(val: string | string[]) {
-        this.permissions = Array.isArray(val) ? val : [val];
+    set hasPermission(value: string | string[]) {
+        this.permissions = Array.isArray(value) ? value : [value];
         this.updateView();
     }
 
+    // ---------------------------------------------------------------------
+    // REQUIRE ALL OR ANY
+    // ---------------------------------------------------------------------
     @Input()
-    set hasPermissionRequireAll(val: boolean) {
-        this.requireAll = val;
+    set hasPermissionRequireAll(value: boolean) {
+        this.requireAll = value;
         this.updateView();
     }
 
-    ngOnInit(): void {
-        this.updateView();
-    }
-
+    // ---------------------------------------------------------------------
+    // CORE LOGIC
+    // ---------------------------------------------------------------------
     private updateView(): void {
-        const userPermissions = this.authService.getUserPermissions();
-        const hasPermission = this.checkPermissions(userPermissions);
+        // Not authenticated → render nothing
+        if (!this.authService['_authenticated'].value) {
+            this.clear();
+            return;
+        }
 
-        if (hasPermission) {
+        const userPermissions = this.authService.getUserPermissions() ?? [];
+
+        if (!userPermissions.length) {
+            this.clear();
+            return;
+        }
+
+        const allowed = this.checkPermissions(userPermissions);
+
+        if (allowed && !this.hasView) {
             this.viewContainer.createEmbeddedView(this.templateRef);
-        } else {
-            this.viewContainer.clear();
+            this.hasView = true;
+        } else if (!allowed && this.hasView) {
+            this.clear();
         }
     }
 
     private checkPermissions(userPermissions: string[]): boolean {
-        if (this.permissions.length === 0) {
-            return true;
+        if (!this.permissions.length) {
+            return false;
         }
 
-        if (this.requireAll) {
-            return this.permissions.every((permission) => userPermissions.includes(permission));
-        } else {
-            return this.permissions.some((permission) => userPermissions.includes(permission));
-        }
+        return this.requireAll
+            ? this.permissions.every(p => userPermissions.includes(p))
+            : this.permissions.some(p => userPermissions.includes(p));
+    }
+
+    private clear(): void {
+        this.viewContainer.clear();
+        this.hasView = false;
+    }
+
+    // ---------------------------------------------------------------------
+    // CLEANUP
+    // ---------------------------------------------------------------------
+    ngOnDestroy(): void {
+        this._destroy$.next();
+        this._destroy$.complete();
     }
 }
-
-// Usage examples:
-// <button *hasPermission="'Student.Write'">Add Student</button>
-// <button *hasPermission="['Student.Write', 'Student.Delete']; requireAll: true">Manage Students</button>
-// <div *hasPermission="['Fee.Read', 'Payment.Read']; requireAll: false">Finance Section</div>

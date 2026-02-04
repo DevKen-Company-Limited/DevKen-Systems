@@ -3,9 +3,6 @@ using Devken.CBC.SchoolManagement.Domain.Entities.Administration;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF;
 using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Activities
@@ -23,6 +20,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Activities
 
         public async Task LogActivityAsync(Guid userId, Guid? tenantId, string activityType, string? details = null)
         {
+            if (string.IsNullOrWhiteSpace(activityType))
+                throw new ArgumentException("Activity type cannot be null or empty", nameof(activityType));
+
             var activity = new UserActivity
             {
                 UserId = userId,
@@ -35,7 +35,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Activities
             await _context.UserActivities.AddAsync(activity);
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Logged activity for user {UserId}: {ActivityType}", userId, activityType);
+            _logger.LogInformation("Logged activity for user {UserId} (Tenant: {TenantId}): {ActivityType}", userId, tenantId?.ToString() ?? "N/A", activityType);
         }
     }
 }

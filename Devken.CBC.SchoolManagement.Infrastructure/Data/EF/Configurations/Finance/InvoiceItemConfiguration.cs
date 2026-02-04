@@ -26,6 +26,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Fina
 
             // Indexes
             builder.HasIndex(ii => new { ii.TenantId, ii.InvoiceId });
+            builder.HasIndex(ii => new { ii.TenantId, ii.FeeItemId });
 
             // Properties
             builder.Property(ii => ii.Description)
@@ -35,8 +36,13 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Fina
             builder.Property(ii => ii.ItemType)
                 .HasMaxLength(50);
 
+            builder.Property(ii => ii.Quantity)
+                .IsRequired()
+                .HasDefaultValue(1);
+
             builder.Property(ii => ii.UnitPrice)
-                .HasPrecision(18, 2);
+                .HasPrecision(18, 2)
+                .IsRequired();
 
             builder.Property(ii => ii.Discount)
                 .HasPrecision(18, 2)
@@ -44,12 +50,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Fina
 
             // Computed Columns
             builder.Property(ii => ii.Total)
-                .HasComputedColumnSql("[Quantity] * [UnitPrice]")
-                .ValueGeneratedOnAddOrUpdate();
+                .HasComputedColumnSql("[Quantity] * [UnitPrice]", stored: true);
 
             builder.Property(ii => ii.NetAmount)
-                .HasComputedColumnSql("([Quantity] * [UnitPrice]) - [Discount]")
-                .ValueGeneratedOnAddOrUpdate();
+                .HasComputedColumnSql("([Quantity] * [UnitPrice]) - [Discount]", stored: true);
 
             // Relationships
             builder.HasOne(ii => ii.Invoice)

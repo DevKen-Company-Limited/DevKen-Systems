@@ -9,7 +9,16 @@
         public List<NavigationItem> Compact { get; set; } = new();
         public List<NavigationItem> Futuristic { get; set; } = new();
         public List<NavigationItem> Horizontal { get; set; } = new();
+
+        public static NavigationResponse Empty() => new NavigationResponse
+        {
+            Default = new List<NavigationItem>(),
+            Compact = new List<NavigationItem>(),
+            Futuristic = new List<NavigationItem>(),
+            Horizontal = new List<NavigationItem>()
+        };
     }
+
 
     /// <summary>
     /// Individual navigation menu item
