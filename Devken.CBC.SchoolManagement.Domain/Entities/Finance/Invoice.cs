@@ -51,12 +51,12 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Finance
 
     public enum InvoiceStatus
     {
-        Draft = 1,
-        Pending = 2,
-        PartiallyPaid = 3,
-        Paid = 4,
-        Overdue = 5,
-        Cancelled = 6,
-        Refunded = 7
+        Draft = 0,           // ✅ Changed from 1 to 0 (CLR default)
+        Pending = 1,         // ✅ Changed from 2 to 1
+        PartiallyPaid = 2,   // ✅ Changed from 3 to 2
+        Paid = 3,            // ✅ Changed from 4 to 3
+        Overdue = 4,         // ✅ Changed from 5 to 4
+        Cancelled = 5,       // ✅ Changed from 6 to 5
+        Refunded = 6         // ✅ Changed from 7 to 6
     }
 }
