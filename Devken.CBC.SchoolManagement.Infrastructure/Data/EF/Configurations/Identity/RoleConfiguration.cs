@@ -40,6 +40,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Iden
             builder.HasQueryFilter(r =>
                 _tenantContext.TenantId == null ||
                 r.TenantId == _tenantContext.TenantId);
+
+            builder.HasMany(r => r.UserRoles)
+                   .WithOne(ur => ur.Role)
+                   .HasForeignKey(ur => ur.RoleId)
+                   .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

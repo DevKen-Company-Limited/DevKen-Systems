@@ -39,23 +39,32 @@ builder.Services.AddControllers();
 // ══════════════════════════════════════════════════════════════
 // Database Configuration
 // ══════════════════════════════════════════════════════════════
+// In your DbContext configuration
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    if (string.IsNullOrWhiteSpace(connectionString))
-        throw new InvalidOperationException("Connection string 'DefaultConnection' is missing.");
 
-    options.UseSqlServer(
-        connectionString,
-        sql => sql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName)
-    );
+    options.UseSqlServer(connectionString, sql =>
+    {
+        sql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName);
+        sql.EnableRetryOnFailure();
+    });
+
+    // ⭐ Disable change tracking globally if you have issues
+    // options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
+
+    // Or configure it to track only when needed
+    options.UseQueryTrackingBehavior(QueryTrackingBehavior.TrackAll);
+
+    // Enable identity resolution
+    options.EnableServiceProviderCaching();
 
     if (builder.Environment.IsDevelopment())
     {
         options.EnableDetailedErrors();
         options.EnableSensitiveDataLogging();
     }
-});
+}, ServiceLifetime.Scoped);
 
 // ══════════════════════════════════════════════════════════════
 // Swagger Configuration

@@ -17,8 +17,20 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Acad
 
         public void Configure(EntityTypeBuilder<Term> builder)
         {
-            builder.ToTable("Terms");
+            // ✅ Table Configuration with Check Constraints
+            builder.ToTable("Terms", t =>
+            {
+                // Ensure term dates are valid
+                t.HasCheckConstraint(
+                    "CK_Term_ValidDates",
+                    "[StartDate] < [EndDate]");
 
+                t.HasCheckConstraint(
+                    "CK_Term_ValidTermNumber",
+                    "[TermNumber] BETWEEN 1 AND 3");
+            });
+
+            // Primary Key
             builder.HasKey(t => t.Id);
 
             // Tenant Filter
@@ -29,7 +41,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Acad
             // Indexes
             builder.HasIndex(t => new { t.TenantId, t.AcademicYearId, t.TermNumber })
                 .IsUnique();
-
             builder.HasIndex(t => new { t.TenantId, t.IsCurrent });
             builder.HasIndex(t => new { t.TenantId, t.StartDate, t.EndDate });
 
@@ -78,15 +89,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Acad
                 .WithOne(pr => pr.Term)
                 .HasForeignKey(pr => pr.TermId)
                 .OnDelete(DeleteBehavior.Restrict);
-
-            // Ensure term dates are valid
-            builder.HasCheckConstraint(
-                "CK_Term_ValidDates",
-                "[StartDate] < [EndDate]");
-
-            builder.HasCheckConstraint(
-                "CK_Term_ValidTermNumber",
-                "[TermNumber] BETWEEN 1 AND 3");
 
             // Seed data for terms (optional - for initial setup)
             // This would typically be done in a seed service

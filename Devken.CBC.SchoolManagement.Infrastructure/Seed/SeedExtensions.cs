@@ -1,5 +1,6 @@
 ﻿using Devken.CBC.SchoolManagement.Application.Service;
 using Devken.CBC.SchoolManagement.Domain.Entities.Administration;
+using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -48,6 +49,29 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Seed
 
             // Seed permissions and roles
             await permissionSeeder.SeedPermissionsAndRolesAsync(defaultSchool.Id);
+        }
+
+        public static async Task SeedUsersAsync(AppDbContext context)
+        {
+            if (!context.Users.Any())
+            {
+                context.Users.Add(new User
+                {
+                    Id = Guid.NewGuid(),
+                    Email = "admin@example.com",
+                   TenantId = Guid.Empty,
+                    UserRoles = new List<UserRole>
+                    {
+                        new UserRole
+                        {
+                            RoleId = Guid.NewGuid(),
+                            TenantId = Guid.Empty
+                        }
+                    }
+                });
+
+                await context.SaveChangesAsync();
+            }
         }
     }
 }

@@ -9,6 +9,7 @@ using Devken.CBC.SchoolManagement.Application.Service.Academic;
 using Devken.CBC.SchoolManagement.Application.Service.Activities;
 using Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment;
 using Devken.CBC.SchoolManagement.Application.Service.Isubscription;
+using Devken.CBC.SchoolManagement.Application.Service.Navigation;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Identity;
@@ -19,6 +20,7 @@ using Devken.CBC.SchoolManagement.Infrastructure.Services.Activities;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.RoleAssignment;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -86,8 +88,12 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                         if (logger != null)
                         {
                             logger.LogError(context.Exception, "JWT Authentication failed: {Message}", context.Exception.Message);
+
+                            // ✅ Use Append instead of Add to avoid duplicate key exceptions
                             if (context.Exception is SecurityTokenExpiredException)
-                                context.Response.Headers.Add("Token-Expired", "true");
+                            {
+                                context.Response.Headers.Append("Token-Expired", "true");
+                            }
                         }
                         return Task.CompletedTask;
                     },

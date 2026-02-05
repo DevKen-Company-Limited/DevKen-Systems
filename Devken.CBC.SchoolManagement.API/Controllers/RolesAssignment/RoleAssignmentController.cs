@@ -2,11 +2,14 @@
 using Devken.CBC.SchoolManagement.Application.DTOs.RoleAssignment;
 using Devken.CBC.SchoolManagement.Application.Service.Activities;
 using Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment;
-using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
-namespace Devken.CBC.SchoolManagement.API.Controllers.RolesAssignment
+namespace Devken.CBC.SchoolManagement.Api.Controllers.RolesAssignment
 {
     [ApiController]
     [Route("api/role-assignments")]
@@ -23,230 +26,151 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.RolesAssignment
             _roleAssignmentService = roleAssignmentService;
         }
 
-        /// <summary>
-        /// Assign a role to a user
-        /// </summary>
-        [HttpPost("assign-role")]
-        public async Task<IActionResult> AssignRole([FromBody] AssignRoleRequest request)
+        #region Users
+
+        [HttpGet("all-users")]
+        public async Task<IActionResult> GetAllUsers([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
         {
-            // Check permissions
-            if (!HasPermission(PermissionKeys.UserWrite))
-                return ForbiddenResponse("You do not have permission to assign roles");
+            pageNumber = Math.Max(1, pageNumber);
+            pageSize = pageSize is < 1 or > 100 ? 20 : pageSize;
 
-            if (!ModelState.IsValid)
-                return ValidationErrorResponse(ToErrorDictionary(ModelState));
-
-            if (CurrentTenantId == null)
-                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
-
-            var result = await _roleAssignmentService.AssignRoleToUserAsync(
-                request.UserId,
-                request.RoleId,
-                CurrentTenantId.Value);
-
-            if (!result.Success)
-                return ErrorResponse(result.Message ?? "Failed to assign role", StatusCodes.Status400BadRequest);
-
-            await LogUserActivityAsync("AssignRole", $"User: {request.UserId}, Role: {request.RoleId}");
-
-            return SuccessResponse(result.User, result.Message ?? "Role assigned successfully");
-        }
-
-        /// <summary>
-        /// Assign multiple roles to a user
-        /// </summary>
-        [HttpPost("assign-multiple-roles")]
-        public async Task<IActionResult> AssignMultipleRoles([FromBody] AssignMultipleRolesRequest request)
-        {
-            if (!HasPermission(PermissionKeys.UserWrite))
-                return ForbiddenResponse("You do not have permission to assign roles");
-
-            if (!ModelState.IsValid)
-                return ValidationErrorResponse(ToErrorDictionary(ModelState));
-
-            if (CurrentTenantId == null)
-                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
-
-            var result = await _roleAssignmentService.AssignMultipleRolesToUserAsync(
-                request.UserId,
-                request.RoleIds,
-                CurrentTenantId.Value);
-
-            if (!result.Success)
-                return ErrorResponse(result.Message ?? "Failed to assign roles", StatusCodes.Status400BadRequest);
-
-            await LogUserActivityAsync("AssignMultipleRoles", $"User: {request.UserId}, Roles: {request.RoleIds.Count}");
-
-            return SuccessResponse(result.User, result.Message ?? "Roles assigned successfully");
-        }
-
-        /// <summary>
-        /// Remove a role from a user
-        /// </summary>
-        [HttpPost("remove-role")]
-        public async Task<IActionResult> RemoveRole([FromBody] RemoveRoleRequest request)
-        {
-            if (!HasPermission(PermissionKeys.UserWrite))
-                return ForbiddenResponse("You do not have permission to remove roles");
-
-            if (!ModelState.IsValid)
-                return ValidationErrorResponse(ToErrorDictionary(ModelState));
-
-            if (CurrentTenantId == null)
-                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
-
-            var result = await _roleAssignmentService.RemoveRoleFromUserAsync(
-                request.UserId,
-                request.RoleId,
-                CurrentTenantId.Value);
-
-            if (!result.Success)
-                return ErrorResponse(result.Message ?? "Failed to remove role", StatusCodes.Status400BadRequest);
-
-            await LogUserActivityAsync("RemoveRole", $"User: {request.UserId}, Role: {request.RoleId}");
-
-            return SuccessResponse(result.User, result.Message ?? "Role removed successfully");
-        }
-
-        /// <summary>
-        /// Update all roles for a user (replaces existing roles)
-        /// </summary>
-        [HttpPut("update-user-roles")]
-        public async Task<IActionResult> UpdateUserRoles([FromBody] UpdateUserRolesRequest request)
-        {
-            if (!HasPermission(PermissionKeys.UserWrite))
-                return ForbiddenResponse("You do not have permission to update user roles");
-
-            if (!ModelState.IsValid)
-                return ValidationErrorResponse(ToErrorDictionary(ModelState));
-
-            if (CurrentTenantId == null)
-                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
-
-            var result = await _roleAssignmentService.UpdateUserRolesAsync(
-                request.UserId,
-                request.RoleIds,
-                CurrentTenantId.Value);
-
-            if (!result.Success)
-                return ErrorResponse(result.Message ?? "Failed to update user roles", StatusCodes.Status400BadRequest);
-
-            await LogUserActivityAsync("UpdateUserRoles", $"User: {request.UserId}, New role count: {request.RoleIds.Count}");
-
-            return SuccessResponse(result.User, result.Message ?? "User roles updated successfully");
-        }
-
-        /// <summary>
-        /// Get a user with all their roles
-        /// </summary>
-        [HttpGet("user/{userId}/roles")]
-        public async Task<IActionResult> GetUserWithRoles(Guid userId)
-        {
-            if (!HasPermission(PermissionKeys.UserRead))
-                return ForbiddenResponse("You do not have permission to view user roles");
-
-            if (CurrentTenantId == null)
-                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
-
-            var userWithRoles = await _roleAssignmentService.GetUserWithRolesAsync(userId, CurrentTenantId.Value);
-
-            if (userWithRoles == null)
-                return NotFoundResponse("User not found");
-
-            return SuccessResponse(userWithRoles, "User roles retrieved successfully");
-        }
-
-        /// <summary>
-        /// Get all users with a specific role
-        /// </summary>
-        [HttpGet("role/{roleId}/users")]
-        public async Task<IActionResult> GetUsersByRole(
-            Guid roleId,
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 20)
-        {
-            if (!HasPermission(PermissionKeys.UserRead))
-                return ForbiddenResponse("You do not have permission to view users");
-
-            if (CurrentTenantId == null)
-                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
-
-            if (pageNumber < 1) pageNumber = 1;
-            if (pageSize < 1 || pageSize > 100) pageSize = 20;
-
-            var usersInRole = await _roleAssignmentService.GetUsersByRoleAsync(
-                roleId,
-                CurrentTenantId.Value,
+            var users = await _roleAssignmentService.GetAllUsersWithRolesAsync(
+                CurrentTenantId,
                 pageNumber,
                 pageSize);
 
-            return SuccessResponse(usersInRole, "Users retrieved successfully");
+            return SuccessResponse(users, "Users retrieved successfully");
         }
 
-        /// <summary>
-        /// Get all available roles for the current tenant
-        /// </summary>
-        [HttpGet("available-roles")]
-        public async Task<IActionResult> GetAvailableRoles()
+        [HttpGet("search-users")]
+        public async Task<IActionResult> SearchUsers([FromQuery] string searchTerm)
         {
-            if (!HasPermission(PermissionKeys.RoleRead))
-                return ForbiddenResponse("You do not have permission to view roles");
+            if (string.IsNullOrWhiteSpace(searchTerm) || searchTerm.Length < 2)
+                return ValidationErrorResponse(new Dictionary<string, string[]>
+                {
+                    { "searchTerm", new[] { "Search term must be at least 2 characters" } }
+                });
 
-            if (CurrentTenantId == null)
-                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
-
-            var roles = await _roleAssignmentService.GetAvailableRolesAsync(CurrentTenantId.Value);
-
-            return SuccessResponse(roles, "Available roles retrieved successfully");
+            var users = await _roleAssignmentService.SearchUsersAsync(searchTerm, CurrentTenantId);
+            return SuccessResponse(users, $"Found {users.Count} user(s)");
         }
 
-        /// <summary>
-        /// Check if a user has a specific role
-        /// </summary>
-        [HttpGet("user/{userId}/has-role/{roleId}")]
-        public async Task<IActionResult> UserHasRole(Guid userId, Guid roleId)
+        [HttpGet("user/{userId}/roles")]
+        public async Task<IActionResult> GetUserWithRoles(Guid userId)
         {
-            if (!HasPermission(PermissionKeys.UserRead))
-                return ForbiddenResponse("You do not have permission to view user roles");
+            var user = await _roleAssignmentService.GetUserWithRolesAsync(userId, CurrentTenantId);
+            if (user == null)
+                return NotFoundResponse("User not found");
 
-            if (CurrentTenantId == null)
-                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
-
-            var hasRole = await _roleAssignmentService.UserHasRoleAsync(userId, roleId, CurrentTenantId.Value);
-
-            return SuccessResponse(new { UserId = userId, RoleId = roleId, HasRole = hasRole },
-                hasRole ? "User has the role" : "User does not have the role");
+            return SuccessResponse(user, "User roles retrieved successfully");
         }
 
-        /// <summary>
-        /// Remove all roles from a user
-        /// </summary>
+        #endregion
+
+        #region Role Assignments
+
+        [HttpPost("assign-role")]
+        public async Task<IActionResult> AssignRole([FromBody] AssignRoleRequest request)
+        {
+            if (!ModelState.IsValid)
+                return ValidationErrorResponse(ToErrorDictionary(ModelState));
+
+            var result = await _roleAssignmentService.AssignRoleToUserAsync(request.UserId, request.RoleId, CurrentTenantId);
+            if (!result.Success)
+                return ErrorResponse(result.Message ?? "Failed to assign role");
+
+            await LogUserActivityAsync("AssignRole", $"User: {request.UserId}, Role: {request.RoleId}");
+            return SuccessResponse(result.User, result.Message ?? "Role assigned successfully");
+        }
+
+        [HttpPost("assign-multiple-roles")]
+        public async Task<IActionResult> AssignMultipleRoles([FromBody] AssignMultipleRolesRequest request)
+        {
+            if (!ModelState.IsValid)
+                return ValidationErrorResponse(ToErrorDictionary(ModelState));
+
+            var result = await _roleAssignmentService.AssignMultipleRolesToUserAsync(request.UserId, request.RoleIds, CurrentTenantId);
+            if (!result.Success)
+                return ErrorResponse(result.Message ?? "Failed to assign roles");
+
+            await LogUserActivityAsync("AssignMultipleRoles", $"User: {request.UserId}, Roles: {request.RoleIds.Count}");
+            return SuccessResponse(result.User, result.Message ?? "Roles assigned successfully");
+        }
+
+        [HttpPost("remove-role")]
+        public async Task<IActionResult> RemoveRole([FromBody] RemoveRoleRequest request)
+        {
+            if (!ModelState.IsValid)
+                return ValidationErrorResponse(ToErrorDictionary(ModelState));
+
+            var result = await _roleAssignmentService.RemoveRoleFromUserAsync(request.UserId, request.RoleId, CurrentTenantId);
+            if (!result.Success)
+                return ErrorResponse(result.Message ?? "Failed to remove role");
+
+            await LogUserActivityAsync("RemoveRole", $"User: {request.UserId}, Role: {request.RoleId}");
+            return SuccessResponse(result.User, result.Message ?? "Role removed successfully");
+        }
+
+        [HttpPut("update-user-roles")]
+        public async Task<IActionResult> UpdateUserRoles([FromBody] UpdateUserRolesRequest request)
+        {
+            if (!ModelState.IsValid)
+                return ValidationErrorResponse(ToErrorDictionary(ModelState));
+
+            var result = await _roleAssignmentService.UpdateUserRolesAsync(request.UserId, request.RoleIds, CurrentTenantId);
+            if (!result.Success)
+                return ErrorResponse(result.Message ?? "Failed to update user roles");
+
+            await LogUserActivityAsync("UpdateUserRoles", $"User: {request.UserId}, New roles: {request.RoleIds.Count}");
+            return SuccessResponse(result.User, result.Message ?? "User roles updated successfully");
+        }
+
         [HttpDelete("user/{userId}/roles")]
         public async Task<IActionResult> RemoveAllRoles(Guid userId)
         {
-            if (!HasPermission(PermissionKeys.UserWrite))
-                return ForbiddenResponse("You do not have permission to modify user roles");
-
-            if (CurrentTenantId == null)
-                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
-
-            var result = await _roleAssignmentService.RemoveAllRolesFromUserAsync(userId, CurrentTenantId.Value);
-
+            var result = await _roleAssignmentService.RemoveAllRolesFromUserAsync(userId, CurrentTenantId);
             if (!result.Success)
-                return ErrorResponse(result.Message ?? "Failed to remove roles", StatusCodes.Status400BadRequest);
+                return ErrorResponse(result.Message ?? "Failed to remove roles");
 
             await LogUserActivityAsync("RemoveAllRoles", $"User: {userId}");
-
             return SuccessResponse(new { UserId = userId }, result.Message ?? "All roles removed successfully");
         }
+
+        #endregion
+
+        #region Roles
+
+        [HttpGet("role/{roleId}/users")]
+        public async Task<IActionResult> GetUsersByRole(Guid roleId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
+        {
+            pageNumber = Math.Max(1, pageNumber);
+            pageSize = pageSize is < 1 or > 100 ? 20 : pageSize;
+
+            var users = await _roleAssignmentService.GetUsersByRoleAsync(roleId, CurrentTenantId, pageNumber, pageSize);
+            return SuccessResponse(users, "Users retrieved successfully");
+        }
+
+        [HttpGet("available-roles")]
+        public async Task<IActionResult> GetAvailableRoles()
+        {
+            var roles = await _roleAssignmentService.GetAvailableRolesAsync(CurrentTenantId);
+            return SuccessResponse(roles, "Available roles retrieved successfully");
+        }
+
+        [HttpGet("user/{userId}/has-role/{roleId}")]
+        public async Task<IActionResult> UserHasRole(Guid userId, Guid roleId)
+        {
+            var hasRole = await _roleAssignmentService.UserHasRoleAsync(userId, roleId, CurrentTenantId);
+            return SuccessResponse(new { UserId = userId, RoleId = roleId, HasRole = hasRole },
+                                   hasRole ? "User has the role" : "User does not have the role");
+        }
+
+        #endregion
 
         #region Helpers
 
         private static IDictionary<string, string[]> ToErrorDictionary(Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary modelState) =>
-            modelState.ToDictionary(
-                kvp => kvp.Key,
-                kvp => kvp.Value?.Errors.Select(e => e.ErrorMessage).ToArray() ?? Array.Empty<string>()
-            );
+            modelState.ToDictionary(kvp => kvp.Key, kvp => kvp.Value?.Errors.Select(e => e.ErrorMessage).ToArray() ?? Array.Empty<string>());
 
         #endregion
     }

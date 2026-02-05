@@ -1,7 +1,7 @@
 ﻿using Devken.CBC.SchoolManagement.Api.Controllers.Common;
 using Devken.CBC.SchoolManagement.Application.Dtos;
-using Devken.CBC.SchoolManagement.Application.Service;
 using Devken.CBC.SchoolManagement.Application.Service.Activities;
+using Devken.CBC.SchoolManagement.Application.Service.Navigation;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

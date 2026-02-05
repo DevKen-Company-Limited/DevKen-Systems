@@ -1,6 +1,7 @@
 ﻿using Devken.CBC.SchoolManagement.API.Authorization;
 using Devken.CBC.SchoolManagement.API.Services;
 using Devken.CBC.SchoolManagement.Application.Service;
+using Devken.CBC.SchoolManagement.Application.Service.Navigation;
 using Devken.CBC.SchoolManagement.Infrastructure.Security;
 using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;

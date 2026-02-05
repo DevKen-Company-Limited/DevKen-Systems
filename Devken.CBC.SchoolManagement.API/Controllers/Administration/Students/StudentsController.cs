@@ -12,7 +12,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Devken.CBC.SchoolManagement.Api.Controllers.Academic
+namespace Devken.CBC.SchoolManagement.API.Controllers.Administration.Students
 {
     [ApiController]
     [Route("api/students")]

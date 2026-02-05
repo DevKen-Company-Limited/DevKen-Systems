@@ -76,5 +76,82 @@ export const appRoutes: Route[] = [
         children: [
             {path: 'example', loadChildren: () => import('app/modules/admin/example/example.routes')},
         ]
+    },
+
+
+
+
+     // ------------------------------------------------------
+    // Main Application (Permission-based Navigation)
+    // ------------------------------------------------------
+
+    {
+        path: '',
+        component: LayoutComponent,
+        canActivate: [AuthGuard],
+        canActivateChild: [AuthGuard],
+        resolve: { initialData: initialDataResolver },
+        children: [
+
+            // ================= ADMINISTRATION =================
+            {
+                path: 'administration',
+                children: [
+                    // { path: 'school', loadChildren: () => import('app/modules/administration/school/school.routes') },
+                    // { path: 'users', loadChildren: () => import('app/modules/administration/users/users.routes') },
+                    { path: 'roles', loadChildren: () => import('app/RolesAndPermission/role-assignment.component.routes') }
+                ]
+            },
+
+            // ================= ACADEMIC =================
+            {
+                path: 'academic',
+                children: [
+                    // { path: 'students', loadChildren: () => import('app/modules/academic/students/students.routes') },
+                    // { path: 'teachers', loadChildren: () => import('app/modules/academic/teachers/teachers.routes') },
+                    // { path: 'classes', loadChildren: () => import('app/modules/academic/classes/classes.routes') },
+                    // { path: 'subjects', loadChildren: () => import('app/modules/academic/subjects/subjects.routes') },
+                    // { path: 'grades', loadChildren: () => import('app/modules/academic/grades/grades.routes') }
+                ]
+            },
+
+            // ================= ASSESSMENT =================
+            {
+                path: 'assessment',
+                children: [
+                    // { path: 'assessments', loadChildren: () => import('app/modules/assessment/assessments/assessments.routes') },
+                    // { path: 'reports', loadChildren: () => import('app/modules/assessment/reports/reports.routes') }
+                ]
+            },
+
+            // ================= FINANCE =================
+            {
+                path: 'finance',
+                children: [
+                    // { path: 'fees', loadChildren: () => import('app/modules/finance/fees/fees.routes') },
+                    // { path: 'payments', loadChildren: () => import('app/modules/finance/payments/payments.routes') },
+                    // { path: 'invoices', loadChildren: () => import('app/modules/finance/invoices/invoices.routes') }
+                ]
+            },
+
+            // ================= CURRICULUM =================
+            {
+                path: 'curriculum',
+                children: [
+                    // { path: 'structure', loadChildren: () => import('app/modules/curriculum/structure/structure.routes') },
+                    // { path: 'lesson-plans', loadChildren: () => import('app/modules/curriculum/lesson-plans/lesson-plans.routes') }
+                ]
+            },
+
+            // ================= SUPER ADMIN =================
+            {
+                path: 'superadmin',
+                children: [
+                    // { path: 'settings', loadChildren: () => import('app/modules/superadmin/settings/settings.routes') },
+                    // { path: 'logs', loadChildren: () => import('app/modules/superadmin/logs/logs.routes') }
+                ]
+            }
+        ]
     }
+
 ];

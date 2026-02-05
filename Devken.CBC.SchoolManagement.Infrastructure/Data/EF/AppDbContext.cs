@@ -45,7 +45,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         #region DbSets
         // Identity & Admin
         public DbSet<School> Schools => Set<School>();
-        public DbSet<User> Users => Set<User>();
+        public DbSet<User> Users { get; set; }  
         public DbSet<SuperAdmin> SuperAdmins => Set<SuperAdmin>();
         public DbSet<Role> Roles => Set<Role>();
         public DbSet<Permission> Permissions => Set<Permission>();

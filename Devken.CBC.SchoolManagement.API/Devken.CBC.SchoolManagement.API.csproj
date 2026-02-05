@@ -33,4 +33,10 @@
     <ProjectReference Include="..\Devken.CBC.SchoolManagement.Infrastructure\Devken.CBC.SchoolManagement.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Controllers\Academic\" />
+    <Folder Include="Controllers\Curiculum\" />
+    <Folder Include="Controllers\Finance\" />
+  </ItemGroup>
+
 </Project>

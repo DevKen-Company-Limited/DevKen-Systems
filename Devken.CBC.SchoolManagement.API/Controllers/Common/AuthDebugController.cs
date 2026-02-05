@@ -85,7 +85,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Debug
         {
             var authHeader = Request.Headers["Authorization"].FirstOrDefault();
             var hasBearer = authHeader?.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ?? false;
-            var tokenPart = hasBearer ? authHeader.Substring(7) : null;
+            var tokenPart = hasBearer && authHeader != null ? authHeader.Substring(7) : null;
 
             var response = new
             {
@@ -97,7 +97,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Debug
                 IsAuthenticated = User.Identity?.IsAuthenticated ?? false,
                 AuthenticationType = User.Identity?.AuthenticationType,
                 ClaimCount = User.Claims.Count(),
-                Diagnosis = GetHeaderDiagnosis(authHeader, hasBearer, User.Identity?.IsAuthenticated ?? false)
+                Diagnosis = GetHeaderDiagnosis(authHeader ?? string.Empty, hasBearer, User.Identity?.IsAuthenticated ?? false)
             };
 
             return Ok(response);
@@ -111,7 +111,8 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Debug
         [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public IActionResult GetAllClaims()
+        // ✅ Use 'new' keyword to explicitly hide base class method
+        public new IActionResult GetAllClaims()
         {
             try
             {
@@ -210,7 +211,11 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Debug
                 AccessTokenLifetimeMinutes = accessTokenLifetime,
                 RefreshTokenLifetimeDays = jwtSettings["RefreshTokenLifetimeDays"],
                 Environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
-                Diagnosis = GetConfigDiagnosis(jwtSettings.Exists(), issuer, audience, secretKey)
+                Diagnosis = GetConfigDiagnosis(
+                    jwtSettings.Exists(),
+                    issuer ?? string.Empty,
+                    audience ?? string.Empty,
+                    secretKey ?? string.Empty)
             };
 
             return Ok(config);
@@ -383,7 +388,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Debug
         {
             try
             {
-                result[propertyName] = getter();
+                result[propertyName] = getter() as object ?? "NULL";
             }
             catch (Exception ex)
             {
@@ -423,7 +428,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Debug
 
         private string GetHeaderDiagnosis(string authHeader, bool hasBearer, bool isAuthenticated)
         {
-            if (authHeader == null)
+            if (string.IsNullOrEmpty(authHeader))
                 return "❌ No Authorization header found. Make sure you're sending the token.";
 
             if (!hasBearer)
@@ -456,8 +461,14 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Debug
         }
     }
 
+    /// <summary>
+    /// Request model for token decoding endpoint
+    /// </summary>
     public class TokenRequest
     {
-        public string Token { get; set; }
+        /// <summary>
+        /// JWT token to decode
+        /// </summary>
+        public required string Token { get; set; }
     }
 }

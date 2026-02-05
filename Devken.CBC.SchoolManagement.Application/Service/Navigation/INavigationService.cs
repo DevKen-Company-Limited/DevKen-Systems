@@ -1,6 +1,6 @@
 ﻿using Devken.CBC.SchoolManagement.Application.Dtos;
 
-namespace Devken.CBC.SchoolManagement.Application.Service
+namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
 {
     /// <summary>
     /// Service for generating permission-based navigation menus

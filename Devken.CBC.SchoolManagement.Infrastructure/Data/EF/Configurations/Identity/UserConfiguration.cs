@@ -36,6 +36,12 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Iden
                 .HasForeignKey(u => u.UpdatedBy)
                 .OnDelete(DeleteBehavior.NoAction);
 
+            // ── Relationships ────────────────────────────────
+            builder.HasMany(u => u.UserRoles)
+                   .WithOne(ur => ur.User)
+                   .HasForeignKey(ur => ur.UserId)
+                   .OnDelete(DeleteBehavior.Cascade);
+
             // ── Global query filter (Multi-Tenant Isolation) ─
             builder.HasQueryFilter(u =>
                 _tenantContext.TenantId == null ||

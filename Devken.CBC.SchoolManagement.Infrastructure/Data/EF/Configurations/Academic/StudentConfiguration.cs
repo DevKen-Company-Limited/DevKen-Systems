@@ -16,7 +16,21 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Acad
 
         public void Configure(EntityTypeBuilder<Student> builder)
         {
-            builder.ToTable("Students");
+            // ✅ Modern approach: Configure table with check constraints
+            builder.ToTable("Students", t =>
+            {
+                t.HasCheckConstraint(
+                    "CK_Student_ValidDates",
+                    "[DateOfAdmission] >= [DateOfBirth]");
+
+                t.HasCheckConstraint(
+                    "CK_Student_ValidAge",
+                    "DATEDIFF(YEAR, [DateOfBirth], GETDATE()) BETWEEN 3 AND 25");
+
+                t.HasCheckConstraint(
+                    "CK_Student_ValidCBCLevel",
+                    "[CurrentLevel] IN ('PP1','PP2','Grade1','Grade2','Grade3','Grade4','Grade5','Grade6','Grade7','Grade8','Grade9','Grade10','Grade11','Grade12')");
+            });
 
             // Primary Key
             builder.HasKey(s => s.Id);
@@ -73,9 +87,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Acad
                    .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne(s => s.Parent)
-                   .WithMany(p => p.Students)  // ✅ Points to Parent.Students collection
+                   .WithMany(p => p.Students)
                    .HasForeignKey(s => s.ParentId)
-                   .IsRequired(false)  // Nullable FK
+                   .IsRequired(false)
                    .OnDelete(DeleteBehavior.SetNull);
 
             builder.HasMany(s => s.Grades)
@@ -112,19 +126,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Acad
                    .WithOne(p => p.Student)
                    .HasForeignKey(p => p.StudentId)
                    .OnDelete(DeleteBehavior.Cascade);
-
-            // Constraints
-            builder.HasCheckConstraint(
-                "CK_Student_ValidDates",
-                "[DateOfAdmission] >= [DateOfBirth]");
-
-            builder.HasCheckConstraint(
-                "CK_Student_ValidAge",
-                "DATEDIFF(YEAR, [DateOfBirth], GETDATE()) BETWEEN 3 AND 25");
-
-            builder.HasCheckConstraint(
-                "CK_Student_ValidCBCLevel",
-                "[CurrentLevel] IN ('PP1','PP2','Grade1','Grade2','Grade3','Grade4','Grade5','Grade6','Grade7','Grade8','Grade9','Grade10','Grade11','Grade12')");
         }
     }
 }

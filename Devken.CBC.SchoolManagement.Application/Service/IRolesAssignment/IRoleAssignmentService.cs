@@ -1,65 +1,104 @@
 ﻿using Devken.CBC.SchoolManagement.Application.DTOs.RoleAssignment;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment
 {
-    /// <summary>
-    /// Service for managing user role assignments
-    /// </summary>
     public interface IRoleAssignmentService
     {
-        /// <summary>
-        /// Assign a single role to a user
-        /// </summary>
-        Task<RoleAssignmentResult> AssignRoleToUserAsync(Guid userId, Guid roleId, Guid tenantId);
+        #region Query Methods
 
         /// <summary>
-        /// Assign multiple roles to a user
+        /// Get a user with all their roles.
+        /// SuperAdmin: tenantId = null (global search)
+        /// Tenant user: tenantId required
         /// </summary>
-        Task<RoleAssignmentResult> AssignMultipleRolesToUserAsync(Guid userId, List<Guid> roleIds, Guid tenantId);
+        Task<UserWithRolesDto?> GetUserWithRolesAsync(
+            Guid userId,
+            Guid? tenantId);
 
         /// <summary>
-        /// Remove a role from a user
+        /// Get users assigned to a specific role (paginated).
         /// </summary>
-        Task<RoleAssignmentResult> RemoveRoleFromUserAsync(Guid userId, Guid roleId, Guid tenantId);
+        Task<PaginatedResult<UserWithRolesDto>> GetUsersByRoleAsync(
+            Guid roleId,
+            Guid? tenantId,
+            int pageNumber,
+            int pageSize);
 
         /// <summary>
-        /// Update user roles (replace all existing roles)
+        /// Get all users with their roles (paginated).
         /// </summary>
-        Task<RoleAssignmentResult> UpdateUserRolesAsync(Guid userId, List<Guid> roleIds, Guid tenantId);
+        Task<PaginatedResult<UserWithRolesDto>> GetAllUsersWithRolesAsync(
+            Guid? tenantId,
+            int pageNumber,
+            int pageSize);
 
         /// <summary>
-        /// Get all roles assigned to a user
+        /// Get all available roles.
+        /// SuperAdmin: returns system + tenant roles
+        /// Tenant user: tenant-specific roles only
         /// </summary>
-        Task<UserWithRolesResponse?> GetUserWithRolesAsync(Guid userId, Guid tenantId);
+        Task<List<UserRoleDto>> GetAvailableRolesAsync(
+            Guid? tenantId);
 
         /// <summary>
-        /// Get all users with a specific role
+        /// Search users by name, email, or username.
         /// </summary>
-        Task<UsersInRoleResponse> GetUsersByRoleAsync(Guid roleId, Guid tenantId, int pageNumber = 1, int pageSize = 20);
+        Task<List<UserSearchResultDto>> SearchUsersAsync(
+            string searchTerm,
+            Guid? tenantId);
 
         /// <summary>
-        /// Check if a user has a specific role
+        /// Check if a user has a specific role.
         /// </summary>
-        Task<bool> UserHasRoleAsync(Guid userId, Guid roleId, Guid tenantId);
+        Task<bool> UserHasRoleAsync(
+            Guid userId,
+            Guid roleId,
+            Guid? tenantId);
+
+        #endregion
+
+        #region Command Methods
 
         /// <summary>
-        /// Check if a user has any of the specified roles
+        /// Assign a role to a user.
+        /// TenantId required for tenant roles.
         /// </summary>
-        Task<bool> UserHasAnyRoleAsync(Guid userId, List<Guid> roleIds, Guid tenantId);
+        Task<RoleAssignmentResult> AssignRoleToUserAsync(
+            Guid userId,
+            Guid roleId,
+            Guid? tenantId);
 
         /// <summary>
-        /// Get all available roles for a tenant
+        /// Assign multiple roles to a user.
         /// </summary>
-        Task<List<RoleInfoDto>> GetAvailableRolesAsync(Guid tenantId);
+        Task<RoleAssignmentResult> AssignMultipleRolesToUserAsync(
+            Guid userId,
+            List<Guid> roleIds,
+            Guid? tenantId);
 
         /// <summary>
-        /// Remove all roles from a user
+        /// Remove a role from a user.
         /// </summary>
-        Task<RoleAssignmentResult> RemoveAllRolesFromUserAsync(Guid userId, Guid tenantId);
+        Task<RoleAssignmentResult> RemoveRoleFromUserAsync(
+            Guid userId,
+            Guid roleId,
+            Guid? tenantId);
+
+        /// <summary>
+        /// Replace all user roles with the provided list.
+        /// </summary>
+        Task<RoleAssignmentResult> UpdateUserRolesAsync(
+            Guid userId,
+            List<Guid> roleIds,
+            Guid? tenantId);
+
+        /// <summary>
+        /// Remove all roles from a user.
+        /// </summary>
+        Task<RoleAssignmentResult> RemoveAllRolesFromUserAsync(
+            Guid userId,
+            Guid? tenantId);
+
+        #endregion
     }
 }

@@ -1,0 +1,120 @@
+// :host {
+//     display: block;
+// }
+
+// .success-snackbar {
+//     background-color: #4caf50;
+//     color: white;
+// }
+
+// mat-card {
+//     border-radius: 12px;
+    
+//     mat-card-header {
+//         border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+//         padding-bottom: 16px;
+//         margin-bottom: 16px;
+        
+//         mat-card-title {
+//             margin: 0;
+//         }
+//     }
+// }
+
+// mat-chip {
+//     &.bg-primary-50 {
+//         background-color: rgba(var(--fuse-primary-rgb), 0.1);
+//         color: rgb(var(--fuse-primary-rgb));
+        
+//         button[matChipRemove] {
+//             color: rgb(var(--fuse-primary-rgb));
+//             opacity: 0.7;
+            
+//             &:hover {
+//                 opacity: 1;
+//             }
+//         }
+//     }
+// }
+
+// .dark mat-chip.bg-primary-900 {
+//     background-color: rgba(var(--fuse-primary-rgb), 0.2);
+//     color: rgba(var(--fuse-primary-rgb), 0.9);
+// }
+
+// // Scrollbar styling
+// .overflow-y-auto {
+//     scrollbar-width: thin;
+//     scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+    
+//     &::-webkit-scrollbar {
+//         width: 6px;
+//     }
+    
+//     &::-webkit-scrollbar-track {
+//         background: transparent;
+//     }
+    
+//     &::-webkit-scrollbar-thumb {
+//         background-color: rgba(0, 0, 0, 0.2);
+//         border-radius: 3px;
+        
+//         &:hover {
+//             background-color: rgba(0, 0, 0, 0.3);
+//         }
+//     }
+// }
+
+// .dark .overflow-y-auto {
+//     scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    
+//     &::-webkit-scrollbar-thumb {
+//         background-color: rgba(255, 255, 255, 0.2);
+        
+//         &:hover {
+//             background-color: rgba(255, 255, 255, 0.3);
+//         }
+//     }
+// }
+
+// // Hover effects
+// .hover\:bg-gray-50:hover {
+//     transition: background-color 0.2s ease-in-out;
+// }
+
+// .dark .hover\:bg-gray-800:hover {
+//     transition: background-color 0.2s ease-in-out;
+// }
+
+// // Icon sizes
+// .icon-size-5 {
+//     @apply w-5 h-5;
+// }
+
+// .icon-size-12 {
+//     @apply w-12 h-12;
+// }
+
+// .icon-size-16 {
+//     @apply w-16 h-16;
+// }
+
+// .icon-size-24 {
+//     @apply w-24 h-24;
+// }
+
+// // Empty state animations
+// @keyframes fadeIn {
+//     from {
+//         opacity: 0;
+//         transform: translateY(10px);
+//     }
+//     to {
+//         opacity: 1;
+//         transform: translateY(0);
+//     }
+// }
+
+// .text-center {
+//     animation: fadeIn 0.3s ease-in-out;
+// }
