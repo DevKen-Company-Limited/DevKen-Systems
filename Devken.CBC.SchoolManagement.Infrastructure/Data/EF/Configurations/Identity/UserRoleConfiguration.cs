@@ -2,11 +2,6 @@
 using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Identity
 {
@@ -21,34 +16,32 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Iden
 
         public void Configure(EntityTypeBuilder<UserRole> builder)
         {
-            // ── Unique index ─────────────────────────────────
-            builder.HasIndex(ur => new { ur.UserId, ur.RoleId })
-                .IsUnique();
+            builder.ToTable("UserRoles");
 
-            // ── Relationships ────────────────────────────────
-            // ⚠️ IMPORTANT: Use NoAction to prevent cascade cycles
+            builder.HasKey(ur => ur.Id);
+
+            builder.HasIndex(ur => new { ur.UserId, ur.RoleId })
+                   .IsUnique();
+
+            builder.Property(ur => ur.UserId)
+                   .IsRequired();
+
+            builder.Property(ur => ur.RoleId)
+                   .IsRequired();
+
+            // 🚨 THIS IS CRITICAL
             builder.HasOne(ur => ur.User)
-                .WithMany(u => u.UserRoles)
-                .HasForeignKey(ur => ur.UserId)
-                .OnDelete(DeleteBehavior.NoAction);  // Changed from default Cascade
+                   .WithMany(u => u.UserRoles)
+                   .HasForeignKey(ur => ur.UserId)
+                   .IsRequired()
+                   .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne(ur => ur.Role)
-                .WithMany(r => r.UserRoles)
-                .HasForeignKey(ur => ur.RoleId)
-                .OnDelete(DeleteBehavior.NoAction);  // Changed from default Cascade
+                   .WithMany(r => r.UserRoles)
+                   .HasForeignKey(ur => ur.RoleId)
+                   .IsRequired()
+                   .OnDelete(DeleteBehavior.Restrict);
 
-            // ── Audit fields ─────────────────────────────────
-            builder.HasOne<User>()
-                .WithMany()
-                .HasForeignKey(ur => ur.CreatedBy)
-                .OnDelete(DeleteBehavior.NoAction);
-
-            builder.HasOne<User>()
-                .WithMany()
-                .HasForeignKey(ur => ur.UpdatedBy)
-                .OnDelete(DeleteBehavior.NoAction);
-
-            // ── Global query filter (Multi-Tenant Isolation) ─
             builder.HasQueryFilter(ur =>
                 _tenantContext.TenantId == null ||
                 ur.TenantId == _tenantContext.TenantId);

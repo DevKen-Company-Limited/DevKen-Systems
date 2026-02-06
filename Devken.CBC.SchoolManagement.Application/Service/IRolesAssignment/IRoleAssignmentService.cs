@@ -4,12 +4,12 @@ namespace Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment
 {
     public interface IRoleAssignmentService
     {
-        #region Query Methods
+        #region ================= QUERY METHODS =================
 
         /// <summary>
         /// Get a user with all their roles.
-        /// SuperAdmin: tenantId = null (global search)
-        /// Tenant user: tenantId required
+        /// SuperAdmin: tenantId = null (global lookup)
+        /// Tenant user: tenantId REQUIRED
         /// </summary>
         Task<UserWithRolesDto?> GetUserWithRolesAsync(
             Guid userId,
@@ -17,6 +17,7 @@ namespace Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment
 
         /// <summary>
         /// Get users assigned to a specific role (paginated).
+        /// TenantId REQUIRED for tenant roles.
         /// </summary>
         Task<PaginatedResult<UserWithRolesDto>> GetUsersByRoleAsync(
             Guid roleId,
@@ -26,6 +27,8 @@ namespace Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment
 
         /// <summary>
         /// Get all users with their roles (paginated).
+        /// SuperAdmin: tenantId = null (all tenants)
+        /// Tenant user: tenantId REQUIRED
         /// </summary>
         Task<PaginatedResult<UserWithRolesDto>> GetAllUsersWithRolesAsync(
             Guid? tenantId,
@@ -34,14 +37,15 @@ namespace Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment
 
         /// <summary>
         /// Get all available roles.
-        /// SuperAdmin: returns system + tenant roles
-        /// Tenant user: tenant-specific roles only
+        /// SuperAdmin: system + tenant roles
+        /// Tenant user: tenant-specific + system roles
         /// </summary>
         Task<List<UserRoleDto>> GetAvailableRolesAsync(
             Guid? tenantId);
 
         /// <summary>
         /// Search users by name, email, or username.
+        /// TenantId REQUIRED for tenant users.
         /// </summary>
         Task<List<UserSearchResultDto>> SearchUsersAsync(
             string searchTerm,
@@ -49,6 +53,7 @@ namespace Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment
 
         /// <summary>
         /// Check if a user has a specific role.
+        /// TenantId REQUIRED for tenant users.
         /// </summary>
         Task<bool> UserHasRoleAsync(
             Guid userId,
@@ -57,11 +62,11 @@ namespace Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment
 
         #endregion
 
-        #region Command Methods
+        #region ================= COMMAND METHODS =================
 
         /// <summary>
-        /// Assign a role to a user.
-        /// TenantId required for tenant roles.
+        /// Assign a single role to a user.
+        /// TenantId REQUIRED for tenant roles.
         /// </summary>
         Task<RoleAssignmentResult> AssignRoleToUserAsync(
             Guid userId,
@@ -70,6 +75,7 @@ namespace Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment
 
         /// <summary>
         /// Assign multiple roles to a user.
+        /// TenantId REQUIRED for tenant roles.
         /// </summary>
         Task<RoleAssignmentResult> AssignMultipleRolesToUserAsync(
             Guid userId,
@@ -77,7 +83,8 @@ namespace Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment
             Guid? tenantId);
 
         /// <summary>
-        /// Remove a role from a user.
+        /// Remove a specific role from a user.
+        /// TenantId REQUIRED for tenant roles.
         /// </summary>
         Task<RoleAssignmentResult> RemoveRoleFromUserAsync(
             Guid userId,
@@ -86,6 +93,7 @@ namespace Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment
 
         /// <summary>
         /// Replace all user roles with the provided list.
+        /// TenantId REQUIRED.
         /// </summary>
         Task<RoleAssignmentResult> UpdateUserRolesAsync(
             Guid userId,
@@ -94,6 +102,7 @@ namespace Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment
 
         /// <summary>
         /// Remove all roles from a user.
+        /// TenantId REQUIRED for tenant users.
         /// </summary>
         Task<RoleAssignmentResult> RemoveAllRolesFromUserAsync(
             Guid userId,

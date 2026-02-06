@@ -1,5 +1,7 @@
 ﻿using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academics;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Identity;
+using Microsoft.EntityFrameworkCore.Storage;
 using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common
@@ -11,6 +13,7 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
         ISchoolRepository School { get; }
 
         // Identity Repositories
+        IUserRepository User { get; }
         IRoleRepository Role { get; }
         IPermissionRepository Permission { get; }
         IRolePermissionRepository RolePermission { get; }
@@ -18,6 +21,8 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
         IRefreshTokenRepository RefreshToken { get; }
         ISuperAdminRepository SuperAdmin { get; }
 
+        // Unit of Work
         Task SaveAsync();
+        Task<IDbContextTransaction> BeginTransactionAsync();
     }
 }

@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260205112906_InitialMigration")]
+    [Migration("20260206074842_InitialMigration")]
     partial class InitialMigration
     {
         /// <inheritdoc />
@@ -1948,7 +1948,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -1964,14 +1965,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatedBy");
-
-                    b.HasIndex("UpdatedBy");
-
                     b.HasIndex("TenantId", "Name")
                         .IsUnique();
 
-                    b.ToTable("Roles");
+                    b.ToTable("Roles", (string)null);
                 });
 
             modelBuilder.Entity("Devken.CBC.SchoolManagement.Domain.Entities.Identity.RolePermission", b =>
@@ -2008,7 +2005,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
                     b.HasIndex("RoleId", "PermissionId")
                         .IsUnique();
 
-                    b.ToTable("RolePermissions");
+                    b.ToTable("RolePermissions", (string)null);
                 });
 
             modelBuilder.Entity("Devken.CBC.SchoolManagement.Domain.Entities.Identity.SuperAdmin", b =>
@@ -2080,6 +2077,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsEmailVerified")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsSuperAdmin")
                         .HasColumnType("bit");
 
                     b.Property<string>("LastName")
@@ -2163,16 +2163,12 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatedBy");
-
                     b.HasIndex("RoleId");
-
-                    b.HasIndex("UpdatedBy");
 
                     b.HasIndex("UserId", "RoleId")
                         .IsUnique();
 
-                    b.ToTable("UserRoles");
+                    b.ToTable("UserRoles", (string)null);
                 });
 
             modelBuilder.Entity("Devken.CBC.SchoolManagement.Domain.Entities.Reports.ProgressReport", b =>
@@ -3088,21 +3084,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Devken.CBC.SchoolManagement.Domain.Entities.Identity.Role", b =>
                 {
-                    b.HasOne("Devken.CBC.SchoolManagement.Domain.Entities.Identity.User", null)
-                        .WithMany()
-                        .HasForeignKey("CreatedBy")
-                        .OnDelete(DeleteBehavior.NoAction);
-
                     b.HasOne("Devken.CBC.SchoolManagement.Domain.Entities.Administration.School", "Tenant")
                         .WithMany("Roles")
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("Devken.CBC.SchoolManagement.Domain.Entities.Identity.User", null)
-                        .WithMany()
-                        .HasForeignKey("UpdatedBy")
-                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("Tenant");
                 });
@@ -3112,13 +3098,13 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
                     b.HasOne("Devken.CBC.SchoolManagement.Domain.Entities.Identity.Permission", "Permission")
                         .WithMany("RolePermissions")
                         .HasForeignKey("PermissionId")
-                        .OnDelete(DeleteBehavior.NoAction)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("Devken.CBC.SchoolManagement.Domain.Entities.Identity.Role", "Role")
                         .WithMany("RolePermissions")
                         .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.NoAction)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Permission");
@@ -3149,26 +3135,16 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Devken.CBC.SchoolManagement.Domain.Entities.Identity.UserRole", b =>
                 {
-                    b.HasOne("Devken.CBC.SchoolManagement.Domain.Entities.Identity.User", null)
-                        .WithMany()
-                        .HasForeignKey("CreatedBy")
-                        .OnDelete(DeleteBehavior.NoAction);
-
                     b.HasOne("Devken.CBC.SchoolManagement.Domain.Entities.Identity.Role", "Role")
                         .WithMany("UserRoles")
                         .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.NoAction)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("Devken.CBC.SchoolManagement.Domain.Entities.Identity.User", null)
-                        .WithMany()
-                        .HasForeignKey("UpdatedBy")
-                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("Devken.CBC.SchoolManagement.Domain.Entities.Identity.User", "User")
                         .WithMany("UserRoles")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.NoAction)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Role");

@@ -40,5 +40,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
 
         public bool IsLockedOut =>
             LockedUntil.HasValue && LockedUntil.Value > DateTime.UtcNow;
+
+        public bool IsSuperAdmin { get; set; } = false;
     }
 }

@@ -76,11 +76,11 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.RolesAssignment
                 return ValidationErrorResponse(ToErrorDictionary(ModelState));
 
             var result = await _roleAssignmentService.AssignRoleToUserAsync(request.UserId, request.RoleId, CurrentTenantId);
-            if (!result.Success)
-                return ErrorResponse(result.Message ?? "Failed to assign role");
 
-            await LogUserActivityAsync("AssignRole", $"User: {request.UserId}, Role: {request.RoleId}");
-            return SuccessResponse(result.User, result.Message ?? "Role assigned successfully");
+            if (result.Success)
+                return SuccessResponse(result.User, result.Message ?? "Role assigned successfully");
+
+            return ErrorResponse(result.Message ?? "Failed to assign role");
         }
 
         [HttpPost("assign-multiple-roles")]
@@ -90,11 +90,11 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.RolesAssignment
                 return ValidationErrorResponse(ToErrorDictionary(ModelState));
 
             var result = await _roleAssignmentService.AssignMultipleRolesToUserAsync(request.UserId, request.RoleIds, CurrentTenantId);
-            if (!result.Success)
-                return ErrorResponse(result.Message ?? "Failed to assign roles");
 
-            await LogUserActivityAsync("AssignMultipleRoles", $"User: {request.UserId}, Roles: {request.RoleIds.Count}");
-            return SuccessResponse(result.User, result.Message ?? "Roles assigned successfully");
+            if (result.Success)
+                return SuccessResponse(result.User, result.Message ?? "Roles assigned successfully");
+
+            return ErrorResponse(result.Message ?? "Failed to assign roles");
         }
 
         [HttpPost("remove-role")]
@@ -104,11 +104,11 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.RolesAssignment
                 return ValidationErrorResponse(ToErrorDictionary(ModelState));
 
             var result = await _roleAssignmentService.RemoveRoleFromUserAsync(request.UserId, request.RoleId, CurrentTenantId);
-            if (!result.Success)
-                return ErrorResponse(result.Message ?? "Failed to remove role");
 
-            await LogUserActivityAsync("RemoveRole", $"User: {request.UserId}, Role: {request.RoleId}");
-            return SuccessResponse(result.User, result.Message ?? "Role removed successfully");
+            if (result.Success)
+                return SuccessResponse(result.User, result.Message ?? "Role removed successfully");
+
+            return ErrorResponse(result.Message ?? "Failed to remove role");
         }
 
         [HttpPut("update-user-roles")]
@@ -118,22 +118,22 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.RolesAssignment
                 return ValidationErrorResponse(ToErrorDictionary(ModelState));
 
             var result = await _roleAssignmentService.UpdateUserRolesAsync(request.UserId, request.RoleIds, CurrentTenantId);
-            if (!result.Success)
-                return ErrorResponse(result.Message ?? "Failed to update user roles");
 
-            await LogUserActivityAsync("UpdateUserRoles", $"User: {request.UserId}, New roles: {request.RoleIds.Count}");
-            return SuccessResponse(result.User, result.Message ?? "User roles updated successfully");
+            if (result.Success)
+                return SuccessResponse(result.User, result.Message ?? "User roles updated successfully");
+
+            return ErrorResponse(result.Message ?? "Failed to update user roles");
         }
 
         [HttpDelete("user/{userId}/roles")]
         public async Task<IActionResult> RemoveAllRoles(Guid userId)
         {
             var result = await _roleAssignmentService.RemoveAllRolesFromUserAsync(userId, CurrentTenantId);
-            if (!result.Success)
-                return ErrorResponse(result.Message ?? "Failed to remove roles");
 
-            await LogUserActivityAsync("RemoveAllRoles", $"User: {userId}");
-            return SuccessResponse(new { UserId = userId }, result.Message ?? "All roles removed successfully");
+            if (result.Success)
+                return SuccessResponse(new { UserId = userId }, result.Message ?? "All roles removed successfully");
+
+            return ErrorResponse(result.Message ?? "Failed to remove roles");
         }
 
         #endregion
