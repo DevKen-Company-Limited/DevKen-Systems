@@ -99,7 +99,8 @@ export const appRoutes: Route[] = [
                 children: [
                     // { path: 'school', loadChildren: () => import('app/modules/administration/school/school.routes') },
                     // { path: 'users', loadChildren: () => import('app/modules/administration/users/users.routes') },
-                    { path: 'roles', loadChildren: () => import('app/RolesAndPermission/role-assignment.component.routes') }
+                    { path: 'roles', loadChildren: () => import('app/RolesAndPermission/role-assignment.component.routes') },
+                     { path: 'school', loadChildren: () => import('app/Tenant/schools-management.routes') }
                 ]
             },
 

@@ -1,0 +1,53 @@
+<h2 mat-dialog-title>{{ data.mode === 'create' ? 'Create School' : 'Edit School' }}</h2>
+
+<form [formGroup]="form" (ngSubmit)="submit()" mat-dialog-content class="p-4">
+  <mat-form-field class="w-full">
+    <mat-label>Slug</mat-label>
+    <input matInput formControlName="slugName" />
+    <mat-error *ngIf="form.controls.slugName.invalid && (form.controls.slugName.touched || form.controls.slugName.dirty)">
+      Slug is required
+    </mat-error>
+  </mat-form-field>
+
+  <mat-form-field class="w-full">
+    <mat-label>Name</mat-label>
+    <input matInput formControlName="name" />
+    <mat-error *ngIf="form.controls.name.invalid && (form.controls.name.touched || form.controls.name.dirty)">
+      Name is required
+    </mat-error>
+  </mat-form-field>
+
+  <mat-form-field class="w-full">
+    <mat-label>Address</mat-label>
+    <input matInput formControlName="address" />
+  </mat-form-field>
+
+  <mat-form-field class="w-full">
+    <mat-label>Phone</mat-label>
+    <input matInput formControlName="phoneNumber" />
+  </mat-form-field>
+
+  <mat-form-field class="w-full">
+    <mat-label>Email</mat-label>
+    <input matInput formControlName="email" />
+    <mat-error *ngIf="form.controls.email.invalid && (form.controls.email.touched || form.controls.email.dirty)">
+      Invalid email
+    </mat-error>
+  </mat-form-field>
+
+  <mat-form-field class="w-full">
+    <mat-label>Logo URL</mat-label>
+    <input matInput formControlName="logoUrl" />
+  </mat-form-field>
+
+  <div class="flex items-center gap-2 mt-2">
+    <mat-checkbox formControlName="isActive">Is Active</mat-checkbox>
+  </div>
+
+  <div class="dialog-actions mt-4">
+    <button mat-button type="button" (click)="cancel()">Cancel</button>
+    <button mat-flat-button color="primary" type="submit" [disabled]="isSaving">
+      {{ isSaving ? 'Saving...' : (data.mode === 'create' ? 'Create' : 'Save') }}
+    </button>
+  </div>
+</form>

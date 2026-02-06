@@ -1,0 +1,72 @@
+<div class="p-6">
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-xl font-semibold">Schools</h2>
+    <div class="flex items-center gap-2">
+      <input matInput placeholder="Search" (input)="applyFilter($any($event.target).value)" class="input" />
+      <button mat-flat-button color="primary" (click)="openCreate()">
+        <mat-icon>add</mat-icon> New
+      </button>
+    </div>
+  </div>
+
+  <fuse-alert *ngIf="showAlert" [type]="alert.type" [showIcon]="true">{{ alert.message }}</fuse-alert>
+
+  <mat-card>
+    <div *ngIf="isLoading" class="flex items-center justify-center p-12">
+      <mat-spinner diameter="36"></mat-spinner>
+    </div>
+
+    <div *ngIf="!isLoading" class="overflow-auto">
+      <table mat-table [dataSource]="dataSource" matSort class="w-full">
+
+        <!-- Name -->
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Name</th>
+          <td mat-cell *matCellDef="let s">{{ s.name }}</td>
+        </ng-container>
+
+        <!-- Slug -->
+        <ng-container matColumnDef="slug">
+          <th mat-header-cell *matHeaderCellDef>Slug</th>
+          <td mat-cell *matCellDef="let s">{{ s.slugName }}</td>
+        </ng-container>
+
+        <!-- Email -->
+        <ng-container matColumnDef="email">
+          <th mat-header-cell *matHeaderCellDef>Email</th>
+          <td mat-cell *matCellDef="let s">{{ s.email }}</td>
+        </ng-container>
+
+        <!-- Phone -->
+        <ng-container matColumnDef="phone">
+          <th mat-header-cell *matHeaderCellDef>Phone</th>
+          <td mat-cell *matCellDef="let s">{{ s.phoneNumber }}</td>
+        </ng-container>
+
+        <!-- Active -->
+        <ng-container matColumnDef="isActive">
+          <th mat-header-cell *matHeaderCellDef>Active</th>
+          <td mat-cell *matCellDef="let s">{{ s.isActive ? 'Yes' : 'No' }}</td>
+        </ng-container>
+
+        <!-- Actions -->
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef class="text-right">Actions</th>
+          <td mat-cell *matCellDef="let s" class="text-right">
+            <button mat-icon-button (click)="openEdit(s)" aria-label="Edit">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button (click)="removeSchool(s)" aria-label="Delete">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+    </div>
+
+    <mat-paginator [length]="total" [pageSize]="pageSize" [pageSizeOptions]="[10,20,50]" (page)="onPageChange($event)"></mat-paginator>
+  </mat-card>
+</div>
