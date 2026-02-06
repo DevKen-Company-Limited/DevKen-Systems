@@ -13,7 +13,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // keep general authorization for authenticated users
+    [Authorize]
     public class SchoolsController : BaseApiController
     {
         private readonly IRepositoryManager _repositories;
@@ -26,10 +26,14 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration
             _repositories = repositories ?? throw new ArgumentNullException(nameof(repositories));
         }
 
+        /// <summary>
+        /// Get all schools - SuperAdmin only
+        /// </summary>
         [HttpGet]
+        [Authorize(Roles = "SuperAdmin")]
         public async Task<IActionResult> GetAll()
         {
-            if (!HasAnyPermission("School.Read", "Student.Read"))
+            if (!HasPermission("School.Read"))
                 return ForbiddenResponse("You do not have permission to view schools.");
 
             var schools = await _repositories.School.GetAllAsync(trackChanges: false);
@@ -37,11 +41,23 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration
             return SuccessResponse(dtos);
         }
 
+        /// <summary>
+        /// Get school by ID - SuperAdmin or SchoolAdmin (own school only)
+        /// </summary>
         [HttpGet("{id:guid}")]
+        [Authorize(Roles = "SuperAdmin,SchoolAdmin")]
         public async Task<IActionResult> GetById(Guid id)
         {
-            if (!HasAnyPermission("School.Read", "Student.Read"))
+            if (!HasPermission("School.Read"))
                 return ForbiddenResponse("You do not have permission to view this school.");
+
+            // If SchoolAdmin, verify they're accessing their own school
+            if (HasRole("SchoolAdmin") && !HasRole("SuperAdmin"))
+            {
+                var userSchoolId = GetCurrentUserSchoolId();
+                if (userSchoolId == null || userSchoolId != id)
+                    return ForbiddenResponse("You can only view your own school.");
+            }
 
             var school = await _repositories.School.GetByIdAsync(id, trackChanges: false);
             if (school == null) return NotFoundResponse();
@@ -49,7 +65,11 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration
             return SuccessResponse(ToDto(school));
         }
 
+        /// <summary>
+        /// Create school - SuperAdmin only
+        /// </summary>
         [HttpPost]
+        [Authorize(Roles = "SuperAdmin")]
         public async Task<IActionResult> Create([FromBody] CreateSchoolRequest request)
         {
             if (!HasPermission("School.Write"))
@@ -84,11 +104,23 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration
             return SuccessResponse(ToDto(school), "School created");
         }
 
+        /// <summary>
+        /// Update school - SuperAdmin or SchoolAdmin (own school only)
+        /// </summary>
         [HttpPut("{id:guid}")]
+        [Authorize(Roles = "SuperAdmin,SchoolAdmin")]
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateSchoolRequest request)
         {
             if (!HasPermission("School.Write"))
                 return ForbiddenResponse("You do not have permission to update schools.");
+
+            // If SchoolAdmin, verify they're updating their own school
+            if (HasRole("SchoolAdmin") && !HasRole("SuperAdmin"))
+            {
+                var userSchoolId = GetCurrentUserSchoolId();
+                if (userSchoolId == null || userSchoolId != id)
+                    return ForbiddenResponse("You can only update your own school.");
+            }
 
             if (!ModelState.IsValid)
                 return ValidationErrorResponse(ModelState.ToDictionary(
@@ -98,14 +130,24 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration
             var school = await _repositories.School.GetByIdAsync(id, trackChanges: true);
             if (school == null) return NotFoundResponse();
 
-            if (!string.Equals(school.SlugName, request.SlugName ?? string.Empty, StringComparison.Ordinal))
+            // SuperAdmin can change slug, SchoolAdmin cannot
+            if (!HasRole("SuperAdmin"))
             {
-                var other = await _repositories.School.GetBySlugAsync(request.SlugName ?? string.Empty);
-                if (other != null && other.Id != id)
-                    return ErrorResponse($"Another school with slug '{request.SlugName}' already exists.", 409);
+                if (!string.Equals(school.SlugName, request.SlugName ?? string.Empty, StringComparison.Ordinal))
+                    return ForbiddenResponse("School administrators cannot change the school slug.");
+            }
+            else
+            {
+                // Only SuperAdmin needs to check for slug conflicts
+                if (!string.Equals(school.SlugName, request.SlugName ?? string.Empty, StringComparison.Ordinal))
+                {
+                    var other = await _repositories.School.GetBySlugAsync(request.SlugName ?? string.Empty);
+                    if (other != null && other.Id != id)
+                        return ErrorResponse($"Another school with slug '{request.SlugName}' already exists.", 409);
+                }
+                school.SlugName = (request.SlugName ?? string.Empty).Trim();
             }
 
-            school.SlugName = (request.SlugName ?? string.Empty).Trim();
             school.Name = (request.Name ?? string.Empty).Trim();
             school.Address = request.Address?.Trim();
             school.PhoneNumber = request.PhoneNumber?.Trim();
@@ -121,7 +163,11 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration
             return SuccessResponse(ToDto(school), "School updated");
         }
 
+        /// <summary>
+        /// Delete school - SuperAdmin only
+        /// </summary>
         [HttpDelete("{id:guid}")]
+        [Authorize(Roles = "SuperAdmin")]
         public async Task<IActionResult> Delete(Guid id)
         {
             if (!HasPermission("School.Delete"))

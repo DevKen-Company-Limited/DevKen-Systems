@@ -11,7 +11,6 @@
     <Folder Include="DTOs\Curriculum\" />
     <Folder Include="DTOs\Finance\" />
     <Folder Include="DTOs\Teachers\" />
-    <Folder Include="DTOs\Students\" />
     <Folder Include="Features\Assessments\Commands\Commands\" />
     <Folder Include="Features\Assessments\Commands\Queries\" />
     <Folder Include="Features\Curriculum\Commands\" />

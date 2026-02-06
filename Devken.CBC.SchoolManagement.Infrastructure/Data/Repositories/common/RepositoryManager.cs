@@ -1,11 +1,11 @@
-﻿using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Academic;
-using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces;
+﻿using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academics;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Identity;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Tenant;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academic;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academics;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Identity;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Tenant;
@@ -41,7 +41,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
 
             // Initialize Academic Repositories
             _studentRepository = new Lazy<IStudentRepository>(() =>
-                new StudentRepository(_context, (Application.Service.ICurrentUserService)_tenantContext));
+                new StudentRepository(_context, _tenantContext));
 
             _schoolRepository = new Lazy<ISchoolRepository>(() =>
                 new SchoolRepository(_context, _tenantContext));

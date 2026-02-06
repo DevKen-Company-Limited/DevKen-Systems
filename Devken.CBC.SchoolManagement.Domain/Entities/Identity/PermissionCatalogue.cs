@@ -13,6 +13,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
             // Administration
             (PermissionKeys.SchoolRead,   "View School Settings",   "Administration", "Read school profile and configuration"),
             (PermissionKeys.SchoolWrite,  "Edit School Settings",   "Administration", "Update school name, logo, contact info"),
+               (PermissionKeys.SchoolDelete, "Delete Schools",         "Administration", "Permanently remove a school"),
             (PermissionKeys.UserRead,     "View Users",             "Administration", "List and view user accounts"),
             (PermissionKeys.UserWrite,    "Create / Edit Users",    "Administration", "Create new users or update existing ones"),
             (PermissionKeys.UserDelete,   "Delete Users",           "Administration", "Permanently remove a user account"),

@@ -6,18 +6,52 @@ namespace Devken.CBC.SchoolManagement.Application.Service
 {
     public interface IAuthService
     {
-        // School Registration & Login
+        // =========================================================
+        // SCHOOL REGISTRATION & AUTH
+        // =========================================================
+
         Task<RegisterSchoolResponse?> RegisterSchoolAsync(RegisterSchoolRequest request);
-        Task<LoginResponse?> LoginAsync(LoginRequest request, string? ipAddress = null);
-        Task<RefreshTokenResponse?> RefreshTokenAsync(RefreshTokenRequest request);
+
+        Task<LoginResponse?> LoginAsync(
+            LoginRequest request,
+            string? ipAddress = null);
+
+        /// <summary>
+        /// Refresh access token using refresh token.
+        /// MUST rebuild roles, permissions and tenant (school) context from DB.
+        /// </summary>
+        Task<RefreshTokenResponse?> RefreshTokenAsync(
+            RefreshTokenRequest request);
+
         Task<bool> LogoutAsync(string refreshToken);
 
-        // ✅ FIXED: Single ChangePassword method with nullable Guid? for tenantId
-        Task<AuthResult> ChangePasswordAsync(Guid userId, Guid? tenantId, ChangePasswordRequest request);
+        // =========================================================
+        // PASSWORD MANAGEMENT
+        // =========================================================
 
-        // Super Admin
-        Task<SuperAdminLoginResponse?> SuperAdminLoginAsync(SuperAdminLoginRequest request);
-        Task<RefreshTokenResponse?> SuperAdminRefreshTokenAsync(RefreshTokenRequest request);
+        /// <summary>
+        /// Change password for a user.
+        /// tenantId == schoolId (nullable for SuperAdmin).
+        /// </summary>
+        Task<AuthResult> ChangePasswordAsync(
+            Guid userId,
+            Guid? tenantId,
+            ChangePasswordRequest request);
+
+        // =========================================================
+        // SUPER ADMIN AUTH
+        // =========================================================
+
+        Task<SuperAdminLoginResponse?> SuperAdminLoginAsync(
+            SuperAdminLoginRequest request);
+
+        /// <summary>
+        /// Refresh token for SuperAdmin.
+        /// MUST NOT inject tenant_id into JWT.
+        /// </summary>
+        Task<RefreshTokenResponse?> SuperAdminRefreshTokenAsync(
+            RefreshTokenRequest request);
+
         Task<bool> SuperAdminLogoutAsync(string refreshToken);
     }
 }

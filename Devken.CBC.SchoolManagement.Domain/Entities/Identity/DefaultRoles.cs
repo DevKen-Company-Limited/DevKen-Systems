@@ -20,7 +20,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                 true,
                 new[] {
                     // Administration - Full Access
-                    PermissionKeys.SchoolRead, PermissionKeys.SchoolWrite,
+                    PermissionKeys.SchoolRead, PermissionKeys.SchoolWrite, PermissionKeys.SchoolDelete,
                     PermissionKeys.UserRead, PermissionKeys.UserWrite, PermissionKeys.UserDelete,
                     PermissionKeys.RoleRead, PermissionKeys.RoleWrite, PermissionKeys.RoleDelete,
                     

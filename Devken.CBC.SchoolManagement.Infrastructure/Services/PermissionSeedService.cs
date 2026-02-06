@@ -39,7 +39,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
                 var permissionMap = await SeedPermissionsAsync();
                 var roleMap = await SeedDefaultRolesAsync(tenantId);
                 await AssignPermissionsToRolesAsync(roleMap, permissionMap);
-                await SeedDefaultSchoolAdminAsync(tenantId, roleMap["SchoolAdmin"]);
+
+                // Note: User seeding is now handled separately in DatabaseSeeder
+                // We only ensure the role assignment happens here if user already exists
+                await EnsureDefaultAdminRoleAssignmentAsync(tenantId, roleMap["SchoolAdmin"]);
 
                 await _context.SaveChangesAsync();
 
@@ -157,44 +160,42 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
             }
         }
 
-        private async Task SeedDefaultSchoolAdminAsync(Guid tenantId, Guid schoolAdminRoleId)
+        /// <summary>
+        /// Ensures the default admin user has the SchoolAdmin role assigned if they exist
+        /// </summary>
+        private async Task EnsureDefaultAdminRoleAssignmentAsync(Guid tenantId, Guid schoolAdminRoleId)
         {
-            var existingAdmin = await _context.Users.FirstOrDefaultAsync(u => u.Email == DefaultAdminEmail && u.TenantId == tenantId);
-            if (existingAdmin != null)
+            var existingAdmin = await _context.Users
+                .FirstOrDefaultAsync(u => u.Email == DefaultAdminEmail && u.TenantId == tenantId);
+
+            if (existingAdmin == null)
             {
-                _logger.LogInformation("Default SchoolAdmin already exists for tenant {TenantId}", tenantId);
-                return; // Skip duplicate
+                _logger.LogInformation("Default admin user not found for tenant {TenantId}, skipping role assignment", tenantId);
+                return;
             }
 
-            var admin = new User
+            // Check if role is already assigned
+            var roleAssigned = await _context.UserRoles
+                .AnyAsync(ur => ur.UserId == existingAdmin.Id && ur.RoleId == schoolAdminRoleId);
+
+            if (!roleAssigned)
             {
-                Id = Guid.NewGuid(),
-                TenantId = tenantId,
-                Email = DefaultAdminEmail,
-                FirstName = "Default",
-                LastName = "Admin",
-                PhoneNumber = "0000000000",
-                IsActive = true,
-                IsEmailVerified = true,
-                RequirePasswordChange = false,
-                CreatedOn = DateTime.UtcNow,
-                UpdatedOn = DateTime.UtcNow
-            };
+                _context.UserRoles.Add(new UserRole
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = existingAdmin.Id,
+                    RoleId = schoolAdminRoleId,
+                    TenantId = tenantId,  // ✅ CRITICAL: Set TenantId
+                    CreatedOn = DateTime.UtcNow,
+                    UpdatedOn = DateTime.UtcNow
+                });
 
-            admin.PasswordHash = new PasswordHasher<User>().HashPassword(admin, DefaultAdminPassword);
-
-            _context.Users.Add(admin);
-
-            _context.UserRoles.Add(new UserRole
+                _logger.LogInformation("Assigned SchoolAdmin role to default admin for tenant {TenantId}", tenantId);
+            }
+            else
             {
-                Id = Guid.NewGuid(),
-                UserId = admin.Id,
-                RoleId = schoolAdminRoleId,
-                CreatedOn = DateTime.UtcNow,
-                UpdatedOn = DateTime.UtcNow
-            });
-
-            _logger.LogInformation("Created Default SchoolAdmin for tenant {TenantId} with email {Email}", tenantId, DefaultAdminEmail);
+                _logger.LogInformation("Default admin already has SchoolAdmin role for tenant {TenantId}", tenantId);
+            }
         }
     }
 }

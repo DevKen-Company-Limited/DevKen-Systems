@@ -14,6 +14,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
         // ── Administration ────────────────────────────────
         public const string SchoolRead = "School.Read";
         public const string SchoolWrite = "School.Write";
+        public const string SchoolDelete = "School.Delete";
         public const string UserRead = "User.Read";
         public const string UserWrite = "User.Write";
         public const string UserDelete = "User.Delete";

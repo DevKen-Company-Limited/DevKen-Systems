@@ -25,6 +25,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
         private readonly IPermissionSeedService _permissionSeedService;
         private readonly ISubscriptionSeedService _subscriptionSeedService;
         private readonly ILogger<AuthService> _logger;
+        private readonly IJwtService _jwtService; // Updated: Use IJwtService
 
         private static readonly string[] SuperAdminRoles = { "SuperAdmin" };
         private static readonly List<string> SuperAdminPermissions =
@@ -36,7 +37,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
             JwtSettings jwtSettings,
             IPermissionSeedService permissionSeedService,
             ISubscriptionSeedService subscriptionSeedService,
-            ILogger<AuthService> logger)
+            ILogger<AuthService> logger,
+            IJwtService jwtService) // Updated: Added IJwtService
         {
             _context = context;
             _passwordHasher = passwordHasher;
@@ -44,6 +46,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
             _permissionSeedService = permissionSeedService;
             _subscriptionSeedService = subscriptionSeedService;
             _logger = logger;
+            _jwtService = jwtService; // Updated: Store the service
         }
 
         // ─────────────────────────────────────────────────────────
@@ -125,7 +128,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
 
                 // 7️⃣ Generate tokens
                 var permissions = await GetUserPermissionsAsync(user.Id, school.Id);
-                var accessToken = GenerateAccessToken(user, permissions);
+                var roles = new List<string> { "SchoolAdmin" };
+                var accessToken = _jwtService.GenerateToken(user, roles, permissions, school.Id); // Updated
                 var refreshToken = await GenerateAndStoreRefreshTokenAsync(user.Id);
 
                 // 8️⃣ Commit transaction
@@ -146,7 +150,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
                          $"{user.FirstName} {user.LastName}".Trim(),
                          user.Tenant!.Id,
                          school.Name,
-                         new[] { "SchoolAdmin" },
+                         roles.ToArray(), // Use the roles list
                          permissions.ToArray(),
                          user.RequirePasswordChange
                      )
@@ -189,7 +193,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
                 .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (_, r) => r.Name)
                 .ToListAsync();
 
-            var accessToken = GenerateAccessToken(user, permissions);
+            var accessToken = _jwtService.GenerateToken(user, roles, permissions, school.Id); // Updated
             var refreshToken = await GenerateAndStoreRefreshTokenAsync(user.Id, ipAddress);
 
             return new LoginResponse(
@@ -231,7 +235,12 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
 
             var newToken = await GenerateAndStoreRefreshTokenAsync(user.Id, old.IpAddress);
             var permissions = await GetUserPermissionsAsync(user.Id, user.Tenant!.Id);
-            var accessToken = GenerateAccessToken(user, permissions);
+            var roles = await _context.UserRoles
+                .Where(ur => ur.UserId == user.Id)
+                .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (_, r) => r.Name)
+                .ToListAsync();
+
+            var accessToken = _jwtService.GenerateToken(user, roles, permissions, user.Tenant.Id); // Updated
 
             await _context.SaveChangesAsync();
 
@@ -310,23 +319,30 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
             if (verify == PasswordVerificationResult.Failed)
                 return null;
 
-            var accessToken = GenerateSuperAdminAccessToken(admin);
+            // Create a User object for JWT generation
+            var user = new User
+            {
+                Id = admin.Id,
+                Email = admin.Email,
+                FirstName = admin.FirstName,
+                LastName = admin.LastName,
+                TenantId = Guid.Empty // No tenant for SuperAdmin
+            };
+
+            var accessToken = _jwtService.GenerateToken(user, SuperAdminRoles, SuperAdminPermissions); // Updated
             var refreshToken = await GenerateAndStoreSuperAdminRefreshTokenAsync(admin.Id);
 
             return new SuperAdminLoginResponse(
                accessToken,
                _jwtSettings.AccessTokenLifetimeMinutes * 60,
                new SuperAdminDto(admin.Id, admin.Email, admin.FirstName, admin.LastName),
-               SuperAdminRoles.ToArray(),        // convert to array
-               SuperAdminPermissions.ToArray(),  // convert to array
+               SuperAdminRoles.ToArray(),
+               SuperAdminPermissions.ToArray(),
                refreshToken
-   );
-
-
+            );
         }
 
-        public async Task<RefreshTokenResponse?> SuperAdminRefreshTokenAsync(
-            RefreshTokenRequest request)
+        public async Task<RefreshTokenResponse?> SuperAdminRefreshTokenAsync(RefreshTokenRequest request)
         {
             var old = await _context.SuperAdminRefreshTokens
                 .FirstOrDefaultAsync(t =>
@@ -347,13 +363,20 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
             if (admin == null)
                 return null;
 
+            // Create a User object for JWT generation
+            var user = new User
+            {
+                Id = admin.Id,
+                Email = admin.Email,
+                FirstName = admin.FirstName,
+                LastName = admin.LastName,
+                TenantId = Guid.Empty // No tenant for SuperAdmin
+            };
+
             // Prefer current IP
             var ipAddress = old.IpAddress;
-
-            var newRefreshToken =
-                await GenerateAndStoreSuperAdminRefreshTokenAsync(admin.Id, ipAddress);
-
-            var accessToken = GenerateSuperAdminAccessToken(admin);
+            var newRefreshToken = await GenerateAndStoreSuperAdminRefreshTokenAsync(admin.Id, ipAddress);
+            var accessToken = _jwtService.GenerateToken(user, SuperAdminRoles, SuperAdminPermissions); // Updated
 
             await _context.SaveChangesAsync();
 
@@ -363,7 +386,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
                 _jwtSettings.AccessTokenLifetimeMinutes * 60
             );
         }
-
 
         public async Task<bool> SuperAdminLogoutAsync(string refreshToken)
         {
@@ -392,25 +414,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
                 .ToListAsync();
         }
 
-        private string GenerateAccessToken(User user, List<string> permissions)
-        {
-            var claims = new List<System.Security.Claims.Claim>
-            {
-                new(CustomClaimTypes.UserId, user.Id.ToString()),
-                new(CustomClaimTypes.TenantId, user.Tenant!.Id.ToString()),
-                new(System.Security.Claims.ClaimTypes.Email, user.Email),
-                new(System.Security.Claims.ClaimTypes.Name, $"{user.FirstName} {user.LastName}".Trim())
-            };
-
-            claims.AddRange(permissions.Select(p =>
-                new System.Security.Claims.Claim(CustomClaimTypes.Permissions, p)));
-
-            return JwtTokenBuilder.BuildToken(_jwtSettings, claims);
-        }
-
         private async Task<string> GenerateAndStoreRefreshTokenAsync(Guid userId, string? ipAddress = null)
         {
-            var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
+            var token = _jwtService.GenerateRefreshToken(); // Updated: Use JwtService
 
             _context.RefreshTokens.Add(new RefreshToken(
                 userId,
@@ -424,7 +430,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
 
         private async Task<string> GenerateAndStoreSuperAdminRefreshTokenAsync(Guid superAdminId, string? ipAddress = null)
         {
-            var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
+            var token = _jwtService.GenerateRefreshToken(); // Updated: Use JwtService
 
             _context.SuperAdminRefreshTokens.Add(new SuperAdminRefreshToken
             {
@@ -439,20 +445,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
             return token;
         }
 
-        private string GenerateSuperAdminAccessToken(SuperAdmin admin)
-        {
-            var claims = new List<System.Security.Claims.Claim>
-            {
-                new(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub, admin.Id.ToString()),
-                new(System.Security.Claims.ClaimTypes.Email, admin.Email),
-                new(System.Security.Claims.ClaimTypes.Name, $"{admin.FirstName} {admin.LastName}".Trim()),
-                new(CustomClaimTypes.IsSuperAdmin, "true")
-            };
-
-            claims.AddRange(SuperAdminPermissions.Select(p =>
-                new System.Security.Claims.Claim(CustomClaimTypes.Permissions, p)));
-
-            return JwtTokenBuilder.BuildToken(_jwtSettings, claims);
-        }
+        // Removed the old helper methods:
+        // - GenerateAccessToken()
+        // - GenerateSuperAdminAccessToken()
     }
 }

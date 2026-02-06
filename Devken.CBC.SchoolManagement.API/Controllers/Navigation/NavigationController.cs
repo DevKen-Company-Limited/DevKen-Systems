@@ -2,79 +2,113 @@
 using Devken.CBC.SchoolManagement.Application.Dtos;
 using Devken.CBC.SchoolManagement.Application.Service.Activities;
 using Devken.CBC.SchoolManagement.Application.Service.Navigation;
-using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Linq;
+using System.Threading.Tasks;
 
-[ApiController]
-[Route("api/navigation")]
-[Authorize]
-public class NavigationController : BaseApiController
+namespace Devken.CBC.SchoolManagement.Api.Controllers
 {
-    private readonly INavigationService _navigationService;
-
-    public NavigationController(
-        INavigationService navigationService,
-        IUserActivityService activityService)
-        : base(activityService)
+    [ApiController]
+    [Route("api/navigation")]
+    [Authorize]
+    public class NavigationController : BaseApiController
     {
-        _navigationService = navigationService;
-    }
+        private readonly INavigationService _navigationService;
 
-    [HttpGet]
-    public async Task<IActionResult> GetNavigation([FromQuery] bool useCache = true)
-    {
-        if (!User.Identity?.IsAuthenticated ?? true)
+        public NavigationController(
+            INavigationService navigationService,
+            IUserActivityService activityService)
+            : base(activityService)
         {
-            // Return empty navigation
-            return SuccessResponse(NavigationResponse.Empty(), "User not authenticated");
+            _navigationService = navigationService;
         }
 
-        var permissions = CurrentUserPermissions.ToList();
-        var navigation = await _navigationService.GenerateNavigationAsync(permissions, useCache);
-
-        return SuccessResponse(navigation, "Navigation retrieved successfully");
-    }
-
-    [HttpPost("refresh")]
-    public async Task<IActionResult> RefreshNavigation()
-    {
-        if (!User.Identity?.IsAuthenticated ?? true)
+        /// <summary>
+        /// Gets the full navigation menu for the authenticated user
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> GetNavigation()
         {
-            return SuccessResponse(NavigationResponse.Empty(), "User not authenticated");
+            var permissions = CurrentUserPermissions.ToList();
+            var roles = CurrentUserRoles.ToList();
+
+            var navigation = await _navigationService.GenerateNavigationAsync(
+                permissions,
+                roles);
+
+            return SuccessResponse(navigation, "Navigation retrieved successfully");
         }
 
-        var permissions = CurrentUserPermissions.ToList();
-        var navigation = await _navigationService.GenerateNavigationAsync(permissions, useCache: false);
-
-        await LogUserActivityAsync("NavigationRefresh");
-
-        return SuccessResponse(navigation, "Navigation refreshed successfully");
-    }
-
-    [HttpGet("{layout}")]
-    public async Task<IActionResult> GetNavigationByLayout(
-        [FromRoute] string layout,
-        [FromQuery] bool useCache = true)
-    {
-        if (!User.Identity?.IsAuthenticated ?? true)
+        /// <summary>
+        /// Gets navigation for a specific layout type
+        /// </summary>
+        /// <param name="layout">default | compact | futuristic | horizontal</param>
+        [HttpGet("{layout}")]
+        public async Task<IActionResult> GetNavigationByLayout([FromRoute] string layout)
         {
-            return SuccessResponse(NavigationResponse.Empty(), "User not authenticated");
+            var permissions = CurrentUserPermissions.ToList();
+            var roles = CurrentUserRoles.ToList();
+
+            var navigation = await _navigationService.GenerateNavigationAsync(
+                permissions,
+                roles);
+
+            var items = layout.ToLowerInvariant() switch
+            {
+                "compact" => navigation.Compact,
+                "futuristic" => navigation.Futuristic,
+                "horizontal" => navigation.Horizontal,
+                _ => navigation.Default
+            };
+
+            return SuccessResponse(
+                new
+                {
+                    Layout = layout,
+                    Items = items
+                },
+                $"Navigation retrieved for {layout} layout");
         }
 
-        var permissions = CurrentUserPermissions.ToList();
-        var navigation = await _navigationService.GenerateNavigationAsync(permissions, useCache);
-
-        var layoutNavigation = layout.ToLowerInvariant() switch
+        /// <summary>
+        /// Refresh navigation (re-generated on demand)
+        /// </summary>
+        [HttpPost("refresh")]
+        public async Task<IActionResult> RefreshNavigation()
         {
-            "compact" => navigation.Compact,
-            "futuristic" => navigation.Futuristic,
-            "horizontal" => navigation.Horizontal,
-            "default" => navigation.Default,
-            _ => navigation.Default
-        };
+            var permissions = CurrentUserPermissions.ToList();
+            var roles = CurrentUserRoles.ToList();
 
-        return SuccessResponse(new { Layout = layout, Items = layoutNavigation },
-            $"Navigation retrieved for {layout} layout");
+            var navigation = await _navigationService.GenerateNavigationAsync(
+                permissions,
+                roles);
+
+            await LogUserActivityAsync(
+                "navigation.refresh",
+                "User refreshed navigation");
+
+            return SuccessResponse(navigation, "Navigation refreshed successfully");
+        }
+
+        /// <summary>
+        /// Gets current user context (debug / verification)
+        /// </summary>
+        [HttpGet("context")]
+        public IActionResult GetUserContext()
+        {
+            var context = new
+            {
+                UserId = CurrentUserId,
+                Email = CurrentUserEmail,
+                Name = CurrentUserName,
+                IsSuperAdmin = IsSuperAdmin,
+                SchoolId = CurrentSchoolId,
+                Roles = CurrentUserRoles,
+                Permissions = CurrentUserPermissions
+            };
+
+            return SuccessResponse(context, "User context retrieved successfully");
+        }
     }
 }

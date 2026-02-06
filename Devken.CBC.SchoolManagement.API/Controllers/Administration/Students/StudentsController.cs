@@ -1,348 +1,379 @@
 ﻿using Devken.CBC.SchoolManagement.Api.Controllers.Common;
-using Devken.CBC.SchoolManagement.Application.DTOs.Academics;
-using Devken.CBC.SchoolManagement.Application.Service.Academic;
+using Devken.CBC.SchoolManagement.Application.DTOs.Academic;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
 using Devken.CBC.SchoolManagement.Application.Service.Activities;
-using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
+using Devken.CBC.SchoolManagement.Domain.Entities.Academic;
 using Devken.CBC.SchoolManagement.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Devken.CBC.SchoolManagement.API.Controllers.Administration.Students
+namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Students
 {
+    [Route("api/academic/[controller]")]
     [ApiController]
-    [Route("api/students")]
     [Authorize]
-    public class StudentController : BaseApiController
+    public class StudentsController : BaseApiController
     {
-        private readonly IStudentService _studentService;
+        private readonly IRepositoryManager _repositories;
 
-        public StudentController(
-            IStudentService studentService,
-            IUserActivityService activityService)
+        public StudentsController(
+            IRepositoryManager repositories,
+            IUserActivityService? activityService = null)
             : base(activityService)
         {
-            _studentService = studentService;
+            _repositories = repositories ?? throw new ArgumentNullException(nameof(repositories));
         }
 
-        #region Create / Update
-
-        [HttpPost]
-        public async Task<IActionResult> CreateStudent([FromBody] CreateStudentRequest request)
-        {
-            if (!HasPermission(PermissionKeys.StudentWrite))
-                return ForbiddenResponse("You do not have permission to create students");
-
-            if (!ModelState.IsValid)
-                return ValidationErrorResponse(ToErrorDictionary(ModelState));
-
-            if (CurrentTenantId == null)
-                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
-
-            var (success, message, student) =
-                await _studentService.CreateStudentAsync(request, CurrentTenantId.Value);
-
-            if (!success)
-                return ErrorResponse(message, StatusCodes.Status400BadRequest);
-
-            await LogUserActivityAsync("CreateStudent", $"AdmissionNumber: {request.AdmissionNumber}");
-
-            return SuccessResponse(student, message);
-        }
-
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateStudent(Guid id, [FromBody] UpdateStudentRequest request)
-        {
-            if (!HasPermission(PermissionKeys.StudentWrite))
-                return ForbiddenResponse("You do not have permission to update students");
-
-            if (!ModelState.IsValid)
-                return ValidationErrorResponse(ToErrorDictionary(ModelState));
-
-            if (id != request.Id)
-                return ErrorResponse("ID mismatch", StatusCodes.Status400BadRequest);
-
-            if (CurrentTenantId == null)
-                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
-
-            var (success, message, student) =
-                await _studentService.UpdateStudentAsync(request, CurrentTenantId.Value);
-
-            if (!success)
-                return ErrorResponse(message, StatusCodes.Status400BadRequest);
-
-            await LogUserActivityAsync("UpdateStudent", $"StudentId: {id}");
-
-            return SuccessResponse(student, message);
-        }
-
-        #endregion
-
-        #region Queries
-
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetStudentById(Guid id)
-        {
-            if (!HasPermission(PermissionKeys.StudentRead))
-                return ForbiddenResponse("You do not have permission to view students");
-
-            if (CurrentTenantId == null)
-                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
-
-            var student = await _studentService.GetStudentByIdAsync(id, CurrentTenantId.Value);
-
-            return student == null
-                ? NotFoundResponse("Student not found")
-                : SuccessResponse(student, "Student retrieved successfully");
-        }
-
-        [HttpGet("admission/{admissionNumber}")]
-        public async Task<IActionResult> GetStudentByAdmissionNumber(string admissionNumber)
-        {
-            if (!HasPermission(PermissionKeys.StudentRead))
-                return ForbiddenResponse("You do not have permission to view students");
-
-            if (CurrentTenantId == null)
-                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
-
-            var student =
-                await _studentService.GetStudentByAdmissionNumberAsync(admissionNumber, CurrentTenantId.Value);
-
-            return student == null
-                ? NotFoundResponse("Student not found")
-                : SuccessResponse(student, "Student retrieved successfully");
-        }
-
+        /// <summary>
+        /// Get all students - SuperAdmin can see all, others see only their school's students
+        /// </summary>
         [HttpGet]
-        public async Task<IActionResult> GetStudents([FromQuery] StudentSearchRequest request)
+        [Authorize(Roles = "SuperAdmin,SchoolAdmin,Teacher")]
+        public async Task<IActionResult> GetAll([FromQuery] Guid? schoolId = null)
         {
-            if (!HasPermission(PermissionKeys.StudentRead))
-                return ForbiddenResponse("You do not have permission to view students");
+            if (!HasPermission("Student.Read"))
+                return ForbiddenResponse("You do not have permission to view students.");
 
-            if (CurrentTenantId == null)
-                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
+            // SuperAdmin can view all students or filter by school
+            if (HasRole("SuperAdmin"))
+            {
+                var students = schoolId.HasValue
+                    ? await _repositories.Student.GetBySchoolIdAsync(schoolId.Value, trackChanges: false)
+                    : await _repositories.Student.GetAllAsync(trackChanges: false);
 
-            request.PageNumber = request.PageNumber < 1 ? 1 : request.PageNumber;
-            request.PageSize = request.PageSize is < 1 or > 100 ? 20 : request.PageSize;
+                var dtos = students.Select(ToDto);
+                return SuccessResponse(dtos);
+            }
 
-            var result =
-                await _studentService.GetStudentsPagedAsync(request, CurrentTenantId.Value);
+            // Non-SuperAdmin users can only view students from their school
+            var userSchoolId = GetCurrentUserSchoolId();
+            if (userSchoolId == null)
+                return ForbiddenResponse("You must be assigned to a school to view students.");
 
-            return SuccessResponse(result, "Students retrieved successfully");
+            var schoolStudents = await _repositories.Student.GetBySchoolIdAsync(userSchoolId, trackChanges: false);
+            var schoolDtos = schoolStudents.Select(ToDto);
+            return SuccessResponse(schoolDtos);
         }
 
-        [HttpGet("class/{classId}")]
-        public async Task<IActionResult> GetStudentsByClass(Guid classId)
+        /// <summary>
+        /// Get student by ID - SuperAdmin or users from the same school
+        /// </summary>
+        [HttpGet("{id:guid}")]
+        [Authorize(Roles = "SuperAdmin,SchoolAdmin,Teacher")]
+        public async Task<IActionResult> GetById(Guid id)
         {
-            if (!HasPermission(PermissionKeys.StudentRead))
-                return ForbiddenResponse("You do not have permission to view students");
+            if (!HasPermission("Student.Read"))
+                return ForbiddenResponse("You do not have permission to view this student.");
 
-            if (CurrentTenantId == null)
-                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
+            var student = await _repositories.Student.GetByIdAsync(id, trackChanges: false);
+            if (student == null)
+                return NotFoundResponse();
 
-            var students =
-                await _studentService.GetStudentsByClassAsync(classId, CurrentTenantId.Value);
+            // Non-SuperAdmin users can only view students from their school
+            if (!HasRole("SuperAdmin"))
+            {
+                var userSchoolId = GetCurrentUserSchoolId();
+                if (userSchoolId == null || student.TenantId != userSchoolId)
+                    return ForbiddenResponse("You can only view students from your school.");
+            }
 
-            return SuccessResponse(students, $"{students.Count} student(s) found");
+            return SuccessResponse(ToDto(student));
         }
 
-        [HttpGet("level/{level}")]
-        public async Task<IActionResult> GetStudentsByLevel(CBCLevel level)
+        /// <summary>
+        /// Create student - SuperAdmin or SchoolAdmin
+        /// </summary>
+        [HttpPost]
+        [Authorize(Roles = "SuperAdmin,SchoolAdmin")]
+        public async Task<IActionResult> Create([FromBody] CreateStudentRequest request)
         {
-            if (!HasPermission(PermissionKeys.StudentRead))
-                return ForbiddenResponse("You do not have permission to view students");
-
-            if (CurrentTenantId == null)
-                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
-
-            var students =
-                await _studentService.GetStudentsByLevelAsync(level, CurrentTenantId.Value);
-
-            return SuccessResponse(students, $"{students.Count} student(s) found in {level}");
-        }
-
-        [HttpGet("search")]
-        public async Task<IActionResult> SearchStudents([FromQuery] string searchTerm)
-        {
-            if (!HasPermission(PermissionKeys.StudentRead))
-                return ForbiddenResponse("You do not have permission to view students");
-
-            if (string.IsNullOrWhiteSpace(searchTerm))
-                return ErrorResponse("Search term is required", StatusCodes.Status400BadRequest);
-
-            if (CurrentTenantId == null)
-                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
-
-            var students =
-                await _studentService.SearchStudentsAsync(searchTerm, CurrentTenantId.Value);
-
-            return SuccessResponse(students, $"{students.Count} student(s) found");
-        }
-
-        #endregion
-
-        #region Actions
-
-        [HttpPost("transfer")]
-        public async Task<IActionResult> TransferStudent([FromBody] TransferStudentRequest request)
-        {
-            if (!HasPermission(PermissionKeys.StudentWrite))
-                return ForbiddenResponse("You do not have permission to transfer students");
+            if (!HasPermission("Student.Write"))
+                return ForbiddenResponse("You do not have permission to create students.");
 
             if (!ModelState.IsValid)
-                return ValidationErrorResponse(ToErrorDictionary(ModelState));
+                return ValidationErrorResponse(ModelState.ToDictionary(
+                    kvp => kvp.Key,
+                    kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
 
-            if (CurrentTenantId == null)
-                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
+            // Determine school/tenant ID
+            Guid targetSchoolId;
+            if (HasRole("SuperAdmin"))
+            {
+                targetSchoolId = request.SchoolId;
+            }
+            else
+            {
+                var userSchoolId = GetCurrentUserSchoolId();
+                if (userSchoolId == null)
+                    return ForbiddenResponse("You must be assigned to a school to create students.");
 
-            var (success, message) =
-                await _studentService.TransferStudentAsync(request, CurrentTenantId.Value);
+                targetSchoolId = userSchoolId;
+            }
 
-            if (!success)
-                return ErrorResponse(message, StatusCodes.Status400BadRequest);
+            // Verify school exists
+            var school = await _repositories.School.GetByIdAsync(targetSchoolId, trackChanges: false);
+            if (school == null)
+                return ErrorResponse("School not found.", 404);
 
-            await LogUserActivityAsync("TransferStudent",
-                $"StudentId: {request.StudentId}, NewClassId: {request.NewClassId}");
+            // Check if admission number already exists
+            var existingStudent = await _repositories.Student.GetByAdmissionNumberAsync(
+                request.AdmissionNumber ?? string.Empty,
+                targetSchoolId);
 
-            return SuccessResponse(new { }, message);
+            if (existingStudent != null)
+                return ErrorResponse($"Student with admission number '{request.AdmissionNumber}' already exists.", 409);
+
+            var student = new Student
+            {
+                Id = Guid.NewGuid(),
+                TenantId = targetSchoolId,
+
+                // Personal Information
+                FirstName = (request.FirstName ?? string.Empty).Trim(),
+                LastName = (request.LastName ?? string.Empty).Trim(),
+                MiddleName = request.MiddleName?.Trim(),
+                AdmissionNumber = (request.AdmissionNumber ?? string.Empty).Trim(),
+                NemisNumber = request.NemisNumber?.Trim(),
+                BirthCertificateNumber = request.BirthCertificateNumber?.Trim(),
+                DateOfBirth = request.DateOfBirth,
+                Gender = request.Gender,
+                PlaceOfBirth = request.PlaceOfBirth?.Trim(),
+                Nationality = request.Nationality?.Trim() ?? "Kenyan",
+                County = request.County?.Trim(),
+                SubCounty = request.SubCounty?.Trim(),
+                HomeAddress = request.HomeAddress?.Trim(),
+                Religion = request.Religion?.Trim(),
+
+                // Academic Information
+                DateOfAdmission = request.DateOfAdmission ?? DateTime.UtcNow,
+                CurrentLevel = request.CurrentLevel,
+                CurrentClassId = request.CurrentClassId,
+                CurrentAcademicYearId = request.CurrentAcademicYearId,
+                Status = StudentStatus.Active,
+                PreviousSchool = request.PreviousSchool?.Trim(),
+
+                // Health Information
+                BloodGroup = request.BloodGroup?.Trim(),
+                MedicalConditions = request.MedicalConditions?.Trim(),
+                Allergies = request.Allergies?.Trim(),
+                SpecialNeeds = request.SpecialNeeds?.Trim(),
+                RequiresSpecialSupport = request.RequiresSpecialSupport,
+
+                // Guardian Information
+                PrimaryGuardianName = request.PrimaryGuardianName?.Trim(),
+                PrimaryGuardianRelationship = request.PrimaryGuardianRelationship?.Trim(),
+                PrimaryGuardianPhone = request.PrimaryGuardianPhone?.Trim(),
+                PrimaryGuardianEmail = request.PrimaryGuardianEmail?.Trim(),
+                PrimaryGuardianOccupation = request.PrimaryGuardianOccupation?.Trim(),
+                PrimaryGuardianAddress = request.PrimaryGuardianAddress?.Trim(),
+
+                SecondaryGuardianName = request.SecondaryGuardianName?.Trim(),
+                SecondaryGuardianRelationship = request.SecondaryGuardianRelationship?.Trim(),
+                SecondaryGuardianPhone = request.SecondaryGuardianPhone?.Trim(),
+                SecondaryGuardianEmail = request.SecondaryGuardianEmail?.Trim(),
+                SecondaryGuardianOccupation = request.SecondaryGuardianOccupation?.Trim(),
+
+                EmergencyContactName = request.EmergencyContactName?.Trim(),
+                EmergencyContactPhone = request.EmergencyContactPhone?.Trim(),
+                EmergencyContactRelationship = request.EmergencyContactRelationship?.Trim(),
+
+                // Additional Information
+                PhotoUrl = request.PhotoUrl?.Trim(),
+                Notes = request.Notes?.Trim(),
+                IsActive = request.IsActive
+            };
+
+            _repositories.Student.Create(student);
+            await _repositories.SaveAsync();
+
+            await LogUserActivityAsync("student.create", $"Created student {student.AdmissionNumber} - {student.FullName}");
+
+            return SuccessResponse(ToDto(student), "Student created successfully");
         }
 
-        [HttpPost("withdraw")]
-        public async Task<IActionResult> WithdrawStudent([FromBody] WithdrawStudentRequest request)
+        /// <summary>
+        /// Update student - SuperAdmin or SchoolAdmin (own school only)
+        /// </summary>
+        [HttpPut("{id:guid}")]
+        [Authorize(Roles = "SuperAdmin,SchoolAdmin")]
+        public async Task<IActionResult> Update(Guid id, [FromBody] UpdateStudentRequest request)
         {
-            if (!HasPermission(PermissionKeys.StudentWrite))
-                return ForbiddenResponse("You do not have permission to withdraw students");
+            if (!HasPermission("Student.Write"))
+                return ForbiddenResponse("You do not have permission to update students.");
 
             if (!ModelState.IsValid)
-                return ValidationErrorResponse(ToErrorDictionary(ModelState));
+                return ValidationErrorResponse(ModelState.ToDictionary(
+                    kvp => kvp.Key,
+                    kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
 
-            if (CurrentTenantId == null)
-                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
+            var student = await _repositories.Student.GetByIdAsync(id, trackChanges: true);
+            if (student == null)
+                return NotFoundResponse();
 
-            var (success, message) =
-                await _studentService.WithdrawStudentAsync(request, CurrentTenantId.Value);
+            // Non-SuperAdmin users can only update students from their school
+            if (!HasRole("SuperAdmin"))
+            {
+                var userSchoolId = GetCurrentUserSchoolId();
+                if (userSchoolId == null || student.TenantId != userSchoolId)
+                    return ForbiddenResponse("You can only update students from your school.");
+            }
 
-            if (!success)
-                return ErrorResponse(message, StatusCodes.Status400BadRequest);
+            // Update Personal Information
+            student.FirstName = (request.FirstName ?? string.Empty).Trim();
+            student.LastName = (request.LastName ?? string.Empty).Trim();
+            student.MiddleName = request.MiddleName?.Trim();
+            student.NemisNumber = request.NemisNumber?.Trim();
+            student.BirthCertificateNumber = request.BirthCertificateNumber?.Trim();
+            student.DateOfBirth = request.DateOfBirth;
+            student.Gender = request.Gender;
+            student.PlaceOfBirth = request.PlaceOfBirth?.Trim();
+            student.Nationality = request.Nationality?.Trim() ?? "Kenyan";
+            student.County = request.County?.Trim();
+            student.SubCounty = request.SubCounty?.Trim();
+            student.HomeAddress = request.HomeAddress?.Trim();
+            student.Religion = request.Religion?.Trim();
 
-            await LogUserActivityAsync("WithdrawStudent",
-                $"StudentId: {request.StudentId}, Reason: {request.Reason}");
+            // Update Academic Information
+            student.CurrentLevel = request.CurrentLevel;
+            student.CurrentClassId = request.CurrentClassId;
+            student.CurrentAcademicYearId = request.CurrentAcademicYearId;
+            student.PreviousSchool = request.PreviousSchool?.Trim();
 
-            return SuccessResponse(new { }, message);
+            // Update Health Information
+            student.BloodGroup = request.BloodGroup?.Trim();
+            student.MedicalConditions = request.MedicalConditions?.Trim();
+            student.Allergies = request.Allergies?.Trim();
+            student.SpecialNeeds = request.SpecialNeeds?.Trim();
+            student.RequiresSpecialSupport = request.RequiresSpecialSupport;
+
+            // Update Guardian Information
+            student.PrimaryGuardianName = request.PrimaryGuardianName?.Trim();
+            student.PrimaryGuardianRelationship = request.PrimaryGuardianRelationship?.Trim();
+            student.PrimaryGuardianPhone = request.PrimaryGuardianPhone?.Trim();
+            student.PrimaryGuardianEmail = request.PrimaryGuardianEmail?.Trim();
+            student.PrimaryGuardianOccupation = request.PrimaryGuardianOccupation?.Trim();
+            student.PrimaryGuardianAddress = request.PrimaryGuardianAddress?.Trim();
+
+            student.SecondaryGuardianName = request.SecondaryGuardianName?.Trim();
+            student.SecondaryGuardianRelationship = request.SecondaryGuardianRelationship?.Trim();
+            student.SecondaryGuardianPhone = request.SecondaryGuardianPhone?.Trim();
+            student.SecondaryGuardianEmail = request.SecondaryGuardianEmail?.Trim();
+            student.SecondaryGuardianOccupation = request.SecondaryGuardianOccupation?.Trim();
+
+            student.EmergencyContactName = request.EmergencyContactName?.Trim();
+            student.EmergencyContactPhone = request.EmergencyContactPhone?.Trim();
+            student.EmergencyContactRelationship = request.EmergencyContactRelationship?.Trim();
+
+            // Update Additional Information
+            student.PhotoUrl = request.PhotoUrl?.Trim();
+            student.Notes = request.Notes?.Trim();
+            student.IsActive = request.IsActive;
+
+            _repositories.Student.Update(student);
+            await _repositories.SaveAsync();
+
+            await LogUserActivityAsync("student.update", $"Updated student {student.AdmissionNumber} - {student.FullName}");
+
+            return SuccessResponse(ToDto(student), "Student updated successfully");
         }
 
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteStudent(Guid id)
+        /// <summary>
+        /// Delete student - SuperAdmin or SchoolAdmin (own school only)
+        /// </summary>
+        [HttpDelete("{id:guid}")]
+        [Authorize(Roles = "SuperAdmin,SchoolAdmin")]
+        public async Task<IActionResult> Delete(Guid id)
         {
-            if (!HasPermission(PermissionKeys.StudentDelete))
-                return ForbiddenResponse("You do not have permission to delete students");
+            if (!HasPermission("Student.Delete"))
+                return ForbiddenResponse("You do not have permission to delete students.");
 
-            if (CurrentTenantId == null)
-                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
+            var student = await _repositories.Student.GetByIdAsync(id, trackChanges: true);
+            if (student == null)
+                return NotFoundResponse();
 
-            var (success, message) =
-                await _studentService.DeleteStudentAsync(id, CurrentTenantId.Value);
+            // Non-SuperAdmin users can only delete students from their school
+            if (!HasRole("SuperAdmin"))
+            {
+                var userSchoolId = GetCurrentUserSchoolId();
+                if (userSchoolId == null || student.TenantId != userSchoolId)
+                    return ForbiddenResponse("You can only delete students from your school.");
+            }
 
-            if (!success)
-                return ErrorResponse(message, StatusCodes.Status400BadRequest);
+            var admissionNumber = student.AdmissionNumber;
+            var fullName = student.FullName;
 
-            await LogUserActivityAsync("DeleteStudent", $"StudentId: {id}");
+            _repositories.Student.Delete(student);
+            await _repositories.SaveAsync();
 
-            return SuccessResponse(new { }, message);
+            await LogUserActivityAsync("student.delete", $"Deleted student {admissionNumber} - {fullName}");
+
+            return SuccessResponse<object?>(null, "Student deleted successfully");
         }
 
-        [HttpPost("{id}/restore")]
-        public async Task<IActionResult> RestoreStudent(Guid id)
+        private static StudentDto ToDto(Student s) => new()
         {
-            if (!HasPermission(PermissionKeys.StudentWrite))
-                return ForbiddenResponse("You do not have permission to restore students");
+            Id = s.Id,
+            SchoolId = s.TenantId,
 
-            if (CurrentTenantId == null)
-                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
+            // Personal Information
+            FirstName = s.FirstName ?? string.Empty,
+            LastName = s.LastName ?? string.Empty,
+            MiddleName = s.MiddleName ?? string.Empty,
+            FullName = s.FullName,
+            AdmissionNumber = s.AdmissionNumber ?? string.Empty,
+            NemisNumber = s.NemisNumber ?? string.Empty,
+            BirthCertificateNumber = s.BirthCertificateNumber ?? string.Empty,
+            DateOfBirth = s.DateOfBirth,
+            Age = s.Age,
+            Gender = s.Gender.ToString(),
+            PlaceOfBirth = s.PlaceOfBirth ?? string.Empty,
+            Nationality = s.Nationality ?? "Kenyan",
+            County = s.County ?? string.Empty,
+            SubCounty = s.SubCounty ?? string.Empty,
+            HomeAddress = s.HomeAddress ?? string.Empty,
+            Religion = s.Religion ?? string.Empty,
 
-            var (success, message) =
-                await _studentService.RestoreStudentAsync(id, CurrentTenantId.Value);
+            // Academic Information
+            DateOfAdmission = s.DateOfAdmission,
+            CurrentLevel = s.CurrentLevel.ToString(),
+            CurrentClassId = s.CurrentClassId,
+            CurrentClassName = s.CurrentClass?.Name ?? string.Empty,
+            CurrentAcademicYearId = s.CurrentAcademicYearId,
+            Status = s.Status.ToString(),
+            PreviousSchool = s.PreviousSchool ?? string.Empty,
 
-            if (!success)
-                return ErrorResponse(message, StatusCodes.Status400BadRequest);
+            // Health Information
+            BloodGroup = s.BloodGroup ?? string.Empty,
+            MedicalConditions = s.MedicalConditions ?? string.Empty,
+            Allergies = s.Allergies ?? string.Empty,
+            SpecialNeeds = s.SpecialNeeds ?? string.Empty,
+            RequiresSpecialSupport = s.RequiresSpecialSupport,
 
-            await LogUserActivityAsync("RestoreStudent", $"StudentId: {id}");
+            // Guardian Information
+            PrimaryGuardianName = s.PrimaryGuardianName ?? string.Empty,
+            PrimaryGuardianRelationship = s.PrimaryGuardianRelationship ?? string.Empty,
+            PrimaryGuardianPhone = s.PrimaryGuardianPhone ?? string.Empty,
+            PrimaryGuardianEmail = s.PrimaryGuardianEmail ?? string.Empty,
+            PrimaryGuardianOccupation = s.PrimaryGuardianOccupation ?? string.Empty,
+            PrimaryGuardianAddress = s.PrimaryGuardianAddress ?? string.Empty,
 
-            return SuccessResponse(new { }, message);
-        }
+            SecondaryGuardianName = s.SecondaryGuardianName ?? string.Empty,
+            SecondaryGuardianRelationship = s.SecondaryGuardianRelationship ?? string.Empty,
+            SecondaryGuardianPhone = s.SecondaryGuardianPhone ?? string.Empty,
+            SecondaryGuardianEmail = s.SecondaryGuardianEmail ?? string.Empty,
+            SecondaryGuardianOccupation = s.SecondaryGuardianOccupation ?? string.Empty,
 
-        #endregion
+            EmergencyContactName = s.EmergencyContactName ?? string.Empty,
+            EmergencyContactPhone = s.EmergencyContactPhone ?? string.Empty,
+            EmergencyContactRelationship = s.EmergencyContactRelationship ?? string.Empty,
 
-        #region Statistics & Validation
-
-        [HttpGet("statistics")]
-        public async Task<IActionResult> GetStudentStatistics()
-        {
-            if (!HasPermission(PermissionKeys.StudentRead))
-                return ForbiddenResponse("You do not have permission to view statistics");
-
-            if (CurrentTenantId == null)
-                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
-
-            var stats =
-                await _studentService.GetStudentStatisticsAsync(CurrentTenantId.Value);
-
-            return SuccessResponse(stats, "Statistics retrieved successfully");
-        }
-
-        [HttpGet("validate-admission-number")]
-        public async Task<IActionResult> ValidateAdmissionNumber(
-            [FromQuery] string admissionNumber,
-            [FromQuery] Guid? excludeStudentId = null)
-        {
-            if (string.IsNullOrWhiteSpace(admissionNumber))
-                return ErrorResponse("Admission number is required", StatusCodes.Status400BadRequest);
-
-            if (CurrentTenantId == null)
-                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
-
-            var isValid =
-                await _studentService.ValidateAdmissionNumberAsync(
-                    admissionNumber, CurrentTenantId.Value, excludeStudentId);
-
-            return SuccessResponse(new { IsValid = isValid },
-                isValid ? "Admission number is available" : "Admission number already exists");
-        }
-
-        [HttpGet("validate-nemis-number")]
-        public async Task<IActionResult> ValidateNemisNumber(
-            [FromQuery] string nemisNumber,
-            [FromQuery] Guid? excludeStudentId = null)
-        {
-            if (string.IsNullOrWhiteSpace(nemisNumber))
-                return ErrorResponse("NEMIS number is required", StatusCodes.Status400BadRequest);
-
-            if (CurrentTenantId == null)
-                return ErrorResponse("Tenant context is required", StatusCodes.Status400BadRequest);
-
-            var isValid =
-                await _studentService.ValidateNemisNumberAsync(
-                    nemisNumber, CurrentTenantId.Value, excludeStudentId);
-
-            return SuccessResponse(new { IsValid = isValid },
-                isValid ? "NEMIS number is available" : "NEMIS number already exists");
-        }
-
-        #endregion
-
-        #region Helpers
-
-        private static IDictionary<string, string[]> ToErrorDictionary(
-            Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary modelState) =>
-            modelState.ToDictionary(
-                k => k.Key,
-                v => v.Value?.Errors.Select(e => e.ErrorMessage).ToArray()
-                     ?? Array.Empty<string>());
-
-        #endregion
+            // Additional Information
+            PhotoUrl = s.PhotoUrl ?? string.Empty,
+            Notes = s.Notes ?? string.Empty,
+            IsActive = s.IsActive
+        };
     }
 }

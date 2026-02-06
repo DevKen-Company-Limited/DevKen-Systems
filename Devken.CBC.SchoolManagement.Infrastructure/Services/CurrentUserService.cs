@@ -2,16 +2,14 @@
 using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Services
 {
     /// <summary>
-    /// Implementation of ICurrentUserService that reads user information from HttpContext
-    /// Compatible with Devken.CBC.SchoolManagement.Infrastructure.Security.JwtService
+    /// Provides access to current authenticated user information via JWT claims
     /// </summary>
     public class CurrentUserService : ICurrentUserService
     {
@@ -19,127 +17,114 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
 
         public CurrentUserService(IHttpContextAccessor httpContextAccessor)
         {
-            _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
+            _httpContextAccessor = httpContextAccessor;
         }
 
-        public ClaimsPrincipal? ClaimsPrincipal => _httpContextAccessor.HttpContext?.User;
+        // =============================
+        // Core Context
+        // =============================
 
-        public bool IsAuthenticated => ClaimsPrincipal?.Identity?.IsAuthenticated ?? false;
+        public ClaimsPrincipal? ClaimsPrincipal =>
+            _httpContextAccessor.HttpContext?.User;
+
+        public bool IsAuthenticated =>
+            ClaimsPrincipal?.Identity?.IsAuthenticated ?? false;
+
+        // =============================
+        // Identity
+        // =============================
 
         public Guid? UserId
         {
             get
             {
-                var userIdClaim = GetClaimValue("user_id") ?? GetClaimValue(ClaimTypes.NameIdentifier);
+                var value =
+                    GetClaimValue(JwtRegisteredClaimNames.Sub) ??
+                    GetClaimValue("user_id");
 
-                if (Guid.TryParse(userIdClaim, out var userId))
-                    return userId;
-
-                return null;
+                return Guid.TryParse(value, out var id) ? id : null;
             }
         }
 
-        public string? Email => GetClaimValue(ClaimTypes.Email);
+        public string? Email =>
+            GetClaimValue(ClaimTypes.Email) ??
+            GetClaimValue(JwtRegisteredClaimNames.Email);
 
-        public string? FullName => GetClaimValue(ClaimTypes.Name);
+        public string? FullName =>
+            GetClaimValue(ClaimTypes.Name) ??
+            GetClaimValue("full_name");
+
+        // =============================
+        // Tenant / School
+        // =============================
 
         public Guid? TenantId
         {
             get
             {
-                var tenantIdClaim = GetClaimValue("tenant_id");
-
-                if (Guid.TryParse(tenantIdClaim, out var tenantId))
-                    return tenantId;
-
-                return null;
+                var value = GetClaimValue("tenant_id");
+                return Guid.TryParse(value, out var id) ? id : null;
             }
         }
 
-        public Guid? SchoolId => TenantId; // For school systems, SchoolId is the same as TenantId
+        public Guid? SchoolId => TenantId;
 
-        public IEnumerable<string> Roles
-        {
-            get
-            {
-                return ClaimsPrincipal?.Claims
-                    .Where(c => c.Type == ClaimTypes.Role)
-                    .Select(c => c.Value)
-                    ?? Enumerable.Empty<string>();
-            }
-        }
+        // =============================
+        // Roles & Permissions
+        // =============================
 
-        public IEnumerable<string> Permissions
-        {
-            get
-            {
-                return ClaimsPrincipal?.Claims
-                    .Where(c => c.Type == "permissions")
-                    .Select(c => c.Value)
-                    ?? Enumerable.Empty<string>();
-            }
-        }
-
-        public bool IsSuperAdmin
-        {
-            get
-            {
-                var isSuperAdminClaim = GetClaimValue("is_super_admin");
-                return (isSuperAdminClaim?.ToLower() == "true") || IsInRole("SuperAdmin");
-            }
-        }
-
-        public bool IsSchoolAdmin => IsInRole("SchoolAdmin");
-
-        public bool IsTeacher => IsInRole("Teacher");
-
-        public bool IsParent => IsInRole("Parent");
-
-        public bool IsInRole(string role)
-        {
-            return Roles.Any(r => string.Equals(r, role, StringComparison.OrdinalIgnoreCase));
-        }
-
-        public bool HasPermission(string permission)
-        {
-            // Super admin has all permissions
-            if (IsSuperAdmin)
-                return true;
-
-            return Permissions.Any(p => string.Equals(p, permission, StringComparison.OrdinalIgnoreCase));
-        }
-
-        public bool HasAnyPermission(params string[] permissions)
-        {
-            // Super admin has all permissions
-            if (IsSuperAdmin)
-                return true;
-
-            return permissions.Any(HasPermission);
-        }
-
-        public bool HasAllPermissions(params string[] permissions)
-        {
-            // Super admin has all permissions
-            if (IsSuperAdmin)
-                return true;
-
-            return permissions.All(HasPermission);
-        }
-
-        public string? GetClaimValue(string claimType)
-        {
-            return ClaimsPrincipal?.Claims
-                .FirstOrDefault(c => string.Equals(c.Type, claimType, StringComparison.OrdinalIgnoreCase))?
-                .Value;
-        }
-
-        private IEnumerable<string> GetClaimValues(string claimType)
-        {
-            return ClaimsPrincipal?.Claims
-                .Where(c => string.Equals(c.Type, claimType, StringComparison.OrdinalIgnoreCase))
+        public IEnumerable<string> Roles =>
+            ClaimsPrincipal?
+                .FindAll(ClaimTypes.Role)
                 .Select(c => c.Value)
-                ?? Enumerable.Empty<string>();
-        }
+                .Distinct()
+            ?? Enumerable.Empty<string>();
+
+        public IEnumerable<string> Permissions =>
+            ClaimsPrincipal?
+                .FindAll("permission")
+                .Select(c => c.Value)
+                .Distinct()
+            ?? Enumerable.Empty<string>();
+
+        // =============================
+        // Role Checks
+        // =============================
+
+        public bool IsSuperAdmin =>
+            IsInRole("SuperAdmin");
+
+        public bool IsSchoolAdmin =>
+            IsInRole("SchoolAdmin");
+
+        public bool IsTeacher =>
+            IsInRole("Teacher");
+
+        public bool IsParent =>
+            IsInRole("Parent");
+
+        public bool IsInRole(string role) =>
+            Roles.Any(r => r.Equals(role, StringComparison.OrdinalIgnoreCase));
+
+        // =============================
+        // Permission Checks
+        // =============================
+
+        public bool HasPermission(string permission) =>
+            Permissions.Any(p =>
+                p.Equals(permission, StringComparison.OrdinalIgnoreCase));
+
+        public bool HasAnyPermission(params string[] permissions) =>
+            permissions.Any(HasPermission);
+
+        public bool HasAllPermissions(params string[] permissions) =>
+            permissions.All(HasPermission);
+
+        // =============================
+        // Claim Helpers
+        // =============================
+
+        public string? GetClaimValue(string claimType) =>
+            ClaimsPrincipal?.FindFirst(claimType)?.Value;
     }
 }

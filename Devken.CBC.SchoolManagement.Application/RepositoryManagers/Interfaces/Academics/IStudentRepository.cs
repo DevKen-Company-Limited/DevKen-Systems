@@ -13,7 +13,22 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
     public interface IStudentRepository : IRepositoryBase<Student, Guid>
     {
         /// <summary>
-        /// Get student by admission number
+        /// Get all students across all schools (SuperAdmin only)
+        /// </summary>
+        Task<IEnumerable<Student>> GetAllAsync(bool trackChanges = false);
+
+        /// <summary>
+        /// Get student by ID
+        /// </summary>
+        Task<Student?> GetByIdAsync(Guid id, bool trackChanges = false);
+
+        /// <summary>
+        /// Get all students in a specific school/tenant
+        /// </summary>
+        Task<IEnumerable<Student>> GetBySchoolIdAsync(Guid schoolId, bool trackChanges = false);
+
+        /// <summary>
+        /// Get student by admission number within a specific school/tenant
         /// </summary>
         Task<Student?> GetByAdmissionNumberAsync(string admissionNumber, Guid tenantId);
 
@@ -114,5 +129,20 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
         /// Restore soft deleted student
         /// </summary>
         Task<bool> RestoreStudentAsync(Guid studentId, Guid tenantId);
+
+        /// <summary>
+        /// Create a new student
+        /// </summary>
+        void Create(Student student);
+
+        /// <summary>
+        /// Update an existing student
+        /// </summary>
+        void Update(Student student);
+
+        /// <summary>
+        /// Delete a student
+        /// </summary>
+        void Delete(Student student);
     }
 }
