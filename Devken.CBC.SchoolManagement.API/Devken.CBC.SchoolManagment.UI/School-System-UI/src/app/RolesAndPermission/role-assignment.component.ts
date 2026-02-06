@@ -91,7 +91,7 @@ export class RoleAssignmentEnhancedComponent implements OnInit, OnDestroy {
         totalUsers: 0
     };
 
-    private searchSubject = new Subject<string>();
+    public searchSubject = new Subject<string>();
 
     ngOnInit(): void {
         this.loadData();

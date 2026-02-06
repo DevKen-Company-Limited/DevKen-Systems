@@ -42,18 +42,18 @@ export interface RoleManageDialogData {
 <div class="flex flex-col h-[80vh] max-h-[820px] bg-white dark:bg-gray-900 rounded-lg overflow-hidden">
 
     <!-- HEADER -->
-    <div class="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-primary-500 to-primary-600 text-white">
+    <div class="flex items-center justify-between px-6 py-4 bg-gray-100 dark:bg-gray-800">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+            <div class="w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-700 flex items-center justify-center text-gray-700 dark:text-gray-200">
                 <mat-icon [svgIcon]="'heroicons_outline:shield-check'"></mat-icon>
             </div>
             <div>
-                <h2 class="text-lg font-semibold">Manage User Roles</h2>
-                <p class="text-xs text-white/80">{{ data.user.fullName }}</p>
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Manage User Roles</h2>
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ data.user.fullName }}</p>
             </div>
         </div>
 
-        <button mat-icon-button [mat-dialog-close]>
+        <button mat-icon-button [mat-dialog-close] class="text-gray-600 dark:text-gray-300">
             <mat-icon [svgIcon]="'heroicons_outline:x-mark'"></mat-icon>
         </button>
     </div>
@@ -62,13 +62,13 @@ export interface RoleManageDialogData {
     <div class="px-6 py-4 bg-gray-50 dark:bg-gray-800">
         <div class="flex justify-between items-center">
             <div class="flex items-center gap-3">
-                <div class="w-12 h-12 rounded-full bg-primary-600 text-white flex items-center justify-center text-lg font-bold">
+                <div class="w-12 h-12 rounded-full bg-gray-400 dark:bg-gray-600 text-white flex items-center justify-center text-lg font-bold">
                     {{ getUserInitials(data.user.fullName) }}
                 </div>
 
                 <div>
-                    <div class="font-semibold">{{ data.user.fullName }}</div>
-                    <div class="text-xs text-secondary flex items-center gap-1">
+                    <div class="font-semibold text-gray-900 dark:text-gray-100">{{ data.user.fullName }}</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
                         <mat-icon class="icon-size-4" [svgIcon]="'heroicons_outline:envelope'"></mat-icon>
                         {{ data.user.email }}
                     </div>
@@ -76,24 +76,24 @@ export interface RoleManageDialogData {
             </div>
 
             <div class="text-right">
-                <div class="text-2xl font-bold text-primary">{{ selectedRoleIds.size }}</div>
-                <div class="text-xs text-secondary">Selected</div>
+                <div class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ selectedRoleIds.size }}</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">Selected</div>
             </div>
         </div>
 
         <!-- CURRENT ROLES -->
-        <div class="mt-4 border-t pt-3">
-            <button mat-button class="w-full justify-between" (click)="showCurrentRoles = !showCurrentRoles">
+        <div class="mt-4 border-t border-gray-200 dark:border-gray-700 pt-3">
+            <button mat-button class="w-full justify-between text-gray-700 dark:text-gray-300" (click)="showCurrentRoles = !showCurrentRoles">
                 <span class="text-sm font-medium">Current Roles ({{ data.user.roles.length }})</span>
                 <mat-icon [class.rotate-180]="showCurrentRoles">expand_more</mat-icon>
             </button>
 
             <div *ngIf="showCurrentRoles" class="flex flex-wrap gap-2 mt-2 max-h-28 overflow-auto">
-                <mat-chip *ngFor="let role of data.user.roles; trackBy: trackByRoleId">
+                <mat-chip *ngFor="let role of data.user.roles; trackBy: trackByRoleId" color="primary" selected>
                     {{ role.roleName }}
                 </mat-chip>
 
-                <span *ngIf="!data.user.roles.length" class="text-xs italic text-secondary">
+                <span *ngIf="!data.user.roles.length" class="text-xs italic text-gray-500 dark:text-gray-400">
                     No roles assigned
                 </span>
             </div>
@@ -104,7 +104,7 @@ export interface RoleManageDialogData {
 
     <!-- SEARCH -->
     <div class="px-6 py-4">
-        <mat-form-field class="w-full">
+        <mat-form-field class="w-full appearance-none">
             <mat-label>Search roles</mat-label>
             <input
                 matInput
@@ -118,9 +118,9 @@ export interface RoleManageDialogData {
         </mat-form-field>
 
         <div class="flex gap-2 mt-2">
-            <button mat-stroked-button (click)="selectAll()">Select All</button>
-            <button mat-stroked-button (click)="deselectAll()">Clear</button>
-            <button mat-stroked-button color="warn" (click)="resetToInitial()" [disabled]="!hasChanges()">Reset</button>
+            <button mat-stroked-button>Select All</button>
+            <button mat-stroked-button>Clear</button>
+            <button mat-stroked-button color="warn" [disabled]="!hasChanges()" (click)="resetToInitial()">Reset</button>
         </div>
     </div>
 
@@ -132,17 +132,13 @@ export interface RoleManageDialogData {
             <mat-spinner diameter="36"></mat-spinner>
         </div>
 
-        <cdk-virtual-scroll-viewport
-            *ngIf="!isFiltering && filteredRoles.length"
-            itemSize="80"
-            class="h-full">
-
+        <cdk-virtual-scroll-viewport *ngIf="!isFiltering && filteredRoles.length" itemSize="80" class="h-full">
             <div
                 *cdkVirtualFor="let role of filteredRoles; trackBy: trackByRoleId"
-                class="flex items-start gap-3 p-4 mb-2 border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
-                [class.border-primary-500]="isRoleSelected(role.roleId)"
-                (click)="toggleRole(role.roleId)">
-
+                class="flex items-start gap-3 p-4 mb-2 border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
+                [class.border-gray-700]="isRoleSelected(role.roleId)"
+                (click)="toggleRole(role.roleId)"
+            >
                 <mat-checkbox
                     [checked]="isRoleSelected(role.roleId)"
                     (click)="$event.stopPropagation()"
@@ -150,7 +146,7 @@ export interface RoleManageDialogData {
                 </mat-checkbox>
 
                 <div class="flex-1">
-                    <div class="font-semibold flex items-center gap-2">
+                    <div class="font-semibold flex items-center gap-2 text-gray-900 dark:text-gray-100">
                         <mat-icon
                             class="icon-size-5"
                             [svgIcon]="role.isSystemRole ? 'heroicons_outline:lock-closed' : 'heroicons_outline:shield-check'">
@@ -158,16 +154,15 @@ export interface RoleManageDialogData {
                         {{ role.roleName }}
                     </div>
 
-                    <div class="text-xs text-secondary mt-1">
+                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                         {{ role.description || 'No description provided' }}
                     </div>
 
                     <div class="flex gap-2 mt-1">
-                        <span *ngIf="role.isSystemRole"
-                              class="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-800">
+                        <span *ngIf="role.isSystemRole" class="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-800">
                             System Role
                         </span>
-                        <span class="text-xs text-secondary">
+                        <span class="text-xs text-gray-500 dark:text-gray-400">
                             {{ role.permissionCount || 0 }} permissions
                         </span>
                     </div>
@@ -175,7 +170,7 @@ export interface RoleManageDialogData {
             </div>
         </cdk-virtual-scroll-viewport>
 
-        <div *ngIf="!isFiltering && !filteredRoles.length" class="text-center py-12 text-secondary">
+        <div *ngIf="!isFiltering && !filteredRoles.length" class="text-center py-12 text-gray-500 dark:text-gray-400">
             No roles found
         </div>
     </div>
@@ -185,17 +180,15 @@ export interface RoleManageDialogData {
     <!-- FOOTER -->
     <div class="px-6 py-4 bg-gray-50 dark:bg-gray-800 flex justify-between items-center">
         <div>
-            <div class="text-sm font-medium">
+            <div class="text-sm font-medium text-gray-900 dark:text-gray-100">
                 {{ selectedRoleIds.size }} of {{ data.availableRoles.length }} selected
             </div>
-            <div class="text-xs text-secondary">{{ getChangesSummary() }}</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">{{ getChangesSummary() }}</div>
         </div>
 
         <div class="flex gap-2">
             <button mat-stroked-button [mat-dialog-close]>Cancel</button>
-            <button mat-flat-button color="primary"
-                    [disabled]="!hasChanges() || isSaving"
-                    (click)="confirmSelection()">
+            <button mat-flat-button color="accent" [disabled]="!hasChanges() || isSaving" (click)="confirmSelection()">
                 <mat-spinner *ngIf="isSaving" diameter="18" class="mr-2"></mat-spinner>
                 Update Roles
             </button>
@@ -209,6 +202,7 @@ export interface RoleManageDialogData {
         }
     `]
 })
+
 export class RoleManageDialogComponent implements OnInit, OnDestroy {
 
     searchText = '';
