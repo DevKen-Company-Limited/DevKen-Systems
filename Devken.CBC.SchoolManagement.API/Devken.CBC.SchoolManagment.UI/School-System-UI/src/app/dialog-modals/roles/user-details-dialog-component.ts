@@ -58,7 +58,7 @@ export interface UserDetailsDialogData {
 
                         <p class="text-secondary flex items-center gap-2">
                             <mat-icon class="icon-size-4" [svgIcon]="'heroicons_outline:user-circle'"></mat-icon>
-                            {{ data.user.userName }}
+                            {{ data.user.firstName }}
                         </p>
                     </div>
                 </div>

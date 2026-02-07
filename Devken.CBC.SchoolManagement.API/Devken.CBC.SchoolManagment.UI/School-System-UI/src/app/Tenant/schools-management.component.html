@@ -18,6 +18,10 @@
 
     <div *ngIf="!isLoading" class="overflow-auto">
       <table mat-table [dataSource]="dataSource" matSort class="w-full">
+        <ng-container>
+          <th>Code</th>
+          <td *matCellDef></td>
+        </ng-container>
 
         <!-- Name -->
         <ng-container matColumnDef="name">

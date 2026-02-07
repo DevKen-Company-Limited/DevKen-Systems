@@ -2,7 +2,6 @@
 using Devken.CBC.SchoolManagement.Application.DTOs.RoleAssignment;
 using Devken.CBC.SchoolManagement.Application.Service.Activities;
 using Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
@@ -13,7 +12,6 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.RolesAssignment
 {
     [ApiController]
     [Route("api/role-assignments")]
-    [Authorize]
     public class RoleAssignmentController : BaseApiController
     {
         private readonly IRoleAssignmentService _roleAssignmentService;
@@ -29,11 +27,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.RolesAssignment
 
         #region Users
 
-        /// <summary>
-        /// Get all users with roles – SuperAdmin only
-        /// </summary>
         [HttpGet("all-users")]
-        [Authorize(Roles = "SuperAdmin")]
         public async Task<IActionResult> GetAllUsers(
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 20)
@@ -52,11 +46,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.RolesAssignment
             return SuccessResponse(users, "Users retrieved successfully");
         }
 
-        /// <summary>
-        /// Search users – SuperAdmin only
-        /// </summary>
         [HttpGet("search-users")]
-        [Authorize(Roles = "SuperAdmin")]
         public async Task<IActionResult> SearchUsers([FromQuery] string searchTerm)
         {
             if (!HasPermission("RoleAssignment.Read"))
@@ -72,11 +62,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.RolesAssignment
             return SuccessResponse(users, $"Found {users.Count} user(s)");
         }
 
-        /// <summary>
-        /// Get user with roles – SuperAdmin only
-        /// </summary>
         [HttpGet("user/{userId:guid}/roles")]
-        [Authorize(Roles = "SuperAdmin")]
         public async Task<IActionResult> GetUserWithRoles(Guid userId)
         {
             if (!HasPermission("RoleAssignment.Read"))
@@ -93,11 +79,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.RolesAssignment
 
         #region Role Assignments
 
-        /// <summary>
-        /// Assign a role to a user – SuperAdmin only
-        /// </summary>
         [HttpPost("assign-role")]
-        [Authorize(Roles = "SuperAdmin")]
         public async Task<IActionResult> AssignRole([FromBody] AssignRoleRequest request)
         {
             if (!HasPermission("RoleAssignment.Write"))
@@ -121,11 +103,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.RolesAssignment
             return SuccessResponse(result.User, result.Message ?? "Role assigned successfully");
         }
 
-        /// <summary>
-        /// Assign multiple roles – SuperAdmin only
-        /// </summary>
         [HttpPost("assign-multiple-roles")]
-        [Authorize(Roles = "SuperAdmin")]
         public async Task<IActionResult> AssignMultipleRoles([FromBody] AssignMultipleRolesRequest request)
         {
             if (!HasPermission("RoleAssignment.Write"))
@@ -149,11 +127,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.RolesAssignment
             return SuccessResponse(result.User, result.Message ?? "Roles assigned successfully");
         }
 
-        /// <summary>
-        /// Remove a role from a user – SuperAdmin only
-        /// </summary>
         [HttpPost("remove-role")]
-        [Authorize(Roles = "SuperAdmin")]
         public async Task<IActionResult> RemoveRole([FromBody] RemoveRoleRequest request)
         {
             if (!HasPermission("RoleAssignment.Write"))
@@ -177,11 +151,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.RolesAssignment
             return SuccessResponse(result.User, result.Message ?? "Role removed successfully");
         }
 
-        /// <summary>
-        /// Update user roles – SuperAdmin only
-        /// </summary>
         [HttpPut("update-user-roles")]
-        [Authorize(Roles = "SuperAdmin")]
         public async Task<IActionResult> UpdateUserRoles([FromBody] UpdateUserRolesRequest request)
         {
             if (!HasPermission("RoleAssignment.Write"))
@@ -205,11 +175,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.RolesAssignment
             return SuccessResponse(result.User, result.Message ?? "User roles updated successfully");
         }
 
-        /// <summary>
-        /// Remove all roles from a user – SuperAdmin only
-        /// </summary>
         [HttpDelete("user/{userId:guid}/roles")]
-        [Authorize(Roles = "SuperAdmin")]
         public async Task<IActionResult> RemoveAllRoles(Guid userId)
         {
             if (!HasPermission("RoleAssignment.Write"))
@@ -233,11 +199,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.RolesAssignment
 
         #region Roles
 
-        /// <summary>
-        /// Get users by role – SuperAdmin only
-        /// </summary>
         [HttpGet("role/{roleId:guid}/users")]
-        [Authorize(Roles = "SuperAdmin")]
         public async Task<IActionResult> GetUsersByRole(
             Guid roleId,
             [FromQuery] int pageNumber = 1,
@@ -258,11 +220,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.RolesAssignment
             return SuccessResponse(users, "Users retrieved successfully");
         }
 
-        /// <summary>
-        /// Get available roles – SuperAdmin only
-        /// </summary>
         [HttpGet("available-roles")]
-        [Authorize(Roles = "SuperAdmin")]
         public async Task<IActionResult> GetAvailableRoles()
         {
             if (!HasPermission("RoleAssignment.Read"))
@@ -272,11 +230,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.RolesAssignment
             return SuccessResponse(roles, "Available roles retrieved successfully");
         }
 
-        /// <summary>
-        /// Check if user has role – SuperAdmin only
-        /// </summary>
         [HttpGet("user/{userId:guid}/has-role/{roleId:guid}")]
-        [Authorize(Roles = "SuperAdmin")]
         public async Task<IActionResult> UserHasRole(Guid userId, Guid roleId)
         {
             if (!HasPermission("RoleAssignment.Read"))

@@ -1,155 +1,344 @@
-﻿//using Devken.CBC.SchoolManagement.API.Authorization;
-//using Devken.CBC.SchoolManagement.Application.Dtos;
-//using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
-//using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
-//using Devken.CBC.SchoolManagement.Domain.Enums;
-//using Devken.CBC.SchoolManagement.Infrastructure.Security;
-//using Microsoft.AspNetCore.Authorization;
-//using Microsoft.AspNetCore.Mvc;
-//using Microsoft.EntityFrameworkCore;
+﻿using Devken.CBC.SchoolManagement.Api.Controllers.Common;
+using Devken.CBC.SchoolManagement.Application.Dtos;
+using Devken.CBC.SchoolManagement.Application.DTOs.RoleAssignment;
+using Devken.CBC.SchoolManagement.Application.Service.Activities;
+using Devken.CBC.SchoolManagement.Application.Service.UserManagment;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 
-//namespace Devken.CBC.SchoolManagement.API.Controllers.Identity
-//{
-//    [ApiController]
-//    [Route("api/users")]
-//    [Authorize]
-//    public class UserManagementController : ControllerBase
-//    {
-//        private readonly IRepositoryManager _repo;
-//        private readonly ILogger<UserManagementController> _logger;
+namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
+{
+    [ApiController]
+    [Route("api/user-management")]
+    [Authorize]
+    public class UserManagementController : BaseApiController
+    {
+        private readonly IUserManagementService _userManagementService;
 
-//        public UserManagementController(
-//            IRepositoryManager repo,
-//            ILogger<UserManagementController> logger)
-//        {
-//            _repo = repo;
-//            _logger = logger;
-//        }
+        public UserManagementController(
+            IUserManagementService userManagementService,
+            IUserActivityService activityService)
+            : base(activityService)
+        {
+            _userManagementService = userManagementService
+                ?? throw new ArgumentNullException(nameof(userManagementService));
+        }
 
-//        // ── GET USERS ────────────────────────────────────────
-//        [HttpGet]
-//        [RequirePermission("User.Read")]
-//        public async Task<IActionResult> GetUsers()
-//        {
-//            try
-//            {
-//                var tenantClaim = HttpContext.User.FindFirst(CustomClaimTypes.TenantId);
-//                if (tenantClaim == null)
-//                    return Unauthorized("Tenant information missing.");
+        #region Create User
 
-//                var tenantId = Guid.Parse(tenantClaim.Value);
+        /// <summary>
+        /// Create a new user.
+        /// SuperAdmin must specify SchoolId.
+        /// SchoolAdmin/Admin can only create users in their own school.
+        /// </summary>
+        [HttpPost]
+        public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
+        {
+            if (!ModelState.IsValid)
+                return ValidationErrorResponse(ToErrorDictionary(ModelState));
 
-//                var users = await _repo.User
-//                    .FindByCondition(u => u.TenantId == tenantId, trackChanges: false)
-//                    .Select(u => new
-//                    {
-//                        u.Id,
-//                        u.Email,
-//                        u.FullName,
-//                        u.IsActive,
-//                        u.RequirePasswordChange
-//                    })
-//                    .ToListAsync();
+            if (!IsSuperAdmin && !HasPermission("User.Create"))
+                return ForbiddenResponse("You do not have permission to create users.");
 
-//                return Ok(users);
-//            }
-//            catch (Exception ex)
-//            {
-//                _logger.LogError(ex, "Error fetching users");
-//                return StatusCode(500, "An error occurred while retrieving users.");
-//            }
-//        }
+            Guid targetSchoolId;
 
-//        // ── CREATE USER ──────────────────────────────────────
-//        [HttpPost]
-//        [RequirePermission("User.Write")]
-//        public async Task<IActionResult> CreateUser([FromBody] CreateUserDto dto)
-//        {
-//            if (!ModelState.IsValid)
-//                return BadRequest(ModelState);
+            if (IsSuperAdmin)
+            {
+                if (!request.SchoolId.HasValue)
+                    return ErrorResponse(
+                        "SuperAdmin must specify a SchoolId when creating users.",
+                        StatusCodes.Status400BadRequest);
 
-//            try
-//            {
-//                var tenantClaim = HttpContext.User.FindFirst(CustomClaimTypes.TenantId);
-//                if (tenantClaim == null)
-//                    return Unauthorized("Tenant information missing.");
+                targetSchoolId = request.SchoolId.Value;
+            }
+            else
+            {
+                targetSchoolId = GetCurrentUserSchoolId();
 
-//                var tenantId = Guid.Parse(tenantClaim.Value);
+                if (request.SchoolId.HasValue && request.SchoolId.Value != targetSchoolId)
+                    return ForbiddenResponse("You can only create users in your own school.");
+            }
 
-//                if (await _repo.User.EmailExistsInTenantAsync(dto.Email, tenantId))
-//                    return Conflict(new { Message = "Email already exists in this school." });
+            var result = await _userManagementService.CreateUserAsync(
+                request,
+                targetSchoolId,
+                CurrentUserId);
 
-//                var user = new User
-//                {
-//                    Id = Guid.NewGuid(),
-//                    TenantId = tenantId,
-//                    Email = dto.Email,
-//                    FirstName = dto.FirstName,
-//                    LastName = dto.LastName,
-//                    PasswordHash = PasswordHelper.HashPassword(dto.TemporaryPassword),
-//                    IsActive = true,
-//                    RequirePasswordChange = true
-//                };
+            if (!result.Success)
+                return ErrorResponse(
+                    result.Error ?? "User creation failed",
+                    StatusCodes.Status400BadRequest);
 
-//                _repo.User.Create(user);
+            await LogUserActivityAsync(
+                "user.create",
+                $"Created user {request.Email} in school {targetSchoolId}");
 
-//                if (dto.RoleId.HasValue)
-//                {
-//                    _repo.UserRole.Create(new UserRole
-//                    {
-//                        Id = Guid.NewGuid(),
-//                        TenantId = tenantId,
-//                        UserId = user.Id,
-//                        RoleId = dto.RoleId.Value
-//                    });
-//                }
+            return CreatedResponse(
+                $"/api/user-management/{result.Data?.Id}",
+                result.Data,
+                "User created successfully");
+        }
 
-//                await _repo.SaveAsync();
+        #endregion
 
-//                return CreatedAtAction(nameof(GetUsers), new { id = user.Id }, new
-//                {
-//                    user.Id,
-//                    user.Email,
-//                    user.FullName
-//                });
-//            }
-//            catch (Exception ex)
-//            {
-//                _logger.LogError(ex, "Error creating user");
-//                return StatusCode(500, "An error occurred while creating the user.");
-//            }
-//        }
+        #region Get Users
 
-//        // ── DELETE USER ──────────────────────────────────────
-//        [HttpDelete("{userId:guid}")]
-//        [RequirePermission("User.Delete")]
-//        public async Task<IActionResult> DeleteUser(Guid userId)
-//        {
-//            try
-//            {
-//                var tenantClaim = HttpContext.User.FindFirst(CustomClaimTypes.TenantId);
-//                if (tenantClaim == null)
-//                    return Unauthorized("Tenant information missing.");
+        /// <summary>
+        /// Get users.
+        /// SuperAdmin can view all or filter by school.
+        /// School users see only their school.
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> GetUsers(
+            [FromQuery] Guid? schoolId = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null,
+            [FromQuery] bool? isActive = null)
+        {
+            if (!IsSuperAdmin && !HasPermission("User.Read"))
+                return ForbiddenResponse("You do not have permission to view users.");
 
-//                var tenantId = Guid.Parse(tenantClaim.Value);
+            Guid? targetSchoolId = IsSuperAdmin
+                ? schoolId
+                : GetCurrentUserSchoolId();
 
-//                var user = await _repo.User.GetByIdAsync(userId);
-//                if (user == null || user.TenantId != tenantId)
-//                    return NotFound();
+            if (!IsSuperAdmin && schoolId.HasValue && schoolId != targetSchoolId)
+                return ForbiddenResponse("You can only view users in your own school.");
 
-//                user.Status = EntityStatus.Deleted;
-//                _repo.User.Update(user);
+            var result = await _userManagementService.GetUsersAsync(
+                targetSchoolId,
+                page,
+                pageSize,
+                search,
+                isActive);
 
-//                _repo.RefreshToken.RevokeAllByUserId(userId);
+            if (!result.Success)
+                return ErrorResponse(
+                    result.Error ?? "Failed to retrieve users",
+                    StatusCodes.Status400BadRequest);
 
-//                await _repo.SaveAsync();
-//                return NoContent();
-//            }
-//            catch (Exception ex)
-//            {
-//                _logger.LogError(ex, "Error deleting user");
-//                return StatusCode(500, "An error occurred while deleting the user.");
-//            }
-//        }
-//    }
-//}
+            return SuccessResponse(result.Data, "Users retrieved successfully");
+        }
+
+        /// <summary>
+        /// Get user by ID
+        /// </summary>
+        [HttpGet("{userId:guid}")]
+        public async Task<IActionResult> GetUser(Guid userId)
+        {
+            var result = await _userManagementService.GetUserByIdAsync(userId);
+
+            if (!result.Success || result.Data == null)
+                return NotFoundResponse("User not found");
+
+            if (!IsSuperAdmin)
+            {
+                if (!HasPermission("User.Read"))
+                    return ForbiddenResponse("You do not have permission to view users.");
+
+                if (result.Data.TenantId != CurrentTenantId)
+                    return ForbiddenResponse("You do not have access to this user.");
+            }
+
+            return SuccessResponse(result.Data, "User retrieved successfully");
+        }
+
+        #endregion
+
+        #region Update User
+
+        /// <summary>
+        /// Update user details
+        /// </summary>
+        [HttpPut("{userId:guid}")]
+        public async Task<IActionResult> UpdateUser(Guid userId, [FromBody] UpdateUserRequest request)
+        {
+            if (!ModelState.IsValid)
+                return ValidationErrorResponse(ToErrorDictionary(ModelState));
+
+            var userResult = await _userManagementService.GetUserByIdAsync(userId);
+            if (!userResult.Success || userResult.Data == null)
+                return NotFoundResponse("User not found");
+
+            if (!IsSuperAdmin)
+            {
+                if (!HasPermission("User.Update"))
+                    return ForbiddenResponse("You do not have permission to update users.");
+
+                if (userResult.Data.TenantId != CurrentTenantId)
+                    return ForbiddenResponse("You can only update users in your own school.");
+            }
+
+            var result = await _userManagementService.UpdateUserAsync(
+                userId,
+                request,
+                CurrentUserId);
+
+            if (!result.Success)
+                return ErrorResponse(
+                    result.Error ?? "User update failed",
+                    StatusCodes.Status400BadRequest);
+
+            await LogUserActivityAsync(
+                "user.update",
+                $"Updated user {userId}");
+
+            return SuccessResponse(result.Data, "User updated successfully");
+        }
+
+        #endregion
+
+        #region Roles Management
+
+        /// <summary>
+        /// Assign roles to a user
+        /// </summary>
+        [HttpPost("{userId:guid}/roles")]
+        public async Task<IActionResult> AssignRoles(Guid userId, [FromBody] AssignRolesRequest request)
+        {
+            if (!ModelState.IsValid)
+                return ValidationErrorResponse(ToErrorDictionary(ModelState));
+
+            if (!IsSuperAdmin && !HasPermission("User.AssignRoles"))
+                return ForbiddenResponse("You do not have permission to assign roles.");
+
+            var userResult = await _userManagementService.GetUserByIdAsync(userId);
+            if (!userResult.Success || userResult.Data == null)
+                return NotFoundResponse("User not found");
+
+            if (!IsSuperAdmin && userResult.Data.TenantId != CurrentTenantId)
+                return ForbiddenResponse("You can only manage roles for users in your own school.");
+
+            var result = await _userManagementService.AssignRolesToUserAsync(
+                userId,
+                request.RoleIds,
+                CurrentUserId);
+
+            if (!result.Success)
+                return ErrorResponse(
+                    result.Error ?? "Role assignment failed",
+                    StatusCodes.Status400BadRequest);
+
+            await LogUserActivityAsync(
+                "user.assign-roles",
+                $"Assigned roles to user {userId}");
+
+            return SuccessResponse(result.Data, "Roles assigned successfully");
+        }
+
+        /// <summary>
+        /// Remove role from user
+        /// </summary>
+        [HttpDelete("{userId:guid}/roles/{roleId:guid}")]
+        public async Task<IActionResult> RemoveRole(Guid userId, Guid roleId)
+        {
+            if (!IsSuperAdmin && !HasPermission("User.AssignRoles"))
+                return ForbiddenResponse("You do not have permission to remove roles.");
+
+            var userResult = await _userManagementService.GetUserByIdAsync(userId);
+            if (!userResult.Success || userResult.Data == null)
+                return NotFoundResponse("User not found");
+
+            if (!IsSuperAdmin && userResult.Data.TenantId != CurrentTenantId)
+                return ForbiddenResponse("You can only manage roles for users in your own school.");
+
+            var result = await _userManagementService.RemoveRoleFromUserAsync(
+                userId,
+                roleId,
+                CurrentUserId);
+
+            if (!result.Success)
+                return ErrorResponse(
+                    result.Error ?? "Role removal failed",
+                    StatusCodes.Status400BadRequest);
+
+            await LogUserActivityAsync(
+                "user.remove-role",
+                $"Removed role {roleId} from user {userId}");
+
+            return SuccessResponse<object?>(null, "Role removed successfully");
+        }
+
+        #endregion
+
+        #region Activate / Deactivate / Delete
+
+        [HttpPost("{userId:guid}/activate")]
+        public async Task<IActionResult> ActivateUser(Guid userId)
+        {
+            if (!IsSuperAdmin && !HasPermission("User.Activate"))
+                return ForbiddenResponse("You do not have permission to activate users.");
+
+            var result = await _userManagementService.ActivateUserAsync(userId, CurrentUserId);
+
+            if (!result.Success)
+                return ErrorResponse(
+                    result.Error ?? "User activation failed",
+                    StatusCodes.Status400BadRequest);
+
+            await LogUserActivityAsync("user.activate", $"Activated user {userId}");
+
+            return SuccessResponse<object?>(null, "User activated successfully");
+        }
+
+        [HttpPost("{userId:guid}/deactivate")]
+        public async Task<IActionResult> DeactivateUser(Guid userId)
+        {
+            if (userId == CurrentUserId)
+                return ErrorResponse("You cannot deactivate your own account.", StatusCodes.Status400BadRequest);
+
+            if (!IsSuperAdmin && !HasPermission("User.Deactivate"))
+                return ForbiddenResponse("You do not have permission to deactivate users.");
+
+            var result = await _userManagementService.DeactivateUserAsync(userId, CurrentUserId);
+
+            if (!result.Success)
+                return ErrorResponse(
+                    result.Error ?? "User deactivation failed",
+                    StatusCodes.Status400BadRequest);
+
+            await LogUserActivityAsync("user.deactivate", $"Deactivated user {userId}");
+
+            return SuccessResponse<object?>(null, "User deactivated successfully");
+        }
+
+        [HttpDelete("{userId:guid}")]
+        public async Task<IActionResult> DeleteUser(Guid userId)
+        {
+            if (userId == CurrentUserId)
+                return ErrorResponse("You cannot delete your own account.", StatusCodes.Status400BadRequest);
+
+            if (!IsSuperAdmin && !HasPermission("User.Delete"))
+                return ForbiddenResponse("You do not have permission to delete users.");
+
+            var result = await _userManagementService.DeleteUserAsync(userId, CurrentUserId);
+
+            if (!result.Success)
+                return ErrorResponse(
+                    result.Error ?? "User deletion failed",
+                    StatusCodes.Status400BadRequest);
+
+            await LogUserActivityAsync("user.delete", $"Deleted user {userId}");
+
+            return SuccessResponse<object?>(null, "User deleted successfully");
+        }
+
+        #endregion
+
+        #region Helpers
+
+        private static IDictionary<string, string[]> ToErrorDictionary(
+            Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary modelState) =>
+            modelState.ToDictionary(
+                kvp => kvp.Key,
+                kvp => kvp.Value?.Errors.Select(e => e.ErrorMessage).ToArray()
+                    ?? Array.Empty<string>());
+
+        #endregion
+    }
+}

@@ -10,5 +10,8 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
 {
     public interface IUserRepository : IRepositoryBase<User, Guid>
     {
+        Task<User?> GetByEmailAsync(string email, Guid tenantId);
+        Task<User?> GetByEmailWithRolesAsync(string email, Guid tenantId);
+        Task<bool> EmailExistsAsync(string email, Guid tenantId);
     }
 }

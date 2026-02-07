@@ -27,58 +27,57 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration
         }
 
         /// <summary>
-        /// Get all schools - SuperAdmin only
+        /// Get all schools – SuperAdmin only
         /// </summary>
         [HttpGet]
-        [Authorize(Roles = "SuperAdmin")]
         public async Task<IActionResult> GetAll()
         {
             if (!HasPermission("School.Read"))
                 return ForbiddenResponse("You do not have permission to view schools.");
 
+            if (!IsSuperAdmin)
+                return ForbiddenResponse("Only Super Administrators can view all schools.");
+
             var schools = await _repositories.School.GetAllAsync(trackChanges: false);
-            var dtos = schools.Select(ToDto);
-            return SuccessResponse(dtos);
+            return SuccessResponse(schools.Select(ToDto));
         }
 
         /// <summary>
-        /// Get school by ID - SuperAdmin or SchoolAdmin (own school only)
+        /// Get school by ID – SuperAdmin or SchoolAdmin (own school)
         /// </summary>
         [HttpGet("{id:guid}")]
-        [Authorize(Roles = "SuperAdmin,SchoolAdmin")]
         public async Task<IActionResult> GetById(Guid id)
         {
             if (!HasPermission("School.Read"))
                 return ForbiddenResponse("You do not have permission to view this school.");
 
-            // If SchoolAdmin, verify they're accessing their own school
-            if (HasRole("SchoolAdmin") && !HasRole("SuperAdmin"))
-            {
-                var userSchoolId = GetCurrentUserSchoolId();
-                if (userSchoolId == null || userSchoolId != id)
-                    return ForbiddenResponse("You can only view your own school.");
-            }
+            var accessError = ValidateSchoolAccess(id);
+            if (accessError != null)
+                return accessError;
 
             var school = await _repositories.School.GetByIdAsync(id, trackChanges: false);
-            if (school == null) return NotFoundResponse();
+            if (school == null)
+                return NotFoundResponse();
 
             return SuccessResponse(ToDto(school));
         }
 
         /// <summary>
-        /// Create school - SuperAdmin only
+        /// Create school – SuperAdmin only
         /// </summary>
         [HttpPost]
-        [Authorize(Roles = "SuperAdmin")]
         public async Task<IActionResult> Create([FromBody] CreateSchoolRequest request)
         {
             if (!HasPermission("School.Write"))
                 return ForbiddenResponse("You do not have permission to create schools.");
 
+            if (!IsSuperAdmin)
+                return ForbiddenResponse("Only Super Administrators can create schools.");
+
             if (!ModelState.IsValid)
                 return ValidationErrorResponse(ModelState.ToDictionary(
-                    kvp => kvp.Key,
-                    kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
+                    k => k.Key,
+                    v => v.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
 
             var existing = await _repositories.School.GetBySlugAsync(request.SlugName ?? string.Empty);
             if (existing != null)
@@ -105,47 +104,42 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration
         }
 
         /// <summary>
-        /// Update school - SuperAdmin or SchoolAdmin (own school only)
+        /// Update school – SuperAdmin or SchoolAdmin (own school)
         /// </summary>
         [HttpPut("{id:guid}")]
-        [Authorize(Roles = "SuperAdmin,SchoolAdmin")]
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateSchoolRequest request)
         {
             if (!HasPermission("School.Write"))
                 return ForbiddenResponse("You do not have permission to update schools.");
 
-            // If SchoolAdmin, verify they're updating their own school
-            if (HasRole("SchoolAdmin") && !HasRole("SuperAdmin"))
-            {
-                var userSchoolId = GetCurrentUserSchoolId();
-                if (userSchoolId == null || userSchoolId != id)
-                    return ForbiddenResponse("You can only update your own school.");
-            }
+            var accessError = ValidateSchoolAccess(id);
+            if (accessError != null)
+                return accessError;
 
             if (!ModelState.IsValid)
                 return ValidationErrorResponse(ModelState.ToDictionary(
-                    kvp => kvp.Key,
-                    kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
+                    k => k.Key,
+                    v => v.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
 
             var school = await _repositories.School.GetByIdAsync(id, trackChanges: true);
-            if (school == null) return NotFoundResponse();
+            if (school == null)
+                return NotFoundResponse();
 
-            // SuperAdmin can change slug, SchoolAdmin cannot
-            if (!HasRole("SuperAdmin"))
+            // Slug handling
+            if (IsSuperAdmin)
             {
-                if (!string.Equals(school.SlugName, request.SlugName ?? string.Empty, StringComparison.Ordinal))
-                    return ForbiddenResponse("School administrators cannot change the school slug.");
-            }
-            else
-            {
-                // Only SuperAdmin needs to check for slug conflicts
                 if (!string.Equals(school.SlugName, request.SlugName ?? string.Empty, StringComparison.Ordinal))
                 {
                     var other = await _repositories.School.GetBySlugAsync(request.SlugName ?? string.Empty);
                     if (other != null && other.Id != id)
                         return ErrorResponse($"Another school with slug '{request.SlugName}' already exists.", 409);
+
+                    school.SlugName = (request.SlugName ?? string.Empty).Trim();
                 }
-                school.SlugName = (request.SlugName ?? string.Empty).Trim();
+            }
+            else if (!string.Equals(school.SlugName, request.SlugName ?? string.Empty, StringComparison.Ordinal))
+            {
+                return ForbiddenResponse("School administrators cannot change the school slug.");
             }
 
             school.Name = (request.Name ?? string.Empty).Trim();
@@ -164,17 +158,20 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration
         }
 
         /// <summary>
-        /// Delete school - SuperAdmin only
+        /// Delete school – SuperAdmin only
         /// </summary>
         [HttpDelete("{id:guid}")]
-        [Authorize(Roles = "SuperAdmin")]
         public async Task<IActionResult> Delete(Guid id)
         {
             if (!HasPermission("School.Delete"))
                 return ForbiddenResponse("You do not have permission to delete schools.");
 
+            if (!IsSuperAdmin)
+                return ForbiddenResponse("Only Super Administrators can delete schools.");
+
             var school = await _repositories.School.GetByIdAsync(id, trackChanges: true);
-            if (school == null) return NotFoundResponse();
+            if (school == null)
+                return NotFoundResponse();
 
             _repositories.School.Delete(school);
             await _repositories.SaveAsync();

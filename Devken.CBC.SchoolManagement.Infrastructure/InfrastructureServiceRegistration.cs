@@ -9,6 +9,7 @@ using Devken.CBC.SchoolManagement.Application.Service.Activities;
 using Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment;
 using Devken.CBC.SchoolManagement.Application.Service.Isubscription;
 using Devken.CBC.SchoolManagement.Application.Service.Navigation;
+using Devken.CBC.SchoolManagement.Application.Service.UserManagment;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academic;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common;
@@ -18,6 +19,7 @@ using Devken.CBC.SchoolManagement.Infrastructure.Security;
 using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Activities;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.RoleAssignment;
+using Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagment;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -162,6 +164,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped(typeof(Lazy<>), typeof(LazyServiceProvider<>));
 
             // Services
+            services.AddScoped<IUserManagementService, UserManagementService>();
             services.AddScoped<IJwtService, JwtService>();
             services.AddScoped<IPermissionSeedService, PermissionSeedService>();
             services.AddScoped<ISubscriptionSeedService, SubscriptionSeedService>();

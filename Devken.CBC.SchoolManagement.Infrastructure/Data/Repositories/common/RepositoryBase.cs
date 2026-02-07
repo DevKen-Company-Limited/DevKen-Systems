@@ -3,6 +3,7 @@ using Devken.CBC.SchoolManagement.Domain.Enums;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF;
 using Devken.CBC.SchoolManagement.Infrastructure.Services;
+using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -14,17 +15,13 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.common
 {
     /// <summary>
     /// Base repository implementation for all entities
-    /// Changed from internal to public to allow inheritance by public repositories
+    /// UPDATED: Handles SuperAdmin vs User table separation
     /// </summary>
     public class RepositoryBase<T, TId> : IRepositoryBase<T, TId>
             where T : BaseEntity<TId>
             where TId : IEquatable<TId>
     {
         protected readonly AppDbContext _context;
-        /// <summary>
-        /// Resolved per-request by TenantMiddleware.  We read
-        /// ActingUserId from here to stamp CreatedBy / UpdatedBy.
-        /// </summary>
         protected readonly TenantContext _tenantContext;
 
         public RepositoryBase(AppDbContext context, TenantContext tenantContext)
@@ -57,10 +54,28 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.common
             entity.UpdatedOn = now;
             entity.Status = EntityStatus.Active;
 
-            // Stamp the acting user.  Null is allowed for bootstrap
-            // rows created before any user exists (e.g. Permission seed).
-            entity.CreatedBy = _tenantContext.ActingUserId;
-            entity.UpdatedBy = _tenantContext.ActingUserId;
+            // CRITICAL FIX: Handle SuperAdmin creating Users
+            // SuperAdmins exist in SuperAdmins table, not Users table
+            // So we can't set CreatedBy to SuperAdmin ID for User entities
+
+            var actingUserId = _tenantContext.ActingUserId;
+            var isSuperAdmin = _tenantContext.IsSuperAdmin;
+
+            // If a SuperAdmin is creating a User entity, leave CreatedBy/UpdatedBy as null
+            // to avoid foreign key constraint violation
+            if (entity is User && isSuperAdmin)
+            {
+                // SuperAdmin creating a user - don't set CreatedBy
+                // because SuperAdmin ID exists in SuperAdmins table, not Users table
+                entity.CreatedBy = null;
+                entity.UpdatedBy = null;
+            }
+            else
+            {
+                // Normal case: user creating entity, or non-User entity
+                entity.CreatedBy = actingUserId;
+                entity.UpdatedBy = actingUserId;
+            }
 
             _context.Set<T>().Add(entity);
         }
@@ -68,7 +83,19 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.common
         public virtual void Update(T entity)
         {
             entity.UpdatedOn = DateTime.UtcNow;
-            entity.UpdatedBy = _tenantContext.ActingUserId;
+
+            // CRITICAL FIX: Handle SuperAdmin updating Users
+            var isSuperAdmin = _tenantContext.IsSuperAdmin;
+
+            if (entity is User && isSuperAdmin)
+            {
+                // SuperAdmin updating a user - don't set UpdatedBy
+                entity.UpdatedBy = null;
+            }
+            else
+            {
+                entity.UpdatedBy = _tenantContext.ActingUserId;
+            }
 
             _context.Set<T>().Update(entity);
 

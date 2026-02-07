@@ -12,7 +12,7 @@ import {
     UpdateUserRolesRequest,
     ApiResponse,
     PaginatedResponse,
-    UserSearchRequest,
+    
     UserSearchResult
 } from '../Types/roles';
 
