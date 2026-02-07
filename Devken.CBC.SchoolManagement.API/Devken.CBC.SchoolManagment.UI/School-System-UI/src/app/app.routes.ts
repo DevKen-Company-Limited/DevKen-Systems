@@ -3,6 +3,7 @@ import { initialDataResolver } from 'app/app.resolvers';
 import { AuthGuard } from 'app/core/auth/guards/auth.guard';
 import { NoAuthGuard } from 'app/core/auth/guards/noAuth.guard';
 import { LayoutComponent } from 'app/layout/layout.component';
+import { changePasswordGuard, passwordChangeRequiredGuard } from './core/auth/guards/password-change-required.guard';
 
 // @formatter:off
 /* eslint-disable max-len */
@@ -33,12 +34,28 @@ export const appRoutes: Route[] = [
             {path: 'forgot-password', loadChildren: () => import('app/modules/auth/forgot-password/forgot-password.routes')},
             {path: 'reset-password', loadChildren: () => import('app/modules/auth/reset-password/reset-password.routes')},
             {path: 'sign-in', loadChildren: () => import('app/modules/auth/sign-in/sign-in.routes')},
-            {path: 'sign-up', loadChildren: () => import('app/modules/auth/sign-up/sign-up.routes')},
-             {path: 'change-password', loadChildren: () => import('app/modules/auth/change-password/change-password.component.routes')}
+            {path: 'sign-up', loadChildren: () => import('app/modules/auth/sign-up/sign-up.routes')}
         ]
     },
 
-    // Auth routes for authenticated users
+    // Change password route - Only accessible when authenticated AND password change is required
+    {
+        path: '',
+        canActivate: [AuthGuard],
+        component: LayoutComponent,
+        data: {
+            layout: 'empty'
+        },
+        children: [
+            {
+                path: 'change-password', 
+                canActivate: [changePasswordGuard],
+                loadChildren: () => import('app/modules/auth/change-password/change-password.component.routes')
+            }
+        ]
+    },
+
+    // Auth routes for authenticated users (sign-out, unlock-session)
     {
         path: '',
         canActivate: [AuthGuard],
@@ -65,11 +82,11 @@ export const appRoutes: Route[] = [
         ]
     },
 
-    // Admin routes
+    // Admin routes - Protected with password change check
     {
         path: '',
-        canActivate: [AuthGuard],
-        canActivateChild: [AuthGuard],
+        canActivate: [AuthGuard, passwordChangeRequiredGuard],
+        canActivateChild: [AuthGuard, passwordChangeRequiredGuard],
         component: LayoutComponent,
         resolve: {
             initialData: initialDataResolver
@@ -79,18 +96,15 @@ export const appRoutes: Route[] = [
         ]
     },
 
-
-
-
-     // ------------------------------------------------------
-    // Main Application (Permission-based Navigation)
     // ------------------------------------------------------
-
+    // Main Application (Permission-based Navigation)
+    // Protected with password change check
+    // ------------------------------------------------------
     {
         path: '',
         component: LayoutComponent,
-        canActivate: [AuthGuard],
-        canActivateChild: [AuthGuard],
+        canActivate: [AuthGuard, passwordChangeRequiredGuard],
+        canActivateChild: [AuthGuard, passwordChangeRequiredGuard],
         resolve: { initialData: initialDataResolver },
         children: [
 
@@ -98,11 +112,9 @@ export const appRoutes: Route[] = [
             {
                 path: 'administration',
                 children: [
-                    // { path: 'school', loadChildren: () => import('app/modules/administration/school/school.routes') },
-                    // { path: 'users', loadChildren: () => import('app/modules/administration/users/users.routes') },
                     { path: 'roles', loadChildren: () => import('app/RolesAndPermission/role-assignment.component.routes') },
-                     { path: 'schools', loadChildren: () => import('app/Tenant/schools-management.routes') },
-                     { path: 'users', loadChildren: () => import('app/UserManagement/users-management.component.routes') }
+                    { path: 'schools', loadChildren: () => import('app/Tenant/schools-management.routes') },
+                    { path: 'users', loadChildren: () => import('app/UserManagement/users-management.component.routes') }
                 ]
             },
 
@@ -151,10 +163,9 @@ export const appRoutes: Route[] = [
                 path: 'superadmin',
                 children: [
                     // { path: 'settings', loadChildren: () => import('app/modules/superadmin/settings/settings.routes') },
-                    // { path: 'logs', loadChildren: () => import('app/modules/superadmin/logs/logs.routes') }
+                    // { path: 'logs', loadChildren: () => import('app/modules/auth/logs/logs.routes') }
                 ]
             }
         ]
     }
-
 ];

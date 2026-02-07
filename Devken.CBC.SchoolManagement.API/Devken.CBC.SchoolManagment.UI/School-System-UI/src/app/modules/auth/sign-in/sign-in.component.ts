@@ -80,6 +80,18 @@ export class AuthSignInComponent implements OnInit {
     // -----------------------------------------------------------------------------------------------------
 
     /**
+ * Logout
+ */
+logout(): void {
+    // Show confirmation dialog if needed
+    const confirmed = confirm('Are you sure you want to cancel? You must change your password to access the system.');
+    
+    if (confirmed) {
+        this._authService.signOut();
+        this._router.navigate(['/sign-in']);
+    }
+}
+    /**
      * Sign in
      */
 // In your sign-in.component.ts
@@ -102,6 +114,7 @@ signIn(): void {
         next: (response) => {
             // Check if password change is required
             if (response.data.user.requirePasswordChange) {
+                // Redirect to change password page
                 this._router.navigate(['/change-password']);
                 return;
             }
