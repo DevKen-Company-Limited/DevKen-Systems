@@ -91,7 +91,6 @@ signIn(): void {
     this.signInForm.disable();
     this.showAlert = false;
 
-    // Check if it's a super admin email
     const email = this.signInForm.get('email').value;
     const isSuperAdmin = email.toLowerCase().includes('superadmin');
     
@@ -100,7 +99,14 @@ signIn(): void {
         : this._authService.signIn(this.signInForm.value);
 
     authService.subscribe({
-        next: () => {
+        next: (response) => {
+            // Check if password change is required
+            if (response.data.user.requirePasswordChange) {
+                this._router.navigate(['/change-password']);
+                return;
+            }
+
+            // Normal redirect
             const redirectURL = this._activatedRoute.snapshot.queryParamMap.get('redirectURL') || '/signed-in-redirect';
             this._router.navigateByUrl(redirectURL);
         },

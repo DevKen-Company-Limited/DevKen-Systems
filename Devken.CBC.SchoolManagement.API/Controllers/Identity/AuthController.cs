@@ -292,34 +292,78 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
         {
             if (user == null) return null!;
 
-            return new UserDto(
-                user.Id,
-                user.Email,
-                user.FullName,
-                user.TenantId,
-                string.Empty,       // SchoolName will be filled by service if needed
-                user.Roles ?? Array.Empty<string>(),
-                user.Permissions ?? Array.Empty<string>(),
-                user.RequirePasswordChange
-            );
+            // Split full name into first and last names
+            string firstName = string.Empty;
+            string lastName = string.Empty;
+
+            if (!string.IsNullOrEmpty(user.FullName))
+            {
+                var nameParts = user.FullName.Split(' ', 2);
+                firstName = nameParts[0];
+                lastName = nameParts.Length > 1 ? nameParts[1] : string.Empty;
+            }
+
+            return new UserDto
+            {
+                Id = user.Id,
+                Email = user.Email,
+                FirstName = firstName,
+                LastName = lastName,
+                SchoolId = user.TenantId,
+                SchoolName = string.Empty, // SchoolName will be filled by service if needed
+                IsActive = true, // Assuming active if we have UserInfo
+                IsEmailVerified = true, // Assuming verified if we have UserInfo
+                RequirePasswordChange = user.RequirePasswordChange,
+                RoleNames = new List<string>(user.Roles ?? Array.Empty<string>()),
+                CreatedOn = DateTime.UtcNow,
+                UpdatedOn = DateTime.UtcNow
+            };
         }
 
         private static UserDto MapSuperAdminToUserDto(SuperAdminDto admin)
         {
             if (admin == null) return null!;
 
-            return new UserDto(
-                admin.Id,
-                admin.Email,
-                $"{admin.FirstName} {admin.LastName}".Trim(),
-                Guid.Empty,           // SuperAdmin has no tenant
-                "SuperAdmin",
-                Array.Empty<string>(),
-                Array.Empty<string>(),
-                false
-            );
+            return new UserDto
+            {
+                Id = admin.Id,
+                Email = admin.Email,
+                FirstName = admin.FirstName,
+                LastName = admin.LastName,
+                SchoolId = Guid.Empty, // SuperAdmin has no tenant
+                SchoolName = "SuperAdmin",
+                IsActive = true,
+                IsEmailVerified = true,
+                RequirePasswordChange = false,
+                RoleNames = new List<string> { "SuperAdmin" },
+                CreatedOn = DateTime.UtcNow,
+                UpdatedOn = DateTime.UtcNow
+            };
         }
 
+        // Additional mapping method for UserManagementDto to UserDto if needed
+        private static UserDto MapUserManagementToUserDto(UserManagementDto userManagement)
+        {
+            if (userManagement == null) return null!;
+
+            return new UserDto
+            {
+                Id = userManagement.Id,
+                Email = userManagement.Email,
+                FirstName = userManagement.FirstName,
+                LastName = userManagement.LastName,
+                PhoneNumber = userManagement.PhoneNumber,
+                ProfileImageUrl = userManagement.ProfileImageUrl,
+                SchoolId = userManagement.TenantId,
+                SchoolName = userManagement.SchoolName,
+                IsActive = userManagement.IsActive,
+                IsEmailVerified = userManagement.IsEmailVerified,
+                RequirePasswordChange = userManagement.RequirePasswordChange,
+                RoleNames = userManagement.Roles?.Select(r => r.Name).ToList() ?? new List<string>(),
+                CreatedOn = userManagement.CreatedOn,
+                UpdatedOn = userManagement.UpdatedOn
+            };
+        }
         #endregion
     }
 }

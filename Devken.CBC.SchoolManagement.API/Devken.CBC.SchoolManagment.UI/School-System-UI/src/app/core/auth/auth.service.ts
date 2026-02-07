@@ -79,6 +79,15 @@ export class AuthService {
             : localStorage.removeItem(this.USER);
     }
 
+            changePassword(credentials: { 
+                currentPassword: string; 
+                newPassword: string 
+            }): Observable<ApiResponse<any>> {
+                return this.post<any>('/api/auth/change-password', {
+                    currentPassword: credentials.currentPassword,
+                    newPassword: credentials.newPassword
+                });
+            }
     /* =======================
        LOGIN
     ======================= */

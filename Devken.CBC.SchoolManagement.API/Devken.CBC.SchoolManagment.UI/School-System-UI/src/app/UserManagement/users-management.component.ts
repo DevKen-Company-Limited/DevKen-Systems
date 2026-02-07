@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, AfterViewInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
@@ -69,6 +69,11 @@ export class UsersManagementComponent
     'actions'
   ];
 
+  // Responsive columns for different screen sizes
+  mobileColumns: string[] = ['user', 'email', 'roles', 'status', 'actions'];
+  tabletColumns: string[] = ['user', 'email', 'roles', 'status', 'lastLogin', 'actions'];
+  desktopColumns: string[] = ['user', 'email', 'phone', 'roles', 'status', 'lastLogin', 'actions'];
+
   pageSize = 20;
   currentPage = 1;
   total = 0;
@@ -81,6 +86,8 @@ export class UsersManagementComponent
 
   filterValue = '';
   isSuperAdmin = false;
+  isMobile = false;
+  isTablet = false;
 
   constructor(
     protected service: UserService,
@@ -90,23 +97,17 @@ export class UsersManagementComponent
     super(service, dialog, snackBar);
   }
 
+  /**
+   * Listen for window resize to adjust columns
+   */
+  @HostListener('window:resize', ['$event'])
+  onResize(event?: Event): void {
+    this.updateDisplayedColumns();
+  }
+
   ngOnInit(): void {
     this.checkSuperAdminStatus();
-    
-    // Add school column for SuperAdmin
-    if (this.isSuperAdmin) {
-      this.displayedColumns = [
-        'user', 
-        'email',
-        'school', // Add school column
-        'phone', 
-        'roles', 
-        'status', 
-        'lastLogin', 
-        'actions'
-      ];
-    }
-    
+    this.updateDisplayedColumns();
     this.init();
   }
 
@@ -121,6 +122,36 @@ export class UsersManagementComponent
     }
     if (this.sort) {
       this.dataSource.sort = this.sort;
+    }
+  }
+
+  /**
+   * Update displayed columns based on screen size
+   */
+  private updateDisplayedColumns(): void {
+    const width = window.innerWidth;
+    
+    this.isMobile = width < 640;
+    this.isTablet = width >= 640 && width < 1024;
+
+    if (this.isSuperAdmin) {
+      // SuperAdmin gets school column
+      if (this.isMobile) {
+        this.displayedColumns = ['user', 'email', 'roles', 'actions'];
+      } else if (this.isTablet) {
+        this.displayedColumns = ['user', 'email', 'school', 'roles', 'status', 'actions'];
+      } else {
+        this.displayedColumns = ['user', 'email', 'school', 'phone', 'roles', 'status', 'lastLogin', 'actions'];
+      }
+    } else {
+      // Regular users
+      if (this.isMobile) {
+        this.displayedColumns = this.mobileColumns;
+      } else if (this.isTablet) {
+        this.displayedColumns = this.tabletColumns;
+      } else {
+        this.displayedColumns = this.desktopColumns;
+      }
     }
   }
 
@@ -188,6 +219,9 @@ export class UsersManagementComponent
     }
   }
 
+  /**
+   * Get tooltip for extra roles when using roles array
+   */
   getExtraRolesTooltip(user: UserDto): string {
     if (!user?.roles || user.roles.length <= 2) {
       return '';
@@ -196,6 +230,19 @@ export class UsersManagementComponent
     return user.roles
       .slice(2)
       .map(r => r.name)
+      .join(', ');
+  }
+
+  /**
+   * Get tooltip for extra roles when using roleNames array
+   */
+  getExtraRoleNamesTooltip(user: any): string {
+    if (!user?.roleNames || user.roleNames.length <= 2) {
+      return '';
+    }
+
+    return user.roleNames
+      .slice(2)
       .join(', ');
   }
 
@@ -211,8 +258,12 @@ export class UsersManagementComponent
   }
 
   openCreate(): void {
+    const dialogWidth = this.isMobile ? '100vw' : this.isTablet ? '90vw' : '700px';
+    const dialogMaxWidth = this.isMobile ? '100vw' : '90vw';
+
     this.openDialog(CreateEditUserDialogComponent, { 
-      width: '700px', 
+      width: dialogWidth,
+      maxWidth: dialogMaxWidth,
       data: { 
         mode: 'create',
         isSuperAdmin: this.isSuperAdmin 
@@ -221,11 +272,16 @@ export class UsersManagementComponent
   }
 
   openEdit(user: UserDto): void {
+    const dialogWidth = this.isMobile ? '100vw' : this.isTablet ? '90vw' : '700px';
+    const dialogMaxWidth = this.isMobile ? '100vw' : '90vw';
+
+    // Pass userId instead of user object - let dialog fetch fresh data
     this.openDialog(CreateEditUserDialogComponent, { 
-      width: '700px', 
+      width: dialogWidth,
+      maxWidth: dialogMaxWidth,
       data: { 
         mode: 'edit', 
-        user,
+        userId: user.id,
         isSuperAdmin: this.isSuperAdmin 
       } 
     });
@@ -363,10 +419,22 @@ export class UsersManagementComponent
 
   formatDate(date: string | undefined): string {
     if (!date) return 'Never';
-    return new Date(date).toLocaleDateString('en-US', { 
+    
+    const dateObj = new Date(date);
+    const now = new Date();
+    const diffMs = now.getTime() - dateObj.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    // Show relative time for recent dates
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    
+    // Otherwise show formatted date
+    return dateObj.toLocaleDateString('en-US', { 
       month: 'short', 
       day: 'numeric', 
-      year: 'numeric' 
+      year: dateObj.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
     });
   }
 }

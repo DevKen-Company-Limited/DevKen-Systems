@@ -1,26 +1,31 @@
-﻿using Devken.CBC.SchoolManagement.Application.Dtos;
+﻿using Devken.CBC.SchoolManagement.Application.Common;
+using Devken.CBC.SchoolManagement.Application.Dtos;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-
-namespace Devken.CBC.SchoolManagement.Application.Service.UserManagment
+namespace Devken.CBC.SchoolManagement.Application.Services.UserManagement
 {
     public interface IUserManagementService
     {
-        /// <summary>
-        /// Create a new user in a specific school
-        /// </summary>
-        Task<ServiceResult<CreateUserResponseDto>> CreateUserAsync(
-            CreateUserRequest request,
-            Guid schoolId,
-            Guid createdByUserId);
+        #region User CRUD Operations
 
         /// <summary>
-        /// Get users with optional filtering and pagination
+        /// Create a new user
         /// </summary>
-        Task<ServiceResult<UserListDto>> GetUsersAsync(
+        Task<Common.ServiceResult<UserDto>> CreateUserAsync(
+            CreateUserRequest request,
+            Guid schoolId,
+            Guid createdBy);
+
+        /// <summary>
+        /// Get user by ID
+        /// </summary>
+        Task<Common.ServiceResult<UserDto>> GetUserByIdAsync(Guid userId);
+
+        /// <summary>
+        /// Get users with filtering and pagination
+        /// </summary>
+        Task<Common.ServiceResult<PaginatedUsersResponse>> GetUsersAsync(
             Guid? schoolId,
             int page,
             int pageSize,
@@ -28,54 +33,82 @@ namespace Devken.CBC.SchoolManagement.Application.Service.UserManagment
             bool? isActive);
 
         /// <summary>
-        /// Get a specific user by ID
+        /// Update user details (basic information)
         /// </summary>
-        Task<ServiceResult<UserManagementDto>> GetUserByIdAsync(Guid userId);
-
-        /// <summary>
-        /// Update user information
-        /// </summary>
-        Task<ServiceResult<UserManagementDto>> UpdateUserAsync(
+        Task<Common.ServiceResult<UserDto>> UpdateUserAsync(
             Guid userId,
             UpdateUserRequest request,
-            Guid updatedByUserId);
+            Guid updatedBy);
 
         /// <summary>
-        /// Assign multiple roles to a user
+        /// Delete user
         /// </summary>
-        Task<ServiceResult<UserManagementDto>> AssignRolesToUserAsync(
+        Task<Common.ServiceResult<bool>> DeleteUserAsync(
             Guid userId,
-            List<Guid> roleIds,
-            Guid assignedByUserId);
+            Guid deletedBy);
+
+        #endregion
+
+        #region User Status Management
 
         /// <summary>
-        /// Remove a specific role from a user
+        /// Activate user account
         /// </summary>
-        Task<ServiceResult<UserManagementDto>> RemoveRoleFromUserAsync(
+        Task<Common.ServiceResult<bool>> ActivateUserAsync(
             Guid userId,
-            Guid roleId,
-            Guid removedByUserId);
+            Guid activatedBy);
 
         /// <summary>
-        /// Activate a user account
+        /// Deactivate user account
         /// </summary>
-        Task<ServiceResult<bool>> ActivateUserAsync(Guid userId, Guid activatedByUserId);
-
-        /// <summary>
-        /// Deactivate a user account
-        /// </summary>
-        Task<ServiceResult<bool>> DeactivateUserAsync(Guid userId, Guid deactivatedByUserId);
-
-        /// <summary>
-        /// Soft delete a user
-        /// </summary>
-        Task<ServiceResult<bool>> DeleteUserAsync(Guid userId, Guid deletedByUserId);
-
-        /// <summary>
-        /// Admin-initiated password reset
-        /// </summary>
-        Task<ServiceResult<ResetPasswordResponseDto>> ResetUserPasswordAsync(
+        Task<Common.ServiceResult<bool>> DeactivateUserAsync(
             Guid userId,
-            Guid resetByUserId);
+            Guid deactivatedBy);
+
+        #endregion
+
+        #region Role Management
+
+        /// <summary>
+        /// Assign multiple roles to a user (adds to existing roles)
+        /// </summary>
+        Task<Common.ServiceResult<UserDto>> AssignRolesToUserAsync(
+            Guid userId,
+            List<string> roleIds,
+            Guid assignedBy);
+
+        /// <summary>
+        /// Update user roles (replaces all existing roles)
+        /// </summary>
+        Task<Common.ServiceResult<UserDto>> UpdateUserRolesAsync(
+            Guid userId,
+            List<string> roleIds,
+            Guid updatedBy);
+
+        /// <summary>
+        /// Remove a specific role from user
+        /// </summary>
+        Task<Common.ServiceResult<UserDto>> RemoveRoleFromUserAsync(
+            Guid userId,
+            string roleId,
+            Guid removedBy);
+
+        #endregion
+
+        #region Password Management
+
+        /// <summary>
+        /// Reset user password (admin-initiated)
+        /// </summary>
+        Task<Common.ServiceResult<bool>> ResetPasswordAsync(
+            Guid userId,
+            Guid resetBy);
+
+        /// <summary>
+        /// Resend welcome email
+        /// </summary>
+        Task<Common.ServiceResult<bool>> ResendWelcomeEmailAsync(Guid userId);
+
+        #endregion
     }
 }

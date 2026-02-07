@@ -1,12 +1,11 @@
 ﻿using Devken.CBC.SchoolManagement.Api.Controllers.Common;
 using Devken.CBC.SchoolManagement.Application.Dtos;
-using Devken.CBC.SchoolManagement.Application.DTOs.RoleAssignment;
-using Devken.CBC.SchoolManagement.Application.Service.Activities;
-using Devken.CBC.SchoolManagement.Application.Service.UserManagment;
+using Devken.CBC.SchoolManagement.Application.Services.UserManagement;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -20,9 +19,8 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
         private readonly IUserManagementService _userManagementService;
 
         public UserManagementController(
-            IUserManagementService userManagementService,
-            IUserActivityService activityService)
-            : base(activityService)
+            IUserManagementService userManagementService)
+            : base(null) // Remove activityService parameter from base if not needed
         {
             _userManagementService = userManagementService
                 ?? throw new ArgumentNullException(nameof(userManagementService));
@@ -48,7 +46,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
 
             if (IsSuperAdmin)
             {
-                if (!request.SchoolId.HasValue)
+                if (request is null || !request.SchoolId.HasValue)
                     return ErrorResponse(
                         "SuperAdmin must specify a SchoolId when creating users.",
                         StatusCodes.Status400BadRequest);
@@ -63,8 +61,26 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                     return ForbiddenResponse("You can only create users in your own school.");
             }
 
+            // Validate that RoleIds are provided
+            if (request.RoleIds == null || request.RoleIds.Count == 0)
+                return ErrorResponse(
+                    "At least one role must be assigned to the user.",
+                    StatusCodes.Status400BadRequest);
+
+            // Remove SchoolId from the request since it's now handled separately
+            var createRequest = new CreateUserRequest
+            {
+                Email = request.Email,
+                FirstName = request.FirstName,
+                LastName = request.LastName,
+                PhoneNumber = request.PhoneNumber,
+                TemporaryPassword = request.TemporaryPassword,
+                RequirePasswordChange = request.RequirePasswordChange,
+                RoleIds = request.RoleIds
+            };
+
             var result = await _userManagementService.CreateUserAsync(
-                request,
+                createRequest,
                 targetSchoolId,
                 CurrentUserId);
 
@@ -141,7 +157,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                 if (!HasPermission("User.Read"))
                     return ForbiddenResponse("You do not have permission to view users.");
 
-                if (result.Data.TenantId != CurrentTenantId)
+                if (result.Data.SchoolId != CurrentTenantId)
                     return ForbiddenResponse("You do not have access to this user.");
             }
 
@@ -153,7 +169,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
         #region Update User
 
         /// <summary>
-        /// Update user details
+        /// Update user details and roles
         /// </summary>
         [HttpPut("{userId:guid}")]
         public async Task<IActionResult> UpdateUser(Guid userId, [FromBody] UpdateUserRequest request)
@@ -170,10 +186,15 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                 if (!HasPermission("User.Update"))
                     return ForbiddenResponse("You do not have permission to update users.");
 
-                if (userResult.Data.TenantId != CurrentTenantId)
+                if (userResult.Data.SchoolId != CurrentTenantId)
                     return ForbiddenResponse("You can only update users in your own school.");
             }
 
+            // Prevent users from deactivating themselves
+            if (userId == CurrentUserId && request.IsActive.HasValue && !request.IsActive.Value)
+                return ErrorResponse("You cannot deactivate your own account.", StatusCodes.Status400BadRequest);
+
+            // Update user basic information
             var result = await _userManagementService.UpdateUserAsync(
                 userId,
                 request,
@@ -196,7 +217,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
         #region Roles Management
 
         /// <summary>
-        /// Assign roles to a user
+        /// Assign roles to a user (adds to existing roles)
         /// </summary>
         [HttpPost("{userId:guid}/roles")]
         public async Task<IActionResult> AssignRoles(Guid userId, [FromBody] AssignRolesRequest request)
@@ -207,16 +228,25 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
             if (!IsSuperAdmin && !HasPermission("User.AssignRoles"))
                 return ForbiddenResponse("You do not have permission to assign roles.");
 
+            // Validate that roles are provided
+            if (request.RoleIds == null || request.RoleIds.Count == 0)
+                return ErrorResponse(
+                    "At least one role must be provided.",
+                    StatusCodes.Status400BadRequest);
+
             var userResult = await _userManagementService.GetUserByIdAsync(userId);
             if (!userResult.Success || userResult.Data == null)
                 return NotFoundResponse("User not found");
 
-            if (!IsSuperAdmin && userResult.Data.TenantId != CurrentTenantId)
+            if (!IsSuperAdmin && userResult.Data.SchoolId != CurrentTenantId)
                 return ForbiddenResponse("You can only manage roles for users in your own school.");
+
+            // Convert List<Guid> to List<string> for service call
+            var roleIdsAsString = request.RoleIds.Select(r => r.ToString()).ToList();
 
             var result = await _userManagementService.AssignRolesToUserAsync(
                 userId,
-                request.RoleIds,
+                roleIdsAsString,
                 CurrentUserId);
 
             if (!result.Success)
@@ -226,7 +256,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
 
             await LogUserActivityAsync(
                 "user.assign-roles",
-                $"Assigned roles to user {userId}");
+                $"Assigned {request.RoleIds.Count} role(s) to user {userId}");
 
             return SuccessResponse(result.Data, "Roles assigned successfully");
         }
@@ -244,12 +274,24 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
             if (!userResult.Success || userResult.Data == null)
                 return NotFoundResponse("User not found");
 
-            if (!IsSuperAdmin && userResult.Data.TenantId != CurrentTenantId)
+            if (!IsSuperAdmin && userResult.Data.SchoolId != CurrentTenantId)
                 return ForbiddenResponse("You can only manage roles for users in your own school.");
+
+            // Prevent removing the last role from a user
+            if (userResult.Data.RoleNames != null && userResult.Data.RoleNames.Count <= 1)
+                return ErrorResponse(
+                    "Cannot remove the last role from a user. Users must have at least one role.",
+                    StatusCodes.Status400BadRequest);
+
+            // Prevent users from modifying their own roles
+            if (userId == CurrentUserId)
+                return ErrorResponse(
+                    "You cannot modify your own roles.",
+                    StatusCodes.Status400BadRequest);
 
             var result = await _userManagementService.RemoveRoleFromUserAsync(
                 userId,
-                roleId,
+                roleId.ToString(),
                 CurrentUserId);
 
             if (!result.Success)
@@ -264,6 +306,127 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
             return SuccessResponse<object?>(null, "Role removed successfully");
         }
 
+        /// <summary>
+        /// Update user roles (replace all existing roles)
+        /// </summary>
+        [HttpPut("{userId:guid}/roles")]
+        public async Task<IActionResult> UpdateUserRoles(Guid userId, [FromBody] AssignRolesRequest request)
+        {
+            if (!ModelState.IsValid)
+                return ValidationErrorResponse(ToErrorDictionary(ModelState));
+
+            if (!IsSuperAdmin && !HasPermission("User.AssignRoles"))
+                return ForbiddenResponse("You do not have permission to update roles.");
+
+            // Validate that roles are provided
+            if (request.RoleIds == null || request.RoleIds.Count == 0)
+                return ErrorResponse(
+                    "At least one role must be assigned to the user.",
+                    StatusCodes.Status400BadRequest);
+
+            var userResult = await _userManagementService.GetUserByIdAsync(userId);
+            if (!userResult.Success || userResult.Data == null)
+                return NotFoundResponse("User not found");
+
+            if (!IsSuperAdmin && userResult.Data.SchoolId != CurrentTenantId)
+                return ForbiddenResponse("You can only manage roles for users in your own school.");
+
+            // Prevent users from modifying their own roles
+            if (userId == CurrentUserId)
+                return ErrorResponse(
+                    "You cannot modify your own roles.",
+                    StatusCodes.Status400BadRequest);
+
+            // Convert List<Guid> to List<string> for service call
+            var roleIdsAsString = request.RoleIds.Select(r => r.ToString()).ToList();
+
+            var result = await _userManagementService.UpdateUserRolesAsync(
+                userId,
+                roleIdsAsString,
+                CurrentUserId);
+
+            if (!result.Success)
+                return ErrorResponse(
+                    result.Error ?? "Role update failed",
+                    StatusCodes.Status400BadRequest);
+
+            await LogUserActivityAsync(
+                "user.update-roles",
+                $"Updated roles for user {userId} - assigned {request.RoleIds.Count} role(s)");
+
+            return SuccessResponse(result.Data, "Roles updated successfully");
+        }
+
+        #endregion
+
+        #region Password Management
+
+        /// <summary>
+        /// Reset user password (admin-initiated)
+        /// </summary>
+        [HttpPost("{userId:guid}/reset-password")]
+        public async Task<IActionResult> ResetPassword(Guid userId)
+        {
+            if (!IsSuperAdmin && !HasPermission("User.ResetPassword"))
+                return ForbiddenResponse("You do not have permission to reset passwords.");
+
+            var userResult = await _userManagementService.GetUserByIdAsync(userId);
+            if (!userResult.Success || userResult.Data == null)
+                return NotFoundResponse("User not found");
+
+            if (!IsSuperAdmin && userResult.Data.SchoolId != CurrentTenantId)
+                return ForbiddenResponse("You can only reset passwords for users in your own school.");
+
+            // Prevent users from resetting their own password via admin endpoint
+            if (userId == CurrentUserId)
+                return ErrorResponse(
+                    "Please use the change password endpoint to update your own password.",
+                    StatusCodes.Status400BadRequest);
+
+            var result = await _userManagementService.ResetPasswordAsync(userId, CurrentUserId);
+
+            if (!result.Success)
+                return ErrorResponse(
+                    result.Error ?? "Password reset failed",
+                    StatusCodes.Status400BadRequest);
+
+            await LogUserActivityAsync(
+                "user.reset-password",
+                $"Reset password for user {userId}");
+
+            return SuccessResponse<object?>(null, "Password reset successfully. User will receive a temporary password.");
+        }
+
+        /// <summary>
+        /// Resend welcome email to user
+        /// </summary>
+        [HttpPost("{userId:guid}/resend-welcome")]
+        public async Task<IActionResult> ResendWelcomeEmail(Guid userId)
+        {
+            if (!IsSuperAdmin && !HasPermission("User.Manage"))
+                return ForbiddenResponse("You do not have permission to resend welcome emails.");
+
+            var userResult = await _userManagementService.GetUserByIdAsync(userId);
+            if (!userResult.Success || userResult.Data == null)
+                return NotFoundResponse("User not found");
+
+            if (!IsSuperAdmin && userResult.Data.SchoolId != CurrentTenantId)
+                return ForbiddenResponse("You can only resend welcome emails for users in your own school.");
+
+            var result = await _userManagementService.ResendWelcomeEmailAsync(userId);
+
+            if (!result.Success)
+                return ErrorResponse(
+                    result.Error ?? "Failed to resend welcome email",
+                    StatusCodes.Status400BadRequest);
+
+            await LogUserActivityAsync(
+                "user.resend-welcome",
+                $"Resent welcome email to user {userId}");
+
+            return SuccessResponse<object?>(null, "Welcome email resent successfully");
+        }
+
         #endregion
 
         #region Activate / Deactivate / Delete
@@ -273,6 +436,13 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
         {
             if (!IsSuperAdmin && !HasPermission("User.Activate"))
                 return ForbiddenResponse("You do not have permission to activate users.");
+
+            var userResult = await _userManagementService.GetUserByIdAsync(userId);
+            if (!userResult.Success || userResult.Data == null)
+                return NotFoundResponse("User not found");
+
+            if (!IsSuperAdmin && userResult.Data.SchoolId != CurrentTenantId)
+                return ForbiddenResponse("You can only activate users in your own school.");
 
             var result = await _userManagementService.ActivateUserAsync(userId, CurrentUserId);
 
@@ -295,6 +465,13 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
             if (!IsSuperAdmin && !HasPermission("User.Deactivate"))
                 return ForbiddenResponse("You do not have permission to deactivate users.");
 
+            var userResult = await _userManagementService.GetUserByIdAsync(userId);
+            if (!userResult.Success || userResult.Data == null)
+                return NotFoundResponse("User not found");
+
+            if (!IsSuperAdmin && userResult.Data.SchoolId != CurrentTenantId)
+                return ForbiddenResponse("You can only deactivate users in your own school.");
+
             var result = await _userManagementService.DeactivateUserAsync(userId, CurrentUserId);
 
             if (!result.Success)
@@ -316,6 +493,13 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
             if (!IsSuperAdmin && !HasPermission("User.Delete"))
                 return ForbiddenResponse("You do not have permission to delete users.");
 
+            var userResult = await _userManagementService.GetUserByIdAsync(userId);
+            if (!userResult.Success || userResult.Data == null)
+                return NotFoundResponse("User not found");
+
+            if (!IsSuperAdmin && userResult.Data.SchoolId != CurrentTenantId)
+                return ForbiddenResponse("You can only delete users in your own school.");
+
             var result = await _userManagementService.DeleteUserAsync(userId, CurrentUserId);
 
             if (!result.Success)
@@ -330,14 +514,25 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
 
         #endregion
 
+        #region DTO Classes
+
+        public class AssignRolesRequest
+        {
+            public List<Guid> RoleIds { get; set; } = new();
+        }
+
+        #endregion
+
         #region Helpers
 
-        private static IDictionary<string, string[]> ToErrorDictionary(
-            Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary modelState) =>
-            modelState.ToDictionary(
+        private static Dictionary<string, string[]> ToErrorDictionary(
+            Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary modelState)
+        {
+            return modelState.ToDictionary(
                 kvp => kvp.Key,
                 kvp => kvp.Value?.Errors.Select(e => e.ErrorMessage).ToArray()
                     ?? Array.Empty<string>());
+        }
 
         #endregion
     }

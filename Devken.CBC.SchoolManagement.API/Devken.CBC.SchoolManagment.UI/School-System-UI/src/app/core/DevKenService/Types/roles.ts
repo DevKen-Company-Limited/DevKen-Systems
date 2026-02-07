@@ -35,6 +35,7 @@ export interface RoleDto {
 }
 
 export interface UserRole {
+  id: string;
   roleName: any;
   roleId: string;
   name: string; // Changed from roleName to name for consistency
@@ -73,6 +74,7 @@ export interface UserDto {
 }
 
 export interface UserWithRoles {
+isSuperAdmin: any;
   userId: string;
   email: string;
   userName: string;

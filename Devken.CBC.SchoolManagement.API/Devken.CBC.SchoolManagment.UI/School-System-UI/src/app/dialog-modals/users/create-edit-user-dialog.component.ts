@@ -1,5 +1,6 @@
 import { Component, Inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -11,16 +12,18 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDividerModule } from '@angular/material/divider';
-import { take } from 'rxjs/operators';
+import { take, forkJoin } from 'rxjs';
 
+import { API_BASE_URL } from 'app/app.config';
 import { UserService } from 'app/core/DevKenService/user/UserService';
 import { BaseFormDialog } from 'app/shared/dialogs/BaseFormDialog';
 import { UserDto, CreateUserRequest, UpdateUserRequest, RoleDto } from 'app/core/DevKenService/Types/roles';
-import { SchoolDto } from 'app/Tenant/types/school';
+import { SchoolDto, ApiResponse } from 'app/Tenant/types/school';
 import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
 
 interface DialogData {
   mode: 'create' | 'edit';
+  userId?: string;
   user?: UserDto;
   isSuperAdmin?: boolean;
 }
@@ -53,27 +56,37 @@ export class CreateEditUserDialogComponent
   availableSchools: SchoolDto[] = [];
   isLoadingRoles = false;
   isLoadingSchools = false;
+  isLoadingUser = false;
   hidePassword = true;
+  currentUser: UserDto | null = null;
 
   constructor(
     protected fb: FormBuilder,
+    protected http: HttpClient,
     protected service: UserService,
     protected schoolService: SchoolService,
     protected snackBar: MatSnackBar,
     protected dialogRef: MatDialogRef<CreateEditUserDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: DialogData
+    @Inject(MAT_DIALOG_DATA) public data: DialogData,
+    @Inject(API_BASE_URL) private _apiBase: string
   ) {
     super(fb, service, snackBar, dialogRef, data);
   }
 
   ngOnInit(): void {
-    this.loadRoles();
+    // Build the form first
+    this.form = this.buildForm();
 
-    if (this.isSuperAdmin && !this.isEditMode) {
-      this.loadSchools();
+    // Load data based on mode
+    if (this.isEditMode) {
+      this.loadUserAndRoles();
+    } else {
+      // Create mode
+      this.loadRoles();
+      if (this.isSuperAdmin) {
+        this.loadSchools();
+      }
     }
-
-    this.init();
   }
 
   protected buildForm(): FormGroup {
@@ -98,19 +111,105 @@ export class CreateEditUserDialogComponent
     });
   }
 
+  /**
+   * Load user data and roles in parallel for edit mode
+   */
+  private loadUserAndRoles(): void {
+    const userId = this.data.userId || this.data.user?.id;
+    
+    if (!userId) {
+      this.snackBar.open('User ID is required for editing', 'Close', { duration: 3000 });
+      this.close();
+      return;
+    }
+
+    this.isLoadingUser = true;
+    this.isLoadingRoles = true;
+
+    // Load user data and available roles in parallel
+    forkJoin({
+      user: this.service.getById(userId),
+      roles: this.loadRolesObservable()
+    })
+    .pipe(take(1))
+    .subscribe({
+      next: ({ user, roles }) => {
+        this.isLoadingUser = false;
+        this.isLoadingRoles = false;
+
+        // Handle user response
+        if (!user.success || !user.data) {
+          this.snackBar.open(
+            user.message || 'Failed to load user details',
+            'Close',
+            { duration: 3000 }
+          );
+          this.close();
+          return;
+        }
+
+        // Handle roles response
+        if (!roles.success || !roles.data) {
+          this.snackBar.open(
+            roles.message || 'Failed to load roles',
+            'Close',
+            { duration: 3000 }
+          );
+          // Don't close, allow editing without role changes
+        } else {
+          this.availableRoles = roles.data;
+        }
+
+        // Store current user and patch form
+        this.currentUser = user.data;
+        this.patchForEdit(this.currentUser);
+      },
+      error: (err) => {
+        this.isLoadingUser = false;
+        this.isLoadingRoles = false;
+        
+        const errorMsg = err?.error?.message || err.message || 'Failed to load user data';
+        this.snackBar.open(errorMsg, 'Close', { duration: 4000 });
+        this.close();
+      }
+    });
+  }
+
   protected patchForEdit(user: UserDto): void {
     if (!user) return;
 
-    // Extract roleIds from user.roles array
-    const roleIds = user.roles?.map(r => r.roleId) ?? [];
+    // Extract roleIds - handle multiple possible response formats
+    let roleIds: string[] = [];
+
+    // Format 1: user.roles is array of objects with roleId property
+    if (user.roles && Array.isArray(user.roles) && user.roles.length > 0) {
+      if (typeof user.roles[0] === 'object' && 'roleId' in user.roles[0]) {
+        roleIds = user.roles.map(r => r.roleId);
+      }
+    }
+
+    // Format 2: user.roleNames is array of role names - need to match with availableRoles
+    if (roleIds.length === 0 && (user as any).roleNames && Array.isArray((user as any).roleNames)) {
+      const roleNames = (user as any).roleNames as string[];
+      roleIds = this.availableRoles
+        .filter(role => roleNames.includes(role.name))
+        .map(role => role.id);
+    }
+
+    // Format 3: user.roleIds is already an array of IDs
+    if (roleIds.length === 0 && (user as any).roleIds && Array.isArray((user as any).roleIds)) {
+      roleIds = (user as any).roleIds;
+    }
+
+    console.log('Patching user with roleIds:', roleIds);
 
     this.form.patchValue({
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
-      phoneNumber: user.phoneNumber,
+      phoneNumber: user.phoneNumber || '',
       isActive: user.isActive,
-      roleIds
+      roleIds: roleIds
     });
 
     // Clear password validators for edit mode
@@ -120,27 +219,41 @@ export class CreateEditUserDialogComponent
     this.form.markAsPristine();
   }
 
+  /**
+   * Load roles - returns observable for use in forkJoin
+   * Uses role-assignments endpoint which handles SuperAdmin vs School context
+   */
+  private loadRolesObservable() {
+    return this.http.get<ApiResponse<RoleDto[]>>(
+      `${this._apiBase}/api/role-assignments/available-roles`
+    );
+  }
+
+  /**
+   * Load roles for create mode
+   * Uses role-assignments endpoint which handles SuperAdmin vs School context
+   */
   private loadRoles(): void {
     this.isLoadingRoles = true;
 
-    this.service.getAvailableRoles()
+    this.http.get<ApiResponse<RoleDto[]>>(
+      `${this._apiBase}/api/role-assignments/available-roles`
+    )
       .pipe(take(1))
       .subscribe({
         next: res => {
           this.isLoadingRoles = false;
 
           if (!res.success) {
-            this.snackBar.open(res.message || 'Failed to load roles', 'Close', { duration: 3000 });
+            this.snackBar.open(
+              res.message || 'Failed to load roles',
+              'Close',
+              { duration: 3000 }
+            );
             return;
           }
 
           this.availableRoles = res.data;
-
-          // If editing, patch the role IDs after roles are loaded
-          if (this.isEditMode && this.data.user) {
-            const roleIds = this.data.user.roles?.map(r => r.roleId) ?? [];
-            this.form.patchValue({ roleIds });
-          }
         },
         error: err => {
           this.isLoadingRoles = false;
@@ -163,7 +276,11 @@ export class CreateEditUserDialogComponent
           this.isLoadingSchools = false;
 
           if (!res.success) {
-            this.snackBar.open(res.message || 'Failed to load schools', 'Close', { duration: 3000 });
+            this.snackBar.open(
+              res.message || 'Failed to load schools',
+              'Close',
+              { duration: 3000 }
+            );
             return;
           }
 
@@ -181,6 +298,11 @@ export class CreateEditUserDialogComponent
   }
 
   onSave(): void {
+    if (!this.currentUser && this.isEditMode) {
+      this.snackBar.open('User data not loaded', 'Close', { duration: 3000 });
+      return;
+    }
+
     this.save(
       // CREATE
       raw => {
@@ -212,7 +334,7 @@ export class CreateEditUserDialogComponent
         roleIds: raw.roleIds ?? []
       }),
 
-      () => this.data.user!.id
+      () => this.currentUser!.id
     );
   }
 
