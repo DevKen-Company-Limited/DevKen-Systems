@@ -1,0 +1,209 @@
+<div class="flex flex-col max-h-full">
+  <!-- Header -->
+  <div class="flex items-center justify-between p-6 border-b bg-primary-50 dark:bg-primary-900">
+    <div class="flex items-center gap-4">
+      <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center shadow-lg">
+        <mat-icon class="text-white icon-size-6" [svgIcon]="'heroicons_outline:key'"></mat-icon>
+      </div>
+      <div>
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Manage Permissions</h2>
+        <p class="text-sm text-gray-600 dark:text-gray-300">{{ role.roleName }}</p>
+      </div>
+    </div>
+    <button mat-icon-button (click)="cancel()" matTooltip="Close">
+      <mat-icon [svgIcon]="'heroicons_outline:x-mark'"></mat-icon>
+    </button>
+  </div>
+
+  <!-- Statistics Bar -->
+  <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 border-b">
+    <div class="flex items-center gap-6">
+      <div class="text-center">
+        <div class="text-2xl font-bold text-primary-600 dark:text-primary-400">{{ stats.selected }}</div>
+        <div class="text-xs text-gray-500 dark:text-gray-400">Selected</div>
+      </div>
+      <div class="h-8 w-px bg-gray-300 dark:bg-gray-600"></div>
+      <div class="text-center">
+        <div class="text-2xl font-bold text-gray-600 dark:text-gray-400">{{ stats.total }}</div>
+        <div class="text-xs text-gray-500 dark:text-gray-400">Total</div>
+      </div>
+      <div class="h-8 w-px bg-gray-300 dark:bg-gray-600" *ngIf="hasChanges()"></div>
+      <div class="text-center" *ngIf="stats.added > 0">
+        <div class="text-2xl font-bold text-green-600 dark:text-green-400">+{{ stats.added }}</div>
+        <div class="text-xs text-gray-500 dark:text-gray-400">Added</div>
+      </div>
+      <div class="text-center" *ngIf="stats.removed > 0">
+        <div class="text-2xl font-bold text-red-600 dark:text-red-400">-{{ stats.removed }}</div>
+        <div class="text-xs text-gray-500 dark:text-gray-400">Removed</div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button mat-stroked-button (click)="selectAll()" class="text-sm">
+        <mat-icon class="icon-size-4" [svgIcon]="'heroicons_outline:check'"></mat-icon>
+        Select All
+      </button>
+      <button mat-stroked-button (click)="deselectAll()" class="text-sm">
+        <mat-icon class="icon-size-4" [svgIcon]="'heroicons_outline:x-mark'"></mat-icon>
+        Clear All
+      </button>
+      <button mat-stroked-button (click)="reset()" [disabled]="!hasChanges()" class="text-sm">
+        <mat-icon class="icon-size-4" [svgIcon]="'heroicons_outline:arrow-path'"></mat-icon>
+        Reset
+      </button>
+    </div>
+  </div>
+
+  <!-- Search and Templates -->
+  <div class="p-4 border-b bg-white dark:bg-gray-900">
+    <div class="flex gap-4">
+      <mat-form-field class="flex-1">
+        <mat-label>Search permissions</mat-label>
+        <input matInput [(ngModel)]="searchTerm" placeholder="Name, key, or description" autocomplete="off">
+        <mat-icon matPrefix [svgIcon]="'heroicons_outline:magnifying-glass'"></mat-icon>
+        <button *ngIf="searchTerm" mat-icon-button matSuffix (click)="searchTerm = ''">
+          <mat-icon [svgIcon]="'heroicons_outline:x-mark'"></mat-icon>
+        </button>
+      </mat-form-field>
+
+      <button 
+        mat-stroked-button 
+        [matMenuTriggerFor]="templateMenu"
+        *ngIf="templateRoles.length > 0"
+        matTooltip="Apply permissions from another role">
+        <mat-icon [svgIcon]="'heroicons_outline:clipboard-document-list'"></mat-icon>
+        Apply Template
+      </button>
+      
+      <mat-menu #templateMenu="matMenu">
+        <button mat-menu-item *ngFor="let templateRole of templateRoles" (click)="applyTemplate(templateRole)">
+          <div class="flex items-center gap-2">
+            <mat-icon [svgIcon]="'heroicons_outline:shield-check'"></mat-icon>
+            <div>
+              <div class="font-medium">{{ templateRole.roleName }}</div>
+              <div class="text-xs text-gray-500">{{ templateRole.totalPermissions }} permissions</div>
+            </div>
+          </div>
+        </button>
+      </mat-menu>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="flex-1 overflow-y-auto p-4">
+    <mat-accordion multi>
+      <mat-expansion-panel 
+        *ngFor="let group of permissionGroups"
+        [expanded]="isGroupExpanded(group)"
+        (opened)="expandedGroups.add(group)"
+        (closed)="expandedGroups.delete(group)"
+        class="mb-3 shadow-sm">
+        
+        <mat-expansion-panel-header class="bg-gray-50 dark:bg-gray-800">
+          <mat-panel-title class="flex items-center justify-between w-full">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-sm">
+                <mat-icon class="text-white icon-size-4" [svgIcon]="'heroicons_outline:folder'"></mat-icon>
+              </div>
+              <div>
+                <div class="font-semibold text-gray-900 dark:text-white">{{ group }}</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">
+                  {{ getGroupSelectedCount(group) }} / {{ getGroupTotalCount(group) }} selected
+                </div>
+              </div>
+            </div>
+            
+            <div class="flex items-center gap-2" (click)="$event.stopPropagation()">
+              <button 
+                mat-icon-button 
+                (click)="selectAllInGroup(group); $event.stopPropagation()"
+                matTooltip="Select all in group"
+                class="hover:bg-primary-100 dark:hover:bg-primary-900">
+                <mat-icon class="icon-size-4 text-green-600" [svgIcon]="'heroicons_outline:check-circle'"></mat-icon>
+              </button>
+              <button 
+                mat-icon-button 
+                (click)="deselectAllInGroup(group); $event.stopPropagation()"
+                matTooltip="Deselect all in group"
+                class="hover:bg-red-100 dark:hover:bg-red-900">
+                <mat-icon class="icon-size-4 text-red-600" [svgIcon]="'heroicons_outline:x-circle'"></mat-icon>
+              </button>
+            </div>
+          </mat-panel-title>
+        </mat-expansion-panel-header>
+
+        <div class="p-4">
+          <div class="grid grid-cols-1 gap-3">
+            <div 
+              *ngFor="let permission of filterPermissions(groupedPermissions[group])"
+              class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+              (click)="togglePermission(permission)">
+              
+              <mat-checkbox 
+                [checked]="isPermissionSelected(permission)"
+                (change)="togglePermission(permission)"
+                (click)="$event.stopPropagation()"
+                color="primary"
+                class="flex-shrink-0 mt-1">
+              </mat-checkbox>
+
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                  <div class="font-semibold text-gray-900 dark:text-white">
+                    {{ permission.displayName }}
+                  </div>
+                  <span 
+                    *ngIf="isPermissionSelected(permission) && !originalPermissionIds.has(permission.id)"
+                    class="inline-flex items-center px-1.5 py-0.5 text-xs rounded bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300">
+                    NEW
+                  </span>
+                  <span 
+                    *ngIf="!isPermissionSelected(permission) && originalPermissionIds.has(permission.id)"
+                    class="inline-flex items-center px-1.5 py-0.5 text-xs rounded bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300">
+                    REMOVED
+                  </span>
+                </div>
+                <div class="text-xs font-mono text-gray-500 dark:text-gray-400 mb-1">
+                  {{ permission.key }}
+                </div>
+                <div class="text-sm text-gray-600 dark:text-gray-400" *ngIf="permission.description">
+                  {{ permission.description }}
+                </div>
+              </div>
+            </div>
+
+            <!-- No results -->
+            <div 
+              *ngIf="filterPermissions(groupedPermissions[group]).length === 0" 
+              class="text-center py-8 text-gray-500 dark:text-gray-400">
+              <mat-icon class="icon-size-12 mb-2" [svgIcon]="'heroicons_outline:magnifying-glass'"></mat-icon>
+              <p>No permissions match your search</p>
+            </div>
+          </div>
+        </div>
+      </mat-expansion-panel>
+    </mat-accordion>
+  </div>
+
+  <!-- Footer -->
+  <div class="flex items-center justify-between p-4 border-t bg-gray-50 dark:bg-gray-800">
+    <div class="text-sm text-gray-600 dark:text-gray-400">
+      <span *ngIf="!hasChanges()">No changes made</span>
+      <span *ngIf="hasChanges()" class="font-semibold text-primary-600 dark:text-primary-400">
+        {{ stats.added + stats.removed }} change{{ (stats.added + stats.removed) !== 1 ? 's' : '' }} pending
+      </span>
+    </div>
+    
+    <div class="flex items-center gap-3">
+      <button mat-stroked-button (click)="cancel()">Cancel</button>
+      <button 
+        mat-flat-button 
+        color="primary" 
+        (click)="save()"
+        [disabled]="!hasChanges()">
+        <mat-icon [svgIcon]="'heroicons_outline:check'"></mat-icon>
+        Save Changes
+      </button>
+    </div>
+  </div>
+</div>

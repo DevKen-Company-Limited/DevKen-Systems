@@ -1,76 +1,285 @@
-<div class="p-6">
-  <div class="flex justify-between items-center mb-4">
-    <h2 class="text-xl font-semibold">Schools</h2>
-    <div class="flex items-center gap-2">
-      <input matInput placeholder="Search" (input)="applyFilter($any($event.target).value)" class="input" />
-      <button mat-flat-button color="primary" (click)="openCreate()">
-        <mat-icon>add</mat-icon> New
+<div class="flex flex-col flex-auto min-w-0">
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row flex-0 sm:items-center sm:justify-between p-6 sm:py-8 sm:px-10 border-b bg-card dark:bg-gray-900 shadow-sm">
+    <div class="flex-1 min-w-0">
+      <!-- Breadcrumbs -->
+      <div class="flex flex-wrap items-center text-sm font-medium text-gray-500 dark:text-gray-400">
+        <a class="hover:text-primary-500 transition-colors cursor-pointer">Administration</a>
+        <mat-icon class="icon-size-5 mx-1" [svgIcon]="'heroicons_solid:chevron-right'"></mat-icon>
+        <a class="hover:text-primary-500 transition-colors cursor-pointer">Tenant Management</a>
+        <mat-icon class="icon-size-5 mx-1" [svgIcon]="'heroicons_solid:chevron-right'"></mat-icon>
+        <span class="text-gray-400">Schools</span>
+      </div>
+
+      <!-- Title -->
+      <h2 class="mt-2 text-3xl md:text-4xl font-extrabold tracking-tight truncate text-gray-900 dark:text-white">
+        School Management
+      </h2>
+      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        Manage schools and their configurations
+      </p>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex shrink-0 items-center mt-6 sm:mt-0 sm:ml-4 gap-3">
+      <!-- Stats -->
+      <div class="hidden sm:flex items-center gap-4 mr-4">
+        <div class="text-center">
+          <div class="text-2xl font-bold text-primary">{{ stats.totalSchools }}</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400">Total Schools</div>
+        </div>
+        <div class="h-10 w-px bg-gray-300 dark:bg-gray-600"></div>
+        <div class="text-center">
+          <div class="text-2xl font-bold text-green-600">{{ stats.activeSchools }}</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400">Active</div>
+        </div>
+      </div>
+
+      <button 
+        mat-flat-button 
+        color="primary" 
+        (click)="loadAll()" 
+        [disabled]="isLoading" 
+        class="flex items-center gap-2"
+        matTooltip="Refresh schools">
+        <mat-icon [svgIcon]="'heroicons_outline:arrow-path'" [class.animate-spin]="isLoading"></mat-icon>
+        Refresh
       </button>
     </div>
   </div>
 
-  <fuse-alert *ngIf="showAlert" [type]="alert.type" [showIcon]="true">{{ alert.message }}</fuse-alert>
+  <!-- Alert -->
+  <fuse-alert
+    class="m-6"
+    *ngIf="showAlert"
+    [appearance]="'outline'"
+    [showIcon]="true"
+    [type]="alert.type"
+    [dismissible]="true"
+    (dismissed)="dismissAlert()">
+    {{ alert.message }}
+  </fuse-alert>
 
-  <mat-card>
-    <div *ngIf="isLoading" class="flex items-center justify-center p-12">
-      <mat-spinner diameter="36"></mat-spinner>
-    </div>
+  <!-- Main Content -->
+  <div class="flex-auto p-6 sm:p-10">
+    <mat-card class="shadow-md hover:shadow-lg transition-shadow">
+      <mat-card-header class="pb-4">
+        <mat-card-title class="text-2xl font-semibold">All Schools</mat-card-title>
+        <mat-card-subtitle class="text-gray-600 dark:text-gray-400">
+          Manage school information and settings
+        </mat-card-subtitle>
+      </mat-card-header>
 
-    <div *ngIf="!isLoading" class="overflow-auto">
-      <table mat-table [dataSource]="dataSource" matSort class="w-full">
-        <ng-container>
-          <th>Code</th>
-          <td *matCellDef></td>
-        </ng-container>
-
-        <!-- Name -->
-        <ng-container matColumnDef="name">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Name</th>
-          <td mat-cell *matCellDef="let s">{{ s.name }}</td>
-        </ng-container>
-
-        <!-- Slug -->
-        <ng-container matColumnDef="slug">
-          <th mat-header-cell *matHeaderCellDef>Slug</th>
-          <td mat-cell *matCellDef="let s">{{ s.slugName }}</td>
-        </ng-container>
-
-        <!-- Email -->
-        <ng-container matColumnDef="email">
-          <th mat-header-cell *matHeaderCellDef>Email</th>
-          <td mat-cell *matCellDef="let s">{{ s.email }}</td>
-        </ng-container>
-
-        <!-- Phone -->
-        <ng-container matColumnDef="phone">
-          <th mat-header-cell *matHeaderCellDef>Phone</th>
-          <td mat-cell *matCellDef="let s">{{ s.phoneNumber }}</td>
-        </ng-container>
-
-        <!-- Active -->
-        <ng-container matColumnDef="isActive">
-          <th mat-header-cell *matHeaderCellDef>Active</th>
-          <td mat-cell *matCellDef="let s">{{ s.isActive ? 'Yes' : 'No' }}</td>
-        </ng-container>
-
-        <!-- Actions -->
-        <ng-container matColumnDef="actions">
-          <th mat-header-cell *matHeaderCellDef class="text-right">Actions</th>
-          <td mat-cell *matCellDef="let s" class="text-right">
-            <button mat-icon-button (click)="openEdit(s)" aria-label="Edit">
-              <mat-icon>edit</mat-icon>
+      <mat-card-content>
+        <!-- Search and Filter -->
+        <div class="flex flex-col md:flex-row gap-4 mb-6">
+          <mat-form-field class="flex-auto" appearance="outline">
+            <mat-label>Search schools</mat-label>
+            <input
+              matInput
+              [(ngModel)]="filterValue"
+              (input)="applyFilter($any($event.target).value)"
+              placeholder="Name, email, or phone"
+              autocomplete="off">
+            <mat-icon matPrefix [svgIcon]="'heroicons_outline:magnifying-glass'"></mat-icon>
+            <button *ngIf="filterValue" mat-icon-button matSuffix (click)="clearFilter()" matTooltip="Clear search">
+              <mat-icon [svgIcon]="'heroicons_outline:x-mark'"></mat-icon>
             </button>
-            <button mat-icon-button (click)="removeSchool(s)" aria-label="Delete">
-              <mat-icon>delete</mat-icon>
+          </mat-form-field>
+
+          <mat-form-field class="md:w-48" appearance="outline">
+            <mat-label>Filter by status</mat-label>
+            <mat-select [(value)]="statusFilter" (selectionChange)="applyStatusFilter()">
+              <mat-option [value]="'all'">All Schools</mat-option>
+              <mat-option [value]="'active'">Active Only</mat-option>
+              <mat-option [value]="'inactive'">Inactive Only</mat-option>
+            </mat-select>
+            <mat-icon matPrefix [svgIcon]="'heroicons_outline:funnel'"></mat-icon>
+          </mat-form-field>
+
+          <button 
+            mat-flat-button 
+            color="primary" 
+            (click)="openCreate()"
+            class="flex items-center gap-2 md:w-auto w-full">
+            <mat-icon [svgIcon]="'heroicons_outline:plus'"></mat-icon>
+            <span>New School</span>
+          </button>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div *ngIf="isLoading" class="flex flex-col items-center justify-center h-64">
+          <mat-spinner [diameter]="48"></mat-spinner>
+          <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">Loading schools...</p>
+        </div>
+
+        <!-- Schools Table -->
+        <div *ngIf="!isLoading" class="overflow-x-auto rounded-md border border-gray-200 dark:border-gray-700">
+          <table mat-table [dataSource]="dataSource" matSort class="w-full text-left">
+            
+            <!-- School Column -->
+            <ng-container matColumnDef="school">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header class="font-semibold px-4 py-3 bg-gray-50 dark:bg-gray-800">School</th>
+              <td mat-cell *matCellDef="let school" class="px-4 py-3">
+                <div class="flex items-center gap-3">
+                  <div 
+                    class="w-10 h-10 rounded-lg flex items-center justify-center shadow-sm"
+                    [class.bg-gradient-to-br]="school.isActive"
+                    [class.from-primary-400]="school.isActive"
+                    [class.to-primary-600]="school.isActive"
+                    [class.bg-gray-400]="!school.isActive">
+                    <mat-icon 
+                      class="text-white icon-size-5" 
+                      [svgIcon]="'heroicons_outline:academic-cap'">
+                    </mat-icon>
+                  </div>
+                  <div class="truncate">
+                    <div class="font-medium text-gray-900 dark:text-white">
+                      {{ school.name }}
+                    </div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400">
+                      {{ school.slugName }}
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Email Column -->
+            <ng-container matColumnDef="email">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header class="font-semibold px-4 py-3 bg-gray-50 dark:bg-gray-800">Email</th>
+              <td mat-cell *matCellDef="let school" class="px-4 py-3">
+                <div class="flex items-center gap-2">
+                  <mat-icon class="icon-size-4 text-gray-400" [svgIcon]="'heroicons_outline:envelope'"></mat-icon>
+                  <span class="truncate">{{ school.email || '—' }}</span>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Phone Column -->
+            <ng-container matColumnDef="phone">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header class="font-semibold px-4 py-3 bg-gray-50 dark:bg-gray-800">Phone</th>
+              <td mat-cell *matCellDef="let school" class="px-4 py-3">
+                <div class="flex items-center gap-2">
+                  <mat-icon class="icon-size-4 text-gray-400" [svgIcon]="'heroicons_outline:phone'"></mat-icon>
+                  <span>{{ school.phoneNumber || '—' }}</span>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Status Column -->
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header class="font-semibold px-4 py-3 bg-gray-50 dark:bg-gray-800">Status</th>
+              <td mat-cell *matCellDef="let school" class="px-4 py-3">
+                <span 
+                  class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full"
+                  [class.bg-green-100]="school.isActive"
+                  [class.dark:bg-green-900]="school.isActive"
+                  [class.text-green-800]="school.isActive"
+                  [class.dark:text-green-200]="school.isActive"
+                  [class.bg-red-100]="!school.isActive"
+                  [class.dark:bg-red-900]="!school.isActive"
+                  [class.text-red-800]="!school.isActive"
+                  [class.dark:text-red-200]="!school.isActive">
+                  <span 
+                    class="w-2 h-2 rounded-full mr-2"
+                    [class.bg-green-600]="school.isActive"
+                    [class.dark:bg-green-400]="school.isActive"
+                    [class.bg-red-600]="!school.isActive"
+                    [class.dark:bg-red-400]="!school.isActive">
+                  </span>
+                  {{ school.isActive ? 'Active' : 'Inactive' }}
+                </span>
+              </td>
+            </ng-container>
+
+            <!-- Created Date Column -->
+            <ng-container matColumnDef="created">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header class="font-semibold px-4 py-3 bg-gray-50 dark:bg-gray-800">Created</th>
+              <td mat-cell *matCellDef="let school" class="px-4 py-3">
+                <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                  <mat-icon class="icon-size-4" [svgIcon]="'heroicons_outline:calendar'"></mat-icon>
+                  <span>{{ formatDate(school.createdOn) }}</span>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Actions Column -->
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef class="font-semibold px-4 py-3 text-right bg-gray-50 dark:bg-gray-800">Actions</th>
+              <td mat-cell *matCellDef="let school" class="px-4 py-3 text-right">
+                <button 
+                  mat-icon-button 
+                  [matMenuTriggerFor]="menu"
+                  matTooltip="More actions"
+                  class="hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <mat-icon [svgIcon]="'heroicons_outline:ellipsis-vertical'"></mat-icon>
+                </button>
+                
+                <mat-menu #menu="matMenu">
+                  <button mat-menu-item (click)="openEdit(school)">
+                    <mat-icon [svgIcon]="'heroicons_outline:pencil'"></mat-icon>
+                    <span>Edit School</span>
+                  </button>
+                  
+                  <button mat-menu-item (click)="toggleSchoolStatus(school)">
+                    <mat-icon [svgIcon]="school.isActive ? 'heroicons_outline:no-symbol' : 'heroicons_outline:check-circle'"></mat-icon>
+                    <span>{{ school.isActive ? 'Deactivate' : 'Activate' }}</span>
+                  </button>
+                  
+                  <button mat-menu-item (click)="viewSchoolDetails(school)">
+                    <mat-icon [svgIcon]="'heroicons_outline:eye'"></mat-icon>
+                    <span>View Details</span>
+                  </button>
+                  
+                  <mat-divider></mat-divider>
+                  
+                  <button 
+                    mat-menu-item 
+                    (click)="removeSchool(school)" 
+                    class="text-warn">
+                    <mat-icon [svgIcon]="'heroicons_outline:trash'"></mat-icon>
+                    <span>Delete School</span>
+                  </button>
+                </mat-menu>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns" class="bg-gray-50 dark:bg-gray-800"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;" 
+                class="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"></tr>
+          </table>
+
+          <!-- Empty State -->
+          <div *ngIf="dataSource.data.length === 0" class="text-center py-16">
+            <mat-icon class="icon-size-16 mb-4 text-gray-400" [svgIcon]="'heroicons_outline:academic-cap'"></mat-icon>
+            <h3 class="text-xl font-semibold mb-2 text-gray-900 dark:text-white">No Schools Found</h3>
+            <p class="text-gray-500 dark:text-gray-400 mb-4">
+              {{ filterValue ? 'Try adjusting your search' : 'Get started by creating your first school' }}
+            </p>
+            <button 
+              *ngIf="!filterValue" 
+              mat-flat-button 
+              color="primary" 
+              (click)="openCreate()"
+              class="flex items-center gap-2 mx-auto">
+              <mat-icon [svgIcon]="'heroicons_outline:plus'"></mat-icon>
+              Create School
             </button>
-          </td>
-        </ng-container>
+          </div>
 
-        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-      </table>
-    </div>
-
-    <mat-paginator [length]="total" [pageSize]="pageSize" [pageSizeOptions]="[10,20,50]" (page)="onPageChange($event)"></mat-paginator>
-  </mat-card>
+          <!-- Paginator -->
+          <mat-paginator 
+            *ngIf="dataSource.data.length > 0"
+            [length]="total" 
+            [pageSize]="pageSize" 
+            [pageSizeOptions]="[10, 20, 50, 100]" 
+            (page)="onPageChange($event)"
+            showFirstLastButtons
+            class="border-t border-gray-200 dark:border-gray-700">
+          </mat-paginator>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
 </div>

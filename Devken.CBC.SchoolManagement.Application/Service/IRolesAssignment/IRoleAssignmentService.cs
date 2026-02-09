@@ -78,6 +78,8 @@ namespace Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment
             List<Guid> roleIds,
             Guid? tenantId);
 
+        Task<Dictionary<Guid, int>> GetRoleUserCountsAsync(Guid tenantId);
+
         /// <summary>
         /// Remove all roles from a user
         /// </summary>

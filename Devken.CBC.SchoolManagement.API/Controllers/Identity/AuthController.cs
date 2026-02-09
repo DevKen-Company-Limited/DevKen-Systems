@@ -10,6 +10,7 @@ using Devken.CBC.SchoolManagement.Infrastructure.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
 {
@@ -23,8 +24,9 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
         public AuthController(
             IAuthService authService,
             JwtSettings jwtSettings,
-            IUserActivityService activityService)
-            : base(activityService)
+            IUserActivityService activityService,
+            ILogger<AuthController> logger)
+            : base(activityService, logger)
         {
             _authService = authService ?? throw new ArgumentNullException(nameof(authService));
             _jwtSettings = jwtSettings ?? throw new ArgumentNullException(nameof(jwtSettings));
@@ -87,12 +89,19 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                 "Login",
                 $"IP: {ip}");
 
+            // Ensure user DTO has permissions populated
+            var userDto = result.User;
+            if (userDto != null && result.Permissions?.Any() == true)
+            {
+                userDto.Permissions = result.Permissions.ToList();
+            }
+
             var responseDto = new LoginResponseDto
             {
                 AccessToken = result.AccessToken,
                 ExpiresInSeconds = result.AccessTokenExpiresInSeconds,
                 RefreshToken = result.RefreshToken,
-                User = result.User, // FIX: Pass UserDto directly, not through MapToUserDto
+                User = userDto,
                 Message = result.User?.RequirePasswordChange == true
                     ? "Password change required. Please change your password to continue."
                     : "Login successful"
@@ -170,7 +179,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                 AccessToken = result.AccessToken,
                 AccessTokenExpiresInSeconds = result.AccessTokenExpiresInSeconds,
                 RefreshToken = result.RefreshToken,
-                User = MapSuperAdminToUserDto(result.User),
+                User = MapSuperAdminToUserDto(result.User, result.Permissions),
                 Roles = result.Roles,
                 Permissions = result.Permissions
             };
@@ -281,14 +290,15 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
         private Task LogUserActivitySafeAsync(
             Guid? userId = null,
             Guid? tenantId = null,
-            string activityType = null,
-            string details = null)
+            string? activityType = null,
+            string? details = null)
         {
-            if (!userId.HasValue) return Task.CompletedTask;
+            if (!userId.HasValue || string.IsNullOrWhiteSpace(activityType))
+                return Task.CompletedTask;
             return LogUserActivityAsync(userId.Value, tenantId, activityType, details ?? string.Empty);
         }
 
-        private static UserDto MapToUserDto(UserInfo user)
+        private static UserDto MapToUserDto(UserInfo user, string[]? permissions = null)
         {
             if (user == null) return null!;
 
@@ -315,12 +325,13 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                 IsEmailVerified = true, // Assuming verified if we have UserInfo
                 RequirePasswordChange = user.RequirePasswordChange,
                 RoleNames = new List<string>(user.Roles ?? Array.Empty<string>()),
+                Permissions = permissions?.ToList() ?? new List<string>(),
                 CreatedOn = DateTime.UtcNow,
                 UpdatedOn = DateTime.UtcNow
             };
         }
 
-        private static UserDto MapSuperAdminToUserDto(SuperAdminDto admin)
+        private static UserDto MapSuperAdminToUserDto(SuperAdminDto admin, string[]? permissions = null)
         {
             if (admin == null) return null!;
 
@@ -336,6 +347,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                 IsEmailVerified = true,
                 RequirePasswordChange = false,
                 RoleNames = new List<string> { "SuperAdmin" },
+                Permissions = permissions?.ToList() ?? new List<string>(),
                 CreatedOn = DateTime.UtcNow,
                 UpdatedOn = DateTime.UtcNow
             };
@@ -360,6 +372,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                 IsEmailVerified = userManagement.IsEmailVerified,
                 RequirePasswordChange = userManagement.RequirePasswordChange,
                 RoleNames = userManagement.Roles?.Select(r => r.Name).ToList() ?? new List<string>(),
+                Permissions = new List<string>(), // Add permissions if available in userManagement
                 CreatedOn = userManagement.CreatedOn,
                 UpdatedOn = userManagement.UpdatedOn
             };

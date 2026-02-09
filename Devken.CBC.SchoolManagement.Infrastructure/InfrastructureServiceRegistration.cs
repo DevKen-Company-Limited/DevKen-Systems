@@ -91,7 +91,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                         {
                             logger.LogError(context.Exception, "JWT Authentication failed: {Message}", context.Exception.Message);
 
-                            // ✅ Use Append instead of Add to avoid duplicate key exceptions
                             if (context.Exception is SecurityTokenExpiredException)
                             {
                                 context.Response.Headers.Append("Token-Expired", "true");
@@ -119,12 +118,75 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                     .RequireAuthenticatedUser()
                     .Build();
 
+                // Role-based policies
                 options.AddPolicy("SuperAdmin", policy => policy.RequireRole("SuperAdmin"));
                 options.AddPolicy("SchoolAdmin", policy => policy.RequireRole("SchoolAdmin"));
                 options.AddPolicy("Teacher", policy => policy.RequireRole("Teacher"));
                 options.AddPolicy("Parent", policy => policy.RequireRole("Parent"));
 
-                var permissions = new List<string>
+                // ══════════════════════════════════════════════════════════
+                // Permission-based policies (from PermissionKeys)
+                // ══════════════════════════════════════════════════════════
+
+                // Administration Permissions
+                RegisterPermissionPolicy(options, PermissionKeys.SchoolRead);
+                RegisterPermissionPolicy(options, PermissionKeys.SchoolWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.SchoolDelete);
+                RegisterPermissionPolicy(options, PermissionKeys.UserRead);
+                RegisterPermissionPolicy(options, PermissionKeys.UserWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.UserDelete);
+                RegisterPermissionPolicy(options, PermissionKeys.RoleRead);
+                RegisterPermissionPolicy(options, PermissionKeys.RoleWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.RoleDelete);
+
+                // Academic Permissions
+                RegisterPermissionPolicy(options, PermissionKeys.StudentRead);
+                RegisterPermissionPolicy(options, PermissionKeys.StudentWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.StudentDelete);
+                RegisterPermissionPolicy(options, PermissionKeys.TeacherRead);
+                RegisterPermissionPolicy(options, PermissionKeys.TeacherWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.TeacherDelete);
+                RegisterPermissionPolicy(options, PermissionKeys.SubjectRead);
+                RegisterPermissionPolicy(options, PermissionKeys.SubjectWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.ClassRead);
+                RegisterPermissionPolicy(options, PermissionKeys.ClassWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.GradeRead);
+                RegisterPermissionPolicy(options, PermissionKeys.GradeWrite);
+
+                // Assessment Permissions
+                RegisterPermissionPolicy(options, PermissionKeys.AssessmentRead);
+                RegisterPermissionPolicy(options, PermissionKeys.AssessmentWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.AssessmentDelete);
+                RegisterPermissionPolicy(options, PermissionKeys.ReportRead);
+                RegisterPermissionPolicy(options, PermissionKeys.ReportWrite);
+
+                // Finance Permissions
+                RegisterPermissionPolicy(options, PermissionKeys.FeeRead);
+                RegisterPermissionPolicy(options, PermissionKeys.FeeWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.PaymentRead);
+                RegisterPermissionPolicy(options, PermissionKeys.PaymentWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.InvoiceRead);
+                RegisterPermissionPolicy(options, PermissionKeys.InvoiceWrite);
+
+                // Curriculum Permissions
+                RegisterPermissionPolicy(options, PermissionKeys.CurriculumRead);
+                RegisterPermissionPolicy(options, PermissionKeys.CurriculumWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.LessonPlanRead);
+                RegisterPermissionPolicy(options, PermissionKeys.LessonPlanWrite);
+
+                // Additional commonly used permission combinations
+                options.AddPolicy("Roles.View", policy =>
+                    policy.Requirements.Add(new PermissionRequirement(PermissionKeys.RoleRead)));
+
+                options.AddPolicy("Roles.AssignPermissions", policy =>
+                    policy.Requirements.Add(new PermissionRequirement(PermissionKeys.RoleWrite)));
+
+                // Tenant access policy
+                options.AddPolicy("TenantAccess", policy =>
+                    policy.Requirements.Add(new TenantAccessRequirement()));
+
+                // Legacy permissions for backward compatibility
+                var legacyPermissions = new List<string>
                 {
                     "Student.Read", "Student.Write", "Student.Delete",
                     "Assessment.Read", "Assessment.Write",
@@ -139,16 +201,20 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                     "Payment.Read", "Payment.Write"
                 };
 
-                foreach (var permission in permissions)
-                    options.AddPolicy(permission, policy => policy.Requirements.Add(new PermissionRequirement(permission)));
-
-                options.AddPolicy("TenantAccess", policy => policy.Requirements.Add(new TenantAccessRequirement()));
+                foreach (var permission in legacyPermissions)
+                {
+                    if (!options.GetPolicy(permission)?.Requirements.Any() ?? true)
+                    {
+                        RegisterPermissionPolicy(options, permission);
+                    }
+                }
             });
 
+            // Authorization handlers
             services.AddScoped<IAuthorizationHandler, PermissionHandler>();
             services.AddScoped<IAuthorizationHandler, RoleHandler>();
             services.AddScoped<IAuthorizationHandler, TenantAccessHandler>();
-
+            services.AddScoped<IPasswordHashingService, BCryptPasswordHashingService>();
             // Repositories
             services.AddScoped<IStudentRepository, StudentRepository>();
             services.AddScoped<ISchoolRepository, SchoolRepository>();
@@ -170,7 +236,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<ISubscriptionSeedService, SubscriptionSeedService>();
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddScoped<ISubscriptionService, SubscriptionService>();
-    
             services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IUserActivityService, UserActivityService>();
@@ -178,6 +243,15 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IRepositoryManager, RepositoryManager>();
 
             return services;
+        }
+
+        /// <summary>
+        /// Helper method to register a permission-based policy
+        /// </summary>
+        private static void RegisterPermissionPolicy(AuthorizationOptions options, string permissionKey)
+        {
+            options.AddPolicy(permissionKey, policy =>
+                policy.Requirements.Add(new PermissionRequirement(permissionKey)));
         }
     }
 

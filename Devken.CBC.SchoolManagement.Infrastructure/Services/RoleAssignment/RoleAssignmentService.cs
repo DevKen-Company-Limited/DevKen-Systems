@@ -3,6 +3,7 @@ using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Comm
 using Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
@@ -118,6 +119,60 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.RoleAssignment
         /// <summary>
         /// Get users assigned to a specific role
         /// </summary>
+        /// 
+        public async Task<Dictionary<Guid, int>> GetRoleUserCountsAsync(Guid tenantId)
+        {
+            try
+            {
+                _logger.LogInformation("Getting role user counts for tenant {TenantId}", tenantId);
+
+                // Build query for user roles
+                var userRolesQuery = _repository.UserRole
+                    .FindByCondition(ur =>
+                        (tenantId == Guid.Empty || ur.TenantId == tenantId),
+                        false);
+
+                // Get user roles with user and role included
+                var userRoles = await userRolesQuery
+                    .Include(ur => ur.User)
+                    .Include(ur => ur.Role)
+                    .Where(ur => ur.User != null && ur.Role != null)
+                    .ToListAsync();
+
+                // Count distinct users per role
+                var counts = userRoles
+                    .GroupBy(ur => ur.RoleId)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.Select(ur => ur.UserId).Distinct().Count()
+                    );
+
+                // Get all roles for the tenant
+                var rolesQuery = _repository.Role
+                    .FindByCondition(r => tenantId == Guid.Empty || r.TenantId == tenantId, false);
+
+                var allRoles = await rolesQuery.ToListAsync();
+
+                // Include all roles even if they have 0 users
+                foreach (var role in allRoles)
+                {
+                    if (!counts.ContainsKey(role.Id))
+                    {
+                        counts[role.Id] = 0;
+                    }
+                }
+
+                _logger.LogInformation("Retrieved user counts for {Count} roles in tenant {TenantId}",
+                    counts.Count, tenantId);
+
+                return counts;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting role user counts for tenant {TenantId}", tenantId);
+                throw;
+            }
+        }
         public async Task<PaginatedResult<UserWithRolesDto>> GetUsersByRoleAsync(
             Guid roleId,
             Guid? tenantId,
@@ -296,7 +351,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.RoleAssignment
                 var roles = await _repository.Role
                     .FindByCondition(r =>
                         r.IsSystemRole ||
-                        r.TenantId == null ||
                         r.TenantId == Guid.Empty ||
                         r.TenantId == tenantId, false)
                     .OrderBy(r => r.Name)
@@ -472,6 +526,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.RoleAssignment
         /// <summary>
         /// Update user's roles (replaces all existing roles)
         /// </summary>
+        // FIXED VERSION of UpdateUserRolesAsync in RoleAssignmentService
+        // This prevents the duplicate key error by checking which roles already exist
+
         public async Task<RoleAssignmentResult> UpdateUserRolesAsync(
             Guid userId,
             List<Guid> roleIds,
@@ -479,36 +536,88 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.RoleAssignment
         {
             try
             {
-                _logger.LogInformation("Updating roles for user {UserId} to {Count} roles", userId, roleIds.Count);
+                _logger.LogInformation(
+                    "Updating roles for user {UserId}. Incoming roles: {Roles}",
+                    userId, string.Join(", ", roleIds));
 
-                var tenantFilterId = tenantId ?? Guid.Empty;
+                roleIds = roleIds?.Distinct().ToList() ?? new List<Guid>();
 
-                // Get existing roles
-                var existingRolesQuery = _repository.UserRole
+                // 1️⃣ Validate user
+                var user = await _repository.User
+                    .FindByCondition(u => u.Id == userId, false)
+                    .FirstOrDefaultAsync();
+
+                if (user == null)
+                    return RoleAssignmentResult.Failed("User not found");
+
+                if (tenantId.HasValue && tenantId != Guid.Empty && user.TenantId != tenantId)
+                    return RoleAssignmentResult.Failed("User does not belong to the specified tenant");
+
+                var effectiveTenantId = tenantId ?? Guid.Empty;
+
+                // 2️⃣ Load current user roles
+                var userRolesQuery = _repository.UserRole
                     .FindByCondition(ur => ur.UserId == userId, true);
 
                 if (tenantId.HasValue && tenantId != Guid.Empty)
+                    userRolesQuery = userRolesQuery.Where(ur => ur.TenantId == tenantId);
+
+                var currentUserRoles = await userRolesQuery.ToListAsync();
+                var currentRoleIds = currentUserRoles.Select(ur => ur.RoleId).ToHashSet();
+
+                // 3️⃣ Diff roles
+                var rolesToRemove = currentRoleIds.Except(roleIds).ToList();
+                var rolesToAdd = roleIds.Except(currentRoleIds).ToList();
+
+                _logger.LogInformation(
+                    "User {UserId}: Removing {RemoveCount}, Adding {AddCount}",
+                    userId, rolesToRemove.Count, rolesToAdd.Count);
+
+                // 4️⃣ Validate roles to add
+                if (rolesToAdd.Any())
                 {
-                    existingRolesQuery = existingRolesQuery.Where(ur => ur.TenantId == tenantId);
+                    var roles = await _repository.Role
+                        .FindByCondition(r => rolesToAdd.Contains(r.Id), false)
+                        .ToListAsync();
+
+                    if (roles.Count != rolesToAdd.Count)
+                        return RoleAssignmentResult.Failed("One or more roles not found");
+
+                    if (tenantId.HasValue && tenantId != Guid.Empty)
+                    {
+                        var invalidRoles = roles
+                            .Where(r =>
+                                !r.IsSystemRole &&
+                                r.TenantId != Guid.Empty &&
+                                r.TenantId != tenantId)
+                            .ToList();
+
+                        if (invalidRoles.Any())
+                            return RoleAssignmentResult.Failed(
+                                "One or more roles do not belong to the specified tenant");
+                    }
                 }
 
-                var existingRoles = await existingRolesQuery.ToListAsync();
-
-                // Remove all existing roles
-                foreach (var role in existingRoles)
+                // 5️⃣ Remove roles
+                foreach (var userRole in currentUserRoles.Where(ur => rolesToRemove.Contains(ur.RoleId)))
                 {
-                    _repository.UserRole.Delete(role);
+                    _repository.UserRole.Delete(userRole);
                 }
 
-                // Add new roles
-                foreach (var roleId in roleIds.Distinct())
+                // 6️⃣ Add roles (safe insert)
+                foreach (var roleId in rolesToAdd)
                 {
                     _repository.UserRole.Create(new UserRole
                     {
                         Id = Guid.NewGuid(),
                         UserId = userId,
                         RoleId = roleId,
-                        TenantId = tenantFilterId
+                        TenantId = effectiveTenantId,
+                        Status = (Domain.Enums.EntityStatus)1,
+                        CreatedOn = DateTime.UtcNow,
+                        UpdatedOn = DateTime.UtcNow,
+                        CreatedBy = userId,
+                        UpdatedBy = userId
                     });
                 }
 
@@ -520,10 +629,22 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.RoleAssignment
                     "User roles updated successfully",
                     await GetUserWithRolesAsync(userId, tenantId));
             }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex,
+                    "Database constraint error while updating roles for user {UserId}",
+                    userId);
+
+                return RoleAssignmentResult.Failed(
+                    "Failed to update roles due to a database constraint violation");
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating roles for user {UserId}", userId);
-                throw;
+                _logger.LogError(ex,
+                    "Unexpected error updating roles for user {UserId}",
+                    userId);
+
+                return RoleAssignmentResult.Failed("Failed to update user roles");
             }
         }
 

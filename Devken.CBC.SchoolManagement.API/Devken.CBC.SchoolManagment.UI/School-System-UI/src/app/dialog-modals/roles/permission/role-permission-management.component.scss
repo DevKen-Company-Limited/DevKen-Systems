@@ -1,0 +1,93 @@
+// :host {
+//     display: block;
+//     height: 100%;
+// }
+
+// .success-snackbar {
+//     background-color: #10b981 !important; // green-500
+//     color: white !important;
+// }
+
+// .error-snackbar {
+//     background-color: #ef4444 !important; // red-500
+//     color: white !important;
+// }
+
+// .icon-size-3 {
+//     width: 12px;
+//     height: 12px;
+//     font-size: 12px;
+// }
+
+// .icon-size-4 {
+//     width: 16px;
+//     height: 16px;
+//     font-size: 16px;
+// }
+
+// .icon-size-5 {
+//     width: 20px;
+//     height: 20px;
+//     font-size: 20px;
+// }
+
+// .icon-size-6 {
+//     width: 24px;
+//     height: 24px;
+//     font-size: 24px;
+// }
+
+// .icon-size-16 {
+//     width: 64px;
+//     height: 64px;
+//     font-size: 64px;
+// }
+
+// .line-clamp-1 {
+//     overflow: hidden;
+//     display: -webkit-box;
+//     -webkit-box-orient: vertical;
+//     -webkit-line-clamp: 1;
+// }
+
+// .line-clamp-2 {
+//     overflow: hidden;
+//     display: -webkit-box;
+//     -webkit-box-orient: vertical;
+//     -webkit-line-clamp: 2;
+// }
+
+// .animate-pulse-slow {
+//     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+// }
+
+// @keyframes pulse {
+//     0%, 100% {
+//         opacity: 1;
+//     }
+//     50% {
+//         opacity: .8;
+//     }
+// }
+
+// // Responsive adjustments
+// @media (max-width: 640px) {
+//     .mat-column-users {
+//         display: none;
+//     }
+    
+//     .mat-column-permissions {
+//         min-width: 150px;
+//     }
+// }
+
+// // Dark mode adjustments
+// .dark {
+//     .mat-table {
+//         background-color: transparent;
+//     }
+    
+//     .mat-paginator {
+//         background-color: transparent;
+//     }
+// }

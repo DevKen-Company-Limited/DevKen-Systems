@@ -1,5 +1,7 @@
-﻿using Devken.CBC.SchoolManagement.Application.Service;
+﻿using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
+using Devken.CBC.SchoolManagement.Application.Service;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System;
@@ -10,21 +12,74 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Security
 {
     public class JwtService : IJwtService
     {
         private readonly JwtSettings _jwtSettings;
+        private readonly IRepositoryManager _repository;
 
-        public JwtService(IOptions<JwtSettings> jwtSettings)
+        public JwtService(
+            IOptions<JwtSettings> jwtSettings,
+            IRepositoryManager repository)
         {
             _jwtSettings = jwtSettings?.Value
                 ?? throw new ArgumentNullException(nameof(jwtSettings));
+            _repository = repository
+                ?? throw new ArgumentNullException(nameof(repository));
         }
 
         // =========================================================
-        // ACCESS TOKEN GENERATION
+        // ACCESS TOKEN GENERATION (WITH AUTOMATIC PERMISSION AGGREGATION)
+        // =========================================================
+
+        /// <summary>
+        /// Generates token with automatic permission aggregation from all user roles
+        /// </summary>
+        public async Task<string> GenerateTokenAsync(
+            User user,
+            IList<string> roles,
+            Guid? tenantId = null)
+        {
+            if (user == null) throw new ArgumentNullException(nameof(user));
+
+            roles ??= new List<string>();
+
+            // -----------------------------------------------------
+            // SuperAdmin detection
+            // -----------------------------------------------------
+
+            var isSuperAdmin = roles.Any(r =>
+                r.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase));
+
+            // -----------------------------------------------------
+            // Get combined permissions from all roles
+            // -----------------------------------------------------
+
+            List<string> permissions;
+
+            if (isSuperAdmin)
+            {
+                // SuperAdmin gets ALL permissions
+                permissions = PermissionKeys.AllPermissions.ToList();
+            }
+            else
+            {
+                // Aggregate permissions from all user's roles
+                permissions = await GetCombinedPermissionsFromRolesAsync(
+                    user.Id,
+                    roles,
+                    tenantId ?? user.TenantId);
+            }
+
+            // Generate token with aggregated permissions
+            return GenerateToken(user, roles, permissions, tenantId);
+        }
+
+        // =========================================================
+        // ACCESS TOKEN GENERATION (WITH EXPLICIT PERMISSIONS)
         // =========================================================
 
         public string GenerateToken(
@@ -66,23 +121,21 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Security
 
             var claims = new List<Claim>
             {
-                // Identity
-                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-                new Claim("user_id", user.Id.ToString()),
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()), // standard
+                new Claim("user_id", user.Id.ToString()),                   // our main NameClaim
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
 
                 // Profile
                 new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
-                new Claim(ClaimTypes.Name,
-                    $"{user.FirstName} {user.LastName}".Trim()),
+                new Claim(ClaimTypes.Name, $"{user.FirstName} {user.LastName}".Trim()), // full name
+                new Claim("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress", user.Email ?? string.Empty),
+                new Claim("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name", $"{user.FirstName} {user.LastName}".Trim()),
 
                 new Claim("email", user.Email ?? string.Empty),
-                new Claim("full_name",
-                    $"{user.FirstName} {user.LastName}".Trim()),
+                new Claim("full_name", $"{user.FirstName} {user.LastName}".Trim()),
 
                 // SuperAdmin flag
-                new Claim("is_super_admin",
-                    isSuperAdmin.ToString().ToLowerInvariant())
+                new Claim("is_super_admin", isSuperAdmin.ToString().ToLowerInvariant())
             };
 
             if (!string.IsNullOrWhiteSpace(user.FirstName))
@@ -109,29 +162,41 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Security
             }
 
             // -----------------------------------------------------
-            // Roles
+            // Roles (remove duplicates, case-insensitive)
             // -----------------------------------------------------
 
-            foreach (var role in roles.Distinct(StringComparer.OrdinalIgnoreCase))
+            var uniqueRoles = roles
+                .Where(r => !string.IsNullOrWhiteSpace(r))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            foreach (var role in uniqueRoles)
             {
                 claims.Add(new Claim(ClaimTypes.Role, role));
+                claims.Add(new Claim("http://schemas.microsoft.com/ws/2008/06/identity/claims/role", role));
             }
 
             // -----------------------------------------------------
-            // Permissions
+            // Permissions (remove duplicates, case-insensitive)
             // -----------------------------------------------------
 
-            foreach (var permission in permissions.Distinct(StringComparer.OrdinalIgnoreCase))
+            var uniquePermissions = permissions
+                .Where(p => !string.IsNullOrWhiteSpace(p))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(p => p) // Optional: alphabetical order
+                .ToList();
+
+            foreach (var permission in uniquePermissions)
             {
                 claims.Add(new Claim("permission", permission));
             }
 
             // Optional JSON blob (frontend convenience)
-            if (permissions.Any())
+            if (uniquePermissions.Any())
             {
                 claims.Add(new Claim(
                     "permissions",
-                    JsonSerializer.Serialize(permissions)));
+                    JsonSerializer.Serialize(uniquePermissions)));
             }
 
             // -----------------------------------------------------
@@ -155,6 +220,44 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Security
             );
 
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        // =========================================================
+        // PERMISSION AGGREGATION HELPER
+        // =========================================================
+
+        /// <summary>
+        /// Combines permissions from multiple roles and removes duplicates.
+        /// Fetches permissions from the database for all provided role names.
+        /// </summary>
+        private async Task<List<string>> GetCombinedPermissionsFromRolesAsync(
+            Guid userId,
+            IList<string> roleNames,
+            Guid? tenantId)
+        {
+            if (roleNames == null || !roleNames.Any())
+                return new List<string>();
+
+            // Get role IDs for the given role names
+            var roleIds = await _repository.Role
+                .FindByCondition(r => roleNames.Contains(r.Name ?? string.Empty), false)
+                .Select(r => r.Id)
+                .ToListAsync();
+
+            if (!roleIds.Any())
+                return new List<string>();
+
+            // Get all permissions from all roles in one query
+            var permissions = await _repository.RolePermission
+                .FindByCondition(rp => roleIds.Contains(rp.RoleId), false)
+                .Include(rp => rp.Permission)
+                .Where(rp => rp.Permission != null && !string.IsNullOrWhiteSpace(rp.Permission.Key))
+                .Select(rp => rp.Permission!.Key!)
+                .Distinct() // Remove duplicates at database level
+                .OrderBy(p => p) // Optional: order alphabetically
+                .ToListAsync();
+
+            return permissions;
         }
 
         // =========================================================
@@ -230,23 +333,19 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Security
         // =========================================================
 
         private TokenValidationParameters GetTokenValidationParameters(bool validateLifetime) =>
-            new()
-            {
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(
-                    Encoding.UTF8.GetBytes(_jwtSettings.SecretKey)),
-
-                ValidateIssuer = true,
-                ValidIssuer = _jwtSettings.Issuer,
-
-                ValidateAudience = true,
-                ValidAudience = _jwtSettings.Audience,
-
-                ValidateLifetime = validateLifetime,
-                ClockSkew = TimeSpan.Zero,
-
-                NameClaimType = ClaimTypes.Name,
-                RoleClaimType = ClaimTypes.Role
-            };
+         new()
+         {
+             ValidateIssuerSigningKey = true,
+             IssuerSigningKey = new SymmetricSecurityKey(
+                 Encoding.UTF8.GetBytes(_jwtSettings.SecretKey)),
+             ValidateIssuer = true,
+             ValidIssuer = _jwtSettings.Issuer,
+             ValidateAudience = true,
+             ValidAudience = _jwtSettings.Audience,
+             ValidateLifetime = validateLifetime,
+             ClockSkew = TimeSpan.Zero,
+             NameClaimType = "user_id",  // <-- Use the actual GUID claim
+             RoleClaimType = ClaimTypes.Role
+         };
     }
 }

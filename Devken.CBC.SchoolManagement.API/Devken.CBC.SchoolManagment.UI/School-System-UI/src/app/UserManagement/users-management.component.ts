@@ -16,6 +16,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatSelectModule } from '@angular/material/select';
 import { Subject } from 'rxjs';
 import { takeUntil, take } from 'rxjs/operators';
 import { FuseAlertComponent } from '@fuse/components/alert';
@@ -45,6 +46,7 @@ import { UserDto } from 'app/core/DevKenService/Types/roles';
     MatMenuModule,
     MatProgressSpinnerModule,
     MatDividerModule,
+    MatSelectModule,
     FuseAlertComponent
   ],
   templateUrl: './users-management.component.html',
@@ -70,8 +72,8 @@ export class UsersManagementComponent
   ];
 
   // Responsive columns for different screen sizes
-  mobileColumns: string[] = ['user', 'email', 'roles', 'status', 'actions'];
-  tabletColumns: string[] = ['user', 'email', 'roles', 'status', 'lastLogin', 'actions'];
+  mobileColumns: string[] = ['user', 'email', 'actions'];
+  tabletColumns: string[] = ['user', 'email', 'roles', 'status', 'actions'];
   desktopColumns: string[] = ['user', 'email', 'phone', 'roles', 'status', 'lastLogin', 'actions'];
 
   pageSize = 20;
@@ -85,9 +87,17 @@ export class UsersManagementComponent
   };
 
   filterValue = '';
+  statusFilter: 'all' | 'active' | 'inactive' = 'all';
   isSuperAdmin = false;
   isMobile = false;
   isTablet = false;
+
+  // Stats
+  stats = {
+    totalUsers: 0,
+    activeUsers: 0,
+    inactiveUsers: 0
+  };
 
   constructor(
     protected service: UserService,
@@ -126,6 +136,28 @@ export class UsersManagementComponent
   }
 
   /**
+   * Override loadAll to calculate stats
+   */
+  override loadAll(): void {
+    super.loadAll();
+    // Subscribe to data changes to update stats
+    this.dataSource.connect().pipe(
+      takeUntil(this._unsubscribe)
+    ).subscribe(data => {
+      this.updateStats(data);
+    });
+  }
+
+  /**
+   * Update statistics
+   */
+  private updateStats(users: UserDto[]): void {
+    this.stats.totalUsers = users.length;
+    this.stats.activeUsers = users.filter(u => u.isActive).length;
+    this.stats.inactiveUsers = users.filter(u => !u.isActive).length;
+  }
+
+  /**
    * Update displayed columns based on screen size
    */
   private updateDisplayedColumns(): void {
@@ -137,7 +169,7 @@ export class UsersManagementComponent
     if (this.isSuperAdmin) {
       // SuperAdmin gets school column
       if (this.isMobile) {
-        this.displayedColumns = ['user', 'email', 'roles', 'actions'];
+        this.displayedColumns = ['user', 'email', 'actions'];
       } else if (this.isTablet) {
         this.displayedColumns = ['user', 'email', 'school', 'roles', 'status', 'actions'];
       } else {
@@ -246,17 +278,56 @@ export class UsersManagementComponent
       .join(', ');
   }
 
+  /**
+   * Apply text filter
+   */
   applyFilter(value: string): void {
     this.filterValue = value;
-    const v = (value || '').trim().toLowerCase();
-    this.dataSource.filter = v;
+    this.applyAllFilters();
   }
 
+  /**
+   * Clear text filter
+   */
   clearFilter(): void {
     this.filterValue = '';
-    this.dataSource.filter = '';
+    this.applyAllFilters();
   }
 
+  /**
+   * Apply status filter
+   */
+  applyStatusFilter(): void {
+    this.applyAllFilters();
+  }
+
+  /**
+   * Apply all filters combined
+   */
+  private applyAllFilters(): void {
+    this.dataSource.filterPredicate = (data: UserDto, filter: string) => {
+      // Text filter
+      const searchStr = filter.toLowerCase();
+      const matchesText = !searchStr || 
+        data.firstName?.toLowerCase().includes(searchStr) ||
+        data.lastName?.toLowerCase().includes(searchStr) ||
+        data.email?.toLowerCase().includes(searchStr) ||
+        data.phoneNumber?.toLowerCase().includes(searchStr);
+
+      // Status filter
+      const matchesStatus = this.statusFilter === 'all' ||
+        (this.statusFilter === 'active' && data.isActive) ||
+        (this.statusFilter === 'inactive' && !data.isActive);
+
+      return matchesText && matchesStatus;
+    };
+
+    this.dataSource.filter = this.filterValue.trim().toLowerCase();
+  }
+
+  /**
+   * Open create user dialog
+   */
   openCreate(): void {
     const dialogWidth = this.isMobile ? '100vw' : this.isTablet ? '90vw' : '700px';
     const dialogMaxWidth = this.isMobile ? '100vw' : '90vw';
@@ -271,6 +342,9 @@ export class UsersManagementComponent
     });
   }
 
+  /**
+   * Open edit user dialog
+   */
   openEdit(user: UserDto): void {
     const dialogWidth = this.isMobile ? '100vw' : this.isTablet ? '90vw' : '700px';
     const dialogMaxWidth = this.isMobile ? '100vw' : '90vw';
@@ -287,6 +361,9 @@ export class UsersManagementComponent
     });
   }
 
+  /**
+   * Remove user
+   */
   removeUser(user: UserDto): void {
     if (!confirm(`Are you sure you want to delete ${user.firstName} ${user.lastName}?`)) {
       return;
@@ -294,6 +371,9 @@ export class UsersManagementComponent
     this.deleteItem(user.id);
   }
 
+  /**
+   * Toggle user active status
+   */
   toggleUserStatus(user: UserDto): void {
     const action = user.isActive ? 'deactivate' : 'activate';
     const confirmMessage = user.isActive 
@@ -317,28 +397,23 @@ export class UsersManagementComponent
           this.isLoading = false;
           if (res.success) {
             const status = user.isActive ? 'deactivated' : 'activated';
-            this.snackBar.open(
-              `User ${status} successfully`, 
-              'Close', 
-              { duration: 2500 }
-            );
+            this.showSuccessAlert(`User ${status} successfully`);
             this.loadAll();
           } else {
-            this.snackBar.open(
-              res.message || 'Failed to update status', 
-              'Close', 
-              { duration: 3000 }
-            );
+            this.showErrorAlert(res.message || 'Failed to update status');
           }
         },
         error: (err) => {
           this.isLoading = false;
           const errorMsg = err?.error?.message || err.message || 'Failed to update status';
-          this.snackBar.open(errorMsg, 'Close', { duration: 4000 });
+          this.showErrorAlert(errorMsg);
         }
       });
   }
 
+  /**
+   * Resend welcome email
+   */
   resendWelcomeEmail(user: UserDto): void {
     if (!confirm(`Send welcome email to ${user.email}?`)) {
       return;
@@ -351,27 +426,22 @@ export class UsersManagementComponent
         next: (res) => {
           this.isLoading = false;
           if (res.success) {
-            this.snackBar.open(
-              'Welcome email sent successfully', 
-              'Close', 
-              { duration: 2500 }
-            );
+            this.showSuccessAlert('Welcome email sent successfully');
           } else {
-            this.snackBar.open(
-              res.message || 'Failed to send email', 
-              'Close', 
-              { duration: 3000 }
-            );
+            this.showErrorAlert(res.message || 'Failed to send email');
           }
         },
         error: (err) => {
           this.isLoading = false;
           const errorMsg = err?.error?.message || err.message || 'Failed to send email';
-          this.snackBar.open(errorMsg, 'Close', { duration: 4000 });
+          this.showErrorAlert(errorMsg);
         }
       });
   }
 
+  /**
+   * Reset user password
+   */
   resetPassword(user: UserDto): void {
     if (!confirm(`Send password reset email to ${user.email}?`)) {
       return;
@@ -384,39 +454,40 @@ export class UsersManagementComponent
         next: (res) => {
           this.isLoading = false;
           if (res.success) {
-            this.snackBar.open(
-              'Password reset email sent', 
-              'Close', 
-              { duration: 2500 }
-            );
+            this.showSuccessAlert('Password reset email sent');
           } else {
-            this.snackBar.open(
-              res.message || 'Failed to send reset email', 
-              'Close', 
-              { duration: 3000 }
-            );
+            this.showErrorAlert(res.message || 'Failed to send reset email');
           }
         },
         error: (err) => {
           this.isLoading = false;
           const errorMsg = err?.error?.message || err.message || 'Failed to send reset email';
-          this.snackBar.open(errorMsg, 'Close', { duration: 4000 });
+          this.showErrorAlert(errorMsg);
         }
       });
   }
 
+  /**
+   * Handle page change
+   */
   onPageChange(event: PageEvent): void {
     this.currentPage = event.pageIndex + 1;
     this.pageSize = event.pageSize;
     // If using server-side paging, call loadAll() with pagination params
   }
 
+  /**
+   * Get user initials
+   */
   getInitials(user: UserDto): string {
     const firstInitial = user.firstName?.charAt(0) || '';
     const lastInitial = user.lastName?.charAt(0) || '';
     return `${firstInitial}${lastInitial}`.toUpperCase();
   }
 
+  /**
+   * Format date in a user-friendly way
+   */
   formatDate(date: string | undefined): string {
     if (!date) return 'Never';
     
@@ -436,5 +507,39 @@ export class UsersManagementComponent
       day: 'numeric', 
       year: dateObj.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
     });
+  }
+
+  /**
+   * Show success alert
+   */
+  private showSuccessAlert(message: string): void {
+    this.alert = {
+      type: 'success',
+      message: message
+    };
+    this.showAlert = true;
+    this.snackBar.open(message, 'Close', { duration: 2500 });
+    
+    // Auto-hide alert after 5 seconds
+    setTimeout(() => {
+      this.showAlert = false;
+    }, 5000);
+  }
+
+  /**
+   * Show error alert
+   */
+  private showErrorAlert(message: string): void {
+    this.alert = {
+      type: 'error',
+      message: message
+    };
+    this.showAlert = true;
+    this.snackBar.open(message, 'Close', { duration: 4000 });
+    
+    // Auto-hide alert after 7 seconds
+    setTimeout(() => {
+      this.showAlert = false;
+    }, 7000);
   }
 }

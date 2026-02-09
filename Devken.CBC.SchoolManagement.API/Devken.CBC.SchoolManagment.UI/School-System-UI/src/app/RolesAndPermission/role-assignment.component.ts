@@ -1,6 +1,14 @@
-import { Component, OnInit, OnDestroy, ViewChild, inject } from '@angular/core';
+import {
+    Component,
+    OnInit,
+    OnDestroy,
+    AfterViewInit,
+    ViewChild,
+    inject
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -17,15 +25,30 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
-import { Subject, takeUntil, finalize, debounceTime, forkJoin } from 'rxjs';
-import { FuseAlertComponent, FuseAlertType } from '@fuse/components/alert';
-import { RoleAssignmentService } from 'app/core/DevKenService/Roles/RoleAssignmentService';
-import { UpdateUserRolesRequest, UserRole, UserWithRoles } from 'app/core/DevKenService/Types/roles';
-import { RoleManageDialogComponent } from 'app/dialog-modals/roles/role-manage-dialog-component';
-import { UserDetailsDialogComponent } from 'app/dialog-modals/roles/user-details-dialog-component';
 
+import { Subject, forkJoin, takeUntil, finalize, debounceTime, distinctUntilChanged } from 'rxjs';
+
+import { FuseAlertComponent, FuseAlertType } from '@fuse/components/alert';
+import { FuseConfirmationService } from '@fuse/services/confirmation';
+
+import { RolePermissionService } from 'app/core/DevKenService/Roles/RolePermissionService';
+import {
+    RoleWithPermissions,
+    UserWithPermission
+} from 'app/core/DevKenService/Types/role-permissions';
+import { UserWithRoles } from 'app/core/DevKenService/Types/roles';
+import { RoleManageDialogComponent } from 'app/dialog-modals/roles/role-manage-dialog-component';
+import { RoleUsersDialogComponent } from 'app/dialog-modals/roles/RoleUsersDialogComponent';
+import { PermissionUsersDialogComponent } from 'app/dialog-modals/roles/permission/PermissionUsersDialogComponent';
+
+
+
+/**
+ * Role Assignment Management Component
+ * Manages the assignment of roles to users
+ */
 @Component({
-    selector: 'app-role-assignment-enhanced',
+    selector: 'app-role-assignment-management',
     standalone: true,
     imports: [
         CommonModule,
@@ -52,21 +75,49 @@ import { UserDetailsDialogComponent } from 'app/dialog-modals/roles/user-details
     templateUrl: './role-assignment.component.html',
     styleUrls: ['./role-assignment.component.scss']
 })
-export class RoleAssignmentEnhancedComponent implements OnInit, OnDestroy {
+export class RoleAssignmentManagementComponent
+    implements OnInit, AfterViewInit, OnDestroy {
+
     @ViewChild(MatPaginator) paginator!: MatPaginator;
     @ViewChild(MatSort) sort!: MatSort;
 
-    private _roleAssignmentService = inject(RoleAssignmentService);
-    private _dialog = inject(MatDialog);
-    private _snackBar = inject(MatSnackBar);
-    private _unsubscribeAll = new Subject<void>();
+    private readonly rolePermissionService = inject(RolePermissionService);
+    private readonly dialog = inject(MatDialog);
+    private readonly snackBar = inject(MatSnackBar);
+    private readonly confirmationService = inject(FuseConfirmationService);
+    private readonly unsubscribe$ = new Subject<void>();
+    
+    // Search subject for debouncing
+    searchSubject = new Subject<string>();
 
+    // ------------------------------------------------------
     // State
-    availableRoles: UserRole[] = [];
+    // ------------------------------------------------------
+
     allUsers: UserWithRoles[] = [];
+    availableRoles: RoleWithPermissions[] = [];
+    roleUserCountMap: Map<string, number> = new Map();
+
+    displayedColumns: string[] = ['user', 'email', 'roles', 'actions'];
+    usersDataSource = new MatTableDataSource<UserWithRoles>([]);
+
     isLoading = false;
     selectedTabIndex = 0;
-    
+
+    // Search and filter
+    userSearchTerm = '';
+    roleFilterValue: string | null = null;
+
+    // Pagination
+    currentPage = 1;
+    pageSize = 10;
+    totalUsers = 0;
+
+    stats = {
+        totalRoles: 0,
+        totalUsers: 0
+    };
+
     // Alert
     showAlert = false;
     alert: { type: FuseAlertType; message: string } = {
@@ -74,134 +125,426 @@ export class RoleAssignmentEnhancedComponent implements OnInit, OnDestroy {
         message: ''
     };
 
-    // Users Table
-    displayedColumns: string[] = ['user', 'email', 'roles', 'actions'];
-    usersDataSource = new MatTableDataSource<UserWithRoles>([]);
-    userSearchTerm = '';
-    roleFilterValue: string | null = null;
-    
-    // Pagination
-    totalUsers = 0;
-    currentPage = 1;
-    pageSize = 20;
-
-    // Statistics
-    stats = {
-        totalRoles: 0,
-        totalUsers: 0
-    };
-
-    // Role user count map (roleId -> user count)
-    private roleUserCountMap = new Map<string, number>();
-
-    public searchSubject = new Subject<string>();
+    // ------------------------------------------------------
+    // Lifecycle
+    // ------------------------------------------------------
 
     ngOnInit(): void {
         this.loadData();
-        this.setupSearch();
+        this.setupTableSorting();
+        this.setupSearchDebounce();
+    }
+
+    ngAfterViewInit(): void {
+        this.usersDataSource.paginator = this.paginator;
+        this.usersDataSource.sort = this.sort;
     }
 
     ngOnDestroy(): void {
-        this._unsubscribeAll.next();
-        this._unsubscribeAll.complete();
+        this.unsubscribe$.next();
+        this.unsubscribe$.complete();
     }
 
-    /**
-     * Setup search with debounce
-     */
-    private setupSearch(): void {
-        this.searchSubject
-            .pipe(
-                debounceTime(300),
-                takeUntil(this._unsubscribeAll)
-            )
-            .subscribe(() => {
-                this.applyUserFilter();
-            });
+    // ------------------------------------------------------
+    // Setup Methods
+    // ------------------------------------------------------
+
+    private setupSearchDebounce(): void {
+        this.searchSubject.pipe(
+            debounceTime(300),
+            distinctUntilChanged(),
+            takeUntil(this.unsubscribe$)
+        ).subscribe(() => {
+            this.applyUserFilter();
+        });
     }
 
-    /**
-     * Load all data
-     */
+    private setupTableSorting(): void {
+        this.usersDataSource.sortingDataAccessor = (
+            item: UserWithRoles,
+            property: string
+        ) => {
+            switch (property) {
+                case 'user':
+                    return (item.fullName || '').toLowerCase();
+                case 'email':
+                    return (item.email || '').toLowerCase();
+                case 'roles':
+                    return item.roles?.length ?? 0;
+                default:
+                    return '';
+            }
+        };
+    }
+
+    // ------------------------------------------------------
+    // Data Loading
+    // ------------------------------------------------------
+
     loadData(): void {
         this.isLoading = true;
 
-        // Load both roles and users simultaneously
         forkJoin({
-            roles: this._roleAssignmentService.getAvailableRoles(),
-            users: this._roleAssignmentService.getAllUsersWithRoles(this.currentPage, this.pageSize)
-        }).pipe(
-            takeUntil(this._unsubscribeAll),
-            finalize(() => this.isLoading = false)
-        ).subscribe({
-            next: (result) => {
-                // Process roles
-                if (result.roles.success) {
-                    this.availableRoles = result.roles.data;
-                    this.stats.totalRoles = result.roles.data.length;
+            users: this.rolePermissionService.getAllUsers(this.currentPage, this.pageSize),
+            roles: this.rolePermissionService.getAvailableRoles()
+        })
+        .pipe(
+            takeUntil(this.unsubscribe$),
+            finalize(() => (this.isLoading = false))
+        )
+        .subscribe({
+            next: ({ users, roles }) => {
+                // Handle users response
+                if (users?.success && users.data) {
+                    this.allUsers = users.data.items || [];
+                    this.totalUsers = users.data.totalCount || 0;
+                    this.stats.totalUsers = this.totalUsers;
+                    this.usersDataSource.data = this.allUsers;
                 }
 
-                // Process users
-                if (result.users.success) {
-                    this.allUsers = result.users.data.items;
-                    this.totalUsers = result.users.data.totalCount;
-                    this.stats.totalUsers = result.users.data.totalCount;
+                // Handle roles response
+                if (roles?.success && roles.data) {
+                    this.availableRoles = roles.data || [];
+                    this.stats.totalRoles = this.availableRoles.length;
                     
-                    // Calculate user counts per role from the loaded users
+                    // Calculate user counts per role
                     this.calculateRoleUserCounts();
-                    
-                    // Apply filters
-                    this.applyUserFilter();
                 }
+
+                // Apply initial filter
+                this.applyUserFilter();
             },
-            error: (error) => {
-                this.showErrorAlert('Failed to load data: ' + (error.error?.message || error.message));
+            error: err => {
+                this.showErrorAlert(
+                    err?.error?.message || err?.message || 'Failed to load data'
+                );
+                console.error('Error loading data:', err);
             }
         });
     }
 
     /**
      * Calculate how many users have each role
-     * This counts from ALL users loaded, not just current page
      */
     private calculateRoleUserCounts(): void {
-        // Clear existing counts
         this.roleUserCountMap.clear();
-
-        // Count users for each role
+        
         this.allUsers.forEach(user => {
             if (user.roles && Array.isArray(user.roles)) {
                 user.roles.forEach(role => {
-                    // role.roleId from user.roles matches role.id from availableRoles
-                    const currentCount = this.roleUserCountMap.get(role.roleId) || 0;
-                    this.roleUserCountMap.set(role.roleId, currentCount + 1);
+                    const roleId = role.roleId || role.id;
+                    if (roleId) {
+                        const currentCount = this.roleUserCountMap.get(roleId) || 0;
+                        this.roleUserCountMap.set(roleId, currentCount + 1);
+                    }
                 });
             }
         });
+    }
 
-        // Update the availableRoles with user counts AND permission counts
-        this.availableRoles = this.availableRoles.map(role => {
-            // Find permission count from any user that has this role
-            let permissionCount = 0;
-            
-            for (const user of this.allUsers) {
-                const userRole = user.roles?.find(r => r.roleId === role.id);
-                if (userRole && userRole.permissionCount) {
-                    permissionCount = userRole.permissionCount;
-                    break;
+    /**
+     * Load users for a specific page
+     */
+    private loadUsersPage(pageNumber: number, pageSize: number): void {
+        this.isLoading = true;
+
+        this.rolePermissionService.getAllUsers(pageNumber, pageSize)
+            .pipe(
+                takeUntil(this.unsubscribe$),
+                finalize(() => (this.isLoading = false))
+            )
+            .subscribe({
+                next: (response) => {
+                    if (response?.success && response.data) {
+                        this.allUsers = response.data.items || [];
+                        this.totalUsers = response.data.totalCount || 0;
+                        this.usersDataSource.data = this.allUsers;
+                        this.calculateRoleUserCounts();
+                        this.applyUserFilter();
+                    }
+                },
+                error: (err) => {
+                    this.showErrorAlert(
+                        err?.error?.message || err?.message || 'Failed to load users'
+                    );
+                    console.error('Error loading users:', err);
                 }
-            }
+            });
+    }
 
-            return {
-                ...role,
-                userCount: this.roleUserCountMap.get(role.id) || 0,
-                permissionCount: permissionCount
-            };
+    // ------------------------------------------------------
+    // Filtering
+    // ------------------------------------------------------
+
+    applyUserFilter(): void {
+        let data = [...this.allUsers];
+
+        // Apply search term filter
+        if (this.userSearchTerm?.trim()) {
+            const term = this.userSearchTerm.toLowerCase();
+            data = data.filter(u =>
+                u.fullName?.toLowerCase().includes(term) ||
+                u.email?.toLowerCase().includes(term) ||
+                u.userName?.toLowerCase().includes(term)
+            );
+        }
+
+        // Apply role filter
+        if (this.roleFilterValue) {
+            data = data.filter(u =>
+                u.roles?.some(r => (r.roleId || r.id) === this.roleFilterValue)
+            );
+        }
+
+        this.usersDataSource.data = data;
+    }
+
+    clearUserFilter(): void {
+        this.userSearchTerm = '';
+        this.roleFilterValue = null;
+        this.applyUserFilter();
+    }
+
+    // ------------------------------------------------------
+    // Pagination
+    // ------------------------------------------------------
+
+    onPageChange(event: PageEvent): void {
+        this.currentPage = event.pageIndex + 1;
+        this.pageSize = event.pageSize;
+        this.loadUsersPage(this.currentPage, this.pageSize);
+    }
+
+    // ------------------------------------------------------
+    // Dialog Actions
+    // ------------------------------------------------------
+
+    /**
+     * Open dialog to manage roles for a user
+     */
+    openManageRolesDialog(user: UserWithRoles): void {
+        const dialogRef = this.dialog.open(RoleManageDialogComponent, {
+            width: '700px',
+            maxHeight: '85vh',
+            data: {
+                user,
+                availableRoles: this.availableRoles
+            },
+            disableClose: false,
+            autoFocus: true
         });
 
-        console.log('Role user counts calculated:', this.roleUserCountMap);
-        console.log('Updated availableRoles:', this.availableRoles);
+        dialogRef.afterClosed().subscribe((roleIds: string[] | undefined) => {
+            if (roleIds !== undefined && roleIds !== null) {
+                this.updateUserRoles(user.userId, roleIds);
+            }
+        });
     }
+
+    /**
+     * View user details including all assigned roles
+     */
+    viewUserDetails(user: UserWithRoles): void {
+        this.dialog.open(PermissionUsersDialogComponent, {
+            width: '650px',
+            maxHeight: '85vh',
+            data: { user },
+            autoFocus: true
+        });
+    }
+
+    /**
+     * View all users assigned to a specific role
+     */
+    viewRoleUsers(role: RoleWithPermissions | any): void {
+        const roleId = role.id || role.roleId;
+        const userCount = this.getRoleUserCount(roleId);
+
+        if (userCount === 0) {
+            this.snackBar.open(`No users assigned to "${role.name || role.roleName}"`, 'Close', {
+                duration: 3000,
+                horizontalPosition: 'end',
+                verticalPosition: 'top'
+            });
+            return;
+        }
+
+        this.isLoading = true;
+
+        this.rolePermissionService.getUsersByRole(roleId)
+            .pipe(
+                takeUntil(this.unsubscribe$),
+                finalize(() => (this.isLoading = false))
+            )
+            .subscribe({
+                next: (response) => {
+                    if (response?.success) {
+                        const users = response.data || [];
+
+                        if (users.length === 0) {
+                            this.snackBar.open(`No users found for "${role.name || role.roleName}"`, 'Close', {
+                                duration: 3000,
+                                horizontalPosition: 'end',
+                                verticalPosition: 'top'
+                            });
+                            return;
+                        }
+
+                        this.dialog.open(RoleUsersDialogComponent, {
+                            width: '700px',
+                            maxHeight: '85vh',
+                            data: {
+                                role: role,
+                                users: users,
+                                title: `Users with ${role.name || role.roleName} Role`
+                            },
+                            autoFocus: true,
+                            disableClose: false
+                        });
+                    } else {
+                        this.showErrorAlert(response?.message || 'Failed to load users for this role');
+                    }
+                },
+                error: (err) => {
+                    this.showErrorAlert(
+                        err?.error?.message || err?.message || 'Failed to load users'
+                    );
+                    console.error('Error loading role users:', err);
+                }
+            });
+    }
+
+    /**
+     * Remove all roles from a user
+     */
+    removeAllRoles(userId: string): void {
+        const user = this.allUsers.find(u => u.userId === userId);
+        if (!user) return;
+
+        const confirmation = this.confirmationService.open({
+            title: 'Remove All Roles',
+            message: `Are you sure you want to remove all roles from "${user.fullName}"? This action cannot be undone.`,
+            icon: {
+                show: true,
+                name: 'heroicons_outline:exclamation-triangle',
+                color: 'warn'
+            },
+            actions: {
+                confirm: {
+                    show: true,
+                    label: 'Remove All',
+                    color: 'warn'
+                },
+                cancel: {
+                    show: true,
+                    label: 'Cancel'
+                }
+            },
+            dismissible: true
+        });
+
+        confirmation.afterClosed().subscribe((result) => {
+            if (result === 'confirmed') {
+                this.executeRemoveAllRoles(userId);
+            }
+        });
+    }
+
+    private executeRemoveAllRoles(userId: string): void {
+        this.isLoading = true;
+
+        this.rolePermissionService.removeAllRolesFromUser(userId)
+            .pipe(
+                takeUntil(this.unsubscribe$),
+                finalize(() => (this.isLoading = false))
+            )
+            .subscribe({
+                next: res => {
+                    if (res?.success) {
+                        this.showSuccessAlert('All roles removed successfully');
+                        this.loadData();
+                    } else {
+                        this.showErrorAlert(res?.message || 'Failed to remove roles');
+                    }
+                },
+                error: err => {
+                    this.showErrorAlert(
+                        err?.error?.message || err?.message || 'Failed to remove roles'
+                    );
+                    console.error('Error removing roles:', err);
+                }
+            });
+    }
+
+    /**
+     * Update user roles
+     */
+    private updateUserRoles(userId: string, roleIds: string[]): void {
+        this.isLoading = true;
+
+        this.rolePermissionService.updateUserRoles(userId, roleIds)
+            .pipe(
+                takeUntil(this.unsubscribe$),
+                finalize(() => (this.isLoading = false))
+            )
+            .subscribe({
+                next: res => {
+                    if (res?.success) {
+                        this.showSuccessAlert(res.message || 'User roles updated successfully');
+                        this.loadData();
+                    } else {
+                        this.showErrorAlert(res?.message || 'Update failed');
+                    }
+                },
+                error: err => {
+                    this.showErrorAlert(
+                        err?.error?.message || err?.message || 'Failed to update user roles'
+                    );
+                    console.error('Error updating user roles:', err);
+                }
+            });
+    }
+
+    // ------------------------------------------------------
+    // Template Helper Methods
+    // ------------------------------------------------------
+
+    /**
+     * Get initials from full name for avatar display
+     */
+    getUserInitials(fullName: string): string {
+        if (!fullName?.trim()) return '?';
+
+        const names = fullName.trim().split(' ');
+        if (names.length >= 2) {
+            return (names[0][0] + names[names.length - 1][0]).toUpperCase();
+        }
+        return fullName.substring(0, 2).toUpperCase();
+    }
+
+    /**
+     * Get tooltip text for extra roles
+     */
+    getExtraRolesTooltip(roles: any[]): string {
+        if (!roles || roles.length <= 3) return '';
+        
+        return roles.slice(3)
+            .map(r => r.roleName || r.name)
+            .join(', ');
+    }
+
+    getRoleName(roleId: number | string | null): string {
+  if (!roleId || !this.availableRoles?.length) {
+    return 'Unknown';
+  }
+
+  const role = this.availableRoles.find(
+    r => (r.roleId ?? r.roleId) === roleId
+  );
+
+  return role?.roleName ?? 'Unknown';
+}
+
 
     /**
      * Get user count for a specific role
@@ -211,245 +554,53 @@ export class RoleAssignmentEnhancedComponent implements OnInit, OnDestroy {
     }
 
     /**
-     * Apply filters to user table
+     * TrackBy function for roles
      */
-    applyUserFilter(): void {
-        let filteredData = [...this.allUsers];
-
-        // Apply search filter
-        if (this.userSearchTerm && this.userSearchTerm.trim()) {
-            const searchLower = this.userSearchTerm.toLowerCase().trim();
-            filteredData = filteredData.filter(user =>
-                user.fullName.toLowerCase().includes(searchLower) ||
-                user.email.toLowerCase().includes(searchLower) ||
-                user.userName.toLowerCase().includes(searchLower)
-            );
-        }
-
-        // Apply role filter
-        if (this.roleFilterValue) {
-            filteredData = filteredData.filter(user =>
-                user.roles && user.roles.some(role => role.roleId === this.roleFilterValue)
-            );
-        }
-
-        this.usersDataSource.data = filteredData;
+    trackByRoleId(index: number, role: RoleWithPermissions): string {
+        return role?.roleId || role?.roleId || index.toString();
     }
 
     /**
-     * Clear user filter
+     * TrackBy function for users
      */
-    clearUserFilter(): void {
-        this.userSearchTerm = '';
-        this.roleFilterValue = null;
-        this.applyUserFilter();
+    trackByUserId(index: number, user: UserWithRoles): string {
+        return user?.userId || index.toString();
     }
 
-    /**
-     * Handle page change
-     */
-    onPageChange(event: PageEvent): void {
-        this.currentPage = event.pageIndex + 1;
-        this.pageSize = event.pageSize;
-        this.loadAllUsers();
-    }
+    // ------------------------------------------------------
+    // Alerts & Notifications
+    // ------------------------------------------------------
 
-    /**
-     * Load all users with pagination (separate method for pagination updates)
-     */
-    private loadAllUsers(): void {
-        this.isLoading = true;
-
-        this._roleAssignmentService.getAllUsersWithRoles(this.currentPage, this.pageSize)
-            .pipe(
-                takeUntil(this._unsubscribeAll),
-                finalize(() => this.isLoading = false)
-            )
-            .subscribe({
-                next: (response) => {
-                    if (response.success) {
-                        this.allUsers = response.data.items;
-                        this.totalUsers = response.data.totalCount;
-                        this.stats.totalUsers = response.data.totalCount;
-                        
-                        // Recalculate role counts
-                        this.calculateRoleUserCounts();
-                        
-                        // Apply filters
-                        this.applyUserFilter();
-                    }
-                },
-                error: (error) => {
-                    this.showErrorAlert('Failed to load users: ' + (error.error?.message || error.message));
-                }
-            });
-    }
-
-    /**
-     * Open manage roles dialog
-     */
-    openManageRolesDialog(user: UserWithRoles): void {
-        const dialogRef = this._dialog.open(RoleManageDialogComponent, {
-            width: '800px',
-            height: '85vh',
-            maxHeight: '900px',
-            data: {
-                user: user,
-                availableRoles: this.availableRoles,
-                allUsers: this.allUsers  // Pass all users for count calculation
-            },
-            disableClose: false
-        });
-
-        dialogRef.afterClosed().subscribe((selectedRoleIds: string[]) => {
-            if (selectedRoleIds) {
-                this.handleRoleUpdate(user.userId, selectedRoleIds);
-            }
-        });
-    }
-
-    /**
-     * Handle role update from dialog
-     */
-    private handleRoleUpdate(userId: string, selectedRoleIds: string[]): void {
-        this.isLoading = true;
-
-        const request: UpdateUserRolesRequest = {
-            userId: userId,
-            roleIds: selectedRoleIds
-        };
-
-        this._roleAssignmentService.updateUserRoles(request)
-            .pipe(
-                takeUntil(this._unsubscribeAll),
-                finalize(() => this.isLoading = false)
-            )
-            .subscribe({
-                next: (response) => {
-                    if (response.success) {
-                        this.showSuccessAlert(response.message || 'Roles updated successfully');
-                        
-                        // Reload data to get fresh counts
-                        this.loadData();
-                    } else {
-                        this.showErrorAlert(response.message || 'Failed to update roles');
-                    }
-                },
-                error: (error) => {
-                    this.showErrorAlert('Failed to update roles: ' + (error.error?.message || error.message));
-                }
-            });
-    }
-
-    /**
-     * View user details
-     */
-    viewUserDetails(user: UserWithRoles): void {
-        this._dialog.open(UserDetailsDialogComponent, {
-            width: '650px',
-            maxHeight: '90vh',
-            data: { user: user }
-        });
-    }
-
-    /**
-     * View users for a specific role
-     */
-    viewRoleUsers(role: UserRole): void {
-        // Switch to user management tab
-        this.selectedTabIndex = 0;
-        
-        // Set the role filter - use 'id' property from availableRoles
-        this.roleFilterValue = role.id;
-        
-        // Apply filter after a short delay to ensure tab switch completes
-        setTimeout(() => {
-            this.applyUserFilter();
-        }, 100);
-    }
-
-    /**
-     * Remove all roles from user
-     */
-    removeAllRoles(userId: string): void {
-        if (!confirm('Are you sure you want to remove all roles from this user?')) {
-            return;
-        }
-
-        this.isLoading = true;
-
-        this._roleAssignmentService.removeAllRoles(userId)
-            .pipe(
-                takeUntil(this._unsubscribeAll),
-                finalize(() => this.isLoading = false)
-            )
-            .subscribe({
-                next: (response) => {
-                    if (response.success) {
-                        this.showSuccessAlert('All roles removed successfully');
-                        this.loadData();
-                    } else {
-                        this.showErrorAlert(response.message || 'Failed to remove roles');
-                    }
-                },
-                error: (error) => {
-                    this.showErrorAlert('Failed to remove roles: ' + (error.error?.message || error.message));
-                }
-            });
-    }
-
-    /**
-     * Get tooltip text for extra roles (roles beyond the first 3)
-     */
-    getExtraRolesTooltip(roles: UserRole[]): string {
-        if (!roles || roles.length <= 3) {
-            return '';
-        }
-
-        return roles
-            .slice(3)
-            .map(role => role.roleName)
-            .join(', ');
-    }
-
-    /**
-     * Get user initials for avatar
-     */
-    getUserInitials(fullName: string): string {
-        if (!fullName) return '??';
-        const names = fullName.trim().split(' ');
-        if (names.length >= 2) {
-            return (names[0][0] + names[names.length - 1][0]).toUpperCase();
-        }
-        return fullName.substring(0, 2).toUpperCase();
-    }
-
-    /**
-     * Show success alert
-     */
     private showSuccessAlert(message: string): void {
-        this.alert = {
-            type: 'success',
-            message: message
-        };
+        this.alert = { type: 'success', message };
         this.showAlert = true;
-        
-        // Auto-dismiss after 5 seconds
+
+        // Auto-hide success alerts after 5 seconds
         setTimeout(() => {
-            this.showAlert = false;
+            if (this.alert.type === 'success') {
+                this.showAlert = false;
+            }
         }, 5000);
+
+        // Also show snackbar for immediate feedback
+        this.snackBar.open(message, 'Close', {
+            duration: 3000,
+            horizontalPosition: 'end',
+            verticalPosition: 'top',
+            panelClass: ['success-snackbar']
+        });
     }
 
-    /**
-     * Show error alert
-     */
     private showErrorAlert(message: string): void {
-        this.alert = {
-            type: 'error',
-            message: message
-        };
+        this.alert = { type: 'error', message };
         this.showAlert = true;
-        
-        // Errors stay until manually dismissed
+
+        // Also show snackbar
+        this.snackBar.open(message, 'Close', {
+            duration: 5000,
+            horizontalPosition: 'end',
+            verticalPosition: 'top',
+            panelClass: ['error-snackbar']
+        });
     }
 }

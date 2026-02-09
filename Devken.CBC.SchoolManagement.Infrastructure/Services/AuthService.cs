@@ -1,5 +1,4 @@
 ﻿using Devken.CBC.SchoolManagement.Application.Dtos;
-
 using Devken.CBC.SchoolManagement.Application.Service;
 using Devken.CBC.SchoolManagement.Application.Service.Isubscription;
 using Devken.CBC.SchoolManagement.Domain.Entities.Administration;
@@ -7,7 +6,6 @@ using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
 using Devken.CBC.SchoolManagement.Domain.Enums;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF;
 using Devken.CBC.SchoolManagement.Infrastructure.Security;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
@@ -20,7 +18,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
     public class AuthService : IAuthService
     {
         private readonly AppDbContext _context;
-        private readonly IPasswordHasher<User> _passwordHasher;
+        private readonly IPasswordHashingService _passwordHashingService;
         private readonly JwtSettings _jwtSettings;
         private readonly IPermissionSeedService _permissionSeedService;
         private readonly ISubscriptionSeedService _subscriptionSeedService;
@@ -33,7 +31,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
 
         public AuthService(
             AppDbContext context,
-            IPasswordHasher<User> passwordHasher,
+            IPasswordHashingService passwordHashingService,
             JwtSettings jwtSettings,
             IPermissionSeedService permissionSeedService,
             ISubscriptionSeedService subscriptionSeedService,
@@ -41,7 +39,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
             IJwtService jwtService)
         {
             _context = context;
-            _passwordHasher = passwordHasher;
+            _passwordHashingService = passwordHashingService;
             _jwtSettings = jwtSettings;
             _permissionSeedService = permissionSeedService;
             _subscriptionSeedService = subscriptionSeedService;
@@ -92,9 +90,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
                     Tenant = school,
                     IsActive = true,
                     IsEmailVerified = true,
-                    RequirePasswordChange = true
+                    RequirePasswordChange = true,
+                    PasswordHash = _passwordHashingService.HashPassword(request.AdminPassword)
                 };
-                user.PasswordHash = _passwordHasher.HashPassword(user, request.AdminPassword);
                 _context.Users.Add(user);
                 await _context.SaveChangesAsync();
 
@@ -147,8 +145,17 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
                 .FirstOrDefaultAsync(u => u.Email == request.Email && u.Tenant!.Id == school.Id && u.IsActive);
             if (user == null) return null;
 
-            if (_passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password) == PasswordVerificationResult.Failed)
+            if (!_passwordHashingService.VerifyPassword(request.Password, user.PasswordHash))
                 return null;
+
+            // Rehash password if using old format (automatic migration)
+            if (_passwordHashingService is BCryptPasswordHashingService bcryptService &&
+                bcryptService.NeedsRehash(user.PasswordHash))
+            {
+                user.PasswordHash = _passwordHashingService.HashPassword(request.Password);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Password rehashed to BCrypt for user {Email}", user.Email);
+            }
 
             var permissions = await GetUserPermissionsAsync(user.Id, school.Id);
             var roles = await _context.UserRoles.Where(ur => ur.UserId == user.Id)
@@ -220,10 +227,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
                 .FirstOrDefaultAsync(u => u.Id == userId && u.Tenant!.Id == tenantId.Value);
             if (user == null) return new AuthResult(false, "User not found");
 
-            if (_passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.CurrentPassword) == PasswordVerificationResult.Failed)
+            if (!_passwordHashingService.VerifyPassword(request.CurrentPassword, user.PasswordHash))
                 return new AuthResult(false, "Invalid current password");
 
-            user.PasswordHash = _passwordHasher.HashPassword(user, request.NewPassword);
+            user.PasswordHash = _passwordHashingService.HashPassword(request.NewPassword);
             user.RequirePasswordChange = false;
 
             var tokens = await _context.RefreshTokens.Where(t => t.UserId == userId).ToListAsync();
@@ -239,8 +246,17 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
             var admin = await _context.SuperAdmins.FirstOrDefaultAsync(a => a.Email == request.Email && a.IsActive);
             if (admin == null) return null;
 
-            if (new PasswordHasher<SuperAdmin>().VerifyHashedPassword(admin, admin.PasswordHash, request.Password) == PasswordVerificationResult.Failed)
+            if (!_passwordHashingService.VerifyPassword(request.Password, admin.PasswordHash))
                 return null;
+
+            // Rehash password if using old format (automatic migration)
+            if (_passwordHashingService is BCryptPasswordHashingService bcryptService &&
+                bcryptService.NeedsRehash(admin.PasswordHash))
+            {
+                admin.PasswordHash = _passwordHashingService.HashPassword(request.Password);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("SuperAdmin password rehashed to BCrypt for {Email}", admin.Email);
+            }
 
             var user = new User { Id = admin.Id, Email = admin.Email, FirstName = admin.FirstName, LastName = admin.LastName, TenantId = Guid.Empty };
             var accessToken = _jwtService.GenerateToken(user, SuperAdminRoles, SuperAdminPermissions);

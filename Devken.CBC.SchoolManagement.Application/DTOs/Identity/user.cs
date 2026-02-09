@@ -1,9 +1,38 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 
 namespace Devken.CBC.SchoolManagement.Application.Dtos
 {
+
+    public class PasswordResetResultDto
+    {
+        /// <summary>
+        /// The user whose password was reset
+        /// </summary>
+        public UserDto User { get; set; } = null!;
+
+        /// <summary>
+        /// The generated temporary password
+        /// </summary>
+        public string TemporaryPassword { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Instructions or message for the user
+        /// </summary>
+        public string Message { get; set; } = "Password has been reset. User must change password on next login.";
+
+        /// <summary>
+        /// When the password was reset
+        /// </summary>
+        public DateTime ResetAt { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// Who performed the reset
+        /// </summary>
+        public Guid ResetBy { get; set; }
+    }
     // ── USER DTO ────────────────────────────────────────────
     public class UserDto
     {
@@ -20,6 +49,7 @@ namespace Devken.CBC.SchoolManagement.Application.Dtos
         public bool RequirePasswordChange { get; set; }
         public string? TemporaryPassword { get; set; }
         public List<string> RoleNames { get; set; } = new();
+        public List<string> Permissions { get; set; } = new(); // Added for permissions support
         public DateTime CreatedOn { get; set; }
         public DateTime? UpdatedOn { get; set; }
         public Guid TenantId { get; set; }
@@ -54,13 +84,11 @@ namespace Devken.CBC.SchoolManagement.Application.Dtos
             TenantId = schoolId; // Assuming SchoolId and TenantId are the same
             RequirePasswordChange = requirePasswordChange;
             RoleNames = roles?.ToList() ?? new List<string>();
+            Permissions = permissions?.ToList() ?? new List<string>(); // FIX: Now storing permissions
             IsActive = true;
             IsEmailVerified = true;
             CreatedOn = DateTime.UtcNow;
             UpdatedOn = DateTime.UtcNow;
-
-            // Note: Permissions parameter is not stored in UserDto properties
-            // You might want to add a Permissions property if needed
         }
 
         // Convenience property for FullName
@@ -255,7 +283,8 @@ namespace Devken.CBC.SchoolManagement.Application.Dtos
         string AccessToken,
         string RefreshToken,
         int AccessTokenExpiresInSeconds,
-        UserDto User
+        UserDto User,
+        string[]? Permissions = null // Added for explicit permissions
     );
 
     public class LoginResponseDto

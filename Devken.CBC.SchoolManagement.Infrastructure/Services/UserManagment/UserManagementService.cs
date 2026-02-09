@@ -4,6 +4,7 @@ using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Comm
 using Devken.CBC.SchoolManagement.Application.Services.UserManagement;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
 using Devken.CBC.SchoolManagement.Domain.Enums;
+using Devken.CBC.SchoolManagement.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
 using System.Text;
@@ -13,10 +14,14 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
     public class UserManagementService : IUserManagementService
     {
         private readonly IRepositoryManager _repository;
+        private readonly IPasswordHashingService _passwordHashingService;
 
-        public UserManagementService(IRepositoryManager repository)
+        public UserManagementService(
+            IRepositoryManager repository,
+            IPasswordHashingService passwordHashingService)
         {
             _repository = repository;
+            _passwordHashingService = passwordHashingService;
         }
 
         public async Task<ServiceResult<UserDto>> CreateUserAsync(
@@ -52,7 +57,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
                     LastName = request.LastName,
                     PhoneNumber = request.PhoneNumber,
                     TenantId = schoolId,
-                    PasswordHash = HashPassword(tempPassword),
+                    PasswordHash = _passwordHashingService.HashPassword(tempPassword),
                     IsActive = true,
                     IsEmailVerified = false,
                     RequirePasswordChange = request.RequirePasswordChange,
@@ -112,6 +117,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
                     .Include(u => u.Tenant)
                     .Include(u => u.UserRoles)
                         .ThenInclude(ur => ur.Role)
+                            .ThenInclude(r => r.RolePermissions)
+                                .ThenInclude(rp => rp.Permission)
                     .OrderByDescending(u => u.CreatedOn)
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
@@ -146,6 +153,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
                     .Include(u => u.Tenant)
                     .Include(u => u.UserRoles)
                         .ThenInclude(ur => ur.Role)
+                            .ThenInclude(r => r.RolePermissions)
+                                .ThenInclude(rp => rp.Permission)
                     .FirstOrDefaultAsync();
 
                 if (user == null)
@@ -379,16 +388,28 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
             }
         }
 
-        public async Task<ServiceResult<bool>> ResetPasswordAsync(Guid userId, Guid resetBy)
+        public async Task<ServiceResult<PasswordResetResultDto>> ResetPasswordAsync(Guid userId, Guid resetBy)
         {
             try
             {
-                var user = await _repository.User.GetByIdAsync(userId, trackChanges: true);
-                if (user == null)
-                    return ServiceResult<bool>.FailureResult("User not found");
+                var user = await _repository.User.FindByCondition(
+                    u => u.Id == userId,
+                    trackChanges: true)
+                    .Include(u => u.Tenant)
+                    .Include(u => u.UserRoles)
+                        .ThenInclude(ur => ur.Role)
+                            .ThenInclude(r => r.RolePermissions)
+                                .ThenInclude(rp => rp.Permission)
+                    .FirstOrDefaultAsync();
 
+                if (user == null)
+                    return ServiceResult<PasswordResetResultDto>.FailureResult("User not found");
+
+                // Generate temporary password
                 var tempPassword = GenerateTemporaryPassword();
-                user.PasswordHash = HashPassword(tempPassword);
+
+                // Update user password
+                user.PasswordHash = _passwordHashingService.HashPassword(tempPassword);
                 user.RequirePasswordChange = true;
                 user.FailedLoginAttempts = 0;
                 user.LockedUntil = null;
@@ -396,12 +417,22 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
                 _repository.User.Update(user);
                 await _repository.SaveAsync();
 
+                // Create result with user info and temp password
+                var result = new PasswordResetResultDto
+                {
+                    User = MapToUserDto(user),
+                    TemporaryPassword = tempPassword,
+                    Message = "Password has been reset. User must change password on next login.",
+                    ResetAt = DateTime.UtcNow,
+                    ResetBy = resetBy
+                };
+
                 // TODO: Send email with temp password
-                return ServiceResult<bool>.SuccessResult(true);
+                return ServiceResult<PasswordResetResultDto>.SuccessResult(result);
             }
             catch (Exception ex)
             {
-                return ServiceResult<bool>.FailureResult($"Error resetting password: {ex.Message}");
+                return ServiceResult<PasswordResetResultDto>.FailureResult($"Error resetting password: {ex.Message}");
             }
         }
 
@@ -449,6 +480,22 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
 
         private static UserDto MapToUserDto(User user, string? tempPassword = null)
         {
+            // Get role names safely with null checks
+            var roleNames = user.UserRoles?
+                .Where(ur => ur.Role != null)
+                .Select(ur => ur.Role!.Name ?? "Unknown")
+                .ToList() ?? new List<string>();
+
+            // Get permissions from all roles
+            var permissions = user.UserRoles?
+                .Where(ur => ur.Role?.RolePermissions != null)
+                .SelectMany(ur => ur.Role!.RolePermissions!)
+                .Where(rp => rp.Permission != null)
+                .Select(rp => rp.Permission!.Key ?? string.Empty)
+                .Distinct()
+                .Where(key => !string.IsNullOrEmpty(key))
+                .ToList() ?? new List<string>();
+
             return new UserDto
             {
                 Id = user.Id,
@@ -463,9 +510,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
                 IsEmailVerified = user.IsEmailVerified,
                 RequirePasswordChange = user.RequirePasswordChange,
                 TemporaryPassword = tempPassword,
-                RoleNames = user.UserRoles?.Select(ur => ur.Role.Name).ToList() ?? new List<string>(),
+                RoleNames = roleNames,
+                Permissions = permissions,
                 CreatedOn = user.CreatedOn,
-                UpdatedOn = user.UpdatedOn
+                UpdatedOn = user.UpdatedOn,
+                TenantId = user.TenantId
             };
         }
 
@@ -481,12 +530,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
             }
 
             return new string(chars);
-        }
-
-        private static string HashPassword(string password)
-        {
-            var hashedBytes = SHA256.HashData(Encoding.UTF8.GetBytes(password));
-            return Convert.ToBase64String(hashedBytes);
         }
 
         #endregion

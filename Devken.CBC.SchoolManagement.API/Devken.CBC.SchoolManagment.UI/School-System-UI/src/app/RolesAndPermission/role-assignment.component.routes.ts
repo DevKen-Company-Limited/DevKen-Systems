@@ -1,11 +1,12 @@
 import { Component } from "@angular/core";
-import { RoleAssignmentEnhancedComponent } from "./role-assignment.component";
+
 import { Routes } from "@angular/router";
+import { RoleAssignmentManagementComponent } from "./role-assignment.component";
 
 export default[
  {
         path: '',
-        component: RoleAssignmentEnhancedComponent,
+        component: RoleAssignmentManagementComponent,
         data: {
             title: 'Role Assignment'
         }

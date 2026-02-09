@@ -1,5 +1,6 @@
 ﻿using Devken.CBC.SchoolManagement.Application.Service.Activities;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,15 +9,23 @@ using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
 {
+    /// <summary>
+    /// Base controller providing common functionality for all API controllers
+    /// including user context, permission checks, and standardized responses
+    /// </summary>
     [ApiController]
     [Produces("application/json")]
     public abstract class BaseApiController : ControllerBase
     {
         private readonly IUserActivityService? _activityService;
+        private readonly ILogger? _logger;
 
-        protected BaseApiController(IUserActivityService? activityService = null)
+        protected BaseApiController(
+            IUserActivityService? activityService = null,
+            ILogger? logger = null)
         {
             _activityService = activityService;
+            _logger = logger;
         }
 
         #region Current User Info
@@ -24,6 +33,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         /// <summary>
         /// Gets the current authenticated user's ID from JWT claims
         /// </summary>
+        /// <exception cref="UnauthorizedAccessException">Thrown when user ID is not found or invalid</exception>
         protected Guid CurrentUserId
         {
             get
@@ -42,6 +52,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         /// <summary>
         /// Gets the current user's school/tenant ID. Returns null for SuperAdmin.
         /// </summary>
+        /// <exception cref="UnauthorizedAccessException">Thrown when tenant context is required but not found</exception>
         protected Guid? CurrentTenantId
         {
             get
@@ -65,7 +76,8 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         protected Guid? CurrentSchoolId => CurrentTenantId;
 
         /// <summary>
-        /// Checks if the current user is a SuperAdmin
+        /// Checks if the current user is a SuperAdmin.
+        /// SuperAdmin has unrestricted access to all resources across all tenants.
         /// </summary>
         protected bool IsSuperAdmin =>
             string.Equals(User.FindFirst("is_super_admin")?.Value, "true", StringComparison.OrdinalIgnoreCase)
@@ -76,6 +88,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         /// <summary>
         /// Gets the current user's email address
         /// </summary>
+        /// <exception cref="UnauthorizedAccessException">Thrown when email is not found in token</exception>
         protected string CurrentUserEmail
         {
             get
@@ -100,6 +113,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
             {
                 return User.FindFirst(ClaimTypes.Name)?.Value
                     ?? User.FindFirst("name")?.Value
+                    ?? User.FindFirst("full_name")?.Value
                     ?? User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name")?.Value
                     ?? User.Identity?.Name
                     ?? "Unknown";
@@ -107,24 +121,46 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         }
 
         /// <summary>
-        /// Gets all permissions assigned to the current user
+        /// Gets the current user's first name
+        /// </summary>
+        protected string? CurrentUserFirstName =>
+            User.FindFirst("first_name")?.Value
+            ?? User.FindFirst("given_name")?.Value
+            ?? User.FindFirst(ClaimTypes.GivenName)?.Value;
+
+        /// <summary>
+        /// Gets the current user's last name
+        /// </summary>
+        protected string? CurrentUserLastName =>
+            User.FindFirst("last_name")?.Value
+            ?? User.FindFirst("family_name")?.Value
+            ?? User.FindFirst(ClaimTypes.Surname)?.Value;
+
+        /// <summary>
+        /// Gets all permissions assigned to the current user.
+        /// Parses permissions from both individual claims and JSON array claims.
         /// </summary>
         protected IReadOnlyCollection<string> CurrentUserPermissions
         {
             get
             {
-                var permissions = new List<string>();
+                var permissions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-                // Check for permissions claim (array)
+                // Check for permissions claim (JSON array)
                 var permissionsClaim = User.FindFirst("permissions")?.Value;
                 if (!string.IsNullOrWhiteSpace(permissionsClaim))
                 {
-                    // If it's a JSON array, try to parse it
                     try
                     {
                         var permArray = System.Text.Json.JsonSerializer.Deserialize<string[]>(permissionsClaim);
                         if (permArray != null)
-                            permissions.AddRange(permArray);
+                        {
+                            foreach (var perm in permArray)
+                            {
+                                if (!string.IsNullOrWhiteSpace(perm))
+                                    permissions.Add(perm);
+                            }
+                        }
                     }
                     catch
                     {
@@ -134,28 +170,43 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
                 }
 
                 // Also check for individual permission claims
-                permissions.AddRange(
-                    User.FindAll("permission")
-                        .Select(c => c.Value)
-                        .Where(v => !string.IsNullOrWhiteSpace(v))
-                );
+                var individualPermissions = User.FindAll("permission")
+                    .Select(c => c.Value)
+                    .Where(v => !string.IsNullOrWhiteSpace(v));
 
-                return permissions
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToList();
+                foreach (var perm in individualPermissions)
+                {
+                    permissions.Add(perm);
+                }
+
+                return permissions.ToList();
             }
         }
 
         /// <summary>
         /// Gets all roles assigned to the current user
         /// </summary>
-        protected IReadOnlyCollection<string> CurrentUserRoles =>
-            User.FindAll(ClaimTypes.Role)
-                .Concat(User.FindAll("http://schemas.microsoft.com/ws/2008/06/identity/claims/role"))
-                .Select(c => c.Value)
-                .Where(v => !string.IsNullOrWhiteSpace(v))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
+        protected IReadOnlyCollection<string> CurrentUserRoles
+        {
+            get
+            {
+                var roles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                // Get roles from standard claims
+                var roleClaims = User.FindAll(ClaimTypes.Role)
+                    .Concat(User.FindAll("http://schemas.microsoft.com/ws/2008/06/identity/claims/role"))
+                    .Concat(User.FindAll("role"))
+                    .Select(c => c.Value)
+                    .Where(v => !string.IsNullOrWhiteSpace(v));
+
+                foreach (var role in roleClaims)
+                {
+                    roles.Add(role);
+                }
+
+                return roles.ToList();
+            }
+        }
 
         #endregion
 
@@ -169,7 +220,12 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         /// <returns>True if user has the permission or is SuperAdmin</returns>
         protected bool HasPermission(string permission)
         {
-            if (IsSuperAdmin) return true;
+            if (string.IsNullOrWhiteSpace(permission))
+                return false;
+
+            if (IsSuperAdmin)
+                return true;
+
             return CurrentUserPermissions.Contains(permission, StringComparer.OrdinalIgnoreCase);
         }
 
@@ -181,8 +237,15 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         /// <returns>True if user has at least one permission or is SuperAdmin</returns>
         protected bool HasAnyPermission(params string[] permissions)
         {
-            if (IsSuperAdmin) return true;
-            return permissions.Any(p => CurrentUserPermissions.Contains(p, StringComparer.OrdinalIgnoreCase));
+            if (permissions == null || permissions.Length == 0)
+                return false;
+
+            if (IsSuperAdmin)
+                return true;
+
+            return permissions.Any(p =>
+                !string.IsNullOrWhiteSpace(p) &&
+                CurrentUserPermissions.Contains(p, StringComparer.OrdinalIgnoreCase));
         }
 
         /// <summary>
@@ -193,8 +256,15 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         /// <returns>True if user has all permissions or is SuperAdmin</returns>
         protected bool HasAllPermissions(params string[] permissions)
         {
-            if (IsSuperAdmin) return true;
-            return permissions.All(p => CurrentUserPermissions.Contains(p, StringComparer.OrdinalIgnoreCase));
+            if (permissions == null || permissions.Length == 0)
+                return true;
+
+            if (IsSuperAdmin)
+                return true;
+
+            return permissions.All(p =>
+                !string.IsNullOrWhiteSpace(p) &&
+                CurrentUserPermissions.Contains(p, StringComparer.OrdinalIgnoreCase));
         }
 
         /// <summary>
@@ -204,6 +274,9 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         /// <returns>True if user has the role</returns>
         protected bool HasRole(string role)
         {
+            if (string.IsNullOrWhiteSpace(role))
+                return false;
+
             return CurrentUserRoles.Contains(role, StringComparer.OrdinalIgnoreCase);
         }
 
@@ -214,7 +287,12 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         /// <returns>True if user has at least one role</returns>
         protected bool HasAnyRole(params string[] roles)
         {
-            return roles.Any(role => CurrentUserRoles.Contains(role, StringComparer.OrdinalIgnoreCase));
+            if (roles == null || roles.Length == 0)
+                return false;
+
+            return roles.Any(role =>
+                !string.IsNullOrWhiteSpace(role) &&
+                CurrentUserRoles.Contains(role, StringComparer.OrdinalIgnoreCase));
         }
 
         /// <summary>
@@ -224,7 +302,12 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         /// <returns>True if user has all roles</returns>
         protected bool HasAllRoles(params string[] roles)
         {
-            return roles.All(role => CurrentUserRoles.Contains(role, StringComparer.OrdinalIgnoreCase));
+            if (roles == null || roles.Length == 0)
+                return true;
+
+            return roles.All(role =>
+                !string.IsNullOrWhiteSpace(role) &&
+                CurrentUserRoles.Contains(role, StringComparer.OrdinalIgnoreCase));
         }
 
         /// <summary>
@@ -236,8 +319,28 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         /// <returns>True if user can access the school</returns>
         protected bool CanAccessSchool(Guid schoolId)
         {
-            if (IsSuperAdmin) return true;
-            return CurrentSchoolId == schoolId;
+            if (IsSuperAdmin)
+                return true;
+
+            return CurrentSchoolId.HasValue && CurrentSchoolId.Value == schoolId;
+        }
+
+        /// <summary>
+        /// Checks if the current user can access a specific tenant/school.
+        /// Handles null tenant ID (system-wide resources).
+        /// </summary>
+        /// <param name="tenantId">The tenant ID to check (null for system resources)</param>
+        /// <returns>True if user can access the tenant</returns>
+        protected bool CanAccessTenant(Guid? tenantId)
+        {
+            if (IsSuperAdmin)
+                return true;
+
+            // Null tenant means system-wide resource (accessible to SuperAdmin only)
+            if (!tenantId.HasValue || tenantId.Value == Guid.Empty)
+                return false;
+
+            return CurrentTenantId.HasValue && CurrentTenantId.Value == tenantId.Value;
         }
 
         /// <summary>
@@ -249,9 +352,45 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         protected Guid GetCurrentUserSchoolId()
         {
             var schoolId = CurrentSchoolId;
-            if (schoolId == null)
+            if (!schoolId.HasValue)
                 throw new UnauthorizedAccessException("School context is required for this operation");
             return schoolId.Value;
+        }
+
+        /// <summary>
+        /// Gets the current user's school ID or throws an exception if not found.
+        /// Alias for GetCurrentUserSchoolId for consistency.
+        /// </summary>
+        /// <returns>The school ID</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when school ID is not found</exception>
+        protected Guid GetRequiredSchoolId()
+        {
+            return GetCurrentUserSchoolId();
+        }
+
+        /// <summary>
+        /// Gets the current user's tenant ID or throws an exception if not found.
+        /// Use this when a tenant context is absolutely required.
+        /// </summary>
+        /// <returns>The tenant ID</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when tenant ID is not found</exception>
+        protected Guid GetCurrentUserTenantId()
+        {
+            var tenantId = CurrentTenantId;
+            if (!tenantId.HasValue)
+                throw new UnauthorizedAccessException("Tenant context is required for this operation");
+            return tenantId.Value;
+        }
+
+        /// <summary>
+        /// Gets the current user's tenant ID or throws an exception if not found.
+        /// Alias for GetCurrentUserTenantId for consistency.
+        /// </summary>
+        /// <returns>The tenant ID</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when tenant ID is not found</exception>
+        protected Guid GetRequiredTenantId()
+        {
+            return GetCurrentUserTenantId();
         }
 
         /// <summary>
@@ -265,14 +404,100 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         {
             if (!CanAccessSchool(schoolId))
             {
+                LogUserAuthorization("School.Access", schoolId.ToString(), false, "School access denied");
                 return ForbiddenResponse(customMessage ?? "You do not have access to this school.");
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Validates that the user can access the specified tenant.
+        /// Returns a ForbiddenResponse if access is denied.
+        /// </summary>
+        /// <param name="tenantId">The tenant ID to validate access for</param>
+        /// <param name="customMessage">Optional custom error message</param>
+        /// <returns>Null if access is allowed, ForbiddenResponse if denied</returns>
+        protected IActionResult? ValidateTenantAccess(Guid? tenantId, string? customMessage = null)
+        {
+            if (!CanAccessTenant(tenantId))
+            {
+                LogUserAuthorization("Tenant.Access", tenantId?.ToString() ?? "NULL", false, "Tenant access denied");
+                return ForbiddenResponse(customMessage ?? "You do not have access to this resource.");
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Validates that the user has the required permission.
+        /// Returns a ForbiddenResponse if permission is denied.
+        /// </summary>
+        /// <param name="permission">The permission to check</param>
+        /// <param name="resourceId">Optional resource ID being accessed</param>
+        /// <param name="customMessage">Optional custom error message</param>
+        /// <returns>Null if permission is granted, ForbiddenResponse if denied</returns>
+        protected IActionResult? ValidatePermission(string permission, string? resourceId = null, string? customMessage = null)
+        {
+            if (!HasPermission(permission))
+            {
+                LogUserAuthorization(permission, resourceId, false, "Permission denied");
+                return ForbiddenResponse(customMessage ?? $"You do not have permission: {permission}");
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Validates that the user has at least one of the required permissions.
+        /// Returns a ForbiddenResponse if all permissions are denied.
+        /// </summary>
+        /// <param name="permissions">The permissions to check</param>
+        /// <param name="resourceId">Optional resource ID being accessed</param>
+        /// <param name="customMessage">Optional custom error message</param>
+        /// <returns>Null if any permission is granted, ForbiddenResponse if all denied</returns>
+        protected IActionResult? ValidateAnyPermission(string[] permissions, string? resourceId = null, string? customMessage = null)
+        {
+            if (!HasAnyPermission(permissions))
+            {
+                var permList = string.Join(", ", permissions);
+                LogUserAuthorization($"Any of: {permList}", resourceId, false, "All permissions denied");
+                return ForbiddenResponse(customMessage ?? "You do not have the required permissions.");
             }
             return null;
         }
 
         #endregion
 
-        #region User Activity Logging
+        #region User Activity & Authorization Logging
+
+        /// <summary>
+        /// Logs an authorization attempt for the current user
+        /// </summary>
+        /// <param name="action">The action being authorized (e.g., "School.Read", "Student.Create")</param>
+        /// <param name="resourceId">Optional resource ID being accessed</param>
+        /// <param name="granted">Whether authorization was granted</param>
+        /// <param name="reason">Optional reason for denial</param>
+        protected void LogUserAuthorization(string action, string? resourceId = null, bool granted = true, string? reason = null)
+        {
+            try
+            {
+                if (_logger != null && _logger.IsEnabled(LogLevel.Information))
+                {
+                    _logger.LogInformation(
+                        "Authorization {Status} - User: {UserId}, Email: {Email}, Action: {Action}, Resource: {ResourceId}, Reason: {Reason}",
+                        granted ? "GRANTED" : "DENIED",
+                        CurrentUserId,
+                        CurrentUserEmail,
+                        action,
+                        resourceId ?? "N/A",
+                        reason ?? (granted ? "Authorized" : "Unauthorized")
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                // Silently fail - logging shouldn't break the main operation
+                _logger?.LogWarning(ex, "Failed to log authorization event");
+            }
+        }
 
         /// <summary>
         /// Logs an activity for the current user
@@ -281,15 +506,21 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         /// <param name="details">Optional details about the activity</param>
         protected async Task LogUserActivityAsync(string activityType, string? details = null)
         {
-            if (_activityService == null) return;
+            if (_activityService == null)
+                return;
 
             try
             {
-                await _activityService.LogActivityAsync(CurrentUserId, CurrentTenantId, activityType, details);
+                await _activityService.LogActivityAsync(
+                    CurrentUserId,
+                    CurrentTenantId,
+                    activityType,
+                    details);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 // Silently fail - logging shouldn't break the main operation
+                _logger?.LogWarning(ex, "Failed to log user activity: {ActivityType}", activityType);
             }
         }
 
@@ -302,15 +533,17 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         /// <param name="details">Optional details</param>
         protected async Task LogUserActivityAsync(Guid userId, Guid? tenantId, string activityType, string? details = null)
         {
-            if (_activityService == null) return;
+            if (_activityService == null)
+                return;
 
             try
             {
                 await _activityService.LogActivityAsync(userId, tenantId, activityType, details);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 // Silently fail - logging shouldn't break the main operation
+                _logger?.LogWarning(ex, "Failed to log user activity for user {UserId}: {ActivityType}", userId, activityType);
             }
         }
 
@@ -321,6 +554,10 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         /// <summary>
         /// Returns a successful response with data
         /// </summary>
+        /// <typeparam name="T">Type of data being returned</typeparam>
+        /// <param name="data">The data to return</param>
+        /// <param name="message">Success message</param>
+        /// <returns>200 OK response with data</returns>
         protected IActionResult SuccessResponse<T>(T data, string message = "Success")
         {
             return Ok(new
@@ -334,6 +571,8 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         /// <summary>
         /// Returns a successful response without data
         /// </summary>
+        /// <param name="message">Success message</param>
+        /// <returns>200 OK response</returns>
         protected IActionResult SuccessResponse(string message = "Success")
         {
             return Ok(new
@@ -347,6 +586,9 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         /// <summary>
         /// Returns an error response with custom status code
         /// </summary>
+        /// <param name="message">Error message</param>
+        /// <param name="statusCode">HTTP status code (default: 400)</param>
+        /// <returns>Error response with specified status code</returns>
         protected IActionResult ErrorResponse(string message, int statusCode = 400)
         {
             return StatusCode(statusCode, new
@@ -360,6 +602,8 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         /// <summary>
         /// Returns a validation error response with field-specific errors
         /// </summary>
+        /// <param name="errors">Dictionary of field names to error messages</param>
+        /// <returns>400 Bad Request with validation errors</returns>
         protected IActionResult ValidationErrorResponse(IDictionary<string, string[]> errors)
         {
             return BadRequest(new
@@ -371,63 +615,119 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         }
 
         /// <summary>
+        /// Returns a validation error response with a single error message
+        /// </summary>
+        /// <param name="message">Validation error message</param>
+        /// <returns>400 Bad Request with validation error</returns>
+        protected IActionResult ValidationErrorResponse(string message)
+        {
+            return BadRequest(new
+            {
+                success = false,
+                message,
+                errors = new Dictionary<string, string[]>()
+            });
+        }
+
+        /// <summary>
         /// Returns a 404 Not Found response
         /// </summary>
+        /// <param name="message">Error message</param>
+        /// <returns>404 Not Found response</returns>
         protected IActionResult NotFoundResponse(string message = "Resource not found")
         {
             return NotFound(new
             {
                 success = false,
-                message
+                message,
+                data = (object?)null
             });
         }
 
         /// <summary>
         /// Returns a 403 Forbidden response
         /// </summary>
+        /// <param name="message">Error message</param>
+        /// <returns>403 Forbidden response</returns>
         protected IActionResult ForbiddenResponse(string message = "Access forbidden")
         {
             return StatusCode(403, new
             {
                 success = false,
-                message
+                message,
+                data = (object?)null
             });
         }
 
         /// <summary>
         /// Returns a 401 Unauthorized response
         /// </summary>
+        /// <param name="message">Error message</param>
+        /// <returns>401 Unauthorized response</returns>
         protected IActionResult UnauthorizedResponse(string message = "Unauthorized access")
         {
             return Unauthorized(new
             {
                 success = false,
-                message
+                message,
+                data = (object?)null
             });
         }
 
         /// <summary>
         /// Returns a 409 Conflict response
         /// </summary>
+        /// <param name="message">Error message</param>
+        /// <returns>409 Conflict response</returns>
         protected IActionResult ConflictResponse(string message = "Resource conflict")
         {
             return StatusCode(409, new
             {
                 success = false,
-                message
+                message,
+                data = (object?)null
             });
         }
 
         /// <summary>
         /// Returns a 201 Created response with location header
         /// </summary>
-        protected IActionResult CreatedResponse<T>(string location, T data, string message = "Resource created")
+        /// <typeparam name="T">Type of created resource</typeparam>
+        /// <param name="location">URI of the created resource</param>
+        /// <param name="data">The created resource data</param>
+        /// <param name="message">Success message</param>
+        /// <returns>201 Created response</returns>
+        protected IActionResult CreatedResponse<T>(string location, T data, string message = "Resource created successfully")
         {
             return Created(location, new
             {
                 success = true,
                 message,
                 data
+            });
+        }
+
+        /// <summary>
+        /// Returns a 204 No Content response
+        /// </summary>
+        /// <returns>204 No Content response</returns>
+        protected IActionResult NoContentResponse()
+        {
+            return NoContent();
+        }
+
+        /// <summary>
+        /// Returns a 500 Internal Server Error response
+        /// </summary>
+        /// <param name="message">Error message</param>
+        /// <returns>500 Internal Server Error response</returns>
+        protected IActionResult InternalServerErrorResponse(string message = "An internal server error occurred")
+        {
+            return StatusCode(500, new
+            {
+                success = false,
+                message,
+                data = (object?)null
             });
         }
 
