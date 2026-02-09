@@ -2,6 +2,7 @@
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academics;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Identity;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Tenant;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using System.Threading.Tasks;
 
@@ -12,6 +13,8 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
         // Academic Repositories
         IStudentRepository Student { get; }
         ISchoolRepository School { get; }
+        // In IRepositoryManager.cs - add this property:
+        IAcademicYearRepository AcademicYear { get; }
 
         // Identity Repositories
         IUserRepository User { get; }
