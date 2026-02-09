@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -123,14 +124,29 @@ namespace Devken.CBC.SchoolManagement.Domain.Enums
     /// <summary>
     /// Subscription status for school accounts
     /// </summary>
-    public enum SubscriptionStatus
-    {
-        Active = 0,
-        Expired = 1,
-        Suspended = 2,
-        Cancelled = 3,
-        PendingPayment = 4
-    }
+
+        public enum SubscriptionStatus
+        {
+            [Description("Subscription is active and fully accessible")]
+            Active = 0,
+
+            [Description("Subscription has expired and access is blocked")]
+            Expired = 1,
+
+            [Description("Subscription is temporarily suspended by an administrator")]
+            Suspended = 2,
+
+            [Description("Subscription was cancelled and will not renew")]
+            Cancelled = 3,
+
+            [Description("Subscription is pending payment confirmation")]
+            PendingPayment = 4,
+
+            [Description("Subscription expired but is still within the allowed grace period")]
+            GracePeriod = 5
+        }
+
+
 
     /// <summary>
     /// Subscription plans for schools

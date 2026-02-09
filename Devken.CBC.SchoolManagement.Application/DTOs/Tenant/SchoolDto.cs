@@ -17,6 +17,7 @@ namespace Devken.CBC.SchoolManagement.Application.DTOs.Tenant
         public string? Email { get; set; }
         public string? LogoUrl { get; set; }
         public bool IsActive { get; set; }
+        public DateTime CreatedOn { get; set; }
     }
 
     public class CreateSchoolRequest

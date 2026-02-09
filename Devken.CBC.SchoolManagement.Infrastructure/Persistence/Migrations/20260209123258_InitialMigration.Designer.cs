@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260206133813_InitialMigration")]
+    [Migration("20260209123258_InitialMigration")]
     partial class InitialMigration
     {
         /// <inheritdoc />
@@ -2525,6 +2525,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
                     b.Property<int>("Plan")
                         .HasColumnType("int");
 
+                    b.Property<Guid?>("PlanId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("SchoolId")
                         .HasColumnType("uniqueidentifier");
 
@@ -2545,11 +2548,141 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("PlanId");
+
                     b.HasIndex("SchoolId", "ExpiryDate");
 
                     b.HasIndex("TenantId", "SchoolId");
 
                     b.ToTable("Subscriptions");
+                });
+
+            modelBuilder.Entity("Devken.CBC.SchoolManagement.Domain.Entities.Subscription.SubscriptionPlanEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)")
+                        .HasDefaultValue("USD");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("DisplayOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("EnabledFeatures")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("FeatureList")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("[]");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsMostPopular")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("IsVisible")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<decimal>("MaxStorageGB")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(5m);
+
+                    b.Property<int>("MaxStudents")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(100);
+
+                    b.Property<int>("MaxTeachers")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(10);
+
+                    b.Property<decimal>("MonthlyPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("PlanType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<decimal>("QuarterlyDiscountPercent")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(5,2)")
+                        .HasDefaultValue(10m);
+
+                    b.Property<decimal>("QuarterlyPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("YearlyDiscountPercent")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(5,2)")
+                        .HasDefaultValue(20m);
+
+                    b.Property<decimal>("YearlyPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DisplayOrder")
+                        .HasDatabaseName("IX_SubscriptionPlans_DisplayOrder");
+
+                    b.HasIndex("PlanType")
+                        .IsUnique()
+                        .HasDatabaseName("IX_SubscriptionPlans_PlanType");
+
+                    b.HasIndex("IsActive", "IsVisible", "DisplayOrder")
+                        .HasDatabaseName("IX_SubscriptionPlans_Active_Visible_Order");
+
+                    b.ToTable("SubscriptionPlans", (string)null);
                 });
 
             modelBuilder.Entity("Devken.CBC.SchoolManagement.Domain.Entities.Assessment.SummativeAssessment", b =>
@@ -3242,11 +3375,18 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Devken.CBC.SchoolManagement.Domain.Entities.Subscription.Subscription", b =>
                 {
+                    b.HasOne("Devken.CBC.SchoolManagement.Domain.Entities.Subscription.SubscriptionPlanEntity", "PlanTemplate")
+                        .WithMany("Subscriptions")
+                        .HasForeignKey("PlanId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Devken.CBC.SchoolManagement.Domain.Entities.Administration.School", "School")
                         .WithMany()
                         .HasForeignKey("SchoolId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("PlanTemplate");
 
                     b.Navigation("School");
                 });
@@ -3386,6 +3526,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
                     b.Navigation("Comments");
 
                     b.Navigation("SubjectReports");
+                });
+
+            modelBuilder.Entity("Devken.CBC.SchoolManagement.Domain.Entities.Subscription.SubscriptionPlanEntity", b =>
+                {
+                    b.Navigation("Subscriptions");
                 });
 
             modelBuilder.Entity("Devken.CBC.SchoolManagement.Domain.Entities.Assessment.SummativeAssessment", b =>

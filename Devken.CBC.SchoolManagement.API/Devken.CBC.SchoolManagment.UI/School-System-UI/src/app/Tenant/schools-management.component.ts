@@ -16,14 +16,17 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { takeUntil, take } from 'rxjs/operators';
 import { FuseAlertComponent } from '@fuse/components/alert';
 import { CreateEditSchoolDialogComponent } from 'app/dialog-modals/Tenant/create-edit-school-dialog.component';
 import { BaseListComponent } from 'app/shared/Lists/BaseListComponent';
-import { SchoolDto } from './types/school';
 import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
 import { MatDividerModule } from '@angular/material/divider';
 import { DatePipe } from '@angular/common';
+import { MatBadgeModule } from '@angular/material/badge';
+import { SchoolWithSubscription, SubscriptionStatus } from './types/school';
+import { ManageSubscriptionDialogComponent } from 'app/dialog-modals/Tenant/ManageSubscriptionDialogComponent';
+
 
 @Component({
   selector: 'app-schools-management',
@@ -46,24 +49,25 @@ import { DatePipe } from '@angular/common';
     MatMenuModule,
     MatTooltipModule,
     MatDividerModule,
+    MatBadgeModule,
     FuseAlertComponent
   ],
   templateUrl: './schools-management.component.html',
   providers: [DatePipe]
 })
-export class SchoolsManagementComponent extends BaseListComponent<SchoolDto> implements OnInit, OnDestroy {
+export class SchoolsManagementComponent implements OnInit, OnDestroy {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
   private _unsubscribe = new Subject<void>();
 
-  displayedColumns: string[] = ['school', 'email', 'phone', 'status', 'created', 'actions'];
+  displayedColumns: string[] = ['school', 'subscription', 'status', 'created', 'actions'];
   
   // Filter state
   filterValue = '';
-  statusFilter: 'all' | 'active' | 'inactive' = 'all';
+  statusFilter: 'all' | 'active' | 'inactive' | 'needsSubscription' = 'all';
   
-  // Paging state (add these properties)
+  // Paging state
   pageSize = 20;
   currentPage = 0;
   total = 0;
@@ -72,22 +76,26 @@ export class SchoolsManagementComponent extends BaseListComponent<SchoolDto> imp
   stats = {
     totalSchools: 0,
     activeSchools: 0,
-    inactiveSchools: 0
+    inactiveSchools: 0,
+    withActiveSubscription: 0,
+    withExpiredSubscription: 0,
+    withoutSubscription: 0
   };
 
   // Alerts
   showAlert = false;
   alert = { type: 'success' as 'success' | 'error', message: '' };
 
+  // Data source
+  dataSource = new MatTableDataSource<SchoolWithSubscription>([]);
+  isLoading = false;
+
   constructor(
-    protected service: SchoolService, 
-    protected dialog: MatDialog,
-    protected snackBar: MatSnackBar,
+    private service: SchoolService,
+    private dialog: MatDialog,
+    private snackBar: MatSnackBar,
     private datePipe: DatePipe
-  ) {
-    super(service, dialog, snackBar);
-    this.dataSource = new MatTableDataSource<SchoolDto>();
-  }
+  ) {}
 
   ngOnInit(): void {
     this.init();
@@ -98,9 +106,13 @@ export class SchoolsManagementComponent extends BaseListComponent<SchoolDto> imp
     this._unsubscribe.complete();
   }
 
-  override init(): void {
+  init(): void {
+    this.loadData();
+  }
+
+  loadData(): void {
     this.isLoading = true;
-    this.service.getAll()
+    this.service.getAllWithSubscriptions()
       .pipe(takeUntil(this._unsubscribe))
       .subscribe({
         next: (response) => {
@@ -115,9 +127,8 @@ export class SchoolsManagementComponent extends BaseListComponent<SchoolDto> imp
             
             // Set up custom sorting
             this.setupSorting();
-            
-            // Update stats
-            this.updateStats();
+          } else {
+            this.showErrorAlert(response?.message || 'Failed to load schools');
           }
           this.isLoading = false;
         },
@@ -132,11 +143,7 @@ export class SchoolsManagementComponent extends BaseListComponent<SchoolDto> imp
   applyFilter(value: string): void {
     this.filterValue = value;
     this.dataSource.filter = value.trim().toLowerCase();
-    
-    // Update total based on filtered results
-    if (this.dataSource.filteredData) {
-      this.total = this.dataSource.filteredData.length;
-    }
+    this.updateFilteredTotal();
   }
 
   clearFilter(): void {
@@ -146,10 +153,16 @@ export class SchoolsManagementComponent extends BaseListComponent<SchoolDto> imp
   }
 
   applyStatusFilter(): void {
-    this.dataSource.filterPredicate = (data: SchoolDto, filter: string) => {
-      const statusMatch = this.statusFilter === 'all' || 
-                         (this.statusFilter === 'active' && data.isActive) ||
-                         (this.statusFilter === 'inactive' && !data.isActive);
+    this.dataSource.filterPredicate = (data: SchoolWithSubscription, filter: string) => {
+      let statusMatch = true;
+      
+      if (this.statusFilter === 'active') {
+        statusMatch = data.isActive;
+      } else if (this.statusFilter === 'inactive') {
+        statusMatch = !data.isActive;
+      } else if (this.statusFilter === 'needsSubscription') {
+        statusMatch = data.needsSubscription || data.isSubscriptionExpired;
+      }
       
       const searchMatch = !this.filterValue || 
                          data.name.toLowerCase().includes(this.filterValue.toLowerCase()) ||
@@ -160,49 +173,59 @@ export class SchoolsManagementComponent extends BaseListComponent<SchoolDto> imp
     };
     
     this.dataSource.filter = 'trigger';
+    this.updateFilteredTotal();
     
-    // Update total based on filtered results
-    if (this.dataSource.filteredData) {
-      this.total = this.dataSource.filteredData.length;
-    }
-    
-    // Reset to first page when filter changes
     if (this.paginator) {
       this.paginator.firstPage();
     }
   }
 
+  private updateFilteredTotal(): void {
+    if (this.dataSource.filteredData) {
+      this.total = this.dataSource.filteredData.length;
+    }
+  }
+
   openCreate(): void {
-    this.openDialog(CreateEditSchoolDialogComponent, { 
+    const dialogRef = this.dialog.open(CreateEditSchoolDialogComponent, { 
       width: '600px', 
       data: { mode: 'create' } 
     });
-  }
 
-  openEdit(school: SchoolDto): void {
-    this.openDialog(CreateEditSchoolDialogComponent, { 
-      width: '600px', 
-      data: { mode: 'edit', school } 
+    dialogRef.afterClosed().pipe(take(1)).subscribe((result) => {
+      if (result?.success) {
+        this.loadData();
+      }
     });
   }
 
-  removeSchool(school: SchoolDto): void {
-    if (confirm(`Are you sure you want to delete "${school.name}"?`)) {
+  openEdit(school: SchoolWithSubscription): void {
+    const dialogRef = this.dialog.open(CreateEditSchoolDialogComponent, { 
+      width: '600px', 
+      data: { mode: 'edit', school } 
+    });
+
+    dialogRef.afterClosed().pipe(take(1)).subscribe((result) => {
+      if (result?.success) {
+        this.loadData();
+      }
+    });
+  }
+
+  removeSchool(school: SchoolWithSubscription): void {
+    if (confirm(`Are you sure you want to delete "${school.name}"? This will also remove any associated subscription.`)) {
       this.isLoading = true;
       this.service.delete(school.id)
         .pipe(takeUntil(this._unsubscribe))
         .subscribe({
           next: (response) => {
             if (response?.success) {
-              // Remove from data source
-              const index = this.dataSource.data.findIndex(s => s.id === school.id);
-              if (index > -1) {
-                this.dataSource.data.splice(index, 1);
-                this.dataSource._updateChangeSubscription();
-                this.total = this.dataSource.data.length;
-                this.calculateStats();
-                this.showSuccessAlert('School deleted successfully');
-              }
+              this.snackBar.open('School deleted successfully', 'Close', {
+                duration: 3000,
+                horizontalPosition: 'end',
+                verticalPosition: 'top'
+              });
+              this.loadData();
             } else {
               this.showErrorAlert(response?.message || 'Failed to delete school');
             }
@@ -217,15 +240,73 @@ export class SchoolsManagementComponent extends BaseListComponent<SchoolDto> imp
     }
   }
 
-  onPageChange(event: PageEvent): void {
-    this.currentPage = event.pageIndex;
-    this.pageSize = event.pageSize;
-    
-    // If you want to implement server-side pagination later:
-    // this.loadPaginatedData(event.pageIndex + 1, event.pageSize);
+  manageSubscription(school: SchoolWithSubscription): void {
+    const dialogRef = this.dialog.open(ManageSubscriptionDialogComponent, {
+      width: '800px',
+      data: { school }
+    });
+
+    dialogRef.afterClosed().pipe(take(1)).subscribe(result => {
+      if (result?.refresh) {
+        this.refreshSchoolData(school.id);
+      }
+    });
   }
 
-  toggleSchoolStatus(school: SchoolDto): void {
+  checkSubscriptionStatus(school: SchoolWithSubscription): void {
+    this.service.checkSubscriptionStatus(school.id)
+      .pipe(takeUntil(this._unsubscribe))
+      .subscribe({
+        next: (status) => {
+          let snackBarRef = this.snackBar.open(
+            `${school.name}: ${status.message}`,
+            status.needsRenewal ? 'Renew Now' : 'OK',
+            {
+              duration: 5000,
+              horizontalPosition: 'end',
+              verticalPosition: 'top',
+              panelClass: status.canAccess ? 'success-snackbar' : 'warn-snackbar'
+            }
+          );
+
+          if (status.needsRenewal) {
+            snackBarRef.onAction().subscribe(() => {
+              this.manageSubscription(school);
+            });
+          }
+        },
+        error: (error) => {
+          console.error('Error checking subscription status:', error);
+          this.snackBar.open('Failed to check subscription status', 'Close', {
+            duration: 3000,
+            horizontalPosition: 'end',
+            verticalPosition: 'top'
+          });
+        }
+      });
+  }
+
+  private refreshSchoolData(schoolId: string): void {
+    this.service.getSchoolWithSubscription(schoolId)
+      .pipe(takeUntil(this._unsubscribe))
+      .subscribe({
+        next: (response) => {
+          if (response?.success && response.data) {
+            const index = this.dataSource.data.findIndex(s => s.id === schoolId);
+            if (index > -1) {
+              this.dataSource.data[index] = response.data;
+              this.dataSource._updateChangeSubscription();
+              this.calculateStats();
+            }
+          }
+        },
+        error: (error) => {
+          console.error('Error refreshing school data:', error);
+        }
+      });
+  }
+
+  toggleSchoolStatus(school: SchoolWithSubscription): void {
     const newStatus = !school.isActive;
     const action = newStatus ? 'activate' : 'deactivate';
     
@@ -236,14 +317,12 @@ export class SchoolsManagementComponent extends BaseListComponent<SchoolDto> imp
         .subscribe({
           next: (response) => {
             if (response?.success) {
-              // Update the school in the data source
-              const index = this.dataSource.data.findIndex(s => s.id === school.id);
-              if (index > -1) {
-                this.dataSource.data[index].isActive = newStatus;
-                this.dataSource._updateChangeSubscription();
-                this.calculateStats();
-                this.showSuccessAlert(`School ${action}d successfully`);
-              }
+              this.snackBar.open(`School ${action}d successfully`, 'Close', {
+                duration: 3000,
+                horizontalPosition: 'end',
+                verticalPosition: 'top'
+              });
+              this.loadData();
             } else {
               this.showErrorAlert(response?.message || `Failed to ${action} school`);
             }
@@ -258,8 +337,7 @@ export class SchoolsManagementComponent extends BaseListComponent<SchoolDto> imp
     }
   }
 
-  viewSchoolDetails(school: SchoolDto): void {
-    // You can implement a details view dialog here
+  viewSchoolDetails(school: SchoolWithSubscription): void {
     this.snackBar.open(`Viewing details for ${school.name}`, 'Close', {
       duration: 3000,
       horizontalPosition: 'end',
@@ -271,23 +349,19 @@ export class SchoolsManagementComponent extends BaseListComponent<SchoolDto> imp
     const schools = this.dataSource.data;
     this.stats.totalSchools = schools.length;
     this.stats.activeSchools = schools.filter(s => s.isActive).length;
-    this.stats.inactiveSchools = this.stats.totalSchools - this.stats.activeSchools;
-  }
-
-  private updateStats(): void {
-    // If you need to update stats separately
-    this.calculateStats();
+    this.stats.inactiveSchools = schools.filter(s => !s.isActive).length;
+    this.stats.withActiveSubscription = schools.filter(s => s.isSubscriptionActive).length;
+    this.stats.withExpiredSubscription = schools.filter(s => s.isSubscriptionExpired).length;
+    this.stats.withoutSubscription = schools.filter(s => !s.subscription || s.needsSubscription).length;
   }
 
   private setupSorting(): void {
-    this.dataSource.sortingDataAccessor = (item: SchoolDto, property: string) => {
+    this.dataSource.sortingDataAccessor = (item: SchoolWithSubscription, property: string) => {
       switch (property) {
         case 'school':
           return item.name.toLowerCase();
-        case 'email':
-          return item.email?.toLowerCase() || '';
-        case 'phone':
-          return item.phoneNumber || '';
+        case 'subscription':
+          return item.subscription?.status || 'No Subscription';
         case 'status':
           return item.isActive ? 1 : 0;
         case 'created':
@@ -303,6 +377,38 @@ export class SchoolsManagementComponent extends BaseListComponent<SchoolDto> imp
     return this.datePipe.transform(dateString, 'MMM d, y') || '—';
   }
 
+  getSubscriptionBadgeColor(school: SchoolWithSubscription): string {
+    if (!school.subscription) return 'warn';
+    
+    switch (school.subscription.status) {
+      case SubscriptionStatus.Active:
+        return 'accent';
+      case SubscriptionStatus.Expired:
+        return 'warn';
+      case SubscriptionStatus.Suspended:
+        return 'warn';
+      case SubscriptionStatus.Cancelled:
+        return 'warn';
+      case SubscriptionStatus.GracePeriod:
+        return 'accent';
+      default:
+        return 'primary';
+    }
+  }
+
+  
+
+  getSubscriptionDisplay(school: SchoolWithSubscription): string {
+    if (!school.subscription) return 'No Subscription';
+    
+    const plan = this.service.getSubscriptionPlanDisplay(school.subscription.plan);
+    const cycle = this.service.getBillingCycleDisplay(school.subscription.billingCycle);
+    const status = school.subscription.status;
+    const days = school.daysRemaining > 0 ? ` (${school.daysRemaining}d)` : '';
+    
+    return `${plan} ${cycle} - ${status}${days}`;
+  }
+
   dismissAlert(): void {
     this.showAlert = false;
   }
@@ -312,7 +418,6 @@ export class SchoolsManagementComponent extends BaseListComponent<SchoolDto> imp
     this.showAlert = true;
     setTimeout(() => this.showAlert = false, 5000);
     
-    // Also show snackbar for immediate feedback
     this.snackBar.open(message, 'Close', {
       duration: 3000,
       horizontalPosition: 'end',
@@ -325,7 +430,6 @@ export class SchoolsManagementComponent extends BaseListComponent<SchoolDto> imp
     this.alert = { type: 'error', message };
     this.showAlert = true;
     
-    // Also show snackbar
     this.snackBar.open(message, 'Close', {
       duration: 5000,
       horizontalPosition: 'end',
@@ -334,30 +438,23 @@ export class SchoolsManagementComponent extends BaseListComponent<SchoolDto> imp
     });
   }
 
-  // Optional: Method for server-side pagination (if needed later)
-  private loadPaginatedData(pageNumber: number, pageSize: number): void {
-    this.isLoading = true;
-    this.service.getPaginated(pageNumber, pageSize)
-      .pipe(takeUntil(this._unsubscribe))
-      .subscribe({
-        next: (response) => {
-          if (response?.success && response.data) {
-            this.dataSource.data = response.data.items || [];
-            this.total = response.data.totalCount || 0;
-            this.calculateStats();
-          }
-          this.isLoading = false;
-        },
-        error: (error) => {
-          console.error('Error loading paginated schools:', error);
-          this.showErrorAlert('Failed to load schools');
-          this.isLoading = false;
-        }
-      });
+  onPageChange(event: PageEvent): void {
+    this.currentPage = event.pageIndex;
+    this.pageSize = event.pageSize;
   }
 
-  // Refresh data
   refreshData(): void {
-    this.init();
+    this.loadData();
+  }
+
+  // Helper method to open dialog following BaseListComponent pattern
+  private openDialog(component: any, config: any = {}) {
+    const ref = this.dialog.open(component, config);
+    ref.afterClosed().pipe(take(1)).subscribe((result) => {
+      if (result?.success) {
+        this.loadData();
+      }
+    });
+    return ref;
   }
 }

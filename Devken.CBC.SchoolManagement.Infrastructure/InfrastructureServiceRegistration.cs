@@ -8,7 +8,9 @@ using Devken.CBC.SchoolManagement.Application.Service;
 using Devken.CBC.SchoolManagement.Application.Service.Activities;
 using Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment;
 using Devken.CBC.SchoolManagement.Application.Service.Isubscription;
+using Devken.CBC.SchoolManagement.Application.Service.ISubscription;
 using Devken.CBC.SchoolManagement.Application.Service.Navigation;
+using Devken.CBC.SchoolManagement.Application.Service.Subscription;
 using Devken.CBC.SchoolManagement.Application.Services.UserManagement;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academic;
@@ -241,6 +243,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IUserActivityService, UserActivityService>();
             services.AddScoped<IRoleAssignmentService, RoleAssignmentService>();
             services.AddScoped<IRepositoryManager, RepositoryManager>();
+            services.AddScoped<ISubscriptionPlanService, SubscriptionPlanService>();
 
             return services;
         }

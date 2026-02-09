@@ -172,7 +172,7 @@ export class CreateEditSchoolDialogComponent
         timeZone: raw.timeZone || 'UTC',
         language: raw.language || 'en',
         currency: raw.currency || 'USD'
-      } as CreateSchoolRequest),
+      } as unknown as CreateSchoolRequest),
 
       // updateMapper
       (raw) => ({

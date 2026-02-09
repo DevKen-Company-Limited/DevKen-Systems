@@ -83,6 +83,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
         public DbSet<Payment> Payments => Set<Payment>();
         public DbSet<FeeItem> FeeItems => Set<FeeItem>();
+        public DbSet<SubscriptionPlanEntity> SubscriptionPlans { get; set; }
         #endregion
 
         protected override void OnModelCreating(ModelBuilder mb)
@@ -165,6 +166,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             mb.ApplyConfiguration(new InvoiceItemConfiguration(_tenantContext));
             mb.ApplyConfiguration(new PaymentConfiguration(_tenantContext));
             mb.ApplyConfiguration(new FeeItemConfiguration(_tenantContext));
+            mb.ApplyConfiguration(new SubscriptionPlanConfiguration());
         }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

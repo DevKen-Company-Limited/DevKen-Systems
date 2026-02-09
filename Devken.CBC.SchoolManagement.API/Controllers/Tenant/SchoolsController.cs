@@ -38,8 +38,15 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration
             if (!IsSuperAdmin)
                 return ForbiddenResponse("Only Super Administrators can view all schools.");
 
-            var schools = await _repositories.School.GetAllAsync(trackChanges: false);
-            return SuccessResponse(schools.Select(ToDto));
+            try
+            {
+                var schools = await _repositories.School.GetAllAsync(trackChanges: false);
+                return SuccessResponse(schools.Select(ToDto), "Schools retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                return ErrorResponse($"Failed to retrieve schools: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -55,11 +62,18 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration
             if (accessError != null)
                 return accessError;
 
-            var school = await _repositories.School.GetByIdAsync(id, trackChanges: false);
-            if (school == null)
-                return NotFoundResponse();
+            try
+            {
+                var school = await _repositories.School.GetByIdAsync(id, trackChanges: false);
+                if (school == null)
+                    return NotFoundResponse("School not found");
 
-            return SuccessResponse(ToDto(school));
+                return SuccessResponse(ToDto(school));
+            }
+            catch (Exception ex)
+            {
+                return ErrorResponse($"Failed to retrieve school: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -79,28 +93,36 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration
                     k => k.Key,
                     v => v.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
 
-            var existing = await _repositories.School.GetBySlugAsync(request.SlugName ?? string.Empty);
-            if (existing != null)
-                return ErrorResponse($"School with slug '{request.SlugName}' already exists.", 409);
-
-            var school = new School
+            try
             {
-                Id = Guid.NewGuid(),
-                SlugName = (request.SlugName ?? string.Empty).Trim(),
-                Name = (request.Name ?? string.Empty).Trim(),
-                Address = request.Address?.Trim(),
-                PhoneNumber = request.PhoneNumber?.Trim(),
-                Email = request.Email?.Trim(),
-                LogoUrl = request.LogoUrl?.Trim(),
-                IsActive = request.IsActive
-            };
+                var existing = await _repositories.School.GetBySlugAsync(request.SlugName ?? string.Empty);
+                if (existing != null)
+                    return ErrorResponse($"School with slug '{request.SlugName}' already exists.", 409);
 
-            _repositories.School.Create(school);
-            await _repositories.SaveAsync();
+                var school = new School
+                {
+                    Id = Guid.NewGuid(),
+                    SlugName = (request.SlugName ?? string.Empty).Trim(),
+                    Name = (request.Name ?? string.Empty).Trim(),
+                    Address = request.Address?.Trim(),
+                    PhoneNumber = request.PhoneNumber?.Trim(),
+                    Email = request.Email?.Trim(),
+                    LogoUrl = request.LogoUrl?.Trim(),
+                    IsActive = request.IsActive,
+                    CreatedOn = DateTime.UtcNow
+                };
 
-            await LogUserActivityAsync("school.create", $"Created school {school.Id}");
+                _repositories.School.Create(school);
+                await _repositories.SaveAsync();
 
-            return SuccessResponse(ToDto(school), "School created");
+                await LogUserActivityAsync("school.create", $"Created school {school.Name} ({school.Id})");
+
+                return SuccessResponse(ToDto(school), "School created successfully");
+            }
+            catch (Exception ex)
+            {
+                return ErrorResponse($"Failed to create school: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -121,40 +143,82 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration
                     k => k.Key,
                     v => v.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
 
-            var school = await _repositories.School.GetByIdAsync(id, trackChanges: true);
-            if (school == null)
-                return NotFoundResponse();
-
-            // Slug handling
-            if (IsSuperAdmin)
+            try
             {
-                if (!string.Equals(school.SlugName, request.SlugName ?? string.Empty, StringComparison.Ordinal))
+                var school = await _repositories.School.GetByIdAsync(id, trackChanges: true);
+                if (school == null)
+                    return NotFoundResponse("School not found");
+
+                // Slug handling
+                if (IsSuperAdmin)
                 {
-                    var other = await _repositories.School.GetBySlugAsync(request.SlugName ?? string.Empty);
-                    if (other != null && other.Id != id)
-                        return ErrorResponse($"Another school with slug '{request.SlugName}' already exists.", 409);
+                    if (!string.Equals(school.SlugName, request.SlugName ?? string.Empty, StringComparison.Ordinal))
+                    {
+                        var other = await _repositories.School.GetBySlugAsync(request.SlugName ?? string.Empty);
+                        if (other != null && other.Id != id)
+                            return ErrorResponse($"Another school with slug '{request.SlugName}' already exists.", 409);
 
-                    school.SlugName = (request.SlugName ?? string.Empty).Trim();
+                        school.SlugName = (request.SlugName ?? string.Empty).Trim();
+                    }
                 }
+                else if (!string.Equals(school.SlugName, request.SlugName ?? string.Empty, StringComparison.Ordinal))
+                {
+                    return ForbiddenResponse("School administrators cannot change the school slug.");
+                }
+
+                school.Name = (request.Name ?? string.Empty).Trim();
+                school.Address = request.Address?.Trim();
+                school.PhoneNumber = request.PhoneNumber?.Trim();
+                school.Email = request.Email?.Trim();
+                school.LogoUrl = request.LogoUrl?.Trim();
+                school.IsActive = request.IsActive;
+
+                _repositories.School.Update(school);
+                await _repositories.SaveAsync();
+
+                await LogUserActivityAsync("school.update", $"Updated school {school.Name} ({school.Id})");
+
+                return SuccessResponse(ToDto(school), "School updated successfully");
             }
-            else if (!string.Equals(school.SlugName, request.SlugName ?? string.Empty, StringComparison.Ordinal))
+            catch (Exception ex)
             {
-                return ForbiddenResponse("School administrators cannot change the school slug.");
+                return ErrorResponse($"Failed to update school: {ex.Message}");
             }
+        }
 
-            school.Name = (request.Name ?? string.Empty).Trim();
-            school.Address = request.Address?.Trim();
-            school.PhoneNumber = request.PhoneNumber?.Trim();
-            school.Email = request.Email?.Trim();
-            school.LogoUrl = request.LogoUrl?.Trim();
-            school.IsActive = request.IsActive;
+        /// <summary>
+        /// Update school status (activate/deactivate) – SuperAdmin only
+        /// </summary>
+        [HttpPatch("{id:guid}/status")]
+        public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateSchoolStatusRequest request)
+        {
+            if (!HasPermission("School.Write"))
+                return ForbiddenResponse("You do not have permission to update school status.");
 
-            _repositories.School.Update(school);
-            await _repositories.SaveAsync();
+            if (!IsSuperAdmin)
+                return ForbiddenResponse("Only Super Administrators can update school status.");
 
-            await LogUserActivityAsync("school.update", $"Updated school {school.Id}");
+            try
+            {
+                var school = await _repositories.School.GetByIdAsync(id, trackChanges: true);
+                if (school == null)
+                    return NotFoundResponse("School not found");
 
-            return SuccessResponse(ToDto(school), "School updated");
+                school.IsActive = request.IsActive;
+
+                _repositories.School.Update(school);
+                await _repositories.SaveAsync();
+
+                await LogUserActivityAsync("school.status_update",
+                    $"{(request.IsActive ? "Activated" : "Deactivated")} school {school.Name} ({school.Id})");
+
+                return SuccessResponse(ToDto(school),
+                    $"School {(request.IsActive ? "activated" : "deactivated")} successfully");
+            }
+            catch (Exception ex)
+            {
+                return ErrorResponse($"Failed to update school status: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -169,16 +233,86 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration
             if (!IsSuperAdmin)
                 return ForbiddenResponse("Only Super Administrators can delete schools.");
 
-            var school = await _repositories.School.GetByIdAsync(id, trackChanges: true);
-            if (school == null)
-                return NotFoundResponse();
+            try
+            {
+                var school = await _repositories.School.GetByIdAsync(id, trackChanges: true);
+                if (school == null)
+                    return NotFoundResponse("School not found");
 
-            _repositories.School.Delete(school);
-            await _repositories.SaveAsync();
+                var schoolName = school.Name;
 
-            await LogUserActivityAsync("school.delete", $"Deleted school {school.Id}");
+                _repositories.School.Delete(school);
+                await _repositories.SaveAsync();
 
-            return SuccessResponse<object?>(null, "School deleted");
+                await LogUserActivityAsync("school.delete", $"Deleted school {schoolName} ({id})");
+
+                return SuccessResponse<object?>(null, "School deleted successfully");
+            }
+            catch (Exception ex)
+            {
+                return ErrorResponse($"Failed to delete school: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Search schools – SuperAdmin only
+        /// </summary>
+        [HttpGet("search")]
+        public async Task<IActionResult> Search([FromQuery] string searchTerm)
+        {
+            if (!HasPermission("School.Read"))
+                return ForbiddenResponse("You do not have permission to view schools.");
+
+            if (!IsSuperAdmin)
+                return ForbiddenResponse("Only Super Administrators can search schools.");
+
+            try
+            {
+                var schools = await _repositories.School.GetAllAsync(trackChanges: false);
+
+                if (!string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    var term = searchTerm.ToLower();
+                    schools = schools.Where(s =>
+                        (s.Name != null && s.Name.ToLower().Contains(term)) ||
+                        (s.Email != null && s.Email.ToLower().Contains(term)) ||
+                        (s.SlugName != null && s.SlugName.ToLower().Contains(term)) ||
+                        (s.PhoneNumber != null && s.PhoneNumber.Contains(term))
+                    ).ToList();
+                }
+
+                return SuccessResponse(schools.Select(ToDto), $"Found {schools.Count()} schools");
+            }
+            catch (Exception ex)
+            {
+                return ErrorResponse($"Failed to search schools: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Filter schools by status – SuperAdmin only
+        /// </summary>
+        [HttpGet("filter")]
+        public async Task<IActionResult> Filter([FromQuery] bool isActive)
+        {
+            if (!HasPermission("School.Read"))
+                return ForbiddenResponse("You do not have permission to view schools.");
+
+            if (!IsSuperAdmin)
+                return ForbiddenResponse("Only Super Administrators can filter schools.");
+
+            try
+            {
+                var schools = await _repositories.School.GetAllAsync(trackChanges: false);
+                var filtered = schools.Where(s => s.IsActive == isActive).ToList();
+
+                return SuccessResponse(filtered.Select(ToDto),
+                    $"Found {filtered.Count} {(isActive ? "active" : "inactive")} schools");
+            }
+            catch (Exception ex)
+            {
+                return ErrorResponse($"Failed to filter schools: {ex.Message}");
+            }
         }
 
         private static SchoolDto ToDto(School s) => new()
@@ -190,7 +324,16 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration
             PhoneNumber = s.PhoneNumber ?? string.Empty,
             Email = s.Email ?? string.Empty,
             LogoUrl = s.LogoUrl ?? string.Empty,
-            IsActive = s.IsActive
+            IsActive = s.IsActive,
+            CreatedOn = s.CreatedOn
         };
+    }
+
+    /// <summary>
+    /// Request model for updating school status
+    /// </summary>
+    public class UpdateSchoolStatusRequest
+    {
+        public bool IsActive { get; set; }
     }
 }
