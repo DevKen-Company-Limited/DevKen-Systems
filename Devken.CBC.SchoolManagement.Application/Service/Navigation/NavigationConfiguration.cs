@@ -6,6 +6,7 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
     {
         public static IEnumerable<NavigationSection> GetAll()
         {
+            yield return Design;
             yield return SuperAdmin;
             yield return Administration;
             yield return Academic;
@@ -13,6 +14,23 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             yield return Finance;
             yield return Curriculum;
         }
+
+        public static NavigationSection Design => new()
+        {
+            Id = "design",
+            Title = "Design",
+            Icon = "heroicons_outline:swatch",
+            RequiredRole = "SuperAdmin",
+            Items = new[]
+    {
+        new NavItem(
+            "page-design-v1",
+            "Page Design V1",
+            "heroicons_outline:template",
+            "/page-design-v1"
+        )
+    }
+        };
 
         public static NavigationSection SuperAdmin => new()
         {

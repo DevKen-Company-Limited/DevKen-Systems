@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatPaginator, MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSort, MatSortModule } from '@angular/material/sort';
@@ -25,6 +26,7 @@ import { AcademicYearDto } from './Types/AcademicYear';
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     MatTableModule,
     MatPaginatorModule,
     MatSortModule,
@@ -37,7 +39,7 @@ import { AcademicYearDto } from './Types/AcademicYear';
     MatSnackBarModule,
     MatMenuModule,
     MatProgressSpinnerModule,
-    FuseAlertComponent
+    //FuseAlertComponent
   ],
   templateUrl: './academic-years.component.html',
 })
@@ -47,16 +49,85 @@ export class AcademicYearsComponent implements OnInit, OnDestroy {
 
   private _unsubscribe = new Subject<void>();
 
-  dataSource = new MatTableDataSource<AcademicYearDto>([]);
-  displayedColumns: string[] = ['code', 'name', 'startDate', 'endDate', 'status', 'actions'];
+  // All data
+  allData: AcademicYearDto[] = [];
+  
+  // Filter properties
+  searchQuery: string = '';
+  selectedStatus: string = 'all';
+  selectedYear: string = 'all';
+  showFilterPanel: boolean = false;
+
+  // Available filter options
+  availableYears: string[] = [];
 
   isLoading = false;
-  pageSize = 20;
-  currentPage = 1;
-  total = 0;
+  
+  // Pagination
+  currentPage: number = 1;
+  itemsPerPage: number = 10;
 
   showAlert = false;
   alert = { type: 'success' as 'success' | 'error', message: '' };
+
+  // Computed properties for stats
+  get total(): number {
+    return this.allData.length;
+  }
+
+  get currentYearName(): string {
+    const current = this.allData.find(ay => ay.isCurrent);
+    return current ? current.name : 'None';
+  }
+
+  get openYearsCount(): number {
+    return this.allData.filter(ay => !ay.isClosed).length;
+  }
+
+  // Filtered data based on search and filters
+  get filteredData(): AcademicYearDto[] {
+    return this.allData.filter(ay => {
+      const matchesSearch = this.searchQuery === '' ||
+        ay.name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+        ay.code.toLowerCase().includes(this.searchQuery.toLowerCase());
+
+      const matchesStatus = this.selectedStatus === 'all' ||
+        (this.selectedStatus === 'current' && ay.isCurrent) ||
+        (this.selectedStatus === 'closed' && ay.isClosed) ||
+        (this.selectedStatus === 'open' && !ay.isClosed && !ay.isCurrent);
+
+      let matchesYear = true;
+      if (this.selectedYear !== 'all') {
+        const startYear = new Date(ay.startDate).getFullYear().toString();
+        matchesYear = startYear === this.selectedYear;
+      }
+
+      return matchesSearch && matchesStatus && matchesYear;
+    });
+  }
+
+  // Paginated data
+  get paginatedData(): AcademicYearDto[] {
+    if (this.currentPage > this.totalPages) {
+      this.currentPage = Math.max(1, this.totalPages);
+    }
+    const startIndex = (this.currentPage - 1) * this.itemsPerPage;
+    const endIndex = startIndex + this.itemsPerPage;
+    return this.filteredData.slice(startIndex, endIndex);
+  }
+
+  get totalPages(): number {
+    return Math.ceil(this.filteredData.length / this.itemsPerPage);
+  }
+
+  get showingFrom(): number {
+    return this.filteredData.length === 0 ? 0 : (this.currentPage - 1) * this.itemsPerPage + 1;
+  }
+
+  get showingTo(): number {
+    const to = this.currentPage * this.itemsPerPage;
+    return to > this.filteredData.length ? this.filteredData.length : to;
+  }
 
   constructor(
     private _service: AcademicYearService,
@@ -81,14 +152,8 @@ export class AcademicYearsComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           if (response.success) {
-            this.dataSource.data = response.data;
-            this.total = response.data.length;
-            
-            // Set up sort and paginator after data is loaded
-            setTimeout(() => {
-              this.dataSource.paginator = this.paginator;
-              this.dataSource.sort = this.sort;
-            });
+            this.allData = response.data;
+            this.extractAvailableYears();
           }
           this.isLoading = false;
         },
@@ -100,9 +165,40 @@ export class AcademicYearsComponent implements OnInit, OnDestroy {
       });
   }
 
-  applyFilter(value: string): void {
-    const v = (value || '').trim().toLowerCase();
-    this.dataSource.filter = v;
+  extractAvailableYears(): void {
+    const years = new Set<string>();
+    this.allData.forEach(ay => {
+      const year = new Date(ay.startDate).getFullYear().toString();
+      years.add(year);
+    });
+    this.availableYears = Array.from(years).sort((a, b) => b.localeCompare(a));
+  }
+
+  toggleFilterPanel(): void {
+    this.showFilterPanel = !this.showFilterPanel;
+  }
+
+  applyFilters(): void {
+    this.currentPage = 1; // Reset to first page when filters change
+  }
+
+  clearFilters(): void {
+    this.searchQuery = '';
+    this.selectedStatus = 'all';
+    this.selectedYear = 'all';
+    this.currentPage = 1;
+  }
+
+  previousPage(): void {
+    if (this.currentPage > 1) {
+      this.currentPage--;
+    }
+  }
+
+  nextPage(): void {
+    if (this.currentPage < this.totalPages) {
+      this.currentPage++;
+    }
   }
 
   openCreate(): void {
@@ -265,11 +361,6 @@ export class AcademicYearsComponent implements OnInit, OnDestroy {
             });
         }
       });
-  }
-
-  onPageChange(event: PageEvent): void {
-    this.currentPage = event.pageIndex + 1;
-    this.pageSize = event.pageSize;
   }
 
   private showSuccessAlert(message: string): void {

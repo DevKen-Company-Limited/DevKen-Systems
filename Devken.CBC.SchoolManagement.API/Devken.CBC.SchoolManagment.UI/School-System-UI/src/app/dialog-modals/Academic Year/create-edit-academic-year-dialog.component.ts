@@ -10,6 +10,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatIconModule } from '@angular/material/icon';
 import { SchoolDto } from 'app/Tenant/types/school';
 import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
 import { UserService } from 'app/core/user/user.service';
@@ -30,10 +31,10 @@ import { take } from 'rxjs/operators';
     MatDatepickerModule,
     MatNativeDateModule,
     MatSelectModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatIconModule
   ],
   templateUrl: './create-edit-academic-year-dialog.component.html',
-  styles: [`.dialog-actions { display:flex; justify-content:flex-end; gap:8px }`]
 })
 export class CreateEditAcademicYearDialogComponent implements OnInit {
   form!: FormGroup;
@@ -51,6 +52,9 @@ export class CreateEditAcademicYearDialogComponent implements OnInit {
   ) {
     this.isEditMode = data.mode === 'edit';
     this.checkUserRole();
+    
+    // Add custom class to dialog
+    this.dialogRef.addPanelClass('academic-year-dialog');
   }
 
   ngOnInit(): void {

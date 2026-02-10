@@ -1,0 +1,827 @@
+<div class="absolute inset-0 flex min-w-0 flex-col overflow-y-auto" cdkScrollable>
+    <!-- Header with vibrant gradient -->
+    <div class="bg-gradient-to-br from-cyan-800 via-blue-700 to-teal-600 flex flex-0 flex-col p-6 pb-22 sm:flex-row sm:items-center sm:justify-between sm:px-10 sm:pb-28 sm:pt-12 relative overflow-hidden">
+        <!-- Decorative Pattern -->
+        <div class="absolute inset-0 opacity-10">
+            <div class="absolute top-0 left-0 w-64 h-64 bg-yellow-200 rounded-full blur-3xl"></div>
+            <div class="absolute bottom-0 right-0 w-96 h-96 bg-pink-300 rounded-full blur-3xl"></div>
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-white rounded-full blur-3xl"></div>
+        </div>
+
+        <div class="min-w-0 flex-1 relative z-10">
+            <!-- Breadcrumbs -->
+            <div>
+                <div class="hidden flex-wrap items-center font-medium sm:flex">
+                    <div>
+                        <a class="whitespace-nowrap text-white/90 hover:text-white transition-colors cursor-pointer">Dashboard</a>
+                    </div>
+                    <div class="ml-1 flex items-center whitespace-nowrap">
+                        <mat-icon class="text-white/70 icon-size-5" [svgIcon]="'heroicons_mini:chevron-right'"></mat-icon>
+                        <a class="ml-1 text-white/90 hover:text-white transition-colors cursor-pointer">Components</a>
+                    </div>
+                    <div class="ml-1 flex items-center whitespace-nowrap">
+                        <mat-icon class="text-white/70 icon-size-5" [svgIcon]="'heroicons_mini:chevron-right'"></mat-icon>
+                        <span class="text-white ml-1">Design System</span>
+                    </div>
+                </div>
+                <div class="flex sm:hidden">
+                    <a class="text-white -ml-1.5 inline-flex items-center font-medium" [routerLink]="'./..'">
+                        <mat-icon class="text-white icon-size-5" [svgIcon]="'heroicons_solid:chevron-left'"></mat-icon>
+                        <span class="ml-1">Back</span>
+                    </a>
+                </div>
+            </div>
+            <!-- Title -->
+            <div class="mt-2">
+                <h2 class="truncate text-3xl font-extrabold leading-7 tracking-tight sm:leading-10 md:text-4xl text-white">
+                    CBC Design System
+                </h2>
+                <p class="mt-2 text-white/80 text-lg">A comprehensive component library for Kenyan schools</p>
+            </div>
+        </div>
+        
+        <!-- Header Actions -->
+        <div class="mt-6 flex shrink-0 items-center gap-3 sm:ml-4 sm:mt-0 relative z-10">
+            <button mat-stroked-button class="border-2 border-white/90 text-white hover:bg-white/20 transition-all backdrop-blur-sm">
+                <mat-icon class="icon-size-5" [svgIcon]="'heroicons_outline:arrow-down-tray'"></mat-icon>
+                <span class="ml-2">Export</span>
+            </button>
+            <button mat-flat-button class="bg-white text-orange-700 hover:bg-yellow-200 hover:text-red-700 shadow-lg transition-all hover:shadow-xl font-bold">
+                <mat-icon class="icon-size-5" [svgIcon]="'heroicons_outline:check-circle'"></mat-icon>
+                <span class="ml-2">Save Changes</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="bg-card -mt-16 flex-auto rounded-t-2xl p-6 shadow sm:p-10">
+        
+        <!-- Section 1: Button Variants -->
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-sm border border-gray-100 dark:border-gray-700 mb-8">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-12 h-12 bg-gradient-to-br from-cyan-500 via-blue-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <mat-icon class="text-white icon-size-6" [svgIcon]="'heroicons_outline:cursor-arrow-ripple'"></mat-icon>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Button Components</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Various button styles and states</p>
+                </div>
+            </div>
+
+            <!-- Primary Buttons -->
+            <div class="mb-8">
+                <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Primary Actions</h4>
+                <div class="flex flex-wrap gap-3">
+                    <button mat-flat-button [color]="'primary'">
+                        <mat-icon class="icon-size-5" [svgIcon]="'heroicons_outline:check'"></mat-icon>
+                        <span class="ml-2">Primary Button</span>
+                    </button>
+                    
+                    <button class="px-6 py-3 bg-gradient-to-r from-lime-500 via-green-500 to-emerald-600 text-white rounded-lg font-semibold hover:from-lime-600 hover:via-green-600 hover:to-emerald-700 transition-all shadow-md hover:shadow-xl hover:scale-105">
+                        <span class="flex items-center gap-2">
+                            <mat-icon class="icon-size-5" [svgIcon]="'heroicons_outline:sparkles'"></mat-icon>
+                            Gradient Button
+                        </span>
+                    </button>
+
+                    <button class="px-6 py-3 bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-600 text-white rounded-lg font-semibold hover:from-sky-600 hover:via-blue-600 hover:to-indigo-700 transition-all shadow-md hover:shadow-xl hover:scale-105">
+                        <span class="flex items-center gap-2">
+                            <mat-icon class="icon-size-5" [svgIcon]="'heroicons_outline:bolt'"></mat-icon>
+                            Action Button
+                        </span>
+                    </button>
+
+                    <button class="px-6 py-3 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 text-white rounded-lg font-semibold hover:from-yellow-500 hover:via-orange-600 hover:to-red-600 transition-all shadow-md hover:shadow-xl hover:scale-105">
+                        <span class="flex items-center gap-2">
+                            <mat-icon class="icon-size-5" [svgIcon]="'heroicons_outline:fire'"></mat-icon>
+                            Hot Action
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Secondary Buttons -->
+            <div class="mb-8">
+                <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Secondary Actions</h4>
+                <div class="flex flex-wrap gap-3">
+                    <button mat-stroked-button>
+                        <mat-icon class="icon-size-5" [svgIcon]="'heroicons_outline:pencil-square'"></mat-icon>
+                        <span class="ml-2">Edit</span>
+                    </button>
+
+                    <button mat-stroked-button [color]="'primary'">
+                        <mat-icon class="icon-size-5" [svgIcon]="'heroicons_outline:eye'"></mat-icon>
+                        <span class="ml-2">View Details</span>
+                    </button>
+
+                    <button mat-stroked-button [color]="'warn'">
+                        <mat-icon class="icon-size-5" [svgIcon]="'heroicons_outline:trash'"></mat-icon>
+                        <span class="ml-2">Delete</span>
+                    </button>
+
+                    <button class="px-6 py-3 border-2 border-teal-600 text-teal-600 rounded-lg font-semibold hover:bg-teal-600 hover:text-white transition-all hover:scale-105 shadow-sm hover:shadow-md">
+                        <span class="flex items-center gap-2">
+                            <mat-icon class="icon-size-5" [svgIcon]="'heroicons_outline:arrow-down-tray'"></mat-icon>
+                            Download
+                        </span>
+                    </button>
+
+                    <button class="px-6 py-3 border-2 border-gradient-to-r from-orange-500 to-red-600 bg-gradient-to-r from-orange-500 to-red-600 bg-clip-text text-transparent font-bold rounded-lg hover:from-orange-600 hover:to-red-700 transition-all hover:scale-105 shadow-sm hover:shadow-md" style="border-image: linear-gradient(to right, rgb(249, 115, 22), rgb(220, 38, 38)) 1;">
+                        <span class="flex items-center gap-2 bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text">
+                            <mat-icon class="icon-size-5 text-orange-600" [svgIcon]="'heroicons_outline:star'"></mat-icon>
+                            Fancy Border
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Icon Buttons -->
+            <div class="mb-8">
+                <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Icon Buttons</h4>
+                <div class="flex flex-wrap gap-3">
+                    <button mat-icon-button [color]="'primary'">
+                        <mat-icon [svgIcon]="'heroicons_outline:heart'"></mat-icon>
+                    </button>
+
+                    <button mat-icon-button [color]="'warn'">
+                        <mat-icon [svgIcon]="'heroicons_outline:trash'"></mat-icon>
+                    </button>
+
+                    <button class="w-12 h-12 rounded-full bg-gradient-to-br from-red-400 via-orange-500 to-yellow-500 text-white flex items-center justify-center hover:shadow-xl transition-all hover:scale-110">
+                        <mat-icon [svgIcon]="'heroicons_outline:star'"></mat-icon>
+                    </button>
+
+                    <button class="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 via-emerald-600 to-green-700 text-white flex items-center justify-center hover:shadow-xl transition-all hover:scale-110 hover:rotate-6">
+                        <mat-icon [svgIcon]="'heroicons_outline:bell'"></mat-icon>
+                    </button>
+
+                    <button class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 via-cyan-500 to-teal-600 text-white flex items-center justify-center hover:shadow-xl transition-all hover:scale-110">
+                        <mat-icon [svgIcon]="'heroicons_outline:cog-6-tooth'"></mat-icon>
+                    </button>
+
+                    <button class="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 text-white flex items-center justify-center hover:shadow-xl transition-all hover:scale-110">
+                        <mat-icon [svgIcon]="'heroicons_outline:fire'"></mat-icon>
+                    </button>
+
+                    <button class="w-12 h-12 rounded-xl bg-gradient-to-br from-lime-400 via-green-500 to-emerald-600 text-white flex items-center justify-center hover:shadow-xl transition-all hover:scale-110">
+                        <mat-icon [svgIcon]="'heroicons_outline:sparkles'"></mat-icon>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Button Sizes -->
+            <div>
+                <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Size Variations</h4>
+                <div class="flex flex-wrap items-center gap-3">
+                    <button class="px-3 py-1.5 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-lg text-sm font-semibold hover:from-teal-700 hover:to-cyan-700 transition-all shadow-md hover:shadow-lg">
+                        Small
+                    </button>
+
+                    <button class="px-5 py-2.5 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-lg font-semibold hover:from-orange-700 hover:to-red-700 transition-all shadow-md hover:shadow-lg">
+                        Medium
+                    </button>
+
+                    <button class="px-8 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg text-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-xl">
+                        Large
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Cards & Containers -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <!-- Stat Card 1 -->
+            <div class="bg-gradient-to-br from-sky-50 via-blue-50 to-cyan-100 dark:from-sky-900/20 dark:via-blue-900/20 dark:to-cyan-900/20 rounded-2xl p-6 border-l-4 border-sky-600 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 cursor-pointer relative overflow-hidden group">
+                <div class="absolute inset-0 bg-gradient-to-br from-sky-400/10 to-cyan-400/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="flex items-center justify-between mb-4 relative z-10">
+                    <div class="w-14 h-14 bg-gradient-to-br from-sky-600 to-blue-700 rounded-2xl flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
+                        <mat-icon class="text-white icon-size-7" [svgIcon]="'heroicons_outline:users'"></mat-icon>
+                    </div>
+                    <span class="text-sky-700 dark:text-sky-400 text-sm font-bold px-3 py-1 bg-sky-200 dark:bg-sky-800/50 rounded-full">Total</span>
+                </div>
+                <h3 class="text-3xl font-bold text-sky-900 dark:text-sky-100 mb-1 relative z-10">{{ totalStudents }}</h3>
+                <p class="text-sky-700 dark:text-sky-400 text-sm font-semibold relative z-10">Active Students</p>
+                <div class="mt-4 flex items-center gap-2 text-xs text-sky-600 dark:text-sky-400 font-semibold relative z-10">
+                    <mat-icon class="icon-size-4" [svgIcon]="'heroicons_mini:arrow-trending-up'"></mat-icon>
+                    <span>+12% from last term</span>
+                </div>
+            </div>
+
+            <!-- Stat Card 2 -->
+            <div class="bg-gradient-to-br from-lime-50 via-green-50 to-emerald-100 dark:from-lime-900/20 dark:via-green-900/20 dark:to-emerald-900/20 rounded-2xl p-6 border-l-4 border-lime-600 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 cursor-pointer relative overflow-hidden group">
+                <div class="absolute inset-0 bg-gradient-to-br from-lime-400/10 to-emerald-400/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="flex items-center justify-between mb-4 relative z-10">
+                    <div class="w-14 h-14 bg-gradient-to-br from-lime-600 to-green-700 rounded-2xl flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
+                        <mat-icon class="text-white icon-size-7" [svgIcon]="'heroicons_outline:academic-cap'"></mat-icon>
+                    </div>
+                    <span class="text-lime-700 dark:text-lime-400 text-sm font-bold px-3 py-1 bg-lime-200 dark:bg-lime-800/50 rounded-full">Average</span>
+                </div>
+                <h3 class="text-3xl font-bold text-lime-900 dark:text-lime-100 mb-1 relative z-10">{{ averageScore }}%</h3>
+                <p class="text-lime-700 dark:text-lime-400 text-sm font-semibold relative z-10">Performance Score</p>
+                <div class="mt-4 flex items-center gap-2 text-xs text-lime-600 dark:text-lime-400 font-semibold relative z-10">
+                    <mat-icon class="icon-size-4" [svgIcon]="'heroicons_mini:arrow-trending-up'"></mat-icon>
+                    <span>+5% improvement</span>
+                </div>
+            </div>
+
+            <!-- Stat Card 3 -->
+            <div class="bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-100 dark:from-orange-900/20 dark:via-amber-900/20 dark:to-yellow-900/20 rounded-2xl p-6 border-l-4 border-orange-600 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 cursor-pointer relative overflow-hidden group">
+                <div class="absolute inset-0 bg-gradient-to-br from-orange-400/10 to-yellow-400/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="flex items-center justify-between mb-4 relative z-10">
+                    <div class="w-14 h-14 bg-gradient-to-br from-orange-600 to-amber-700 rounded-2xl flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
+                        <mat-icon class="text-white icon-size-7" [svgIcon]="'heroicons_outline:clipboard-document-check'"></mat-icon>
+                    </div>
+                    <span class="text-orange-700 dark:text-orange-400 text-sm font-bold px-3 py-1 bg-orange-200 dark:bg-orange-800/50 rounded-full">Pending</span>
+                </div>
+                <h3 class="text-3xl font-bold text-orange-900 dark:text-orange-100 mb-1 relative z-10">{{ pendingTasks }}</h3>
+                <p class="text-orange-700 dark:text-orange-400 text-sm font-semibold relative z-10">Tasks to Complete</p>
+                <div class="mt-4 flex items-center gap-2 text-xs text-orange-600 dark:text-orange-400 font-semibold relative z-10">
+                    <mat-icon class="icon-size-4" [svgIcon]="'heroicons_mini:clock'"></mat-icon>
+                    <span>Due this week</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: Badges & Tags -->
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-sm border border-gray-100 dark:border-gray-700 mb-8">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-12 h-12 bg-gradient-to-br from-rose-500 via-red-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <mat-icon class="text-white icon-size-6" [svgIcon]="'heroicons_outline:tag'"></mat-icon>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Badges & Status Indicators</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Labels, tags, and status badges</p>
+                </div>
+            </div>
+
+            <!-- Competency Badges -->
+            <div class="mb-6">
+                <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">CBC Competency Levels</h4>
+                <div class="flex flex-wrap gap-3">
+                    <span class="px-5 py-2 bg-gradient-to-r from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 text-emerald-700 dark:text-emerald-400 rounded-full text-sm font-bold border-2 border-emerald-500 shadow-md hover:shadow-lg transition-all hover:scale-105">
+                        Exceeding Expectations
+                    </span>
+                    <span class="px-5 py-2 bg-gradient-to-r from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 text-blue-700 dark:text-blue-400 rounded-full text-sm font-bold border-2 border-blue-500 shadow-md hover:shadow-lg transition-all hover:scale-105">
+                        Meeting Expectations
+                    </span>
+                    <span class="px-5 py-2 bg-gradient-to-r from-amber-100 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/30 text-amber-700 dark:text-amber-400 rounded-full text-sm font-bold border-2 border-amber-500 shadow-md hover:shadow-lg transition-all hover:scale-105">
+                        Approaching Expectations
+                    </span>
+                    <span class="px-5 py-2 bg-gradient-to-r from-red-100 to-rose-100 dark:from-red-900/30 dark:to-rose-900/30 text-red-700 dark:text-red-400 rounded-full text-sm font-bold border-2 border-red-500 shadow-md hover:shadow-lg transition-all hover:scale-105">
+                        Below Expectations
+                    </span>
+                </div>
+            </div>
+
+            <!-- Status Badges -->
+            <div class="mb-6">
+                <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Status Badges</h4>
+                <div class="flex flex-wrap gap-3">
+                    <span class="px-4 py-1.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg text-sm font-semibold">
+                        Active
+                    </span>
+                    <span class="px-4 py-1.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 rounded-lg text-sm font-semibold">
+                        Pending
+                    </span>
+                    <span class="px-4 py-1.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg text-sm font-semibold">
+                        Overdue
+                    </span>
+                    <span class="px-4 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-semibold">
+                        Inactive
+                    </span>
+                </div>
+            </div>
+
+            <!-- Small Tags -->
+            <div>
+                <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Small Tags</h4>
+                <div class="flex flex-wrap gap-2">
+                    <span class="px-3 py-1 bg-gradient-to-r from-sky-100 to-blue-100 dark:from-sky-900/30 dark:to-blue-900/30 text-sky-700 dark:text-sky-400 rounded-full text-xs font-semibold shadow-sm hover:shadow-md transition-all">
+                        Term 1
+                    </span>
+                    <span class="px-3 py-1 bg-gradient-to-r from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30 text-orange-700 dark:text-orange-400 rounded-full text-xs font-semibold shadow-sm hover:shadow-md transition-all">
+                        Grade 5
+                    </span>
+                    <span class="px-3 py-1 bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 text-green-700 dark:text-green-400 rounded-full text-xs font-semibold shadow-sm hover:shadow-md transition-all">
+                        Mathematics
+                    </span>
+                    <span class="px-3 py-1 bg-gradient-to-r from-amber-100 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/30 text-amber-700 dark:text-amber-400 rounded-full text-xs font-semibold shadow-sm hover:shadow-md transition-all">
+                        Science
+                    </span>
+                    <span class="px-3 py-1 bg-gradient-to-r from-red-100 to-rose-100 dark:from-red-900/30 dark:to-rose-900/30 text-red-700 dark:text-red-400 rounded-full text-xs font-semibold shadow-sm hover:shadow-md transition-all">
+                        English
+                    </span>
+                    <span class="px-3 py-1 bg-gradient-to-r from-teal-100 to-cyan-100 dark:from-teal-900/30 dark:to-cyan-900/30 text-teal-700 dark:text-teal-400 rounded-full text-xs font-semibold shadow-sm hover:shadow-md transition-all">
+                        Kiswahili
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 4: Progress Bars & Indicators -->
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-sm border border-gray-100 dark:border-gray-700 mb-8">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-12 h-12 bg-gradient-to-br from-teal-500 via-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <mat-icon class="text-white icon-size-6" [svgIcon]="'heroicons_outline:chart-bar'"></mat-icon>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Progress Indicators</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Various progress bar styles</p>
+                </div>
+            </div>
+
+            <div class="space-y-6">
+                <!-- Progress Bar 1 -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-semibold text-gray-900 dark:text-white">Mathematics Progress</span>
+                        <span class="text-sm font-bold text-emerald-600">92%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden shadow-inner">
+                        <div class="bg-gradient-to-r from-emerald-500 via-teal-500 to-green-600 h-full rounded-full transition-all duration-500 shadow-md" style="width: 92%"></div>
+                    </div>
+                </div>
+
+                <!-- Progress Bar 2 -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-semibold text-gray-900 dark:text-white">English Language</span>
+                        <span class="text-sm font-bold text-blue-600">78%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden shadow-inner">
+                        <div class="bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 h-full rounded-full transition-all duration-500 shadow-md" style="width: 78%"></div>
+                    </div>
+                </div>
+
+                <!-- Progress Bar 3 -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-semibold text-gray-900 dark:text-white">Science & Technology</span>
+                        <span class="text-sm font-bold text-amber-600">65%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden shadow-inner">
+                        <div class="bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 h-full rounded-full transition-all duration-500 shadow-md" style="width: 65%"></div>
+                    </div>
+                </div>
+
+                <!-- Striped Progress Bar -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-semibold text-gray-900 dark:text-white">Fee Payment Status</span>
+                        <span class="text-sm font-bold text-fuchsia-600">45%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 overflow-hidden shadow-inner">
+                        <div class="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-fuchsia-500 via-pink-500 to-rose-600 shadow-md" 
+                             style="width: 45%; background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.2) 10px, rgba(255,255,255,0.2) 20px)">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 5: Input Fields & Forms -->
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-sm border border-gray-100 dark:border-gray-700 mb-8">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-12 h-12 bg-gradient-to-br from-amber-500 via-yellow-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <mat-icon class="text-white icon-size-6" [svgIcon]="'heroicons_outline:pencil-square'"></mat-icon>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Form Elements</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Input fields, selects, and textareas</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Text Input -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Student Name
+                    </label>
+                    <input type="text" 
+                           placeholder="Enter student name" 
+                           class="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-teal-500 focus:ring-2 focus:ring-teal-200 focus:outline-none transition-all">
+                </div>
+
+                <!-- Email Input -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Email Address
+                    </label>
+                    <input type="email" 
+                           placeholder="student@example.com" 
+                           class="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all">
+                </div>
+
+                <!-- Select Dropdown -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Select Class
+                    </label>
+                    <select class="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-all">
+                        <option>Grade 5A</option>
+                        <option>Grade 5B</option>
+                        <option>Grade 4A</option>
+                        <option>Grade 6A</option>
+                    </select>
+                </div>
+
+                <!-- Number Input -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Assessment Score
+                    </label>
+                    <input type="number" 
+                           min="0" 
+                           max="100" 
+                           placeholder="0-100" 
+                           class="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-lime-500 focus:ring-2 focus:ring-lime-200 focus:outline-none transition-all">
+                </div>
+
+                <!-- Search Input -->
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Search Students
+                    </label>
+                    <div class="relative">
+                        <input type="text" 
+                               placeholder="Search by name or admission number..." 
+                               class="w-full px-4 py-3 pl-12 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-sky-500 focus:ring-2 focus:ring-sky-200 focus:outline-none transition-all">
+                        <mat-icon class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 icon-size-5" [svgIcon]="'heroicons_outline:magnifying-glass'"></mat-icon>
+                    </div>
+                </div>
+
+                <!-- Textarea -->
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Teacher's Remarks
+                    </label>
+                    <textarea rows="4" 
+                              placeholder="Enter your remarks here..." 
+                              class="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-green-500 focus:ring-2 focus:ring-green-200 focus:outline-none transition-all resize-none"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 6: Alerts & Notifications -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Success Alert -->
+            <div class="bg-gradient-to-r from-emerald-50 via-teal-50 to-green-50 dark:from-emerald-900/20 dark:via-teal-900/20 dark:to-green-900/20 border-l-4 border-emerald-600 rounded-lg p-4 shadow-md hover:shadow-lg transition-all">
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-emerald-600 to-teal-700 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md">
+                        <mat-icon class="text-white icon-size-5" [svgIcon]="'heroicons_outline:check-circle'"></mat-icon>
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-emerald-900 dark:text-emerald-100 mb-1">Success!</h4>
+                        <p class="text-sm text-emerald-700 dark:text-emerald-400">Assessment has been recorded successfully.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info Alert -->
+            <div class="bg-gradient-to-r from-blue-50 via-indigo-50 to-violet-50 dark:from-blue-900/20 dark:via-indigo-900/20 dark:to-violet-900/20 border-l-4 border-blue-600 rounded-lg p-4 shadow-md hover:shadow-lg transition-all">
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md">
+                        <mat-icon class="text-white icon-size-5" [svgIcon]="'heroicons_outline:information-circle'"></mat-icon>
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-blue-900 dark:text-blue-100 mb-1">Information</h4>
+                        <p class="text-sm text-blue-700 dark:text-blue-400">New term starts on February 1st, 2026.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Warning Alert -->
+            <div class="bg-gradient-to-r from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-900/20 dark:via-yellow-900/20 dark:to-orange-900/20 border-l-4 border-amber-600 rounded-lg p-4 shadow-md hover:shadow-lg transition-all">
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-amber-600 to-orange-700 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md">
+                        <mat-icon class="text-white icon-size-5" [svgIcon]="'heroicons_outline:exclamation-triangle'"></mat-icon>
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-amber-900 dark:text-amber-100 mb-1">Warning</h4>
+                        <p class="text-sm text-amber-700 dark:text-amber-400">Fee payment deadline is approaching.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Error Alert -->
+            <div class="bg-gradient-to-r from-red-50 via-rose-50 to-pink-50 dark:from-red-900/20 dark:via-rose-900/20 dark:to-pink-900/20 border-l-4 border-red-600 rounded-lg p-4 shadow-md hover:shadow-lg transition-all">
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-red-600 to-rose-700 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md">
+                        <mat-icon class="text-white icon-size-5" [svgIcon]="'heroicons_outline:x-circle'"></mat-icon>
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-red-900 dark:text-red-100 mb-1">Error</h4>
+                        <p class="text-sm text-red-700 dark:text-red-400">Failed to save data. Please try again.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 7: Tables with Functional Filters -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+      <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-gradient-to-br from-blue-500 via-cyan-600 to-teal-700 rounded-lg flex items-center justify-center shadow-lg">
+              <mat-icon class="text-white icon-size-5" [svgIcon]="'heroicons_outline:table-cells'"></mat-icon>
+            </div>
+            <div>
+              <h3 class="text-xl font-bold text-gray-900 dark:text-white">Student Records</h3>
+              <p class="text-sm text-gray-500 dark:text-gray-400">{{ filteredStudents.length }} students found</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <button mat-stroked-button [color]="'primary'" (click)="toggleFilterPanel()">
+              <mat-icon class="icon-size-5" [svgIcon]="'heroicons_outline:funnel'"></mat-icon>
+              <span class="ml-2">{{ showFilterPanel ? 'Hide' : 'Show' }} Filters</span>
+            </button>
+
+            <!-- Columns panel toggle -->
+            <div class="relative">
+              <button mat-stroked-button (click)="showColumnsPanel = !showColumnsPanel">
+                <mat-icon class="icon-size-5" [svgIcon]="'heroicons_outline:table-cells'"></mat-icon>
+                <span class="ml-2">Columns</span>
+              </button>
+
+              <!-- Simple dropdown/panel -->
+              <div *ngIf="showColumnsPanel" class="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4 z-30">
+                <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Show / hide columns</h4>
+                <div class="space-y-2 max-h-40 overflow-auto mb-3">
+                  <label *ngFor="let col of columns" class="flex items-center gap-2 text-sm">
+                    <input type="checkbox" [(ngModel)]="col.visible" class="rounded" />
+                    <span class="truncate">{{ col.label }}</span>
+                  </label>
+                </div>
+
+                <div class="flex gap-2 mt-2">
+                  <button (click)="resetColumnsOrder()" class="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200">Reset order</button>
+                  <button (click)="resetColumnsVisibility()" class="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200">Reset visibility</button>
+                  <button (click)="resetColumnsAll()" class="px-2 py-1 text-xs bg-rose-50 text-rose-700 rounded hover:bg-rose-100">Reset all</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter Panel -->
+        <div *ngIf="showFilterPanel" class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Search Filter -->
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Search</label>
+              <div class="relative">
+                <input
+                  type="text"
+                  [(ngModel)]="searchQuery"
+                  placeholder="Name or admission number..."
+                  class="w-full px-4 py-2 pl-10 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-teal-500 focus:ring-2 focus:ring-teal-200 focus:outline-none transition-all">
+                <mat-icon class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 icon-size-5" [svgIcon]="'heroicons_outline:magnifying-glass'"></mat-icon>
+              </div>
+            </div>
+
+            <!-- Class Filter -->
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by Class</label>
+              <select [(ngModel)]="selectedClass"
+                      class="w-full px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all">
+                <option *ngFor="let class of availableClasses" [value]="class">
+                  {{ class === 'all' ? 'All Classes' : class }}
+                </option>
+              </select>
+            </div>
+
+            <!-- Status Filter -->
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by Status</label>
+              <select [(ngModel)]="selectedStatus"
+                      class="w-full px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-all">
+                <option *ngFor="let status of availableStatuses" [value]="status">
+                  {{ status === 'all' ? 'All Statuses' : status }}
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <!-- More / Advanced Filters toggle -->
+          <div class="mt-4 flex items-center justify-between">
+            <div>
+              <button (click)="showAdvancedFilters = !showAdvancedFilters"
+                      class="px-3 py-1 text-sm font-semibold text-cyan-700 hover:bg-cyan-50 rounded-lg transition-all">
+                {{ showAdvancedFilters ? 'Hide' : 'Show' }} more filters
+              </button>
+            </div>
+            <div>
+              <button (click)="clearFilters()"
+                      class="px-4 py-2 text-sm font-semibold text-teal-600 hover:text-teal-700 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded-lg transition-all shadow-sm hover:shadow-md">
+                Clear All Filters
+              </button>
+            </div>
+          </div>
+
+          <!-- Advanced Filters (hidden by default) -->
+          <div *ngIf="showAdvancedFilters" class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 border-t pt-6">
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Gender</label>
+              <select [(ngModel)]="selectedGender" class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                <option *ngFor="let g of availableGenders" [value]="g">{{ g === 'all' ? 'All' : g }}</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Term</label>
+              <select [(ngModel)]="selectedTerm" class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                <option *ngFor="let t of availableTerms" [value]="t">{{ t === 'all' ? 'All' : t }}</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Subject</label>
+              <select [(ngModel)]="selectedSubject" class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                <option *ngFor="let s of availableSubjects" [value]="s">{{ s === 'all' ? 'All' : s }}</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Attendance</label>
+              <select [(ngModel)]="selectedAttendance" class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                <option *ngFor="let a of availableAttendance" [value]="a">{{ a === 'all' ? 'All' : a }}</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Fee Status</label>
+              <select [(ngModel)]="selectedFeeStatus" class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                <option *ngFor="let f of availableFeeStatus" [value]="f">{{ f === 'all' ? 'All' : f }}</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">House</label>
+              <select [(ngModel)]="selectedHouse" class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                <option *ngFor="let h of availableHouses" [value]="h">{{ h === 'all' ? 'All' : h }}</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Transport</label>
+              <select [(ngModel)]="selectedTransport" class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                <option *ngFor="let t of availableTransport" [value]="t">{{ t === 'all' ? 'All' : t }}</option>
+              </select>
+            </div>
+
+            <div class="md:col-span-2">
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Performance range</label>
+              <div class="flex gap-2 items-center">
+                <input type="number" [(ngModel)]="minPerformance" min="0" max="100" class="w-1/2 px-3 py-2 border-2 rounded-lg" />
+                <span class="text-sm">—</span>
+                <input type="number" [(ngModel)]="maxPerformance" min="0" max="100" class="w-1/2 px-3 py-2 border-2 rounded-lg" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead class="bg-gray-50 dark:bg-gray-700/50">
+            <tr cdkDropList cdkDropListOrientation="horizontal" (cdkDropListDropped)="dropColumn($event)">
+              <ng-container *ngFor="let col of columns; let i = index">
+                <th *ngIf="col.visible" cdkDrag class="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  <div class="flex items-center justify-between gap-2">
+                    <span>{{ col.label }}</span>
+                    <mat-icon class="text-gray-400 cursor-move icon-size-5" [svgIcon]="'heroicons_mini:bars-2'"></mat-icon>
+                  </div>
+                </th>
+              </ng-container>
+            </tr>
+          </thead>
+
+          <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+            <tr *ngFor="let student of paginatedStudents" class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors relative">
+              <ng-container *ngFor="let col of columns">
+                <td *ngIf="col.visible" class="px-6 py-4 whitespace-nowrap align-top" [ngSwitch]="col.key">
+                  <!-- Admission No -->
+                  <ng-container *ngSwitchCase="'admissionNo'">
+                    <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ student.admissionNo }}</span>
+                  </ng-container>
+
+                  <!-- Name + avatar -->
+                  <ng-container *ngSwitchCase="'name'">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br {{ student.avatarColor }} flex items-center justify-center text-white font-bold text-sm">
+                        {{ student.initials }}
+                      </div>
+                      <div>
+                        <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ student.name }}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ student.gender }}</p>
+                      </div>
+                    </div>
+                  </ng-container>
+
+                  <!-- Class -->
+                  <ng-container *ngSwitchCase="'class'">
+                    <span class="text-sm text-gray-900 dark:text-white">{{ student.class }}</span>
+                  </ng-container>
+
+                  <!-- Performance -->
+                  <ng-container *ngSwitchCase="'performance'">
+                    <div class="text-center">
+                      <span class="text-sm font-bold {{ getPerformanceBadgeColor(student.performance) }}">{{ student.performance }}%</span>
+                    </div>
+                  </ng-container>
+
+                  <!-- Status -->
+                  <ng-container *ngSwitchCase="'status'">
+                    <div class="text-center">
+                      <span class="px-3 py-1 {{ getStatusBadgeClasses(student.status) }} rounded-full text-xs font-semibold">
+                        {{ student.status }}
+                      </span>
+                    </div>
+                  </ng-container>
+
+                  <!-- Actions (toggle form) -->
+                  <ng-container *ngSwitchCase="'actions'">
+                    <div class="relative inline-block">
+                      <!-- Toggle button -->
+                      <button
+                        (click)="toggleStudentActions(student); $event.stopPropagation()"
+                        aria-haspopup="true"
+                        [attr.aria-expanded]="student.expanded ? 'true' : 'false'"
+                        class="px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                        <mat-icon class="icon-size-5" [svgIcon]="'heroicons_outline:ellipsis-vertical'"></mat-icon>
+                      </button>
+
+                      <!-- Actions panel -->
+                      <div *ngIf="student.expanded" class="absolute right-0 mt-2 w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-lg z-20">
+                        <button (click)="viewStudent(student)" class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2">
+                          <mat-icon class="icon-size-4" [svgIcon]="'heroicons_outline:eye'"></mat-icon>
+                          View
+                        </button>
+                        <button (click)="editStudent(student)" class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2">
+                          <mat-icon class="icon-size-4" [svgIcon]="'heroicons_outline:pencil-square'"></mat-icon>
+                          Edit
+                        </button>
+                        <button (click)="printReport(student)" class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2">
+                          <mat-icon class="icon-size-4" [svgIcon]="'heroicons_outline:printer'"></mat-icon>
+                          Print
+                        </button>
+                        <button (click)="sendMessage(student)" class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2">
+                          <mat-icon class="icon-size-4" [svgIcon]="'heroicons_outline:chat-bubble-oval-left'"></mat-icon>
+                          Message
+                        </button>
+                        <hr class="border-t my-1 border-gray-100 dark:border-gray-700" />
+                        <button (click)="deleteStudent(student)" class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2">
+                          <mat-icon class="icon-size-4" [svgIcon]="'heroicons_outline:trash'"></mat-icon>
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </ng-container>
+                </td>
+              </ng-container>
+            </tr>
+
+            <!-- No Results Message -->
+            <tr *ngIf="filteredStudents.length === 0">
+              <td [attr.colspan]="visibleColumns.length" class="px-6 py-12 text-center">
+                <div class="flex flex-col items-center justify-center gap-3">
+                  <mat-icon class="text-gray-400 icon-size-16" [svgIcon]="'heroicons_outline:magnifying-glass'"></mat-icon>
+                  <p class="text-gray-500 dark:text-gray-400 font-semibold">No students found</p>
+                  <p class="text-sm text-gray-400">Try adjusting your filters</p>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Table Footer with Pagination -->
+      <div class="px-6 py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p class="text-sm text-gray-700 dark:text-gray-300">
+            Showing <span class="font-semibold">{{ showingFrom }}-{{ showingTo }}</span> of <span class="font-semibold">{{ filteredStudents.length }}</span> students
+          </p>
+          <div class="flex gap-2">
+            <button
+              (click)="previousPage()"
+              [disabled]="currentPage === 1"
+              [class.opacity-50]="currentPage === 1"
+              [class.cursor-not-allowed]="currentPage === 1"
+              class="px-4 py-2 border-2 border-cyan-300 dark:border-cyan-600 text-cyan-700 dark:text-cyan-300 rounded-lg text-sm font-semibold hover:bg-cyan-50 dark:hover:bg-cyan-900/20 transition-all disabled:hover:bg-transparent shadow-sm hover:shadow-md">
+              Previous
+            </button>
+            <button
+              (click)="nextPage()"
+              [disabled]="currentPage >= totalPages"
+              [class.opacity-50]="currentPage >= totalPages"
+              [class.cursor-not-allowed]="currentPage >= totalPages"
+              class="px-4 py-2 bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 text-white rounded-lg text-sm font-semibold hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 transition-all disabled:hover:from-cyan-600 disabled:hover:via-blue-600 disabled:hover:to-indigo-600 shadow-md hover:shadow-lg">
+              Next
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -93,6 +93,14 @@ export const appRoutes: Route[] = [
         resolve: { initialData: initialDataResolver },
         children: [
 
+            //UI Design
+            {
+                path: 'page-design-v1',
+                loadChildren: () =>
+                    import('app/page-design-version-one/page-design-version-one.routes')
+                        .then(m => m.default)
+            },
+
             // ================= ADMINISTRATION =================
             {
                 path: 'administration',
