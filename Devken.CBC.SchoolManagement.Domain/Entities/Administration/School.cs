@@ -1,4 +1,5 @@
 ﻿using Devken.CBC.SchoolManagement.Domain.Common;
+using Devken.CBC.SchoolManagement.Domain.Entities.Academic;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
 using System;
 using System.Collections.Generic;
@@ -21,5 +22,6 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Administration
         // ── Navigation ───────────────────────────────────
         public ICollection<User> Users { get; set; } = new List<User>();
         public ICollection<Role> Roles { get; set; } = new List<Role>();
+        public ICollection<AcademicYear> AcademicYears { get; set; } = new List<AcademicYear>();
     }
 }

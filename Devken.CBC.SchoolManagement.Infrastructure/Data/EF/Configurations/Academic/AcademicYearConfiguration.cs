@@ -47,6 +47,11 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
                 .IsRequired();
 
             // Relationships
+            // ── Relationship to School ───────────────────────
+            builder.HasOne(ay => ay.School)
+                .WithMany(s => s.AcademicYears)
+                .HasForeignKey(ay => ay.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
             builder.HasMany(ay => ay.Classes)
                 .WithOne(c => c.AcademicYear)
                 .HasForeignKey(c => c.AcademicYearId)
