@@ -5,15 +5,20 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Payments
 {
-    public sealed class MpesaPaymentRecordConfiguration
-        : IEntityTypeConfiguration<MpesaPaymentRecord>
+    public sealed class MpesaPaymentRecordConfiguration1 : IEntityTypeConfiguration<MpesaPaymentRecord>
     {
         private readonly TenantContext _tenantContext;
 
-        public MpesaPaymentRecordConfiguration(TenantContext tenantContext)
+        public MpesaPaymentRecordConfiguration1()
+        {
+        }
+
+        public MpesaPaymentRecordConfiguration1(TenantContext tenantContext)
         {
             _tenantContext = tenantContext;
         }
+
+
 
         public void Configure(EntityTypeBuilder<MpesaPaymentRecord> builder)
         {
@@ -49,8 +54,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Paym
                 .HasMaxLength(20);
 
             builder.Property(p => p.Amount)
-                .HasColumnType("decimal(18,2)")
-                .IsRequired();
+                .IsRequired()
+                .HasColumnType("decimal(18,2)");
 
             builder.Property(p => p.AccountReference)
                 .IsRequired()
@@ -85,6 +90,14 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Paym
 
             builder.Property(p => p.TenantId)
                 .IsRequired();
+
+            // ---------------- RELATIONSHIPS ----------------
+            // If you have related entities like PaymentLogs or Transactions, define them here.
+            // Example (uncomment if exists):
+            // builder.HasMany(p => p.PaymentLogs)
+            //        .WithOne(l => l.MpesaPayment)
+            //        .HasForeignKey(l => l.MpesaPaymentId)
+            //        .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

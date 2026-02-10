@@ -92,7 +92,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         protected override void OnModelCreating(ModelBuilder mb)
         {
             base.OnModelCreating(mb);
-            mb.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+            //mb.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
             // ── GLOBAL CONVENTIONS ───────────────────────────────
             DecimalPrecisionConvention.Apply(mb);
@@ -171,6 +171,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             mb.ApplyConfiguration(new PaymentConfiguration(_tenantContext));
             mb.ApplyConfiguration(new FeeItemConfiguration(_tenantContext));
             
+            mb.ApplyConfiguration(new MpesaPaymentRecordConfiguration1());
             mb.ApplyConfiguration(new SubscriptionPlanConfiguration());
             mb.ApplyConfiguration(new SubscriptionPlanConfiguration());
         }

@@ -13,253 +13,22 @@ namespace Devken.CBC.SchoolManagement.API.Controllers
     [ApiController]
     public class EnumsController : BaseApiController
     {
-        /// <summary>
-        /// Get all subscription plans with metadata
-        /// </summary>
-        [HttpGet("subscription-plans")]
-        [AllowAnonymous]
-        public IActionResult GetSubscriptionPlans()
-        {
-            try
-            {
-                var plans = Enum.GetValues<SubscriptionPlan>()
-                    .Select(plan => new
-                    {
-                        Id = plan.ToString().ToLower(),
-                        Name = plan.ToString(),
-                        Value = (int)plan,
-                        Description = GetEnumDescription(plan)
-                    })
-                    .ToList();
+        #region ===== GENERIC ENUM BUILDER =====
 
-                return SuccessResponse(plans, "Subscription plans retrieved successfully");
-            }
-            catch (Exception ex)
-            {
-                return ErrorResponse($"Failed to retrieve subscription plans: {ex.Message}");
-            }
+        private static object BuildEnumResponse<TEnum>() where TEnum : Enum
+        {
+            return Enum.GetValues(typeof(TEnum))
+                .Cast<TEnum>()
+                .Select(e => new
+                {
+                    Id = e.ToString().ToLower(),
+                    Name = e.ToString(),
+                    Value = Convert.ToInt32(e), // 👈 numeric value sent to backend
+                    Description = GetEnumDescription(e)
+                })
+                .ToList();
         }
 
-        /// <summary>
-        /// Get all billing cycles with metadata
-        /// </summary>
-        [HttpGet("billing-cycles")]
-        [AllowAnonymous]
-        public IActionResult GetBillingCycles()
-        {
-            try
-            {
-                var cycles = Enum.GetValues<BillingCycle>()
-                    .Select(cycle => new
-                    {
-                        Id = cycle.ToString().ToLower(),
-                        Name = cycle.ToString(),
-                        Value = (int)cycle,
-                        Description = GetEnumDescription(cycle)
-                    })
-                    .ToList();
-
-                return SuccessResponse(cycles, "Billing cycles retrieved successfully");
-            }
-            catch (Exception ex)
-            {
-                return ErrorResponse($"Failed to retrieve billing cycles: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Get all subscription statuses with metadata and CSS classes
-        /// </summary>
-        [HttpGet("subscription-statuses")]
-        [AllowAnonymous]
-        public IActionResult GetSubscriptionStatuses()
-        {
-            try
-            {
-                var statuses = Enum.GetValues<SubscriptionStatus>()
-                    .Select(status => new
-                    {
-                        Id = status.ToString().ToLower(),
-                        Name = status.ToString(),
-                        Value = (int)status,
-                        Description = GetEnumDescription(status),
-                        CssClass = GetStatusCssClass(status)
-                    })
-                    .ToList();
-
-                return SuccessResponse(statuses, "Subscription statuses retrieved successfully");
-            }
-            catch (Exception ex)
-            {
-                return ErrorResponse($"Failed to retrieve subscription statuses: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Get all genders
-        /// </summary>
-        [HttpGet("genders")]
-        [AllowAnonymous]
-        public IActionResult GetGenders()
-        {
-            try
-            {
-                var genders = Enum.GetValues<Gender>()
-                    .Select(gender => new
-                    {
-                        Id = gender.ToString().ToLower(),
-                        Name = gender.ToString(),
-                        Value = (int)gender,
-                        Description = GetEnumDescription(gender)
-                    })
-                    .ToList();
-
-                return SuccessResponse(genders);
-            }
-            catch (Exception ex)
-            {
-                return ErrorResponse($"Failed to retrieve genders: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Get all student statuses
-        /// </summary>
-        [HttpGet("student-statuses")]
-        [AllowAnonymous]
-        public IActionResult GetStudentStatuses()
-        {
-            try
-            {
-                var statuses = Enum.GetValues<StudentStatus>()
-                    .Select(status => new
-                    {
-                        Id = status.ToString().ToLower(),
-                        Name = status.ToString(),
-                        Value = (int)status,
-                        Description = GetEnumDescription(status)
-                    })
-                    .ToList();
-
-                return SuccessResponse(statuses);
-            }
-            catch (Exception ex)
-            {
-                return ErrorResponse($"Failed to retrieve student statuses: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Get all CBC levels
-        /// </summary>
-        [HttpGet("cbc-levels")]
-        [AllowAnonymous]
-        public IActionResult GetCBCLevels()
-        {
-            try
-            {
-                var levels = Enum.GetValues<CBCLevel>()
-                    .Select(level => new
-                    {
-                        Id = level.ToString().ToLower(),
-                        Name = level.ToString(),
-                        Value = (int)level,
-                        Description = GetEnumDescription(level)
-                    })
-                    .ToList();
-
-                return SuccessResponse(levels);
-            }
-            catch (Exception ex)
-            {
-                return ErrorResponse($"Failed to retrieve CBC levels: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Get all term types
-        /// </summary>
-        [HttpGet("term-types")]
-        [AllowAnonymous]
-        public IActionResult GetTermTypes()
-        {
-            try
-            {
-                var terms = Enum.GetValues<TermType>()
-                    .Select(term => new
-                    {
-                        Id = term.ToString().ToLower(),
-                        Name = term.ToString(),
-                        Value = (int)term,
-                        Description = GetEnumDescription(term)
-                    })
-                    .ToList();
-
-                return SuccessResponse(terms);
-            }
-            catch (Exception ex)
-            {
-                return ErrorResponse($"Failed to retrieve term types: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Get all assessment types
-        /// </summary>
-        [HttpGet("assessment-types")]
-        [AllowAnonymous]
-        public IActionResult GetAssessmentTypes()
-        {
-            try
-            {
-                var types = Enum.GetValues<AssessmentType>()
-                    .Select(type => new
-                    {
-                        Id = type.ToString().ToLower(),
-                        Name = type.ToString(),
-                        Value = (int)type,
-                        Description = GetEnumDescription(type)
-                    })
-                    .ToList();
-
-                return SuccessResponse(types);
-            }
-            catch (Exception ex)
-            {
-                return ErrorResponse($"Failed to retrieve assessment types: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Get all payment statuses
-        /// </summary>
-        [HttpGet("payment-statuses")]
-        [AllowAnonymous]
-        public IActionResult GetPaymentStatuses()
-        {
-            try
-            {
-                var statuses = Enum.GetValues<PaymentStatus>()
-                    .Select(status => new
-                    {
-                        Id = status.ToString().ToLower(),
-                        Name = status.ToString(),
-                        Value = (int)status,
-                        Description = GetEnumDescription(status)
-                    })
-                    .ToList();
-
-                return SuccessResponse(statuses);
-            }
-            catch (Exception ex)
-            {
-                return ErrorResponse($"Failed to retrieve payment statuses: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Helper: Get enum description from DescriptionAttribute
-        /// </summary>
         private static string GetEnumDescription(Enum value)
         {
             var field = value.GetType().GetField(value.ToString());
@@ -267,9 +36,110 @@ namespace Devken.CBC.SchoolManagement.API.Controllers
             return attribute?.Description ?? value.ToString();
         }
 
-        /// <summary>
-        /// Helper: Get CSS class based on subscription status
-        /// </summary>
+        #endregion
+
+        #region ===== SUBSCRIPTION =====
+
+        [HttpGet("subscription-plans")]
+        [AllowAnonymous]
+        public IActionResult GetSubscriptionPlans()
+            => SuccessResponse(BuildEnumResponse<SubscriptionPlan>());
+
+        [HttpGet("subscription-statuses")]
+        [AllowAnonymous]
+        public IActionResult GetSubscriptionStatuses()
+        {
+            var result = Enum.GetValues<SubscriptionStatus>()
+                .Select(status => new
+                {
+                    Id = status.ToString().ToLower(),
+                    Name = status.ToString(),
+                    Value = (int)status,
+                    Description = GetEnumDescription(status),
+                    CssClass = GetStatusCssClass(status)
+                })
+                .ToList();
+
+            return SuccessResponse(result);
+        }
+
+        [HttpGet("billing-cycles")]
+        [AllowAnonymous]
+        public IActionResult GetBillingCycles()
+            => SuccessResponse(BuildEnumResponse<BillingCycle>());
+
+        #endregion
+
+        #region ===== STUDENTS =====
+
+        [HttpGet("genders")]
+        [AllowAnonymous]
+        public IActionResult GetGenders()
+            => SuccessResponse(BuildEnumResponse<Gender>());
+
+        [HttpGet("student-statuses")]
+        [AllowAnonymous]
+        public IActionResult GetStudentStatuses()
+            => SuccessResponse(BuildEnumResponse<StudentStatus>());
+
+        [HttpGet("cbc-levels")]
+        [AllowAnonymous]
+        public IActionResult GetCBCLevels()
+            => SuccessResponse(BuildEnumResponse<CBCLevel>());
+
+        #endregion
+
+        #region ===== ACADEMICS =====
+
+        [HttpGet("term-types")]
+        [AllowAnonymous]
+        public IActionResult GetTermTypes()
+            => SuccessResponse(BuildEnumResponse<TermType>());
+
+        [HttpGet("assessment-types")]
+        [AllowAnonymous]
+        public IActionResult GetAssessmentTypes()
+            => SuccessResponse(BuildEnumResponse<AssessmentType>());
+
+        [HttpGet("competency-levels")]
+        [AllowAnonymous]
+        public IActionResult GetCompetencyLevels()
+            => SuccessResponse(BuildEnumResponse<CompetencyLevel>());
+
+        #endregion
+
+        #region ===== PAYMENTS =====
+
+        // General payment status
+        [HttpGet("payment-statuses")]
+        [AllowAnonymous]
+        public IActionResult GetPaymentStatuses()
+            => SuccessResponse(BuildEnumResponse<PaymentStatus>());
+
+        // STK / Mpesa specific payment status (from nested namespace)
+        [HttpGet("mpesa-payment-statuses")]
+        [AllowAnonymous]
+        public IActionResult GetMpesaPaymentStatuses()
+            => SuccessResponse(BuildEnumResponse<PaymentStatus>());
+
+        [HttpGet("mpesa-result-codes")]
+        [AllowAnonymous]
+        public IActionResult GetMpesaResultCodes()
+            => SuccessResponse(BuildEnumResponse<MpesaResultCode>());
+
+        #endregion
+
+        #region ===== ENTITY =====
+
+        [HttpGet("entity-statuses")]
+        [AllowAnonymous]
+        public IActionResult GetEntityStatuses()
+            => SuccessResponse(BuildEnumResponse<EntityStatus>());
+
+        #endregion
+
+        #region ===== CSS HELPER =====
+
         private static string GetStatusCssClass(SubscriptionStatus status)
         {
             return status switch
@@ -283,5 +153,7 @@ namespace Devken.CBC.SchoolManagement.API.Controllers
                 _ => "bg-secondary text-white"
             };
         }
+
+        #endregion
     }
 }

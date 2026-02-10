@@ -2,18 +2,16 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { trigger, transition, style, animate, query, group } from '@angular/animations';
-import { Subject, takeUntil } from 'rxjs';
-import { StudentPersonalInfoComponent } from '../personal-information/Student personal info.component';
-import { StudentLocationComponent } from '../location/Student location.component';
-import { StudentAcademicComponent } from '../academic/Student academic.component ';
+import { Subject } from 'rxjs';
+
 import { StudentMedicalComponent } from '../medical/Student-medical.component';
 import { StudentGuardiansComponent } from '../guardians/Student-guardians.component';
 import { StudentReviewComponent } from '../review/Student-review.component';
 import { StudentService } from 'app/core/DevKenService/administration/students/StudentService';
 import { EnrollmentStep } from '../types/EnrollmentStep';
-
-
-
+import { StudentPersonalInfoComponent } from '../personal-information/Student personal info.component';
+import { StudentLocationComponent } from '../location/Student location.component';
+import { StudentAcademicComponent } from '../academic/Student-academic.component';
 
 @Component({
   selector: 'app-student-enrollment',
@@ -70,6 +68,13 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
 
   private destroy$ = new Subject<void>();
 
+  // Sidebar state
+  isSidebarCollapsed = false;
+
+  toggleSidebar(): void {
+    this.isSidebarCollapsed = !this.isSidebarCollapsed;
+  }
+
   // ─── Steps definition ─────────────────────────────────────────────
   steps: EnrollmentStep[] = [
     { label: 'Personal Info',     icon: 'user',         sectionKey: 'personal'   },
@@ -98,6 +103,7 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
     guardians: {},
   };
 
+  // ──────────────────────────────────────────────────────────────────
   constructor(
     private studentService: StudentService,
     private router: Router,
@@ -106,9 +112,7 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.studentId = this.route.snapshot.paramMap.get('id');
-    if (this.studentId) {
-      this.loadExistingStudent(this.studentId);
-    }
+    if (this.studentId) this.loadExistingStudent(this.studentId);
     this.loadLookups();
     this.loadDraft();
   }
@@ -120,13 +124,13 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
 
   // ─── Lookup loading ───────────────────────────────────────────────
   private loadLookups(): void {
-    this.studentService.getSchools().pipe(takeUntil(this.destroy$)).subscribe(s => this.schools = s);
-    this.studentService.getClasses().pipe(takeUntil(this.destroy$)).subscribe(c => this.classes = c);
-    this.studentService.getAcademicYears().pipe(takeUntil(this.destroy$)).subscribe(y => this.academicYears = y);
+    this.studentService.getSchools().pipe().subscribe(s => this.schools = s);
+    this.studentService.getClasses().pipe().subscribe(c => this.classes = c);
+    this.studentService.getAcademicYears().pipe().subscribe(y => this.academicYears = y);
   }
 
   private loadExistingStudent(id: string): void {
-    this.studentService.getById(id).pipe(takeUntil(this.destroy$)).subscribe({
+    this.studentService.getById(id).pipe().subscribe({
       next: (student) => {
         this.hydrateFromStudent(student);
         this.steps.slice(0, 5).forEach((_, i) => this.completedSteps.add(i));
@@ -211,61 +215,47 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
 
   // ─── Navigation ───────────────────────────────────────────────────
   navigateToStep(index: number): void {
-    if (this.canNavigateTo(index)) {
-      this.currentStep = index;
-    }
+    if (this.canNavigateTo(index)) this.currentStep = index;
   }
 
   prevStep(): void {
     if (this.currentStep > 0) this.currentStep--;
   }
 
-  async nextStep(): Promise<void> {
+  nextStep(): void {
     if (!this.canProceed()) return;
-    this.isSaving = true;
-    try {
-      await this.saveCurrentSection();
-      this.completedSteps.add(this.currentStep);
-      this.persistDraft();
+    this.completedSteps.add(this.currentStep);
+    if (this.currentStep < this.steps.length - 1) {
       this.currentStep++;
-      this.showAlert('success', `${this.steps[this.currentStep - 1].label} saved successfully.`);
-    } catch {
-      this.showAlert('error', 'Failed to save. Please try again.');
-    } finally {
-      this.isSaving = false;
     }
+    this.persistDraft();
   }
 
-  async saveDraft(): Promise<void> {
-    this.isSaving = true;
+  saveDraft(): void {
+    this.persistDraft();
+    this.showAlert('success', 'Draft saved locally. You can continue later.');
+  }
+
+  // ─── Final submission ────────────────────────────────────────────
+  async submitForm(): Promise<void> {
+    if (!this.allStepsCompleted()) return;
+
+    this.isSubmitting = true;
     try {
-      await this.saveCurrentSection();
-      this.persistDraft();
-      this.showAlert('success', 'Draft saved. You can continue later.');
-    } catch {
-      this.showAlert('error', 'Could not save draft.');
-    } finally {
-      this.isSaving = false;
-    }
-  }
-
-  // ─── API save per section ─────────────────────────────────────────
-  private async saveCurrentSection(): Promise<void> {
-    const key = this.steps[this.currentStep]?.sectionKey;
-    if (key === 'review') return; // no save on review step
-
-    const payload = this.buildPayload();
-
-    if (this.studentId) {
-      await this.studentService.updatePartial(this.studentId, payload).toPromise();
-    } else {
-      // On first section save, create the student and store the returned ID
-      if (this.currentStep === 0 && !this.studentId) {
+      const payload = this.buildPayload(); // combine all sections
+      if (this.studentId) {
+        await this.studentService.update(this.studentId, payload).toPromise();
+      } else {
         const created: any = await this.studentService.create(payload).toPromise();
         this.studentId = created?.data?.id ?? created?.id;
-      } else if (this.studentId) {
-        await this.studentService.updatePartial(this.studentId, payload).toPromise();
       }
+      this.clearDraft();
+      this.showAlert('success', 'Student enrolled successfully!');
+      setTimeout(() => this.router.navigate(['/academic/students']), 1500);
+    } catch {
+      this.showAlert('error', 'Submission failed. Please review and try again.');
+    } finally {
+      this.isSubmitting = false;
     }
   }
 
@@ -279,30 +269,9 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
     };
   }
 
-  async submitForm(): Promise<void> {
-    if (!this.allStepsCompleted()) return;
-    this.isSubmitting = true;
-    try {
-      const payload = this.buildPayload();
-      if (this.studentId) {
-        await this.studentService.update(this.studentId, payload).toPromise();
-      } else {
-        await this.studentService.create(payload).toPromise();
-      }
-      this.clearDraft();
-      this.showAlert('success', 'Student enrolled successfully!');
-      setTimeout(() => this.router.navigate(['/academic/students']), 1500);
-    } catch {
-      this.showAlert('error', 'Submission failed. Please review and try again.');
-    } finally {
-      this.isSubmitting = false;
-    }
-  }
-
   // ─── Guards ───────────────────────────────────────────────────────
   canProceed(): boolean {
     const key = this.steps[this.currentStep]?.sectionKey;
-    if (key === 'review') return this.allStepsCompleted();
     return this.sectionValid[key] !== false;
   }
 
