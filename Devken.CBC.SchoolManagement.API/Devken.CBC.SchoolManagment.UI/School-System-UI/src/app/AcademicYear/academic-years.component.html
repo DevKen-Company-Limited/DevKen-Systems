@@ -1,0 +1,114 @@
+<div class="p-6">
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-xl font-semibold">Academic Years</h2>
+    <div class="flex items-center gap-2">
+      <input matInput placeholder="Search" (input)="applyFilter($any($event.target).value)" class="input" />
+      <button mat-flat-button color="primary" (click)="openCreate()">
+        <mat-icon>add</mat-icon> New Academic Year
+      </button>
+    </div>
+  </div>
+
+  <fuse-alert *ngIf="showAlert" [type]="alert.type" [showIcon]="true">{{ alert.message }}</fuse-alert>
+
+  <mat-card>
+    <div *ngIf="isLoading" class="flex items-center justify-center p-12">
+      <mat-spinner diameter="36"></mat-spinner>
+    </div>
+
+    <div *ngIf="!isLoading" class="overflow-auto">
+      <table mat-table [dataSource]="dataSource" matSort class="w-full">
+
+        <!-- Code -->
+        <ng-container matColumnDef="code">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Code</th>
+          <td mat-cell *matCellDef="let ay">
+            <span class="font-medium">{{ ay.code }}</span>
+          </td>
+        </ng-container>
+
+        <!-- Name -->
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Name</th>
+          <td mat-cell *matCellDef="let ay">{{ ay.name }}</td>
+        </ng-container>
+
+        <!-- Start Date -->
+        <ng-container matColumnDef="startDate">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Start Date</th>
+          <td mat-cell *matCellDef="let ay">{{ ay.startDate | date:'mediumDate' }}</td>
+        </ng-container>
+
+        <!-- End Date -->
+        <ng-container matColumnDef="endDate">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>End Date</th>
+          <td mat-cell *matCellDef="let ay">{{ ay.endDate | date:'mediumDate' }}</td>
+        </ng-container>
+
+        <!-- Status -->
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>Status</th>
+          <td mat-cell *matCellDef="let ay">
+            <span 
+              class="px-2 py-1 text-xs rounded-full"
+              [ngClass]="{
+                'bg-green-100 text-green-800': ay.isCurrent,
+                'bg-red-100 text-red-800': ay.isClosed,
+                'bg-blue-100 text-blue-800': !ay.isCurrent && !ay.isClosed
+              }">
+              {{ ay.isCurrent ? 'Current' : (ay.isClosed ? 'Closed' : 'Open') }}
+            </span>
+          </td>
+        </ng-container>
+
+        <!-- Actions -->
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef class="text-right">Actions</th>
+          <td mat-cell *matCellDef="let ay" class="text-right">
+            <button 
+              mat-icon-button 
+              [matMenuTriggerFor]="menu" 
+              aria-label="Actions">
+              <mat-icon>more_vert</mat-icon>
+            </button>
+            <mat-menu #menu="matMenu">
+              <button mat-menu-item (click)="openEdit(ay)">
+                <mat-icon>edit</mat-icon>
+                <span>Edit</span>
+              </button>
+              <button 
+                mat-menu-item 
+                (click)="setAsCurrent(ay)" 
+                *ngIf="!ay.isCurrent && !ay.isClosed">
+                <mat-icon>check_circle</mat-icon>
+                <span>Set as Current</span>
+              </button>
+              <button 
+                mat-menu-item 
+                (click)="closeYear(ay)" 
+                *ngIf="!ay.isClosed">
+                <mat-icon>lock</mat-icon>
+                <span>Close Year</span>
+              </button>
+              <mat-divider></mat-divider>
+              <button mat-menu-item (click)="removeAcademicYear(ay)" class="text-red-600">
+                <mat-icon class="text-red-600">delete</mat-icon>
+                <span>Delete</span>
+              </button>
+            </mat-menu>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+    </div>
+
+    <mat-paginator 
+      [length]="total" 
+      [pageSize]="pageSize" 
+      [pageSizeOptions]="[10,20,50]" 
+      (page)="onPageChange($event)">
+    </mat-paginator>
+  </mat-card>
+</div>

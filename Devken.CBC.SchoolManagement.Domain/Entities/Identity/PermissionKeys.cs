@@ -23,6 +23,10 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
         public const string RoleDelete = "Role.Delete";
 
         // ── Academic ─────────────────────────────────────
+        public const string AcademicYearRead = "AcademicYear.Read";
+        public const string AcademicYearWrite = "AcademicYear.Write";
+        public const string AcademicYearDelete = "AcademicYear.Delete";
+        public const string AcademicYearClose = "AcademicYear.Close";
         public const string StudentRead = "Student.Read";
         public const string StudentWrite = "Student.Write";
         public const string StudentDelete = "Student.Delete";

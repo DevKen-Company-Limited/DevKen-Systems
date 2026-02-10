@@ -108,6 +108,7 @@ export const appRoutes: Route[] = [
             {
                 path: 'academic',
                 children: [
+                    { path: 'academic-years', loadChildren: () => import('app/AcademicYear/academic-years.routes') }
                     // { path: 'students', loadChildren: () => import('app/modules/academic/students/students.routes') },
                     // { path: 'teachers', loadChildren: () => import('app/modules/academic/teachers/teachers.routes') },
                     // { path: 'classes', loadChildren: () => import('app/modules/academic/classes/classes.routes') },
