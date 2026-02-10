@@ -3,3 +3,4 @@ obj/
 .vs/
 .env
 appsettings.Development.json
+Migration
