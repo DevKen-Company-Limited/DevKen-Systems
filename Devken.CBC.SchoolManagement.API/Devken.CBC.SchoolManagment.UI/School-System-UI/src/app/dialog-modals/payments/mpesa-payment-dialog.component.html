@@ -1,0 +1,150 @@
+<div class="flex h-full max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white dark:bg-gray-900">
+  
+  <!-- ================= HEADER ================= -->
+  <div class="flex items-center justify-between bg-primary px-6 py-4 text-white">
+    <div class="flex items-center gap-3">
+      <mat-icon class="text-2xl">payment</mat-icon>
+      <div>
+        <h3 class="text-lg font-semibold">M-Pesa Payment</h3>
+        <p class="text-sm opacity-80">{{ data.description }}</p>
+      </div>
+    </div>
+
+    <button mat-icon-button (click)="cancel()" type="button" [disabled]="isProcessing">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <!-- ================= BODY ================= -->
+  <div class="flex-1 overflow-y-auto p-6">
+
+    <!-- Amount Display -->
+    <div class="mb-6 rounded-xl border border-primary bg-primary/5 p-4 text-center">
+      <p class="text-sm text-gray-600 dark:text-gray-400">Amount to Pay</p>
+      <p class="text-3xl font-bold text-primary">
+        KSh {{ data.amount.toLocaleString('en-KE') }}
+      </p>
+    </div>
+
+    <!-- Payment Form (Only show if not processing) -->
+    <div *ngIf="paymentStatus === 'idle'" class="space-y-4">
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>M-Pesa Phone Number</mat-label>
+        <input 
+          matInput 
+          type="tel" 
+          [(ngModel)]="phoneNumber"
+          placeholder="0712345678"
+          [disabled]="isProcessing"
+          (keyup.enter)="initiatePayment()">
+        <mat-icon matPrefix>phone</mat-icon>
+        <mat-hint>Enter your Safaricom number</mat-hint>
+      </mat-form-field>
+
+      <div class="rounded-lg bg-blue-50 p-4 dark:bg-blue-900/20">
+        <div class="flex gap-3">
+          <mat-icon class="text-blue-600">info</mat-icon>
+          <div class="flex-1 text-sm text-blue-800 dark:text-blue-200">
+            <p class="font-semibold">How to pay:</p>
+            <ol class="mt-2 list-inside list-decimal space-y-1">
+              <li>Enter your M-Pesa phone number</li>
+              <li>Click "Pay Now"</li>
+              <li>Check your phone for the STK push prompt</li>
+              <li>Enter your M-Pesa PIN to complete</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment Status -->
+    <div *ngIf="paymentStatus !== 'idle'" class="space-y-4">
+      
+      <!-- Status Icon and Message -->
+      <div class="flex flex-col items-center justify-center py-6 text-center">
+        <div class="mb-4" [ngClass]="getStatusColor()">
+          <mat-spinner 
+            *ngIf="paymentStatus === 'initiated' || paymentStatus === 'polling'"
+            diameter="64"
+            color="primary">
+          </mat-spinner>
+          <mat-icon 
+            *ngIf="paymentStatus !== 'initiated' && paymentStatus !== 'polling'"
+            class="text-6xl"
+            [ngClass]="getStatusColor()">
+            {{ getStatusIcon() }}
+          </mat-icon>
+        </div>
+
+        <h4 class="mb-2 text-lg font-semibold" [ngClass]="getStatusColor()">
+          <span *ngIf="paymentStatus === 'initiated'">Initiating Payment...</span>
+          <span *ngIf="paymentStatus === 'polling'">Waiting for Payment</span>
+          <span *ngIf="paymentStatus === 'success'">Payment Successful!</span>
+          <span *ngIf="paymentStatus === 'failed'">Payment Failed</span>
+          <span *ngIf="paymentStatus === 'cancelled'">Payment Cancelled</span>
+        </h4>
+
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          {{ statusMessage }}
+        </p>
+      </div>
+
+      <!-- Instructions for pending payment -->
+      <div 
+        *ngIf="paymentStatus === 'polling'"
+        class="rounded-lg border border-blue-300 bg-blue-50 p-4 dark:border-blue-700 dark:bg-blue-900/20">
+        <div class="flex gap-3">
+          <mat-icon class="text-blue-600">phone_android</mat-icon>
+          <div class="flex-1 text-sm text-blue-800 dark:text-blue-200">
+            <p class="font-semibold">Check your phone</p>
+            <p class="mt-1">
+              A payment prompt has been sent to <strong>{{ phoneNumber }}</strong>.
+              Please enter your M-Pesa PIN to complete the payment.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Retry button for failed payments -->
+      <div *ngIf="paymentStatus === 'failed' || paymentStatus === 'cancelled'" class="mt-4">
+        <button 
+          mat-flat-button 
+          color="primary" 
+          class="w-full"
+          (click)="retry()"
+          type="button">
+          <mat-icon>refresh</mat-icon>
+          Try Again
+        </button>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ================= FOOTER ================= -->
+  <div class="flex items-center justify-between gap-3 border-t px-6 py-4 dark:border-gray-700">
+    
+    <button 
+      mat-stroked-button 
+      (click)="cancel()" 
+      type="button"
+      [disabled]="isProcessing && paymentStatus === 'polling'">
+      {{ paymentStatus === 'success' ? 'Close' : 'Cancel' }}
+    </button>
+
+    <button 
+      *ngIf="paymentStatus === 'idle'"
+      mat-flat-button 
+      color="primary"
+      (click)="initiatePayment()"
+      [disabled]="!phoneNumber || isProcessing"
+      type="button">
+      <mat-icon *ngIf="!isProcessing">payment</mat-icon>
+      <mat-spinner *ngIf="isProcessing" diameter="20"></mat-spinner>
+      <span class="ml-2">{{ isProcessing ? 'Processing...' : 'Pay Now' }}</span>
+    </button>
+
+  </div>
+
+</div>

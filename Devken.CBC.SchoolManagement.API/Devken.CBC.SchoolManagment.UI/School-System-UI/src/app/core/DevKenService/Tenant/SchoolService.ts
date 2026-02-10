@@ -278,7 +278,7 @@ getBillingCycleDisplay(billingCycle: number): string {
     );
   }
 
-  renewSubscription(subscriptionId: string, billingCycle: number): Observable<ApiResponse<Subscription>> {
+  renewSubscription(subscriptionId: string, billingCycle: number, paymentReference: string, paymentDate: string): Observable<ApiResponse<Subscription>> {
     return this._http.post<ApiResponse<Subscription>>(
       `${this._subscriptionUrl}/${subscriptionId}/renew`,
       { billingCycle: Number(billingCycle) }

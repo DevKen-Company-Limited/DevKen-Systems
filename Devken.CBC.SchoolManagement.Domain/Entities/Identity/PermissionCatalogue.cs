@@ -55,6 +55,11 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
             (PermissionKeys.CurriculumWrite, "Manage Curriculum",   "Curriculum", "Update curriculum structure"),
             (PermissionKeys.LessonPlanRead,  "View Lesson Plans",   "Curriculum", "Access lesson plans"),
             (PermissionKeys.LessonPlanWrite, "Create Lesson Plans", "Curriculum", "Create or update lesson plans"),
+                        // ✅ NEW: M-Pesa Specific Permissions
+            (PermissionKeys.MpesaInitiate, "Initiate M-Pesa Payments", "Finance - M-Pesa", "Start M-Pesa STK push transactions"),
+            (PermissionKeys.MpesaViewTransactions, "View M-Pesa Transactions", "Finance - M-Pesa", "View M-Pesa payment history and status"),
+            (PermissionKeys.MpesaRefund, "Process M-Pesa Refunds", "Finance - M-Pesa", "Initiate refunds for M-Pesa transactions"),
+            (PermissionKeys.MpesaReconcile, "Reconcile M-Pesa Payments", "Finance - M-Pesa", "Match M-Pesa transactions with invoices"),
         };
     }
 }

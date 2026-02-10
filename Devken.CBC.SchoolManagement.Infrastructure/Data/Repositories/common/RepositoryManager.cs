@@ -3,10 +3,12 @@ using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Acad
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academics;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Identity;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Payments;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Tenant;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academic;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Identity;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Payments;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Tenant;
 using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -32,6 +34,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         private readonly Lazy<IUserRoleRepository> _userRoleRepository;
         private readonly Lazy<IRefreshTokenRepository> _refreshTokenRepository;
         private readonly Lazy<ISuperAdminRepository> _superAdminRepository;
+        private readonly Lazy<IMpesaPaymentRepository> _mpesaPaymentRepository;
+
 
         public RepositoryManager(AppDbContext context, TenantContext tenantContext)
         {
@@ -66,6 +70,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
 
             _superAdminRepository = new Lazy<ISuperAdminRepository>(() =>
                 new SuperAdminRepository(_context, _tenantContext));
+            _mpesaPaymentRepository = new Lazy<IMpesaPaymentRepository>(() =>
+                new MpesaPaymentRepository(_context, _tenantContext));
         }
 
         // Academic Repository Properties
@@ -80,6 +86,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         public IUserRoleRepository UserRole => _userRoleRepository.Value;
         public IRefreshTokenRepository RefreshToken => _refreshTokenRepository.Value;
         public ISuperAdminRepository SuperAdmin => _superAdminRepository.Value;
+        public IMpesaPaymentRepository MpesaPayment => _mpesaPaymentRepository.Value;
 
         // Unit of Work Methods
         public async Task SaveAsync() => await _context.SaveChangesAsync();

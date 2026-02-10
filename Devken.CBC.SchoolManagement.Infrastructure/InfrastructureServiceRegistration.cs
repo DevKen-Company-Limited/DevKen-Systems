@@ -3,6 +3,7 @@ using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Identity;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Payments;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Tenant;
 using Devken.CBC.SchoolManagement.Application.Service;
 using Devken.CBC.SchoolManagement.Application.Service.Activities;
@@ -16,6 +17,7 @@ using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academic;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Identity;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Payments;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Tenant;
 using Devken.CBC.SchoolManagement.Infrastructure.Security;
 using Devken.CBC.SchoolManagement.Infrastructure.Services;
@@ -46,6 +48,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
             services.AddSingleton(sp => sp.GetRequiredService<IOptions<JwtSettings>>().Value);
             services.AddHttpContextAccessor();
+            services.AddHttpClient();
 
             var jwtSettings = configuration.GetSection("JwtSettings").Get<JwtSettings>();
 
@@ -114,6 +117,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                 };
             });
 
+
             services.AddAuthorization(options =>
             {
                 options.FallbackPolicy = new AuthorizationPolicyBuilder()
@@ -175,6 +179,12 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                 RegisterPermissionPolicy(options, PermissionKeys.CurriculumWrite);
                 RegisterPermissionPolicy(options, PermissionKeys.LessonPlanRead);
                 RegisterPermissionPolicy(options, PermissionKeys.LessonPlanWrite);
+
+                // ✅ M-Pesa Permissions
+                RegisterPermissionPolicy(options, PermissionKeys.MpesaInitiate);
+                RegisterPermissionPolicy(options, PermissionKeys.MpesaViewTransactions);
+                RegisterPermissionPolicy(options, PermissionKeys.MpesaRefund);
+                RegisterPermissionPolicy(options, PermissionKeys.MpesaReconcile);
 
                 // Additional commonly used permission combinations
                 options.AddPolicy("Roles.View", policy =>
@@ -243,6 +253,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IUserActivityService, UserActivityService>();
             services.AddScoped<IRoleAssignmentService, RoleAssignmentService>();
             services.AddScoped<IRepositoryManager, RepositoryManager>();
+            
+            services.AddScoped<IMpesaPaymentRepository, MpesaPaymentRepository>();
             services.AddScoped<ISubscriptionPlanService, SubscriptionPlanService>();
 
             return services;

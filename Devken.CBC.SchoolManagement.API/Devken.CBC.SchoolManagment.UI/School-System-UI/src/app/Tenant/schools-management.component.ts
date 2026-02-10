@@ -240,18 +240,23 @@ export class SchoolsManagementComponent implements OnInit, OnDestroy {
     }
   }
 
-  manageSubscription(school: SchoolWithSubscription): void {
-    const dialogRef = this.dialog.open(ManageSubscriptionDialogComponent, {
-      width: '800px',
-      data: { school }
-    });
+// Updated manageSubscription method for schools-management.component.ts
 
-    dialogRef.afterClosed().pipe(take(1)).subscribe(result => {
-      if (result?.refresh) {
-        this.refreshSchoolData(school.id);
-      }
-    });
-  }
+    manageSubscription(school: SchoolWithSubscription): void {
+      const dialogRef = this.dialog.open(ManageSubscriptionDialogComponent, {
+        width: '95vw',           // Responsive width - 95% of viewport
+        maxWidth: '1400px',      // Maximum width for large screens
+        maxHeight: '95vh',       // Prevent overflow on short screens
+        panelClass: 'manage-subscription-dialog',
+        data: { school }
+      });
+
+      dialogRef.afterClosed().pipe(take(1)).subscribe(result => {
+        if (result?.refresh) {
+          this.refreshSchoolData(school.id);
+        }
+      });
+    }
 
   checkSubscriptionStatus(school: SchoolWithSubscription): void {
     this.service.checkSubscriptionStatus(school.id)

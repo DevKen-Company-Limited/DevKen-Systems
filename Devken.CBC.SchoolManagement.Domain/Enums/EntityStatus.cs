@@ -146,6 +146,30 @@ namespace Devken.CBC.SchoolManagement.Domain.Enums
             GracePeriod = 5
         }
 
+    namespace Devken.CBC.SchoolManagement.Domain.Enums.Payments
+    {
+        public enum PaymentStatus
+        {
+            Pending = 0,     // STK push sent, awaiting callback
+            Success = 1,     // Payment completed
+            Failed = 2,      // Mpesa error
+            Cancelled = 3,   // User cancelled on phone
+            Timeout = 4      // User did not respond
+        }
+    }
+
+    public enum MpesaResultCode
+    {
+        Failed = -1, // Add a generic failed value
+        Success = 0,
+        InsufficientFunds = 1,
+        LessThanMinimum = 2,
+        MoreThanMaximum = 3,
+        ExceedsBalanceLimit = 4,
+        Timeout = 1037,
+        CancelledByUser = 1032
+    }
+
 
 
     /// <summary>

@@ -1,5 +1,5 @@
 import { Component, Inject, OnInit } from '@angular/core';
-import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
+import { MatDialog, MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
 import { SchoolWithSubscription, SubscriptionStatus, BillingCycle } from 'app/Tenant/types/school';
@@ -15,6 +15,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { forkJoin } from 'rxjs';
 import { EnumOption, EnumService } from 'app/core/DevKenService/Tenant/EnumService';
 import { SubscriptionPlanDto, SubscriptionPlanService } from 'app/core/DevKenService/Tenant/SubscriptionPlanService';
+import { MpesaPaymentDialogComponent } from '../payments/mpesa-payment-dialog.component';
 
 @Component({
   selector: 'app-manage-subscription-dialog',
@@ -43,8 +44,8 @@ export class ManageSubscriptionDialogComponent implements OnInit {
   billingCycles: EnumOption[] = [];
   subscriptionStatuses: EnumOption[] = [];
 
-  selectedPlan!: number;
-  selectedCycle!: number;
+  selectedPlan: number = 0;
+  selectedCycle: number = 0;
 
   customAmount?: number;
   notes = '';
@@ -58,20 +59,11 @@ export class ManageSubscriptionDialogComponent implements OnInit {
     private schoolService: SchoolService,
     private enumService: EnumService,
     private planService: SubscriptionPlanService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
-    this.loadData();
-
-    // Initialize selected plan/cycle if subscription exists
-    if (this.data.school.subscription) {
-      this.selectedPlan = Number(this.data.school.subscription.plan);
-      this.selectedCycle = Number(this.data.school.subscription.billingCycle);
-    }
-  }
-
-  private loadData(): void {
     this.isLoading = true;
 
     forkJoin({
@@ -84,18 +76,21 @@ export class ManageSubscriptionDialogComponent implements OnInit {
         this.billingCycles = cycles;
         this.subscriptionStatuses = statuses;
 
-        // Ensure selectedPlan is never null
-        if (!this.selectedPlan && plans.length > 0) {
-          this.selectedPlan = Number(plans[0].planValue);
-        }
-
-        if (!this.selectedCycle && cycles.length > 0) {
-          this.selectedCycle = Number(cycles.find(c => c.name === 'Monthly')?.value ?? cycles[0].value);
+        // Initialize selected plan and cycle
+        if (this.data.school.subscription) {
+          this.selectedPlan = Number(this.data.school.subscription.plan);
+          this.selectedCycle = Number(this.data.school.subscription.billingCycle);
+        } else {
+          // Set defaults for new subscription
+          this.selectedPlan = plans.length ? Number(plans[0].planValue) : 0;
+          const monthlyCycle = cycles.find(c => c.name === 'Monthly');
+          this.selectedCycle = monthlyCycle ? Number(monthlyCycle.value) : (cycles.length ? Number(cycles[0].value) : 0);
         }
 
         this.isLoading = false;
       },
-      error: () => {
+      error: (err) => {
+        console.error('Failed to load subscription options:', err);
         this.showError('Failed to load subscription options');
         this.isLoading = false;
       }
@@ -103,10 +98,9 @@ export class ManageSubscriptionDialogComponent implements OnInit {
   }
 
   // ================== Plan Helpers ==================
-  getSelectedPlan(): SubscriptionPlanDto {
+  getSelectedPlan(): SubscriptionPlanDto | null {
     const plan = this.subscriptionPlans.find(p => p.planValue === this.selectedPlan);
-    if (!plan) throw new Error(`Selected plan ${this.selectedPlan} not found`);
-    return plan;
+    return plan || null;
   }
 
   getPlanForValue(planValue: number): SubscriptionPlanDto | undefined {
@@ -118,22 +112,26 @@ export class ManageSubscriptionDialogComponent implements OnInit {
     return plan?.name ?? 'Unknown Plan';
   }
 
-  // Get price for a specific plan and current billing cycle selection
   getPlanPriceForPlan(planValue: number): number {
     const plan = this.getPlanForValue(planValue);
     if (!plan) return 0;
-
-    if (this.customAmount) return Number(this.customAmount);
-
+    
+    // Use custom amount if provided
+    if (this.customAmount && this.customAmount > 0) {
+      return Number(this.customAmount);
+    }
+    
     switch (Number(this.selectedCycle)) {
-      case BillingCycle.Quarterly: return Number(plan.quarterlyPrice);
-      case BillingCycle.Yearly: return Number(plan.yearlyPrice);
+      case BillingCycle.Quarterly: 
+        return Number(plan.quarterlyPrice || 0);
+      case BillingCycle.Yearly: 
+        return Number(plan.yearlyPrice || 0);
       case BillingCycle.Monthly:
-      default: return Number(plan.monthlyPrice);
+      default: 
+        return Number(plan.monthlyPrice || 0);
     }
   }
 
-  // Get price for the currently selected plan
   getPlanPrice(): number {
     return this.getPlanPriceForPlan(this.selectedPlan);
   }
@@ -182,26 +180,53 @@ export class ManageSubscriptionDialogComponent implements OnInit {
     return status === SubscriptionStatus.Suspended || status === SubscriptionStatus.Expired;
   }
 
+
+
   // ================== Subscription Actions ==================
-  createNewSubscription(): void {
+  async createNewSubscription(): Promise<void> {
     try {
       const plan = this.getSelectedPlan();
+      if (!plan) {
+        this.showError('Please select a plan');
+        return;
+      }
+
+      const amount = this.getPlanAmount();
+      const accountRef = `SUB-${this.data.school.id.substring(0, 8)}`;
+      const description = `${plan.name} ${this.getCycleSuffix()} subscription`;
+
+      let paymentReference = '';
+      let paymentDate = new Date().toISOString();
+
+      // Only open M-Pesa dialog if amount is greater than 0
+      if (amount > 0) {
+        const paymentResult = await this.openMpesaPayment(amount, accountRef, description);
+        paymentReference = paymentResult.mpesaReceiptNumber || '';
+        paymentDate = paymentResult.transactionDate || paymentDate;
+      } else {
+        // For zero amount, confirm with user
+        if (!confirm('This subscription has no cost. Do you want to proceed?')) {
+          return;
+        }
+        paymentReference = `FREE-${Date.now()}`;
+      }
+
       this.isLoading = true;
 
       const payload = {
         schoolId: this.data.school.id,
         plan: this.selectedPlan,
         billingCycle: Number(this.selectedCycle),
-        amount: Number(this.getPlanAmount()),
+        amount: Number(amount),
         currency: plan.currency || 'KES',
         maxStudents: Number(plan.maxStudents || 0),
         maxTeachers: Number(plan.maxTeachers || 0),
         maxStorageGB: Number(plan.maxStorageGB || 0),
         enabledFeatures: plan.enabledFeatures || [],
-        notes: this.notes || ''
+        notes: this.notes || '',
+        paymentReference: paymentReference,
+        paymentDate: paymentDate
       };
-
-      console.log('Creating subscription payload:', payload);
 
       this.schoolService.createSubscription(this.data.school.id, payload).subscribe({
         next: res => {
@@ -213,25 +238,84 @@ export class ManageSubscriptionDialogComponent implements OnInit {
             this.showError(res.message || 'Failed to create subscription');
           }
         },
-        error: (error) => {
-          console.error('Create subscription error:', error);
+        error: (err) => {
+          console.error('Error creating subscription:', err);
           this.showError('Failed to create subscription');
           this.isLoading = false;
         }
       });
-    } catch (err: any) {
-      this.showError(err.message);
+    } catch (error: any) {
+      console.error('Create subscription error:', error);
+      if (error.message !== 'Payment cancelled') {
+        this.showError(error.message || 'Payment failed');
+      }
       this.isLoading = false;
     }
   }
 
-  renewSubscription(): void {
-    if (!this.data.school.subscription) return;
-    this.isLoading = true;
+    private openMpesaPayment(amount: number, accountRef: string, description: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const dialogRef = this.dialog.open(MpesaPaymentDialogComponent, {
+        width: '500px',
+        disableClose: true,
+        data: {
+          amount,
+          accountReference: accountRef,
+          description,
+          phoneNumber: this.data.school.phoneNumber // Pre-fill if available
+        }
+      });
 
-    // The service expects only billingCycle as parameter
-    this.schoolService.renewSubscription(this.data.school.subscription.id, Number(this.selectedCycle))
-      .subscribe({
+      dialogRef.afterClosed().subscribe(result => {
+        if (result && result.success) {
+          resolve(result);
+        } else if (result && result.cancelled) {
+          reject(new Error('Payment cancelled'));
+        } else {
+          reject(new Error('Payment failed'));
+        }
+      });
+    });
+  }
+
+  async renewSubscription(): Promise<void> {
+    if (!this.data.school.subscription) return;
+
+    try {
+      const plan = this.getSelectedPlan();
+      if (!plan) {
+        this.showError('Please select a plan');
+        return;
+      }
+
+      const amount = this.getPlanAmount();
+      const accountRef = `RNW-${this.data.school.subscription.id.substring(0, 8)}`;
+      const description = `Renew ${plan.name} subscription`;
+
+      let paymentReference = '';
+      let paymentDate = new Date().toISOString();
+
+      // Only open M-Pesa dialog if amount is greater than 0
+      if (amount > 0) {
+        const paymentResult = await this.openMpesaPayment(amount, accountRef, description);
+        paymentReference = paymentResult.mpesaReceiptNumber || '';
+        paymentDate = paymentResult.transactionDate || paymentDate;
+      } else {
+        // For zero amount, confirm with user
+        if (!confirm('This renewal has no cost. Do you want to proceed?')) {
+          return;
+        }
+        paymentReference = `FREE-RNW-${Date.now()}`;
+      }
+
+      this.isLoading = true;
+
+      this.schoolService.renewSubscription(
+        this.data.school.subscription.id, 
+        Number(this.selectedCycle),
+        paymentReference,
+        paymentDate
+      ).subscribe({
         next: res => {
           this.isLoading = false;
           if (res.success) {
@@ -241,12 +325,19 @@ export class ManageSubscriptionDialogComponent implements OnInit {
             this.showError(res.message || 'Failed to renew subscription');
           }
         },
-        error: (error) => {
-          console.error('Renew subscription error:', error);
+        error: (err) => {
+          console.error('Error renewing subscription:', err);
           this.showError('Failed to renew subscription');
           this.isLoading = false;
         }
       });
+    } catch (error: any) {
+      console.error('Renew subscription error:', error);
+      if (error.message !== 'Payment cancelled') {
+        this.showError(error.message || 'Payment failed');
+      }
+      this.isLoading = false;
+    }
   }
 
   suspendSubscription(): void {
@@ -265,8 +356,8 @@ export class ManageSubscriptionDialogComponent implements OnInit {
           this.showError(res.message || 'Failed to suspend');
         }
       },
-      error: (error) => {
-        console.error('Suspend subscription error:', error);
+      error: (err) => {
+        console.error('Error suspending subscription:', err);
         this.showError('Failed to suspend subscription');
         this.isLoading = false;
       }
@@ -275,7 +366,6 @@ export class ManageSubscriptionDialogComponent implements OnInit {
 
   activateSubscription(): void {
     if (!this.data.school.subscription) return;
-
     this.isLoading = true;
     this.schoolService.activateSubscription(this.data.school.subscription.id).subscribe({
       next: res => {
@@ -287,8 +377,8 @@ export class ManageSubscriptionDialogComponent implements OnInit {
           this.showError(res.message || 'Failed to activate');
         }
       },
-      error: (error) => {
-        console.error('Activate subscription error:', error);
+      error: (err) => {
+        console.error('Error activating subscription:', err);
         this.showError('Failed to activate subscription');
         this.isLoading = false;
       }
@@ -310,8 +400,8 @@ export class ManageSubscriptionDialogComponent implements OnInit {
           this.showError(res.message || 'Failed to cancel');
         }
       },
-      error: (error) => {
-        console.error('Cancel subscription error:', error);
+      error: (err) => {
+        console.error('Error cancelling subscription:', err);
         this.showError('Failed to cancel subscription');
         this.isLoading = false;
       }
@@ -324,7 +414,8 @@ export class ManageSubscriptionDialogComponent implements OnInit {
 
   // ================== UI Helpers ==================
   formatKES(amount?: number): string {
-    return `KSh ${Number(amount || 0).toLocaleString('en-KE')}`;
+    const value = Number(amount || 0);
+    return `KSh ${value.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
 
   private showSuccess(message: string): void {
