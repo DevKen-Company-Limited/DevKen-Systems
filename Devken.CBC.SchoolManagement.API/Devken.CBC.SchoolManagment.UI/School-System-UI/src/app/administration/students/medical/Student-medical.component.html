@@ -1,0 +1,74 @@
+<!-- steps/student-medical/student-medical.component.html -->
+<div class="section-header">
+  <div class="section-icon-row">
+    <div class="section-icon" style="background: linear-gradient(135deg,#ec4899,#be185d)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+    </div>
+    <div>
+      <h2 class="section-title">Medical & Health</h2>
+      <p class="section-subtitle">Health information helps school staff provide appropriate care. All fields are optional.</p>
+    </div>
+  </div>
+</div>
+
+<form [formGroup]="form" novalidate>
+
+  <div class="info-card" style="margin-bottom:24px">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    <span>Medical information is kept confidential and only shared with authorised school health staff.</span>
+  </div>
+
+  <div class="subsection">
+    <h3 class="subsection-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      Medical Details
+    </h3>
+    <div class="form-grid cols-3">
+      <div class="form-group">
+        <label class="form-label">Blood Group</label>
+        <select class="form-select" formControlName="bloodGroup">
+          <option value="">Select blood group</option>
+          <option>A+</option><option>A-</option>
+          <option>B+</option><option>B-</option>
+          <option>AB+</option><option>AB-</option>
+          <option>O+</option><option>O-</option>
+          <option>Unknown</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-grid cols-1" style="margin-top:16px">
+      <div class="form-group">
+        <label class="form-label">Medical Conditions</label>
+        <textarea class="form-textarea" formControlName="medicalConditions" rows="2"
+          placeholder="e.g. Asthma, Diabetes, Epilepsy…"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Allergies</label>
+        <textarea class="form-textarea" formControlName="allergies" rows="2"
+          placeholder="e.g. Peanuts, Penicillin, Dust…"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Special Needs</label>
+        <textarea class="form-textarea" formControlName="specialNeeds" rows="2"
+          placeholder="e.g. Hearing impairment, Visual impairment…"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <label class="toggle-row" for="specialSupportToggle">
+      <input class="toggle" id="specialSupportToggle" type="checkbox" formControlName="requiresSpecialSupport">
+      <div>
+        <div class="toggle-label">Requires Special Support</div>
+        <div class="toggle-sub">Student needs additional learning or physical support at school</div>
+      </div>
+    </label>
+
+    <div *ngIf="form.get('requiresSpecialSupport')?.value" class="special-support-note" style="margin-top:14px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Please ensure the Special Needs field above is filled in detail. This helps allocate the right support resources.
+    </div>
+  </div>
+
+</form>

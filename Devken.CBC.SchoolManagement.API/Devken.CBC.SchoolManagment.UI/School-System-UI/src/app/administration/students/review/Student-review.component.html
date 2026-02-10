@@ -1,0 +1,137 @@
+<!-- steps/student-review/student-review.component.html -->
+<div class="section-header">
+  <div class="section-icon-row">
+    <div class="section-icon" style="background:linear-gradient(135deg,#10b981,#047857)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+    </div>
+    <div>
+      <h2 class="section-title">Review & Submit</h2>
+      <p class="section-subtitle">Review all information before submitting. Click any section to edit.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Completion checklist -->
+<div class="completion-bar">
+  <div class="completion-bar__inner" [style.width]="getCompletionPct() + '%'"></div>
+</div>
+<div class="completion-label">
+  {{ completedCount() }} of {{ steps.length - 1 }} sections completed
+</div>
+
+<!-- Incomplete warning -->
+<div *ngIf="!allComplete()" class="info-card info-card--warn" style="margin-bottom:20px">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+  <span>Some sections are incomplete. Please go back and fill in the required fields before submitting.</span>
+</div>
+
+<!-- Section summaries -->
+<div class="review-grid">
+
+  <!-- Personal -->
+  <div class="review-card" [class.complete]="isComplete(0)" (click)="editSection.emit(0)">
+    <div class="review-card__head">
+      <div class="review-card__icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </div>
+      <div class="review-card__title">Personal Information</div>
+      <div class="review-card__status" [class.done]="isComplete(0)">
+        {{ isComplete(0) ? '✓ Complete' : 'Incomplete' }}
+      </div>
+      <button class="review-card__edit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </button>
+    </div>
+    <div class="review-data-grid">
+      <div class="rd-item"><span class="rd-key">Full Name</span><span class="rd-val">{{ fullName }}</span></div>
+      <div class="rd-item"><span class="rd-key">Admission No.</span><span class="rd-val">{{ formSections.personal?.admissionNumber || '—' }}</span></div>
+      <div class="rd-item"><span class="rd-key">Gender</span><span class="rd-val">{{ formSections.personal?.gender || '—' }}</span></div>
+      <div class="rd-item"><span class="rd-key">Date of Birth</span><span class="rd-val">{{ formatDate(formSections.personal?.dateOfBirth) }}</span></div>
+      <div class="rd-item"><span class="rd-key">NEMIS No.</span><span class="rd-val">{{ formSections.personal?.nemisNumber || '—' }}</span></div>
+      <div class="rd-item"><span class="rd-key">Religion</span><span class="rd-val">{{ formSections.personal?.religion || '—' }}</span></div>
+    </div>
+  </div>
+
+  <!-- Location -->
+  <div class="review-card" [class.complete]="isComplete(1)" (click)="editSection.emit(1)">
+    <div class="review-card__head">
+      <div class="review-card__icon" style="background:linear-gradient(135deg,#0ea5e9,#0284c7)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      </div>
+      <div class="review-card__title">Location</div>
+      <div class="review-card__status done">✓ Saved</div>
+      <button class="review-card__edit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </button>
+    </div>
+    <div class="review-data-grid">
+      <div class="rd-item"><span class="rd-key">County</span><span class="rd-val">{{ formSections.location?.county || '—' }}</span></div>
+      <div class="rd-item"><span class="rd-key">Sub-County</span><span class="rd-val">{{ formSections.location?.subCounty || '—' }}</span></div>
+      <div class="rd-item span-full"><span class="rd-key">Home Address</span><span class="rd-val">{{ formSections.location?.homeAddress || '—' }}</span></div>
+    </div>
+  </div>
+
+  <!-- Academic -->
+  <div class="review-card" [class.complete]="isComplete(2)" (click)="editSection.emit(2)">
+    <div class="review-card__head">
+      <div class="review-card__icon" style="background:linear-gradient(135deg,#f59e0b,#d97706)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 14l9-5-9-5-9 5 9 5z"/><path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/></svg>
+      </div>
+      <div class="review-card__title">Academic</div>
+      <div class="review-card__status" [class.done]="isComplete(2)">
+        {{ isComplete(2) ? '✓ Complete' : 'Incomplete' }}
+      </div>
+      <button class="review-card__edit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </button>
+    </div>
+    <div class="review-data-grid">
+      <div class="rd-item"><span class="rd-key">Level</span><span class="rd-val">{{ formSections.academic?.currentLevel || '—' }}</span></div>
+      <div class="rd-item"><span class="rd-key">Status</span><span class="rd-val"><span class="status-chip" [class]="'status-' + (formSections.academic?.status || 'Active').toLowerCase()">{{ formSections.academic?.status || 'Active' }}</span></span></div>
+      <div class="rd-item"><span class="rd-key">Previous School</span><span class="rd-val">{{ formSections.academic?.previousSchool || 'N/A' }}</span></div>
+    </div>
+  </div>
+
+  <!-- Medical -->
+  <div class="review-card" [class.complete]="isComplete(3)" (click)="editSection.emit(3)">
+    <div class="review-card__head">
+      <div class="review-card__icon" style="background:linear-gradient(135deg,#ec4899,#be185d)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      </div>
+      <div class="review-card__title">Medical</div>
+      <div class="review-card__status done">✓ Saved</div>
+      <button class="review-card__edit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </button>
+    </div>
+    <div class="review-data-grid">
+      <div class="rd-item"><span class="rd-key">Blood Group</span><span class="rd-val">{{ formSections.medical?.bloodGroup || '—' }}</span></div>
+      <div class="rd-item"><span class="rd-key">Needs Support</span><span class="rd-val">{{ formSections.medical?.requiresSpecialSupport ? 'Yes' : 'No' }}</span></div>
+      <div class="rd-item span-full"><span class="rd-key">Allergies</span><span class="rd-val">{{ formSections.medical?.allergies || 'None reported' }}</span></div>
+    </div>
+  </div>
+
+  <!-- Guardians – full width -->
+  <div class="review-card full-width" [class.complete]="isComplete(4)" (click)="editSection.emit(4)">
+    <div class="review-card__head">
+      <div class="review-card__icon" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      </div>
+      <div class="review-card__title">Guardians & Contacts</div>
+      <div class="review-card__status" [class.done]="isComplete(4)">
+        {{ isComplete(4) ? '✓ Complete' : 'Incomplete' }}
+      </div>
+      <button class="review-card__edit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </button>
+    </div>
+    <div class="review-data-grid four-col">
+      <div class="rd-item"><span class="rd-key">Guardian Name</span><span class="rd-val">{{ formSections.guardians?.primaryGuardianName || '—' }}</span></div>
+      <div class="rd-item"><span class="rd-key">Relationship</span><span class="rd-val">{{ formSections.guardians?.primaryGuardianRelationship || '—' }}</span></div>
+      <div class="rd-item"><span class="rd-key">Phone</span><span class="rd-val">{{ formSections.guardians?.primaryGuardianPhone || '—' }}</span></div>
+      <div class="rd-item"><span class="rd-key">Email</span><span class="rd-val">{{ formSections.guardians?.primaryGuardianEmail || '—' }}</span></div>
+      <div class="rd-item" *ngIf="formSections.guardians?.emergencyContactName"><span class="rd-key">Emergency</span><span class="rd-val">{{ formSections.guardians?.emergencyContactName }} · {{ formSections.guardians?.emergencyContactPhone }}</span></div>
+    </div>
+  </div>
+
+</div>

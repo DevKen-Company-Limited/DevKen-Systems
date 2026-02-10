@@ -1,0 +1,171 @@
+<!-- steps/student-personal-info/student-personal-info.component.html -->
+<div class="section-header">
+  <div class="section-icon-row">
+    <div class="section-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    </div>
+    <div>
+      <h2 class="section-title">Personal Information</h2>
+      <p class="section-subtitle">Enter the student's core personal details. Fields marked * are required.</p>
+    </div>
+  </div>
+</div>
+
+<form [formGroup]="form" novalidate>
+
+  <!-- Photo + Name Row -->
+  <div class="photo-name-row">
+    <!-- Avatar uploader -->
+    <div class="avatar-block">
+      <div class="avatar-preview" [style.backgroundImage]="photoPreview ? 'url(' + photoPreview + ')' : null"
+           [class.has-photo]="photoPreview">
+        <ng-container *ngIf="!photoPreview">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span>No photo</span>
+        </ng-container>
+      </div>
+      <label class="avatar-upload-btn" for="photoInput">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Upload Photo
+      </label>
+      <input id="photoInput" type="file" accept="image/*" hidden (change)="onPhotoSelected($event)">
+      <button *ngIf="photoPreview" class="avatar-remove" type="button" (click)="removePhoto()">Remove</button>
+      <p class="form-hint">JPG, PNG · Max 2 MB</p>
+    </div>
+
+    <!-- Name fields -->
+    <div class="form-grid cols-2 name-fields">
+      <div class="form-group">
+        <label class="form-label">First Name <span class="required">*</span></label>
+        <input class="form-input" formControlName="firstName" placeholder="e.g. Amara"
+          [class.error]="isInvalid('firstName')">
+        <span class="field-error" *ngIf="isInvalid('firstName')">First name is required</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Last Name <span class="required">*</span></label>
+        <input class="form-input" formControlName="lastName" placeholder="e.g. Wanjiku"
+          [class.error]="isInvalid('lastName')">
+        <span class="field-error" *ngIf="isInvalid('lastName')">Last name is required</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Middle Name</label>
+        <input class="form-input" formControlName="middleName" placeholder="Optional">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Gender <span class="required">*</span></label>
+        <select class="form-select" formControlName="gender" [class.error]="isInvalid('gender')">
+          <option value="">Select gender</option>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+          <option value="Other">Other / Prefer not to say</option>
+        </select>
+        <span class="field-error" *ngIf="isInvalid('gender')">Please select a gender</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ID Numbers -->
+  <div class="subsection">
+    <h3 class="subsection-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      Identification Numbers
+    </h3>
+    <div class="form-grid cols-3">
+      <div class="form-group">
+        <label class="form-label">Admission Number <span class="required">*</span></label>
+        <input class="form-input" formControlName="admissionNumber" placeholder="e.g. ADM/2024/001"
+          [class.error]="isInvalid('admissionNumber')">
+        <span class="field-error" *ngIf="isInvalid('admissionNumber')">Admission number is required</span>
+        <span class="form-hint">Must be unique within the school</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">NEMIS Number</label>
+        <input class="form-input" formControlName="nemisNumber" placeholder="e.g. 12345678">
+        <span class="form-hint">National Education Management Information System</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Birth Certificate No.</label>
+        <input class="form-input" formControlName="birthCertificateNumber" placeholder="e.g. BC/NBI/0000001">
+      </div>
+    </div>
+  </div>
+
+  <!-- Personal Details -->
+  <div class="subsection">
+    <h3 class="subsection-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Personal Details
+    </h3>
+    <div class="form-grid cols-3">
+      <div class="form-group">
+        <label class="form-label">Date of Birth <span class="required">*</span></label>
+        <input class="form-input" type="date" formControlName="dateOfBirth"
+          [class.error]="isInvalid('dateOfBirth')">
+        <span class="field-error" *ngIf="isInvalid('dateOfBirth')">Date of birth is required</span>
+        <span class="form-hint" *ngIf="form.get('dateOfBirth')?.value">Age: {{ calculateAge(form.get('dateOfBirth')?.value) }}</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Religion</label>
+        <select class="form-select" formControlName="religion">
+          <option value="">Select religion</option>
+          <option>Christianity</option>
+          <option>Islam</option>
+          <option>Hinduism</option>
+          <option>Other</option>
+          <option>None / Not specified</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Nationality</label>
+        <input class="form-input" formControlName="nationality" placeholder="Kenyan">
+      </div>
+    </div>
+  </div>
+
+  <!-- Admission Details -->
+  <div class="subsection">
+    <h3 class="subsection-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Admission Details
+    </h3>
+    <div class="form-grid cols-2">
+      <div class="form-group">
+        <label class="form-label">Date of Admission <span class="required">*</span></label>
+        <input class="form-input" type="date" formControlName="dateOfAdmission"
+          [class.error]="isInvalid('dateOfAdmission')">
+        <span class="field-error" *ngIf="isInvalid('dateOfAdmission')">Date of admission is required</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Photo URL</label>
+        <input class="form-input" formControlName="photoUrl" placeholder="https://...">
+        <span class="form-hint">Or use the photo uploader above</span>
+      </div>
+    </div>
+
+    <div class="form-group span-full" style="margin-top:16px">
+      <label class="form-label">Notes</label>
+      <textarea class="form-textarea" formControlName="notes" rows="3"
+        placeholder="Any additional notes about this student…"></textarea>
+    </div>
+  </div>
+
+  <!-- Active status -->
+  <div class="subsection" style="margin-top:16px">
+    <label class="toggle-row" for="isActiveToggle">
+      <input class="toggle" id="isActiveToggle" type="checkbox" formControlName="isActive">
+      <div>
+        <div class="toggle-label">Student is Active</div>
+        <div class="toggle-sub">Inactive students are hidden from most views</div>
+      </div>
+    </label>
+  </div>
+
+</form>
