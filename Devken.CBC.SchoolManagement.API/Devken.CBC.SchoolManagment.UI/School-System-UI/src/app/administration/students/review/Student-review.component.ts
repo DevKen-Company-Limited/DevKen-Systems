@@ -1,15 +1,20 @@
-// steps/student-review/student-review.component.ts
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MatCardModule } from '@angular/material/card';
+import { MatIconModule } from '@angular/material/icon';
+import { FuseAlertComponent } from '@fuse/components/alert';
 import { EnrollmentStep } from '../types/EnrollmentStep';
-
 
 @Component({
   selector: 'app-student-review',
   standalone: true,
-  imports: [CommonModule],
+  imports: [
+    CommonModule,
+    MatCardModule,
+    MatIconModule,
+    FuseAlertComponent,
+  ],
   templateUrl: './student-review.component.html',
-  styleUrls: ['../../../shared/scss/shared-step.scss', './student-review.component.scss'],
 })
 export class StudentReviewComponent {
   @Input() formSections: Record<string, any> = {};
@@ -30,11 +35,11 @@ export class StudentReviewComponent {
   completedCount(): number {
     return Array.from(this.completedSteps).filter(i => i < this.steps.length - 1).length;
   }
-  formatDate(value: any): string {
-  if (!value) return '—';
-  return new Date(value).toLocaleDateString();
-}
 
+  formatDate(value: any): string {
+    if (!value) return '—';
+    return new Date(value).toLocaleDateString();
+  }
 
   allComplete(): boolean {
     return this.completedCount() === this.steps.length - 1;

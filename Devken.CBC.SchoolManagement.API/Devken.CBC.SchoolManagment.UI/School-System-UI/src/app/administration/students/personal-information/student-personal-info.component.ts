@@ -4,14 +4,30 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Observable, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatCardModule } from '@angular/material/card';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { EnumService, EnumItemDto } from 'app/core/DevKenService/common/enum.service';
 
 @Component({
   selector: 'app-student-personal-info',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
-  templateUrl: './Student personal info.component.html',
-  styleUrls: ['../../../shared/scss/shared-step.scss', './Student personal info.component.scss'],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    MatButtonModule,
+    MatIconModule,
+    MatCardModule,
+    MatSlideToggleModule,
+  ],
+  templateUrl: './student-personal-info.component.html',
 })
 export class StudentPersonalInfoComponent implements OnInit, OnChanges {
   @Input() formData: any = {};
@@ -87,7 +103,7 @@ export class StudentPersonalInfoComponent implements OnInit, OnChanges {
     return {
       ...value,
       nemisNumber: value.nemisNumber !== null && value.nemisNumber !== '' ? Number(value.nemisNumber) : null,
-      gender: Number(value.gender),           // ensure numeric value
+      gender: Number(value.gender),
       studentStatus: Number(value.studentStatus),
       cbcLevel: Number(value.cbcLevel),
     };
@@ -121,31 +137,6 @@ export class StudentPersonalInfoComponent implements OnInit, OnChanges {
   isInvalid(field: string): boolean {
     const control = this.form.get(field);
     return !!(control && control.invalid && (control.dirty || control.touched));
-  }
-
-  getErrorMessage(field: string): string {
-    const control = this.form.get(field);
-    if (!control || !control.errors) return '';
-    if (control.errors['required']) return `${this.getFieldLabel(field)} is required`;
-    if (control.errors['minlength']) {
-      const minLength = control.errors['minlength'].requiredLength;
-      return `Minimum ${minLength} characters required`;
-    }
-    return 'Invalid value';
-  }
-
-  private getFieldLabel(field: string): string {
-    const labels: Record<string, string> = {
-      firstName: 'First name',
-      lastName: 'Last name',
-      gender: 'Gender',
-      admissionNumber: 'Admission number',
-      dateOfBirth: 'Date of birth',
-      dateOfAdmission: 'Date of admission',
-      studentStatus: 'Student status',
-      cbcLevel: 'CBC level',
-    };
-    return labels[field] || field;
   }
 
   /** Calculate age from dateOfBirth */
@@ -192,8 +183,6 @@ export class StudentPersonalInfoComponent implements OnInit, OnChanges {
   removePhoto(): void {
     this.photoPreview = null;
     this.form.patchValue({ photoUrl: '' });
-    const input = document.getElementById('photoInput') as HTMLInputElement;
-    if (input) input.value = '';
   }
 
   private showPhotoError(message: string): void {
@@ -203,9 +192,5 @@ export class StudentPersonalInfoComponent implements OnInit, OnChanges {
 
   private today(): string {
     return new Date().toISOString().split('T')[0];
-  }
-
-  get isMobileView(): boolean {
-    return window.innerWidth < 768;
   }
 }

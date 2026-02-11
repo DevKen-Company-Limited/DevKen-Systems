@@ -1,22 +1,38 @@
-// steps/student-medical/student-medical.component.ts
-import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatIconModule } from '@angular/material/icon';
+import { MatCardModule } from '@angular/material/card';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { FuseAlertComponent } from '@fuse/components/alert';
 
 @Component({
   selector: 'app-student-medical',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    MatIconModule,
+    MatCardModule,
+    MatSlideToggleModule,
+    FuseAlertComponent,
+  ],
   templateUrl: './student-medical.component.html',
-  styleUrls: ['../../../shared/scss/shared-step.scss'],
 })
 export class StudentMedicalComponent implements OnInit, OnChanges {
   @Input() formData: any = {};
   @Output() formChanged = new EventEmitter<any>();
   @Output() formValid   = new EventEmitter<boolean>();
 
+  private fb = inject(FormBuilder);
+
   form!: FormGroup;
-  constructor(private fb: FormBuilder) {}
 
   ngOnInit(): void {
     this.form = this.fb.group({

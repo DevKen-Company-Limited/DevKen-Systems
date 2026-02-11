@@ -1,17 +1,29 @@
 import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges, DestroyRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { EnumService, EnumItemDto } from 'app/core/DevKenService/common/enum.service';
-import { Observable, of } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Observable, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatIconModule } from '@angular/material/icon';
+import { MatCardModule } from '@angular/material/card';
+import { EnumService, EnumItemDto } from 'app/core/DevKenService/common/enum.service';
 
 @Component({
   selector: 'app-student-academic',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
-  templateUrl: './Student-academic.component.html',
-  styleUrls: ['../../../shared/scss/shared-step.scss', './Student-academic.component.scss'],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    MatIconModule,
+    MatCardModule,
+  ],
+  templateUrl: './student-academic.component.html',
 })
 export class StudentAcademicComponent implements OnInit, OnChanges {
   @Input() formData: any = {};
@@ -59,7 +71,12 @@ export class StudentAcademicComponent implements OnInit, OnChanges {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(value => {
         const numericLevel = this.mapLevelToNumber(value.currentLevel);
-        this.formChanged.emit({ ...value, currentLevel: numericLevel });
+        const numericStatus = Number(value.status);
+        this.formChanged.emit({ 
+          ...value, 
+          currentLevel: numericLevel,
+          status: numericStatus 
+        });
         this.formValid.emit(this.form.valid);
       });
   }
@@ -89,7 +106,6 @@ export class StudentAcademicComponent implements OnInit, OnChanges {
 
   private mapLevelToNumber(level: string | number): number | null {
     if (!level) return null;
-
     if (typeof level === 'number') return level;
 
     // Try to find the enum with matching id/name

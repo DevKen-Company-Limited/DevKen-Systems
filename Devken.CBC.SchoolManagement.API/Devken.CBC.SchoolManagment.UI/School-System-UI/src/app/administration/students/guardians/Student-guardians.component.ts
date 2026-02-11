@@ -1,24 +1,37 @@
-// steps/student-guardians/student-guardians.component.ts
-import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatCardModule } from '@angular/material/card';
 
 @Component({
   selector: 'app-student-guardians',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    MatButtonModule,
+    MatIconModule,
+    MatCardModule,
+  ],
   templateUrl: './student-guardians.component.html',
-  styleUrls: ['../../../shared/scss/shared-step.scss', './student-guardians.component.scss'],
 })
 export class StudentGuardiansComponent implements OnInit, OnChanges {
   @Input() formData: any = {};
   @Output() formChanged = new EventEmitter<any>();
   @Output() formValid   = new EventEmitter<boolean>();
 
+  private fb = inject(FormBuilder);
+
   form!: FormGroup;
   showSecondary = false;
-
-  constructor(private fb: FormBuilder) {}
 
   ngOnInit(): void {
     this.form = this.fb.group({

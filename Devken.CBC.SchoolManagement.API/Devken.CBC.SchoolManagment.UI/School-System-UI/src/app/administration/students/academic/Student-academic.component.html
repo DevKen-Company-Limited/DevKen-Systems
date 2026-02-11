@@ -1,98 +1,109 @@
-<!-- steps/student-academic/student-academic.component.html -->
-<div class="section-header">
-  <div class="section-icon-row">
-    <div class="section-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 14l9-5-9-5-9 5 9 5z"/><path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/></svg>
+<!-- Student Academic Component - Fuse/Material + Tailwind -->
+<div class="max-w-6xl">
+
+  <!-- Section Header -->
+  <div class="flex items-start gap-4 mb-8">
+    <div class="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 shadow-lg">
+      <mat-icon class="text-white !w-7 !h-7" svgIcon="heroicons_outline:academic-cap"></mat-icon>
     </div>
-    <div>
-      <h2 class="section-title">Academic Details</h2>
-      <p class="section-subtitle">Assign the student to a class, level, and academic year.</p>
+    <div class="flex-1">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Academic Details</h2>
+      <p class="text-gray-600 dark:text-gray-400">Assign the student to a class, level, and academic year.</p>
     </div>
   </div>
+
+  <form [formGroup]="form" novalidate class="space-y-6">
+
+    <!-- Class Placement -->
+    <mat-card class="shadow-md">
+      <mat-card-header class="!pb-2">
+        <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+          <mat-icon svgIcon="heroicons_outline:user-group" class="text-orange-600"></mat-icon>
+          Class Placement
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>CBC Level *</mat-label>
+            <mat-select formControlName="currentLevel">
+              <mat-option value="">Select level</mat-option>
+              <mat-option *ngFor="let level of cbcLevels" [value]="level.value">
+                {{ level.name }}
+              </mat-option>
+            </mat-select>
+            <mat-icon matPrefix svgIcon="heroicons_outline:chart-bar" class="text-gray-400"></mat-icon>
+            <mat-error>Level is required</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Class / Stream</mat-label>
+            <mat-select formControlName="currentClassId">
+              <mat-option value="">Select class</mat-option>
+              <mat-option *ngFor="let c of classes" [value]="c.id">{{ c.name }}</mat-option>
+            </mat-select>
+            <mat-icon matPrefix svgIcon="heroicons_outline:user-group" class="text-gray-400"></mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Academic Year</mat-label>
+            <mat-select formControlName="currentAcademicYearId">
+              <mat-option value="">Select year</mat-option>
+              <mat-option *ngFor="let y of academicYears" [value]="y.id">{{ y.name }}</mat-option>
+            </mat-select>
+            <mat-icon matPrefix svgIcon="heroicons_outline:calendar" class="text-gray-400"></mat-icon>
+          </mat-form-field>
+
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Enrolment Status -->
+    <mat-card class="shadow-md">
+      <mat-card-header class="!pb-2">
+        <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+          <mat-icon svgIcon="heroicons_outline:clipboard-document-check" class="text-orange-600"></mat-icon>
+          Enrolment Status
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Status</mat-label>
+            <mat-select formControlName="status">
+              <mat-option *ngFor="let status of studentStatuses$ | async" [value]="status.value">
+                {{ status.name }}
+              </mat-option>
+            </mat-select>
+            <mat-icon matPrefix svgIcon="heroicons_outline:check-badge" class="text-gray-400"></mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Previous School</mat-label>
+            <input matInput formControlName="previousSchool" placeholder="School name if transferred">
+            <mat-icon matPrefix svgIcon="heroicons_outline:building-library" class="text-gray-400"></mat-icon>
+          </mat-form-field>
+
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Level Guide -->
+    <div class="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950 dark:to-purple-950 rounded-xl p-6 border border-indigo-200 dark:border-indigo-800">
+      <div class="text-sm font-semibold text-indigo-900 dark:text-indigo-100 mb-3">CBC Level Guide</div>
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="px-3 py-1.5 bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-200 rounded-lg text-sm font-medium">PP1 / PP2</span>
+        <mat-icon class="text-gray-400 !w-5 !h-5" svgIcon="heroicons_outline:arrow-right"></mat-icon>
+        <span class="px-3 py-1.5 bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200 rounded-lg text-sm font-medium">Grades 1–3</span>
+        <mat-icon class="text-gray-400 !w-5 !h-5" svgIcon="heroicons_outline:arrow-right"></mat-icon>
+        <span class="px-3 py-1.5 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200 rounded-lg text-sm font-medium">Grades 4–6</span>
+        <mat-icon class="text-gray-400 !w-5 !h-5" svgIcon="heroicons_outline:arrow-right"></mat-icon>
+        <span class="px-3 py-1.5 bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200 rounded-lg text-sm font-medium">JSS 7–9</span>
+      </div>
+    </div>
+
+  </form>
+
 </div>
-
-<form [formGroup]="form" novalidate>
-
-  <div class="subsection">
-    <h3 class="subsection-title">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-      Class Placement
-    </h3>
-    <div class="form-grid cols-3">
-
-      <div class="form-group">
-        <label class="form-label">CBC Level <span class="required">*</span></label>
-        <select class="form-select" formControlName="currentLevel" [class.error]="isInvalid('currentLevel')">
-          <option value="">Select level</option>
-          <option value="PrePrimary1">Pre-Primary 1</option>
-          <option value="PrePrimary2">Pre-Primary 2</option>
-          <option value="Grade1">Grade 1</option>
-          <option value="Grade2">Grade 2</option>
-          <option value="Grade3">Grade 3</option>
-          <option value="Grade4">Grade 4</option>
-          <option value="Grade5">Grade 5</option>
-          <option value="Grade6">Grade 6</option>
-          <option value="JuniorSecondary1">JSS Grade 7</option>
-          <option value="JuniorSecondary2">JSS Grade 8</option>
-          <option value="JuniorSecondary3">JSS Grade 9</option>
-        </select>
-        <span class="field-error" *ngIf="isInvalid('currentLevel')">Level is required</span>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Class / Stream</label>
-        <select class="form-select" formControlName="currentClassId">
-          <option value="">Select class</option>
-          <option *ngFor="let c of classes" [value]="c.id">{{ c.name }}</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Academic Year</label>
-        <select class="form-select" formControlName="currentAcademicYearId">
-          <option value="">Select year</option>
-          <option *ngFor="let y of academicYears" [value]="y.id">{{ y.name }}</option>
-        </select>
-      </div>
-
-    </div>
-  </div>
-
-  <div class="subsection">
-    <h3 class="subsection-title">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      Enrolment Status
-    </h3>
-    <div class="form-grid cols-2">
-      <div class="form-group">
-        <label class="form-label">Status</label>
-        <select class="form-select" formControlName="status">
-          <option value="Active">Active</option>
-          <option value="Inactive">Inactive</option>
-          <option value="Transferred">Transferred</option>
-          <option value="Graduated">Graduated</option>
-          <option value="Withdrawn">Withdrawn</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Previous School</label>
-        <input class="form-input" formControlName="previousSchool" placeholder="School name if transferred">
-      </div>
-    </div>
-  </div>
-
-  <!-- Level quick reference card -->
-  <div class="level-guide">
-    <div class="level-guide__title">CBC Level Guide</div>
-    <div class="level-chips">
-      <span class="lvl-chip pp">PP1 / PP2</span>
-      <span class="lvl-arrow">→</span>
-      <span class="lvl-chip lower">Grades 1–3</span>
-      <span class="lvl-arrow">→</span>
-      <span class="lvl-chip upper">Grades 4–6</span>
-      <span class="lvl-arrow">→</span>
-      <span class="lvl-chip jss">JSS 7–9</span>
-    </div>
-  </div>
-
-</form>

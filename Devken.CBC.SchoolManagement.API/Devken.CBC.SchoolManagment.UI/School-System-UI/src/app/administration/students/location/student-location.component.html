@@ -1,0 +1,80 @@
+<!-- Student Location Component - Fuse/Material + Tailwind -->
+<div class="max-w-6xl">
+
+  <!-- Section Header -->
+  <div class="flex items-start gap-4 mb-8">
+    <div class="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 shadow-lg">
+      <mat-icon class="text-white !w-7 !h-7" svgIcon="heroicons_outline:map-pin"></mat-icon>
+    </div>
+    <div class="flex-1">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Location & Background</h2>
+      <p class="text-gray-600 dark:text-gray-400">Student's home location, county details and place of birth.</p>
+    </div>
+  </div>
+
+  <form [formGroup]="form" novalidate class="space-y-6">
+
+    <!-- Info Card -->
+    <fuse-alert 
+      type="info" 
+      appearance="soft"
+      [showIcon]="true">
+      All location fields are optional but recommended for reporting and administrative purposes.
+    </fuse-alert>
+
+    <!-- Birth & Origin -->
+    <mat-card class="shadow-md">
+      <mat-card-header class="!pb-2">
+        <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+          <mat-icon svgIcon="heroicons_outline:globe-alt" class="text-cyan-600"></mat-icon>
+          Birth & Origin
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Place of Birth</mat-label>
+            <input matInput formControlName="placeOfBirth" placeholder="e.g. Nairobi">
+            <mat-icon matPrefix svgIcon="heroicons_outline:map-pin" class="text-gray-400"></mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>County</mat-label>
+            <mat-select formControlName="county">
+              <mat-option value="">Select county</mat-option>
+              <mat-option *ngFor="let c of counties" [value]="c">{{ c }}</mat-option>
+            </mat-select>
+            <mat-icon matPrefix svgIcon="heroicons_outline:building-office-2" class="text-gray-400"></mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Sub-County</mat-label>
+            <input matInput formControlName="subCounty" placeholder="e.g. Westlands">
+            <mat-icon matPrefix svgIcon="heroicons_outline:map" class="text-gray-400"></mat-icon>
+          </mat-form-field>
+
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Home Address -->
+    <mat-card class="shadow-md">
+      <mat-card-header class="!pb-2">
+        <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+          <mat-icon svgIcon="heroicons_outline:home" class="text-cyan-600"></mat-icon>
+          Home Address
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>Full Home Address</mat-label>
+          <textarea matInput formControlName="homeAddress" rows="3" placeholder="Street address, area, postal code…"></textarea>
+          <mat-icon matPrefix svgIcon="heroicons_outline:map-pin" class="text-gray-400"></mat-icon>
+        </mat-form-field>
+      </mat-card-content>
+    </mat-card>
+
+  </form>
+
+</div>

@@ -1,124 +1,177 @@
-<!-- steps/student-guardians/student-guardians.component.html -->
-<div class="section-header">
-  <div class="section-icon-row">
-    <div class="section-icon" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+<!-- Student Guardians Component - Fuse/Material + Tailwind -->
+<div class="max-w-6xl">
+
+  <!-- Section Header -->
+  <div class="flex items-start gap-4 mb-8">
+    <div class="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 shadow-lg">
+      <mat-icon class="text-white !w-7 !h-7" svgIcon="heroicons_outline:users"></mat-icon>
     </div>
-    <div>
-      <h2 class="section-title">Guardian & Emergency Contacts</h2>
-      <p class="section-subtitle">Primary guardian is required. Secondary and emergency contacts are optional.</p>
+    <div class="flex-1">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Guardian & Emergency Contacts</h2>
+      <p class="text-gray-600 dark:text-gray-400">Primary guardian is required. Secondary and emergency contacts are optional.</p>
     </div>
   </div>
+
+  <form [formGroup]="form" novalidate class="space-y-6">
+
+    <!-- Primary Guardian -->
+    <mat-card class="shadow-md">
+      <mat-card-header class="!pb-2">
+        <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+          <mat-icon svgIcon="heroicons_outline:user-circle" class="text-purple-600"></mat-icon>
+          Primary Guardian
+          <span class="ml-auto text-xs font-medium px-2 py-1 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded">Required</span>
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Full Name *</mat-label>
+            <input matInput formControlName="primaryGuardianName" placeholder="e.g. John Mwangi">
+            <mat-icon matPrefix svgIcon="heroicons_outline:user" class="text-gray-400"></mat-icon>
+            <mat-error>Guardian name is required</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Relationship *</mat-label>
+            <mat-select formControlName="primaryGuardianRelationship">
+              <mat-option value="">Select relationship</mat-option>
+              <mat-option value="Father">Father</mat-option>
+              <mat-option value="Mother">Mother</mat-option>
+              <mat-option value="Guardian">Guardian</mat-option>
+              <mat-option value="Uncle">Uncle</mat-option>
+              <mat-option value="Aunt">Aunt</mat-option>
+              <mat-option value="Grandparent">Grandparent</mat-option>
+              <mat-option value="Other">Other</mat-option>
+            </mat-select>
+            <mat-icon matPrefix svgIcon="heroicons_outline:heart" class="text-gray-400"></mat-icon>
+            <mat-error>Relationship is required</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Phone Number *</mat-label>
+            <input matInput formControlName="primaryGuardianPhone" placeholder="+254 7XX XXX XXX">
+            <mat-icon matPrefix svgIcon="heroicons_outline:phone" class="text-gray-400"></mat-icon>
+            <mat-error>Phone number is required</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Email Address</mat-label>
+            <input matInput type="email" formControlName="primaryGuardianEmail" placeholder="email@example.com">
+            <mat-icon matPrefix svgIcon="heroicons_outline:envelope" class="text-gray-400"></mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Occupation</mat-label>
+            <input matInput formControlName="primaryGuardianOccupation" placeholder="e.g. Teacher, Farmer">
+            <mat-icon matPrefix svgIcon="heroicons_outline:briefcase" class="text-gray-400"></mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Address</mat-label>
+            <input matInput formControlName="primaryGuardianAddress" placeholder="Residential address">
+            <mat-icon matPrefix svgIcon="heroicons_outline:map-pin" class="text-gray-400"></mat-icon>
+          </mat-form-field>
+
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Secondary Guardian (Expandable) -->
+    <mat-card class="shadow-md">
+      <mat-card-header class="!pb-0">
+        <button 
+          mat-button 
+          type="button"
+          class="!w-full !justify-start !text-left !h-auto !py-4"
+          (click)="showSecondary = !showSecondary">
+          <div class="flex items-center gap-2 w-full">
+            <mat-icon [svgIcon]="showSecondary ? 'heroicons_outline:minus' : 'heroicons_outline:plus'" class="text-purple-600"></mat-icon>
+            <span class="font-semibold text-gray-900 dark:text-white">{{ showSecondary ? 'Hide' : 'Add' }} Secondary Guardian (Optional)</span>
+          </div>
+        </button>
+      </mat-card-header>
+
+      <mat-card-content *ngIf="showSecondary" class="!pt-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Full Name</mat-label>
+            <input matInput formControlName="secondaryGuardianName" placeholder="Full name">
+            <mat-icon matPrefix svgIcon="heroicons_outline:user" class="text-gray-400"></mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Relationship</mat-label>
+            <mat-select formControlName="secondaryGuardianRelationship">
+              <mat-option value="">Select relationship</mat-option>
+              <mat-option value="Father">Father</mat-option>
+              <mat-option value="Mother">Mother</mat-option>
+              <mat-option value="Guardian">Guardian</mat-option>
+              <mat-option value="Uncle">Uncle</mat-option>
+              <mat-option value="Aunt">Aunt</mat-option>
+              <mat-option value="Grandparent">Grandparent</mat-option>
+              <mat-option value="Other">Other</mat-option>
+            </mat-select>
+            <mat-icon matPrefix svgIcon="heroicons_outline:heart" class="text-gray-400"></mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Phone Number</mat-label>
+            <input matInput formControlName="secondaryGuardianPhone" placeholder="+254 7XX XXX XXX">
+            <mat-icon matPrefix svgIcon="heroicons_outline:phone" class="text-gray-400"></mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Email</mat-label>
+            <input matInput type="email" formControlName="secondaryGuardianEmail" placeholder="email@example.com">
+            <mat-icon matPrefix svgIcon="heroicons_outline:envelope" class="text-gray-400"></mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Occupation</mat-label>
+            <input matInput formControlName="secondaryGuardianOccupation" placeholder="e.g. Engineer">
+            <mat-icon matPrefix svgIcon="heroicons_outline:briefcase" class="text-gray-400"></mat-icon>
+          </mat-form-field>
+
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Emergency Contact -->
+    <mat-card class="shadow-md">
+      <mat-card-header class="!pb-2">
+        <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+          <mat-icon svgIcon="heroicons_outline:phone" class="text-purple-600"></mat-icon>
+          Emergency Contact
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Name</mat-label>
+            <input matInput formControlName="emergencyContactName" placeholder="Full name">
+            <mat-icon matPrefix svgIcon="heroicons_outline:user" class="text-gray-400"></mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Phone</mat-label>
+            <input matInput formControlName="emergencyContactPhone" placeholder="+254 7XX XXX XXX">
+            <mat-icon matPrefix svgIcon="heroicons_outline:phone" class="text-gray-400"></mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Relationship</mat-label>
+            <input matInput formControlName="emergencyContactRelationship" placeholder="e.g. Aunt">
+            <mat-icon matPrefix svgIcon="heroicons_outline:heart" class="text-gray-400"></mat-icon>
+          </mat-form-field>
+
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+  </form>
+
 </div>
-
-<form [formGroup]="form" novalidate>
-
-  <!-- Primary Guardian -->
-  <div class="subsection">
-    <h3 class="subsection-title">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      Primary Guardian <span class="required-badge">Required</span>
-    </h3>
-    <div class="form-grid cols-3">
-      <div class="form-group">
-        <label class="form-label">Full Name <span class="required">*</span></label>
-        <input class="form-input" formControlName="primaryGuardianName" placeholder="e.g. John Mwangi"
-          [class.error]="isInvalid('primaryGuardianName')">
-        <span class="field-error" *ngIf="isInvalid('primaryGuardianName')">Guardian name is required</span>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Relationship <span class="required">*</span></label>
-        <select class="form-select" formControlName="primaryGuardianRelationship"
-          [class.error]="isInvalid('primaryGuardianRelationship')">
-          <option value="">Select relationship</option>
-          <option>Father</option><option>Mother</option>
-          <option>Guardian</option><option>Uncle</option>
-          <option>Aunt</option><option>Grandparent</option><option>Other</option>
-        </select>
-        <span class="field-error" *ngIf="isInvalid('primaryGuardianRelationship')">Relationship is required</span>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Phone Number <span class="required">*</span></label>
-        <input class="form-input" formControlName="primaryGuardianPhone" placeholder="+254 7XX XXX XXX"
-          [class.error]="isInvalid('primaryGuardianPhone')">
-        <span class="field-error" *ngIf="isInvalid('primaryGuardianPhone')">Phone number is required</span>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Email Address</label>
-        <input class="form-input" type="email" formControlName="primaryGuardianEmail" placeholder="email@example.com">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Occupation</label>
-        <input class="form-input" formControlName="primaryGuardianOccupation" placeholder="e.g. Teacher, Farmer">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Address</label>
-        <input class="form-input" formControlName="primaryGuardianAddress" placeholder="Residential address">
-      </div>
-    </div>
-  </div>
-
-  <!-- Secondary Guardian (collapsible) -->
-  <div class="subsection">
-    <button type="button" class="expand-toggle" (click)="showSecondary = !showSecondary">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path *ngIf="!showSecondary" d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle *ngIf="!showSecondary" cx="9" cy="7" r="4"/>
-        <path *ngIf="!showSecondary" d="M23 21v-2a4 4 0 00-3-3.87"/><path *ngIf="!showSecondary" d="M16 3.13a4 4 0 010 7.75"/>
-        <line *ngIf="showSecondary" x1="5" y1="12" x2="19" y2="12"/>
-        <line *ngIf="!showSecondary" x1="12" y1="5" x2="12" y2="19"/><line *ngIf="!showSecondary" x1="5" y1="12" x2="19" y2="12"/>
-      </svg>
-      <span>{{ showSecondary ? 'Hide' : 'Add' }} Secondary Guardian (Optional)</span>
-    </button>
-
-    <div *ngIf="showSecondary" class="form-grid cols-3" style="margin-top:18px">
-      <div class="form-group">
-        <label class="form-label">Full Name</label>
-        <input class="form-input" formControlName="secondaryGuardianName" placeholder="Full name">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Relationship</label>
-        <select class="form-select" formControlName="secondaryGuardianRelationship">
-          <option value="">Select relationship</option>
-          <option>Father</option><option>Mother</option>
-          <option>Guardian</option><option>Uncle</option>
-          <option>Aunt</option><option>Grandparent</option><option>Other</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Phone Number</label>
-        <input class="form-input" formControlName="secondaryGuardianPhone" placeholder="+254 7XX XXX XXX">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Email</label>
-        <input class="form-input" type="email" formControlName="secondaryGuardianEmail" placeholder="email@example.com">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Occupation</label>
-        <input class="form-input" formControlName="secondaryGuardianOccupation" placeholder="e.g. Engineer">
-      </div>
-    </div>
-  </div>
-
-  <!-- Emergency Contact -->
-  <div class="subsection">
-    <h3 class="subsection-title">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.21 8.77a19.79 19.79 0 01-3.07-8.67A2 2 0 012.12 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 9.91a16 16 0 006.16 6.16l1.27-.46a2 2 0 012.11.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
-      Emergency Contact
-    </h3>
-    <div class="form-grid cols-3">
-      <div class="form-group">
-        <label class="form-label">Name</label>
-        <input class="form-input" formControlName="emergencyContactName" placeholder="Full name">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Phone</label>
-        <input class="form-input" formControlName="emergencyContactPhone" placeholder="+254 7XX XXX XXX">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Relationship</label>
-        <input class="form-input" formControlName="emergencyContactRelationship" placeholder="e.g. Aunt">
-      </div>
-    </div>
-  </div>
-
-</form>

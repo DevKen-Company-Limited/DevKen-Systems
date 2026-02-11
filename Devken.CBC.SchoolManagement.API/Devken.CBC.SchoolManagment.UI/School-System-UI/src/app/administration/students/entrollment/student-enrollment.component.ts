@@ -1,23 +1,29 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { trigger, transition, style, animate, query, group } from '@angular/animations';
 import { Subject } from 'rxjs';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { FuseAlertComponent } from '@fuse/components/alert';
 
-import { StudentMedicalComponent } from '../medical/Student-medical.component';
-import { StudentGuardiansComponent } from '../guardians/Student-guardians.component';
-import { StudentReviewComponent } from '../review/Student-review.component';
 import { StudentService } from 'app/core/DevKenService/administration/students/StudentService';
 import { EnrollmentStep } from '../types/EnrollmentStep';
-import { StudentPersonalInfoComponent } from '../personal-information/Student personal info.component';
-import { StudentLocationComponent } from '../location/Student location.component';
+import { StudentPersonalInfoComponent } from '../personal-information/student-personal-info.component';
+import { StudentLocationComponent } from '../location/student-location.component';
 import { StudentAcademicComponent } from '../academic/Student-academic.component';
+import { StudentGuardiansComponent } from '../guardians/Student-guardians.component';
+import { StudentMedicalComponent } from '../medical/Student-medical.component';
+import { StudentReviewComponent } from '../review/Student-review.component';
 
 @Component({
   selector: 'app-student-enrollment',
   standalone: true,
   imports: [
     CommonModule,
+    MatButtonModule,
+    MatIconModule,
+    FuseAlertComponent,
     StudentPersonalInfoComponent,
     StudentLocationComponent,
     StudentAcademicComponent,
@@ -26,7 +32,6 @@ import { StudentAcademicComponent } from '../academic/Student-academic.component
     StudentReviewComponent,
   ],
   templateUrl: './student-enrollment.component.html',
-  styleUrls: ['./student-enrollment.component.scss'],
   animations: [
     trigger('stepTransition', [
       transition(':increment', [
@@ -43,10 +48,6 @@ import { StudentAcademicComponent } from '../academic/Student-academic.component
           query(':enter', [animate('220ms 160ms ease-out', style({ opacity: 1, transform: 'translateX(0)' }))], { optional: true }),
         ]),
       ]),
-    ]),
-    trigger('fadeSlide', [
-      transition(':enter', [style({ opacity: 0, transform: 'translateY(-8px)' }), animate('200ms ease-out')]),
-      transition(':leave', [animate('150ms ease-in', style({ opacity: 0, transform: 'translateY(-8px)' }))]),
     ]),
   ],
 })
@@ -70,9 +71,36 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
 
   // Sidebar state
   isSidebarCollapsed = false;
+  showMobileSidebar = false;
+  isMobileView = false;
+
+  // ─── Responsive handling ─────────────────────────────────────────
+  @HostListener('window:resize', ['$event'])
+  onResize(event?: Event): void {
+    this.checkViewport();
+  }
+
+  private checkViewport(): void {
+    const width = window.innerWidth;
+    this.isMobileView = width < 1024; // lg breakpoint
+    
+    // Auto-collapse sidebar on tablet
+    if (width < 1280 && width >= 1024) { // xl breakpoint
+      this.isSidebarCollapsed = true;
+    }
+    
+    // Close mobile sidebar when resizing to desktop
+    if (!this.isMobileView) {
+      this.showMobileSidebar = false;
+    }
+  }
 
   toggleSidebar(): void {
-    this.isSidebarCollapsed = !this.isSidebarCollapsed;
+    if (this.isMobileView) {
+      this.showMobileSidebar = !this.showMobileSidebar;
+    } else {
+      this.isSidebarCollapsed = !this.isSidebarCollapsed;
+    }
   }
 
   // ─── Steps definition ─────────────────────────────────────────────
@@ -115,6 +143,7 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
     if (this.studentId) this.loadExistingStudent(this.studentId);
     this.loadLookups();
     this.loadDraft();
+    this.checkViewport();
   }
 
   ngOnDestroy(): void {
@@ -146,6 +175,7 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
       birthCertificateNumber: s.birthCertificateNumber, dateOfBirth: s.dateOfBirth,
       gender: s.gender, religion: s.religion, nationality: s.nationality,
       photoUrl: s.photoUrl, dateOfAdmission: s.dateOfAdmission,
+      studentStatus: s.studentStatus, cbcLevel: s.cbcLevel,
     };
     this.formSections.location = {
       placeOfBirth: s.placeOfBirth, county: s.county,
@@ -215,7 +245,13 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
 
   // ─── Navigation ───────────────────────────────────────────────────
   navigateToStep(index: number): void {
-    if (this.canNavigateTo(index)) this.currentStep = index;
+    if (this.canNavigateTo(index)) {
+      this.currentStep = index;
+      // Close mobile sidebar after navigation
+      if (this.isMobileView) {
+        this.showMobileSidebar = false;
+      }
+    }
   }
 
   prevStep(): void {
@@ -295,7 +331,7 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
   }
 
   getRingOffset(): number {
-    const circumference = 2 * Math.PI * 34; // r=34
+    const circumference = 2 * Math.PI * 56; // r=56
     const pct = this.completedSteps.size / (this.steps.length - 1);
     return circumference * (1 - pct);
   }
