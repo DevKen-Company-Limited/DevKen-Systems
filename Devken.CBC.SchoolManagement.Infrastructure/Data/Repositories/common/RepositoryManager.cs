@@ -7,6 +7,7 @@ using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Paym
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Tenant;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academic;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academics;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Identity;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Payments;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Tenant;

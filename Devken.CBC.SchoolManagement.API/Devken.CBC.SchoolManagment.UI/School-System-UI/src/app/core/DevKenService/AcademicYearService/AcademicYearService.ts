@@ -2,8 +2,9 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { API_BASE_URL } from 'app/app.config';
 import { Observable } from 'rxjs';
-import { AcademicYearDto, CreateAcademicYearRequest, UpdateAcademicYearRequest } from 'app/AcademicYear/Types/AcademicYear';
+
 import { ApiResponse } from '../Types/roles';
+import { AcademicYearDto, CreateAcademicYearRequest, UpdateAcademicYearRequest } from 'app/Academics/AcademicYear/Types/AcademicYear';
 
 @Injectable({
   providedIn: 'root'
