@@ -118,10 +118,12 @@
   </div>
 </ng-template>
 
-<!-- Designation Cell Template -->
+<!-- Designation Cell Template - Updated to use helper method -->
 <ng-template #designationCell let-row>
   <div>
-    <span class="text-sm text-gray-700 dark:text-gray-300">{{ row.designation || '—' }}</span>
+    <span class="text-sm text-gray-700 dark:text-gray-300">
+      {{ getDesignationName(row.designation) }}
+    </span>
     <div *ngIf="row.isClassTeacher" class="mt-0.5">
       <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300">
         <mat-icon class="icon-size-3">class</mat-icon> Class Teacher
@@ -130,9 +132,11 @@
   </div>
 </ng-template>
 
-<!-- Employment Cell Template -->
+<!-- Employment Cell Template - Updated to use helper method -->
 <ng-template #employmentCell let-row>
-  <span class="text-sm text-gray-700 dark:text-gray-300">{{ row.employmentType || '—' }}</span>
+  <span class="text-sm text-gray-700 dark:text-gray-300">
+    {{ getEmploymentTypeName(row.employmentType) }}
+  </span>
 </ng-template>
 
 <!-- Status Cell Template -->

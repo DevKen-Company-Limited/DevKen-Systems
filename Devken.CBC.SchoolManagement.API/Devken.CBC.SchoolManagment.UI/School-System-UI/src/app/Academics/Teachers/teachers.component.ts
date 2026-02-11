@@ -10,11 +10,11 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { FuseConfirmationService } from '@fuse/services/confirmation';
-import { Observable, of, Subject } from 'rxjs';
-import { catchError, takeUntil } from 'rxjs/operators';
+import { Observable, of, Subject, forkJoin } from 'rxjs';
+import { catchError, takeUntil, map, finalize } from 'rxjs/operators';
 import { EnumItemDto, EnumService } from 'app/core/DevKenService/common/enum.service';
 import { TeacherService } from 'app/core/DevKenService/Teacher/TeacherService';
-import { TeacherDto } from 'app/core/DevKenService/Types/Teacher';
+import { TeacherDto, CreateTeacherRequest, UpdateTeacherRequest } from 'app/core/DevKenService/Types/Teacher';
 import { CreateEditTeacherDialogComponent, CreateEditTeacherDialogResult } from 'app/dialog-modals/teachers/create-edit-teacher-dialog.component';
 import { API_BASE_URL } from 'app/app.config';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
@@ -38,6 +38,13 @@ interface PhotoCacheEntry {
   blobUrl: string;
   isLoading: boolean;
   error: boolean;
+}
+
+interface EnumMaps {
+  employmentTypeValueToName: Map<number, string>;
+  employmentTypeNameToValue: Map<string, number>;
+  designationValueToName: Map<number, string>;
+  designationNameToValue: Map<string, number>;
 }
 
 @Component({
@@ -170,7 +177,7 @@ export class TeachersComponent implements OnInit, OnDestroy {
     },
     {
       id: 'toggleActive',
-      label: 'Toggle Active',
+      label: 'Deactivate',
       icon: 'block',
       color: 'amber',
       handler: (teacher) => this.toggleActive(teacher),
@@ -222,6 +229,7 @@ export class TeachersComponent implements OnInit, OnDestroy {
   // ── State ────────────────────────────────────────────────────────────────────
   allData: TeacherDto[] = [];
   isLoading = false;
+  isEnumLoading = true;
   photoCache: { [key: string]: PhotoCacheEntry } = {};
   private _photoTargetTeacher: TeacherDto | null = null;
 
@@ -237,8 +245,16 @@ export class TeachersComponent implements OnInit, OnDestroy {
   currentPage = 1;
   itemsPerPage = 10;
 
-  // ── Enum Observables ─────────────────────────────────────────────────────────
+  // ── Enum Observables and Maps ────────────────────────────────────────────────
   employmentTypes$!: Observable<EnumItemDto[]>;
+  designations$!: Observable<EnumItemDto[]>;
+  
+  private enumMaps: EnumMaps = {
+    employmentTypeValueToName: new Map<number, string>(),
+    employmentTypeNameToValue: new Map<string, number>(),
+    designationValueToName: new Map<number, string>(),
+    designationNameToValue: new Map<string, number>()
+  };
 
   // ── Computed Stats ───────────────────────────────────────────────────────────
   get total(): number { 
@@ -254,20 +270,37 @@ export class TeachersComponent implements OnInit, OnDestroy {
   }
   
   get permanentCount(): number { 
-    return this.allData.filter(t => t.employmentType === 'Permanent').length; 
+    // Get the numeric value for 'Permanent'
+    const permanentValue = this.enumMaps.employmentTypeNameToValue.get('Permanent');
+    return this.allData.filter(t => {
+      // Handle both string and number comparisons
+      if (permanentValue !== undefined) {
+        return Number(t.employmentType) === permanentValue;
+      }
+      return t.employmentType === 'Permanent';
+    }).length; 
   }
 
   // ── Filtered Data ─────────────────────────────────────────────────────────────
   get filteredData(): TeacherDto[] {
     return this.allData.filter(t => {
       const q = this._filterValues.search.toLowerCase();
+      
+      // Get employment type name for filtering
+      let employmentTypeName = t.employmentType;
+      // If employmentType is a number, convert to name
+      if (t.employmentType && !isNaN(Number(t.employmentType))) {
+        const value = Number(t.employmentType);
+        employmentTypeName = this.enumMaps.employmentTypeValueToName.get(value) || t.employmentType;
+      }
+      
       return (
-        (!q || t.fullName.toLowerCase().includes(q) || t.teacherNumber.toLowerCase().includes(q)) &&
+        (!q || t.fullName?.toLowerCase().includes(q) || t.teacherNumber?.toLowerCase().includes(q)) &&
         (this._filterValues.status === 'all' ||
           (this._filterValues.status === 'active' && t.isActive) ||
           (this._filterValues.status === 'inactive' && !t.isActive)) &&
         (this._filterValues.employmentType === 'all' ||
-          t.employmentType === this._filterValues.employmentType) &&
+          employmentTypeName === this._filterValues.employmentType) &&
         (this._filterValues.role === 'all' ||
           (this._filterValues.role === 'classTeacher' && t.isClassTeacher))
       );
@@ -289,9 +322,7 @@ export class TeachersComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.employmentTypes$ = this._enumService.getTeacherEmploymentTypes();
-    this.initializeFilterFields();
-    this.loadAll();
+    this.loadEnumsAndInit();
   }
 
   ngAfterViewInit(): void {
@@ -317,51 +348,151 @@ export class TeachersComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ── Initialize Filter Fields ─────────────────────────────────────────────────
-  private initializeFilterFields(): void {
-    this.employmentTypes$.pipe(takeUntil(this._unsubscribe)).subscribe(types => {
-      this.filterFields = [
-        {
-          id: 'search',
-          label: 'Search',
-          type: 'text',
-          placeholder: 'Name or teacher number...',
-          value: this._filterValues.search,
-        },
-        {
-          id: 'status',
-          label: 'Status',
-          type: 'select',
-          value: this._filterValues.status,
-          options: [
-            { label: 'All Statuses', value: 'all' },
-            { label: 'Active', value: 'active' },
-            { label: 'Inactive', value: 'inactive' },
-          ],
-        },
-        {
-          id: 'employmentType',
-          label: 'Employment Type',
-          type: 'select',
-          value: this._filterValues.employmentType,
-          options: [
-            { label: 'All Types', value: 'all' },
-            ...types.map(t => ({ label: t.name, value: t.name })),
-          ],
-        },
-        {
-          id: 'role',
-          label: 'Role',
-          type: 'select',
-          value: this._filterValues.role,
-          options: [
-            { label: 'All Roles', value: 'all' },
-            { label: 'Class Teachers', value: 'classTeacher' },
-            { label: 'Subject Teachers', value: 'subject' },
-          ],
-        },
-      ];
+  // ── Enum Loading and Mapping ─────────────────────────────────────────────────
+  private loadEnumsAndInit(): void {
+    this.isEnumLoading = true;
+    
+    // Load employment types
+    this.employmentTypes$ = this._enumService.getTeacherEmploymentTypes().pipe(
+      map(types => {
+        // Build value -> name and name -> value maps
+        types.forEach(item => {
+          if (item.value !== undefined && item.name) {
+            this.enumMaps.employmentTypeValueToName.set(item.value, item.name);
+            this.enumMaps.employmentTypeNameToValue.set(item.name, item.value);
+            this.enumMaps.employmentTypeNameToValue.set(item.name.toLowerCase(), item.value);
+          }
+        });
+        return types;
+      }),
+      takeUntil(this._unsubscribe)
+    );
+
+    // Load designations
+    this.designations$ = this._enumService.getTeacherDesignations().pipe(
+      map(designations => {
+        // Build value -> name and name -> value maps
+        designations.forEach(item => {
+          if (item.value !== undefined && item.name) {
+            this.enumMaps.designationValueToName.set(item.value, item.name);
+            this.enumMaps.designationNameToValue.set(item.name, item.value);
+            this.enumMaps.designationNameToValue.set(item.name.toLowerCase(), item.value);
+          }
+        });
+        return designations;
+      }),
+      takeUntil(this._unsubscribe)
+    );
+
+    // Wait for both enums to load
+    forkJoin({
+      employmentTypes: this.employmentTypes$,
+      designations: this.designations$
+    }).pipe(
+      takeUntil(this._unsubscribe),
+      finalize(() => {
+        this.isEnumLoading = false;
+      })
+    ).subscribe({
+      next: ({ employmentTypes }) => {
+        this.initializeFilterFields(employmentTypes);
+        this.loadAll();
+      },
+      error: (error) => {
+        console.error('Failed to load enums:', error);
+        this._showError('Failed to load configuration data');
+        this.isEnumLoading = false;
+        this.loadAll(); // Still try to load teachers
+      }
     });
+  }
+
+  // ── Initialize Filter Fields ─────────────────────────────────────────────────
+  private initializeFilterFields(types: EnumItemDto[]): void {
+    this.filterFields = [
+      {
+        id: 'search',
+        label: 'Search',
+        type: 'text',
+        placeholder: 'Name or teacher number...',
+        value: this._filterValues.search,
+      },
+      {
+        id: 'status',
+        label: 'Status',
+        type: 'select',
+        value: this._filterValues.status,
+        options: [
+          { label: 'All Statuses', value: 'all' },
+          { label: 'Active', value: 'active' },
+          { label: 'Inactive', value: 'inactive' },
+        ],
+      },
+      {
+        id: 'employmentType',
+        label: 'Employment Type',
+        type: 'select',
+        value: this._filterValues.employmentType,
+        options: [
+          { label: 'All Types', value: 'all' },
+          ...types.map(t => ({ label: t.name, value: t.name })),
+        ],
+      },
+      {
+        id: 'role',
+        label: 'Role',
+        type: 'select',
+        value: this._filterValues.role,
+        options: [
+          { label: 'All Roles', value: 'all' },
+          { label: 'Class Teachers', value: 'classTeacher' },
+          { label: 'Subject Teachers', value: 'subject' },
+        ],
+      },
+    ];
+  }
+
+  // ── Helper Methods for Display ───────────────────────────────────────────────
+  
+  /**
+   * Get display name for employment type from value
+   */
+  getEmploymentTypeName(value: string | number | undefined): string {
+    if (value === undefined || value === null) return '—';
+    
+    // If it's already a string name, return it
+    if (typeof value === 'string' && isNaN(Number(value))) {
+      return value;
+    }
+    
+    // Convert to number and lookup
+    const numValue = typeof value === 'string' ? parseInt(value, 10) : value;
+    return this.enumMaps.employmentTypeValueToName.get(numValue) || value.toString();
+  }
+
+  /**
+   * Get display name for designation from value
+   */
+  getDesignationName(value: string | number | undefined): string {
+    if (value === undefined || value === null) return '—';
+    
+    // If it's already a string name, return it
+    if (typeof value === 'string' && isNaN(Number(value))) {
+      return value;
+    }
+    
+    // Convert to number and lookup
+    const numValue = typeof value === 'string' ? parseInt(value, 10) : value;
+    return this.enumMaps.designationValueToName.get(numValue) || value.toString();
+  }
+
+  /**
+   * Get employment type value from name (for filtering)
+   */
+  getEmploymentTypeValue(name: string | undefined): number | null {
+    if (!name) return null;
+    return this.enumMaps.employmentTypeNameToValue.get(name) || 
+           this.enumMaps.employmentTypeNameToValue.get(name.toLowerCase()) || null;
   }
 
   // ── Filter Handlers ──────────────────────────────────────────────────────────
@@ -489,61 +620,160 @@ export class TeachersComponent implements OnInit, OnDestroy {
         next: res => {
           if (res.success) {
             this.allData = res.data;
+            this.tableHeader.subtitle = `${this.filteredData.length} teachers found`;
             setTimeout(() => this.preloadVisibleImages(), 0);
           }
           this.isLoading = false;
         },
-        error: () => {
+        error: (err) => {
+          console.error('Failed to load teachers:', err);
           this.isLoading = false;
-          this._showError('Failed to load teachers');
+          this._showError(err.error?.message || 'Failed to load teachers');
         }
       });
   }
 
-  // ── CRUD ──────────────────────────────────────────────────────────────────────
-  openCreate(): void {
-    const dialogRef = this._dialog.open(CreateEditTeacherDialogComponent, {
-      width: '720px',
-      maxHeight: '90vh',
-      disableClose: true,
-      data: { mode: 'create' },
-    });
+openCreate(): void {
+  const dialogRef = this._dialog.open(CreateEditTeacherDialogComponent, {
+    panelClass: 'teacher-dialog',
+    maxHeight: '95vh',
+    disableClose: true,
+    autoFocus: 'input',
+    data: { mode: 'create' },
+  });
 
-    dialogRef.afterClosed().pipe(takeUntil(this._unsubscribe)).subscribe(result => {
-      if (result) {
-        this.loadAll();
-      }
-    });
-  }
+  dialogRef.afterClosed()
+    .pipe(takeUntil(this._unsubscribe))
+    .subscribe((result: CreateEditTeacherDialogResult | null) => {
+      if (!result) return;
 
-  openEdit(teacher: TeacherDto): void {
-    const dialogRef = this._dialog.open(CreateEditTeacherDialogComponent, {
-      width: '720px',
-      maxHeight: '90vh',
-      disableClose: true,
-      data: { mode: 'edit', teacher },
-    });
+      const request: CreateTeacherRequest = result.formData;
+      const photoFile = result.photoFile ?? null;
 
-    dialogRef.afterClosed().pipe(takeUntil(this._unsubscribe)).subscribe(result => {
-      if (result) {
-        this.loadAll();
-      }
+      this._service.create(request)
+        .pipe(takeUntil(this._unsubscribe))
+        .subscribe({
+          next: (res) => {
+            if (res.success) {
+
+              // ✅ Upload photo separately if exists
+              if (photoFile) {
+                this._service.uploadPhoto(res.data.id, photoFile)
+                  .pipe(takeUntil(this._unsubscribe))
+                  .subscribe(() => {
+                    this._showSuccess('Teacher created successfully');
+                    this.loadAll();
+                  });
+              } else {
+                this._showSuccess('Teacher created successfully');
+                this.loadAll();
+              }
+            }
+          },
+          error: (err) => {
+            console.error('Failed to create teacher:', err);
+            this._showError(err.error?.message || 'Failed to create teacher');
+          }
+        });
     });
-  }
+}
+
+
+// ── openEdit() ────────────────────────────────────────────────────────────────
+openEdit(teacher: TeacherDto): void {
+  const dialogRef = this._dialog.open(CreateEditTeacherDialogComponent, {
+    panelClass: 'teacher-dialog',
+    maxHeight: '95vh',
+    disableClose: true,
+    autoFocus: 'input',
+    data: { mode: 'edit', teacher },
+  });
+
+  dialogRef.afterClosed()
+    .pipe(takeUntil(this._unsubscribe))
+    .subscribe((result: CreateEditTeacherDialogResult | null) => {
+      if (!result) return;
+
+      const request: UpdateTeacherRequest = result.formData;
+      const photoFile = result.photoFile ?? null;
+
+      this._service.update(teacher.id, request)
+        .pipe(takeUntil(this._unsubscribe))
+        .subscribe({
+          next: (res) => {
+            if (res.success) {
+
+              // ✅ Upload photo separately if provided
+              if (photoFile) {
+                this._service.uploadPhoto(teacher.id, photoFile)
+                  .pipe(takeUntil(this._unsubscribe))
+                  .subscribe(() => {
+                    this._showSuccess('Teacher updated successfully');
+                    this.clearAndReloadImage(teacher.id, null);
+                    this.loadAll();
+                  });
+              } else {
+                this._showSuccess('Teacher updated successfully');
+                this.loadAll();
+              }
+            }
+          },
+          error: (err) => {
+            console.error('Failed to update teacher:', err);
+            this._showError(err.error?.message || 'Failed to update teacher');
+          }
+        });
+    });
+}
+
 
   toggleActive(teacher: TeacherDto): void {
-    const payload = { ...teacher, isActive: !teacher.isActive };
-    this._service.update(teacher.id, payload as any)
-      .pipe(takeUntil(this._unsubscribe))
-      .subscribe({
-        next: (res) => {
-          if (res.success) {
-            this._showSuccess(`Teacher ${teacher.isActive ? 'deactivated' : 'activated'} successfully`);
-            this.loadAll();
-          }
+    const newStatus = !teacher.isActive;
+    const action = newStatus ? 'activate' : 'deactivate';
+    
+    const confirmation = this._confirmation.open({
+      title: `${newStatus ? 'Activate' : 'Deactivate'} Teacher`,
+      message: `Are you sure you want to ${action} ${teacher.fullName}?`,
+      icon: {
+        name: newStatus ? 'check_circle' : 'block',
+        color: newStatus ? 'success' : 'warn',
+      },
+      actions: {
+        confirm: {
+          label: newStatus ? 'Activate' : 'Deactivate',
+          color: newStatus ? 'primary' : 'warn',
         },
-        error: () => this._showError('Failed to update teacher status')
-      });
+        cancel: {
+          label: 'Cancel',
+        },
+      },
+    });
+
+    confirmation.afterClosed().pipe(takeUntil(this._unsubscribe)).subscribe(result => {
+      if (result === 'confirmed') {
+        // Create partial update request with only status change
+        // Using Partial<UpdateTeacherRequest> to allow partial updates
+        const request: Partial<UpdateTeacherRequest> = {
+          isActive: newStatus
+        };
+        
+        // Cast to UpdateTeacherRequest - the backend should handle partial updates
+        this._service.update(teacher.id, request as UpdateTeacherRequest)
+          .pipe(takeUntil(this._unsubscribe))
+          .subscribe({
+            next: (res) => {
+              if (res.success) {
+                this._showSuccess(`Teacher ${action}d successfully`);
+                this.loadAll();
+              }
+            },
+            error: (err) => {
+              console.error('Failed to update teacher status:', err);
+              this._showError(err.error?.message || `Failed to ${action} teacher`);
+            }
+          });
+      }
+    });
   }
 
   removeTeacher(teacher: TeacherDto): void {
@@ -580,10 +810,18 @@ export class TeachersComponent implements OnInit, OnDestroy {
                 }
                 delete this.photoCache[teacher.id];
                 
+                // Adjust current page if needed
+                if (this.paginatedData.length === 0 && this.currentPage > 1) {
+                  this.currentPage--;
+                }
+                
                 this.loadAll();
               }
             },
-            error: () => this._showError('Failed to delete teacher')
+            error: (err) => {
+              console.error('Failed to delete teacher:', err);
+              this._showError(err.error?.message || 'Failed to delete teacher');
+            }
           });
       }
     });
@@ -616,6 +854,7 @@ export class TeachersComponent implements OnInit, OnDestroy {
 
     this._uploadPhoto(this._photoTargetTeacher.id, file, () => {
       this._showSuccess('Photo uploaded successfully');
+      this.clearAndReloadImage(this._photoTargetTeacher!.id, this._photoTargetTeacher!.photoUrl || '');
       this.loadAll();
     });
   }
