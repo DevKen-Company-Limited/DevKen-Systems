@@ -14,8 +14,9 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
         // ================= ACADEMIC =================
         IStudentRepository Student { get; }
         ISchoolRepository School { get; }
-        // In IRepositoryManager.cs - add this property:
         IAcademicYearRepository AcademicYear { get; }
+        IClassRepository Class { get; }
+
 
         // ================= IDENTITY =================
         IUserRepository User { get; }
