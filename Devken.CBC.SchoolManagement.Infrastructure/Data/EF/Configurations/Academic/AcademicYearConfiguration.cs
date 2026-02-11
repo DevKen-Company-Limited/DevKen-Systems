@@ -1,9 +1,12 @@
-﻿using Devken.CBC.SchoolManagement.Domain.Entities.Academic;
+﻿using Devken.CBC.SchoolManagement.Domain.Common;
+using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
+using Devken.CBC.SchoolManagement.Domain.Entities.Helpers;
 using Devken.CBC.SchoolManagement.Infrastructure.Services;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 
-namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Academic
+namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
 {
     public class AcademicYearConfiguration : IEntityTypeConfiguration<AcademicYear>
     {
@@ -44,6 +47,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Acad
                 .IsRequired();
 
             // Relationships
+            // ── Relationship to School ───────────────────────
+            builder.HasOne(ay => ay.School)
+                .WithMany(s => s.AcademicYears)
+                .HasForeignKey(ay => ay.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
             builder.HasMany(ay => ay.Classes)
                 .WithOne(c => c.AcademicYear)
                 .HasForeignKey(c => c.AcademicYearId)

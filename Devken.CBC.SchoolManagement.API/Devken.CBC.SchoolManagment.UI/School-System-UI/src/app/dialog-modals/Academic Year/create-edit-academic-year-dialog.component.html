@@ -1,0 +1,110 @@
+<!-- Dialog Header with Gradient -->
+<div class="bg-gradient-to-r from-cyan-600 via-blue-600 to-teal-600 -m-6 mb-0 p-6 relative overflow-hidden">
+  <div class="absolute inset-0 opacity-10">
+    <div class="absolute top-0 right-0 w-32 h-32 bg-yellow-200 rounded-full blur-2xl"></div>
+    <div class="absolute bottom-0 left-0 w-40 h-40 bg-pink-300 rounded-full blur-2xl"></div>
+  </div>
+  
+  <div class="relative z-10 flex items-center gap-3">
+    <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+      <mat-icon class="text-white icon-size-6">{{ data.mode === 'create' ? 'add_circle' : 'edit' }}</mat-icon>
+    </div>
+    <div>
+      <h2 class="text-2xl font-bold text-white m-0">
+        {{ data.mode === 'create' ? 'Create Academic Year' : 'Edit Academic Year' }}
+      </h2>
+      <p class="text-white/80 text-sm mt-1">
+        {{ data.mode === 'create' ? 'Add a new academic year to your school calendar' : 'Update academic year information' }}
+      </p>
+    </div>
+  </div>
+</div> 
+
+<form [formGroup]="form" (ngSubmit)="submit()" mat-dialog-content class="p-4">
+  
+  <!-- School Selection (SuperAdmin only) -->
+  <mat-form-field class="w-full" *ngIf="isSuperAdmin">
+    <mat-label>School</mat-label>
+    <mat-select formControlName="schoolId">
+      <mat-option *ngFor="let school of schools" [value]="school.id">
+        {{ school.name }}
+      </mat-option>
+    </mat-select>
+    <mat-error *ngIf="form.get('schoolId')?.hasError('required')">
+      School is required
+    </mat-error>
+  </mat-form-field>
+
+  <!-- Name -->
+  <mat-form-field class="w-full">
+    <mat-label>Name</mat-label>
+    <input matInput formControlName="name" placeholder="e.g., Academic Year 2024-2025" />
+    <mat-error *ngIf="form.get('name')?.hasError('required')">
+      Name is required
+    </mat-error>
+    <mat-error *ngIf="form.get('name')?.hasError('maxlength')">
+      Name cannot exceed 50 characters
+    </mat-error>
+  </mat-form-field>
+
+  <!-- Code -->
+  <mat-form-field class="w-full">
+    <mat-label>Code</mat-label>
+    <input matInput formControlName="code" placeholder="e.g., 2024-2025" maxlength="9" />
+    <mat-error *ngIf="form.get('code')?.hasError('required')">
+      Code is required
+    </mat-error>
+    <mat-error *ngIf="form.get('code')?.hasError('maxlength')">
+      Code cannot exceed 9 characters
+    </mat-error>
+  </mat-form-field>
+
+  <!-- Date Range -->
+  <div class="flex gap-4 w-full">
+    <mat-form-field class="flex-1">
+      <mat-label>Start Date</mat-label>
+      <input matInput [matDatepicker]="startPicker" formControlName="startDate" />
+      <mat-datepicker-toggle matSuffix [for]="startPicker"></mat-datepicker-toggle>
+      <mat-datepicker #startPicker></mat-datepicker>
+      <mat-error *ngIf="form.get('startDate')?.hasError('required')">
+        Start date is required
+      </mat-error>
+    </mat-form-field>
+
+    <mat-form-field class="flex-1">
+      <mat-label>End Date</mat-label>
+      <input matInput [matDatepicker]="endPicker" formControlName="endDate" />
+      <mat-datepicker-toggle matSuffix [for]="endPicker"></mat-datepicker-toggle>
+      <mat-datepicker #endPicker></mat-datepicker>
+      <mat-error *ngIf="form.get('endDate')?.hasError('required')">
+        End date is required
+      </mat-error>
+    </mat-form-field>
+  </div>
+
+  <!-- Date Range Validation Error -->
+  <div *ngIf="form.hasError('dateRange') && (form.get('startDate')?.touched || form.get('endDate')?.touched)" 
+       class="text-red-600 text-sm mb-4 -mt-2">
+    End date must be after start date
+  </div>
+
+  <!-- Is Current -->
+  <div class="flex items-center gap-2 mt-2 mb-4">
+    <mat-checkbox formControlName="isCurrent">Set as current academic year</mat-checkbox>
+  </div>
+
+  <!-- Notes -->
+  <mat-form-field class="w-full">
+    <mat-label>Notes (Optional)</mat-label>
+    <textarea matInput formControlName="notes" rows="3" maxlength="1000" placeholder="Add any additional notes..."></textarea>
+    <mat-hint align="end">{{ form.get('notes')?.value?.length || 0 }}/1000</mat-hint>
+  </mat-form-field>
+
+</form>
+
+<div mat-dialog-actions class="dialog-actions p-4">
+  <button mat-button type="button" (click)="cancel()">Cancel</button>
+  <button mat-flat-button color="primary" type="button" (click)="submit()" [disabled]="form.invalid">
+    {{ data.mode === 'create' ? 'Create' : 'Save' }}
+  </button>
+</div>

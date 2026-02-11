@@ -1,4 +1,5 @@
 ﻿using Devken.CBC.SchoolManagement.Domain.Common;
+using Devken.CBC.SchoolManagement.Domain.Entities.Administration;
 using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
 using Devken.CBC.SchoolManagement.Domain.Entities.Helpers;
 using System.ComponentModel.DataAnnotations;
@@ -25,6 +26,9 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
 
         [MaxLength(1000)]
         public string? Notes { get; set; }
+
+        // ── Navigation to School ──────────────────────────
+        public School School { get; set; } = null!;
 
         // Navigation Properties
         public ICollection<Class> Classes { get; set; } = new List<Class>();

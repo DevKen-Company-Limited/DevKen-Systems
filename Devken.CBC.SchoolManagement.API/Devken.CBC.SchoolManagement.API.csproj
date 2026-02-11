@@ -34,7 +34,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Controllers\Academic\" />
     <Folder Include="Controllers\Curiculum\" />
     <Folder Include="Controllers\Finance\" />
   </ItemGroup>
