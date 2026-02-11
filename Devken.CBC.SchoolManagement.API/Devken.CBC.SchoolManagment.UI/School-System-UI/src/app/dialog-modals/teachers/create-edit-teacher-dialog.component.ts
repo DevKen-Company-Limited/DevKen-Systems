@@ -1,4 +1,13 @@
-import { Component, Inject, OnInit, OnDestroy, ViewChild, TemplateRef, inject } from '@angular/core';
+import { 
+  Component, 
+  Inject, 
+  OnInit, 
+  OnDestroy, 
+  ViewChild, 
+  TemplateRef, 
+  inject,
+  ChangeDetectorRef 
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
@@ -12,8 +21,8 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
-import { forkJoin, Observable, Subject, of, BehaviorSubject, combineLatest } from 'rxjs';
-import { catchError, tap, takeUntil, map, finalize, shareReplay } from 'rxjs/operators';
+import { Observable, Subject, of, combineLatest } from 'rxjs';
+import { catchError, tap, takeUntil, shareReplay, first, timeout } from 'rxjs/operators';
 import { TeacherDto } from 'app/core/DevKenService/Types/Teacher';
 import { EnumItemDto, EnumService } from 'app/core/DevKenService/common/enum.service';
 import { API_BASE_URL } from 'app/app.config';
@@ -28,6 +37,7 @@ import {
 } from 'app/shared/dialogs/form/form-dialog.component';
 import { AuthService } from 'app/core/auth/auth.service';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 
 export interface CreateEditTeacherDialogData {
   mode: 'create' | 'edit';
@@ -37,63 +47,6 @@ export interface CreateEditTeacherDialogData {
 export interface CreateEditTeacherDialogResult {
   formData: any;
   photoFile?: File | null;
-}
-
-// Enum cache service to avoid duplicate requests
-class EnumCacheService {
-  private static instance: EnumCacheService;
-  private cache = new Map<string, BehaviorSubject<EnumItemDto[]>>();
-  
-  static getInstance(): EnumCacheService {
-    if (!this.instance) {
-      this.instance = new EnumCacheService();
-    }
-    return this.instance;
-  }
-  
-  getEnum(key: string, loader: () => Observable<EnumItemDto[]>): Observable<EnumItemDto[]> {
-    if (!this.cache.has(key)) {
-      const subject = new BehaviorSubject<EnumItemDto[]>([]);
-      this.cache.set(key, subject);
-      
-      loader().pipe(
-        catchError(() => of(this.getDefaultEnum(key))),
-        tap(data => subject.next(data))
-      ).subscribe();
-    }
-    
-    return this.cache.get(key)!.asObservable();
-  }
-  
-  private getDefaultEnum(key: string): EnumItemDto[] {
-    switch(key) {
-      case 'genders':
-        return [
-          { value: 0, name: 'Male', id: '' },
-          { value: 1, name: 'Female', id: '' },
-          { value: 2, name: 'Other', id: '' }
-        ];
-      case 'employmentTypes':
-        return [
-          { value: 0, name: 'Permanent', id: '' },
-          { value: 1, name: 'Contract', id: '' },
-          { value: 2, name: 'PartTime', id: '' },
-          { value: 3, name: 'Intern', id: '' },
-          { value: 4, name: 'Temporary', id: '' }
-        ];
-      case 'designations':
-        return [
-          { value: 0, name: 'Teacher', id: '' },
-          { value: 1, name: 'Senior Teacher', id: '' },
-          { value: 2, name: 'Head Teacher', id: '' },
-          { value: 3, name: 'Deputy Head Teacher', id: '' },
-          { value: 4, name: 'Subject Head', id: '' },
-          { value: 5, name: 'Department Head', id: '' }
-        ];
-      default:
-        return [];
-    }
-  }
 }
 
 @Component({
@@ -134,7 +87,7 @@ export class CreateEditTeacherDialogComponent implements OnInit, OnDestroy {
   private _sanitizer = inject(DomSanitizer);
   private _authService = inject(AuthService);
   private _http = inject(HttpClient);
-  private _enumCache = EnumCacheService.getInstance();
+  private _enumService = inject(EnumService);
 
   form!: FormGroup;
   formSubmitted = false;
@@ -235,9 +188,18 @@ export class CreateEditTeacherDialogComponent implements OnInit, OnDestroy {
   // ── Loading States ───────────────────────────────────────────────────────────
   isLoading = false;
   isEnumsLoading = true;
+  private enumLoadAttempted = false;
+  private enumLoadStartTime = 0;
 
-  // ── Enum Name to Value Maps for Reverse Lookup ───────────────────────────────
+  // ── Enum Maps for Reverse Lookup ────────────────────────────────────────────
+  // Map by ID (string) to value (number) - for teacher data that comes with ID
+  private enumIdToValueMap = new Map<string, Map<string, number>>();
+  // Map by name (string) to value (number) - for display and case-insensitive lookup
+  private enumNameToValueMap = new Map<string, Map<string, number>>();
+  // Map by value (number) to name (string) - for payload building
   private enumValueToNameMap = new Map<string, Map<number, string>>();
+  // Map by value (number) to id (string) - if needed
+  private enumValueToIdMap = new Map<string, Map<number, string>>();
 
   get isEditMode(): boolean {
     return this.data.mode === 'edit';
@@ -257,29 +219,45 @@ export class CreateEditTeacherDialogComponent implements OnInit, OnDestroy {
     private _fb: FormBuilder,
     private _dialogRef: MatDialogRef<CreateEditTeacherDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: CreateEditTeacherDialogData,
-    private _enumService: EnumService,
+    private _cdr: ChangeDetectorRef
   ) {
     // Make dialog responsive on mobile
     _dialogRef.addPanelClass('responsive-dialog');
   }
 
   ngOnInit(): void {
+    this.enumLoadStartTime = Date.now();
     this._buildForm();
     this._loadEnums();
     this._configureDialog();
 
-    if (this.isEditMode && this.data.teacher) {
-      this._patchFormWithTeacher(this.data.teacher);
-    }
-  }
+    // Initialize templates with setTimeout to avoid ExpressionChanged error
+    setTimeout(() => {
+      if (this.personalTabTemplate && this.contactTabTemplate && this.professionalTabTemplate) {
+        this.tabTemplates = {
+          'personal': this.personalTabTemplate,
+          'contact': this.contactTabTemplate,
+          'professional': this.professionalTabTemplate,
+        };
+        this._cdr.detectChanges();
+      }
+    });
 
-  ngAfterViewInit(): void {
-    // Set up tab templates after view initialization
-    this.tabTemplates = {
-      'personal': this.personalTabTemplate,
-      'contact': this.contactTabTemplate,
-      'professional': this.professionalTabTemplate,
-    };
+    if (this.isEditMode && this.data.teacher) {
+      // Add a small delay to ensure enums are loading
+      setTimeout(() => {
+        this._patchFormWithTeacher(this.data.teacher!);
+      }, 100);
+    }
+
+    // Safety timeout to hide loading overlay if it gets stuck
+    setTimeout(() => {
+      if (this.isEnumsLoading) {
+        console.warn('Enum loading timeout - forcing hide');
+        this.isEnumsLoading = false;
+        this._cdr.detectChanges();
+      }
+    }, 15000);
   }
 
   ngOnDestroy(): void {
@@ -375,145 +353,258 @@ export class CreateEditTeacherDialogComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ── Enum Loading with Caching ────────────────────────────────────────────────
+  // ── Enum Loading with Caching (using EnumService) ────────────────────────────
   private _loadEnums(): void {
+    if (this.enumLoadAttempted) {
+      return;
+    }
+    
+    this.enumLoadAttempted = true;
     this.isEnumsLoading = true;
 
-    // Load enums with caching
-    this.genders$ = this._enumCache.getEnum(
-      'genders', 
-      () => this._enumService.getGenders()
-    ).pipe(
-      tap(data => this._buildEnumMap('gender', data)),
-      shareReplay(1)
+    // Load enums directly from EnumService
+    this.genders$ = this._enumService.getGenders().pipe(
+      tap(data => {
+        this._buildEnumMaps('gender', data);
+        this._checkAllEnumsLoaded();
+      }),
+      shareReplay(1),
+      takeUntil(this._unsubscribe)
     );
 
-    this.employmentTypes$ = this._enumCache.getEnum(
-      'employmentTypes',
-      () => this._enumService.getTeacherEmploymentTypes()
-    ).pipe(
-      tap(data => this._buildEnumMap('employmentType', data)),
-      shareReplay(1)
+    this.employmentTypes$ = this._enumService.getTeacherEmploymentTypes().pipe(
+      tap(data => {
+        this._buildEnumMaps('employmentType', data);
+        this._checkAllEnumsLoaded();
+      }),
+      shareReplay(1),
+      takeUntil(this._unsubscribe)
     );
 
-    this.designations$ = this._enumCache.getEnum(
-      'designations',
-      () => this._enumService.getTeacherDesignations()
-    ).pipe(
-      tap(data => this._buildEnumMap('designation', data)),
-      shareReplay(1)
+    this.designations$ = this._enumService.getTeacherDesignations().pipe(
+      tap(data => {
+        this._buildEnumMaps('designation', data);
+        this._checkAllEnumsLoaded();
+      }),
+      shareReplay(1),
+      takeUntil(this._unsubscribe)
     );
 
-    // Wait for all enums to load
-    combineLatest([
-      this.genders$,
-      this.employmentTypes$,
-      this.designations$
-    ]).pipe(
-      takeUntil(this._unsubscribe),
-      finalize(() => {
-        this.isEnumsLoading = false;
-      })
-    ).subscribe();
+    // Subscribe to trigger loading
+    this.genders$.subscribe();
+    this.employmentTypes$.subscribe();
+    this.designations$.subscribe();
+
+    // Force loading to complete after a timeout
+    setTimeout(() => {
+      this._checkAllEnumsLoaded(true);
+    }, 5000);
   }
 
-  private _buildEnumMap(type: string, items: EnumItemDto[]): void {
-    const map = new Map<number, string>();
+  private _checkAllEnumsLoaded(force: boolean = false): void {
+    // Check if we have all enum maps built
+    const hasGenders = this.enumValueToNameMap.has('gender');
+    const hasEmploymentTypes = this.enumValueToNameMap.has('employmentType');
+    const hasDesignations = this.enumValueToNameMap.has('designation');
+    
+    if ((hasGenders && hasEmploymentTypes && hasDesignations) || force) {
+      if (this.isEnumsLoading) {
+        this.isEnumsLoading = false;
+        this._cdr.detectChanges();
+      }
+    }
+  }
+
+  /**
+   * Build comprehensive enum maps for bidirectional lookup
+   * Supports lookup by:
+   * - id (string) -> value (number)
+   * - name (string) -> value (number)  
+   * - value (number) -> name (string)
+   * - value (number) -> id (string)
+   */
+  private _buildEnumMaps(type: string, items: EnumItemDto[]): void {
+    const idToValueMap = new Map<string, number>();
+    const nameToValueMap = new Map<string, number>();
+    const valueToNameMap = new Map<number, string>();
+    const valueToIdMap = new Map<number, string>();
+    
     items.forEach(item => {
-      if (item.value !== undefined && item.name) {
-        map.set(item.value, item.name);
+      if (item.value !== undefined) {
+        // Store by ID (string) - this is what comes from the backend in teacher object
+        if (item.id) {
+          idToValueMap.set(item.id, item.value);
+          idToValueMap.set(item.id.toLowerCase(), item.value); // Case-insensitive version
+        }
+        
+        // Store by name (string) - for display and fallback
+        if (item.name) {
+          nameToValueMap.set(item.name, item.value);
+          nameToValueMap.set(item.name.toLowerCase(), item.value); // Case-insensitive
+          valueToNameMap.set(item.value, item.name);
+        }
+        
+        // Store by value -> id
+        if (item.id) {
+          valueToIdMap.set(item.value, item.id);
+        }
       }
     });
-    this.enumValueToNameMap.set(type, map);
+    
+    this.enumIdToValueMap.set(type, idToValueMap);
+    this.enumNameToValueMap.set(type, nameToValueMap);
+    this.enumValueToNameMap.set(type, valueToNameMap);
+    this.enumValueToIdMap.set(type, valueToIdMap);
   }
 
+  /**
+   * Get enum value (number) from either ID (string) or Name (string)
+   * This is used when patching the form with teacher data
+   */
+  private _getEnumValue(type: string, idOrName: string | undefined): number | null {
+    if (!idOrName) return null;
+    
+    // Try lookup by ID first (most reliable for your backend)
+    const idMap = this.enumIdToValueMap.get(type);
+    if (idMap) {
+      // Try exact match
+      if (idMap.has(idOrName)) {
+        return idMap.get(idOrName)!;
+      }
+      // Try lowercase match
+      if (idMap.has(idOrName.toLowerCase())) {
+        return idMap.get(idOrName.toLowerCase())!;
+      }
+    }
+    
+    // Fallback to lookup by name
+    const nameMap = this.enumNameToValueMap.get(type);
+    if (nameMap) {
+      // Try exact match
+      if (nameMap.has(idOrName)) {
+        return nameMap.get(idOrName)!;
+      }
+      // Try lowercase match
+      if (nameMap.has(idOrName.toLowerCase())) {
+        return nameMap.get(idOrName.toLowerCase())!;
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * Get enum name from value (for sending to backend)
+   * Your backend expects the name string, not the ID
+   */
   private _getEnumNameFromValue(type: string, value: number | null): string | null {
     if (value === null || value === undefined) return null;
     const map = this.enumValueToNameMap.get(type);
     return map?.get(value) || null;
   }
 
-  private _getEnumValueFromName(type: string, name: string | undefined): number | null {
-    if (!name) return null;
-    
-    const map = this.enumValueToNameMap.get(type);
-    if (!map) return null;
-    
-    // Find value by name (case-insensitive)
-    for (const [value, enumName] of map.entries()) {
-      if (enumName.toLowerCase() === name.toLowerCase()) {
-        return value;
-      }
-    }
-    return null;
+  /**
+   * Get enum ID from value (if needed)
+   */
+  private _getEnumIdFromValue(type: string, value: number | null): string | null {
+    if (value === null || value === undefined) return null;
+    const map = this.enumValueToIdMap.get(type);
+    return map?.get(value) || null;
   }
 
   // ── Teacher Data Population ─────────────────────────────────────────────────
   private async _patchFormWithTeacher(teacher: TeacherDto): Promise<void> {
-    // Wait for enums to be loaded
-    await this._waitForEnums();
+    try {
+      // Wait for enums to be loaded with timeout
+      await this._waitForEnums();
 
-    const genderValue = this._getEnumValueFromName('gender', teacher.gender);
-    const employmentValue = this._getEnumValueFromName('employmentType', teacher.employmentType);
-    const designationValue = this._getEnumValueFromName('designation', teacher.designation);
+      // Get enum values using the ID that comes from the backend
+      // Your teacher object has fields like: "gender": "headteacher" (ID string)
+      const genderValue = this._getEnumValue('gender', teacher.gender);
+      const employmentValue = this._getEnumValue('employmentType', teacher.employmentType);
+      const designationValue = this._getEnumValue('designation', teacher.designation);
 
-    // Build photo URL
-    let photoUrl = '';
-    if (teacher.photoUrl) {
-      photoUrl = teacher.photoUrl.startsWith('http')
-        ? teacher.photoUrl
-        : `${this._apiBaseUrl}${teacher.photoUrl}`;
-    }
+      // Build photo URL
+      let photoUrl = '';
+      if (teacher.photoUrl) {
+        photoUrl = teacher.photoUrl.startsWith('http')
+          ? teacher.photoUrl
+          : `${this._apiBaseUrl}${teacher.photoUrl}`;
+      }
 
-    // Patch form values
-    this.form.patchValue({
-      firstName: teacher.firstName || '',
-      middleName: teacher.middleName || '',
-      lastName: teacher.lastName || '',
-      teacherNumber: teacher.teacherNumber || '',
-      gender: genderValue,
-      dateOfBirth: teacher.dateOfBirth ? new Date(teacher.dateOfBirth) : null,
-      idNumber: teacher.idNumber || '',
-      nationality: teacher.nationality || 'Kenyan',
-      photoUrl: photoUrl,
-      phoneNumber: teacher.phoneNumber || '',
-      email: teacher.email || '',
-      address: teacher.address || '',
-      tscNumber: teacher.tscNumber || '',
-      employmentType: employmentValue,
-      designation: designationValue,
-      qualification: teacher.qualification || '',
-      specialization: teacher.specialization || '',
-      dateOfEmployment: teacher.dateOfEmployment ? new Date(teacher.dateOfEmployment) : null,
-      isClassTeacher: teacher.isClassTeacher || false,
-      isActive: teacher.isActive !== undefined ? teacher.isActive : true,
-      notes: teacher.notes || '',
-    });
+      // Patch form values - store as numbers (values)
+      this.form.patchValue({
+        firstName: teacher.firstName || '',
+        middleName: teacher.middleName || '',
+        lastName: teacher.lastName || '',
+        teacherNumber: teacher.teacherNumber || '',
+        gender: genderValue,        // Store as number value
+        dateOfBirth: teacher.dateOfBirth ? new Date(teacher.dateOfBirth) : null,
+        idNumber: teacher.idNumber || '',
+        nationality: teacher.nationality || 'Kenyan',
+        photoUrl: photoUrl,
+        phoneNumber: teacher.phoneNumber || '',
+        email: teacher.email || '',
+        address: teacher.address || '',
+        tscNumber: teacher.tscNumber || '',
+        employmentType: employmentValue,  // Store as number value
+        designation: designationValue,    // Store as number value
+        qualification: teacher.qualification || '',
+        specialization: teacher.specialization || '',
+        dateOfEmployment: teacher.dateOfEmployment ? new Date(teacher.dateOfEmployment) : null,
+        isClassTeacher: teacher.isClassTeacher || false,
+        isActive: teacher.isActive !== undefined ? teacher.isActive : true,
+        notes: teacher.notes || '',
+      });
 
-    // Load teacher photo if exists
-    if (photoUrl) {
-      await this._loadTeacherPhoto(photoUrl);
+      this._cdr.detectChanges();
+
+      // Load teacher photo if exists
+      if (photoUrl) {
+        setTimeout(() => {
+          this._loadTeacherPhoto(photoUrl);
+        }, 100);
+      }
+    } catch (error) {
+      console.error('Error patching form with teacher data:', error);
+      
+      // Even on error, try to patch with basic values
+      this.form.patchValue({
+        firstName: teacher.firstName || '',
+        lastName: teacher.lastName || '',
+        teacherNumber: teacher.teacherNumber || '',
+      });
+      
+      this._cdr.detectChanges();
     }
   }
 
-  private _waitForEnums(): Promise<void> {
-    return new Promise((resolve) => {
-      if (!this.isEnumsLoading) {
-        resolve();
-        return;
-      }
+  private async _waitForEnums(): Promise<void> {
+    // If already loaded, return immediately
+    if (!this.isEnumsLoading) {
+      return;
+    }
 
-      const subscription = combineLatest([
-        this.genders$,
-        this.employmentTypes$,
-        this.designations$
-      ]).pipe(
-        takeUntil(this._unsubscribe)
-      ).subscribe(() => {
-        resolve();
-        subscription.unsubscribe();
-      });
-    });
+    try {
+      // Wait for first emission from each enum with timeout
+      await Promise.race([
+        Promise.all([
+          firstValueFrom(this.genders$.pipe(first())),
+          firstValueFrom(this.employmentTypes$.pipe(first())),
+          firstValueFrom(this.designations$.pipe(first()))
+        ]),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Enum loading timeout')), 8000)
+        )
+      ]);
+    } catch (error) {
+      console.warn('Enum loading timeout or error:', error);
+      // Force loading to complete
+      this.isEnumsLoading = false;
+    } finally {
+      this.isEnumsLoading = false;
+      this._cdr.detectChanges();
+    }
   }
 
   private async _loadTeacherPhoto(photoUrl: string): Promise<void> {
@@ -525,17 +616,19 @@ export class CreateEditTeacherDialogComponent implements OnInit, OnDestroy {
       const headers = token ? new HttpHeaders().set('Authorization', `Bearer ${token}`) : undefined;
       const authPhotoUrl = token ? `${photoUrl}?token=${token}` : photoUrl;
 
-      const blob = await this._http.get(authPhotoUrl, { 
-        responseType: 'blob',
-        headers 
-      }).pipe(
-        takeUntil(this._unsubscribe),
-        catchError((error) => {
-          console.error('Failed to load photo:', error);
-          this.photoError = true;
-          return of(null);
-        })
-      ).toPromise();
+      const blob = await firstValueFrom(
+        this._http.get(authPhotoUrl, { 
+          responseType: 'blob',
+          headers 
+        }).pipe(
+          timeout(10000),
+          catchError((error) => {
+            console.error('Failed to load photo:', error);
+            this.photoError = true;
+            return of(null);
+          })
+        )
+      );
 
       if (blob) {
         // Revoke previous object URL if exists
@@ -554,12 +647,14 @@ export class CreateEditTeacherDialogComponent implements OnInit, OnDestroy {
         };
         
         this.form.patchValue({ photoUrl: objectUrl });
+        this._cdr.detectChanges();
       }
     } catch (error) {
       console.error('Error loading photo:', error);
       this.photoError = true;
     } finally {
       this.isLoadingPhoto = false;
+      this._cdr.detectChanges();
     }
   }
 
@@ -598,6 +693,7 @@ export class CreateEditTeacherDialogComponent implements OnInit, OnDestroy {
       
       // Update form control with data URL
       this.form.patchValue({ photoUrl: result });
+      this._cdr.detectChanges();
     };
     
     reader.onerror = () => {
@@ -624,6 +720,8 @@ export class CreateEditTeacherDialogComponent implements OnInit, OnDestroy {
       photoUrl: '',
       preview: null,
     };
+    
+    this._cdr.detectChanges();
   }
 
   // ── Event Handlers ───────────────────────────────────────────────────────────
@@ -668,7 +766,8 @@ export class CreateEditTeacherDialogComponent implements OnInit, OnDestroy {
       return isNaN(date.getTime()) ? null : date.toISOString();
     };
 
-    // Get enum names from cached maps
+    // Get enum names from cached maps (BACKEND EXPECTS NAME STRING, NOT ID)
+    // Your backend wants "HeadTeacher" not "headteacher" or 3
     const genderName = this._getEnumNameFromValue('gender', v.gender);
     const employmentTypeName = this._getEnumNameFromValue('employmentType', v.employmentType);
     const designationName = this._getEnumNameFromValue('designation', v.designation);
@@ -684,7 +783,7 @@ export class CreateEditTeacherDialogComponent implements OnInit, OnDestroy {
       middleName: v.middleName?.trim() || null,
       lastName: v.lastName?.trim(),
       teacherNumber: v.teacherNumber?.trim(),
-      gender: genderName,
+      gender: genderName,           // Send as name string (e.g., "HeadTeacher")
       dateOfBirth: toIsoString(v.dateOfBirth),
       idNumber: v.idNumber?.trim() || null,
       nationality: v.nationality?.trim() || 'Kenyan',
@@ -693,8 +792,8 @@ export class CreateEditTeacherDialogComponent implements OnInit, OnDestroy {
       email: v.email?.trim() || null,
       address: v.address?.trim() || null,
       tscNumber: v.tscNumber?.trim() || null,
-      employmentType: employmentTypeName,
-      designation: designationName,
+      employmentType: employmentTypeName,  // Send as name string
+      designation: designationName,        // Send as name string
       qualification: v.qualification?.trim() || null,
       specialization: v.specialization?.trim() || null,
       dateOfEmployment: toIsoString(v.dateOfEmployment),
