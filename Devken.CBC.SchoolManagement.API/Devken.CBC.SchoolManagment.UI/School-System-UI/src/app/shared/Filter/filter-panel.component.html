@@ -1,0 +1,106 @@
+<!-- Filter Panel Wrapper -->
+<div class="filter-panel-wrapper">
+  
+  <!-- Toggle Button (if enabled) -->
+  <div *ngIf="showToggleButton" class="flex items-center justify-end mb-4">
+    <button mat-stroked-button color="primary" (click)="onToggleClick()">
+      <mat-icon class="icon-size-5">filter_list</mat-icon>
+      <span class="ml-2">{{ toggleText }}</span>
+    </button>
+  </div>
+
+  <!-- Filter Panel -->
+  <div *ngIf="showPanel" class="filter-panel bg-gray-50 dark:bg-gray-800/50 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+    
+    <!-- Filter Fields Grid -->
+    <div class="grid gap-4" [ngClass]="gridColsClass">
+      
+      <!-- Loop through filter fields -->
+      <div *ngFor="let field of fields" class="filter-field">
+        
+        <!-- Text Input -->
+        <div *ngIf="field.type === 'text'">
+          <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            {{ field.label }}
+          </label>
+          <div class="relative">
+            <input 
+              type="text" 
+              [(ngModel)]="field.value" 
+              (input)="onValueChange(field, field.value)"
+              [placeholder]="field.placeholder || ''"
+              class="w-full px-4 py-2 pl-10 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none transition-all">
+            <mat-icon class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 icon-size-5">search</mat-icon>
+          </div>
+        </div>
+
+        <!-- Select Dropdown -->
+        <div *ngIf="field.type === 'select'">
+          <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            {{ field.label }}
+          </label>
+          <select 
+            [(ngModel)]="field.value" 
+            (change)="onValueChange(field, field.value)"
+            class="w-full px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none transition-all">
+            <option *ngFor="let option of field.options" [value]="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Date Input -->
+        <div *ngIf="field.type === 'date'">
+          <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            {{ field.label }}
+          </label>
+          <input 
+            type="date" 
+            [(ngModel)]="field.value" 
+            (change)="onValueChange(field, field.value)"
+            class="w-full px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none transition-all">
+        </div>
+
+        <!-- Date Range Input -->
+        <div *ngIf="field.type === 'dateRange'" class="col-span-2">
+          <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            {{ field.label }}
+          </label>
+          <div class="grid grid-cols-2 gap-2">
+            <input 
+              type="date" 
+              [(ngModel)]="field.value.start" 
+              (change)="onValueChange(field, field.value)"
+              placeholder="Start Date"
+              class="w-full px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none transition-all">
+            <input 
+              type="date" 
+              [(ngModel)]="field.value.end" 
+              (change)="onValueChange(field, field.value)"
+              placeholder="End Date"
+              class="w-full px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none transition-all">
+          </div>
+        </div>
+
+        <!-- Custom Template -->
+        <div *ngIf="field.type === 'custom' && field.customTemplate">
+          <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            {{ field.label }}
+          </label>
+          <ng-container *ngTemplateOutlet="field.customTemplate; context: { $implicit: field }"></ng-container>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Clear All Button -->
+    <div class="mt-6 flex items-center justify-end border-t border-gray-200 dark:border-gray-700 pt-4">
+      <button 
+        (click)="onClearAllClick()"
+        class="px-4 py-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-all">
+        <mat-icon class="icon-size-4 inline-block mr-1">clear</mat-icon>
+        Clear All Filters
+      </button>
+    </div>
+  </div>
+</div>

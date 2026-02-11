@@ -1,0 +1,25 @@
+// Pagination Component Styles
+
+:host {
+  display: block;
+}
+
+.pagination-wrapper {
+  // Ensure consistent spacing
+  min-height: 64px;
+}
+
+// Page number button styles
+button.min-w-\[40px\] {
+  font-weight: 500;
+  
+  &:not(:disabled):hover {
+    transform: translateY(-1px);
+    transition: transform 0.2s ease;
+  }
+}
+
+// Disabled state
+button:disabled {
+  pointer-events: none;
+}

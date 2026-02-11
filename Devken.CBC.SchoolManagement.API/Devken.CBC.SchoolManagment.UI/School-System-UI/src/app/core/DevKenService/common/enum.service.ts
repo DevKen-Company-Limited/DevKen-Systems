@@ -17,6 +17,7 @@ export interface EnumItemDto {
 export class EnumService {
   private baseUrl = `${inject(API_BASE_URL)}/api/enums`;
 
+  // Cache to prevent multiple requests for the same enum
   private cache: Record<string, Observable<EnumItemDto[]>> = {};
 
   constructor(private http: HttpClient) {}
@@ -30,33 +31,37 @@ export class EnumService {
           console.error(`Error loading enum ${endpoint}:`, err);
           return of([]);
         }),
-        shareReplay(1)
+        shareReplay(1) // Cache the observable
       );
     }
     return this.cache[endpoint];
   }
 
-  /** Subscription enums */
+  /** ===== SUBSCRIPTION ===== */
   getSubscriptionPlans() { return this.fetchEnum('subscription-plans'); }
   getSubscriptionStatuses() { return this.fetchEnum('subscription-statuses'); }
   getBillingCycles() { return this.fetchEnum('billing-cycles'); }
 
-  /** Student enums */
+  /** ===== STUDENTS ===== */
   getGenders() { return this.fetchEnum('genders'); }
   getStudentStatuses() { return this.fetchEnum('student-statuses'); }
   getCBCLevels() { return this.fetchEnum('cbc-levels'); }
 
-  /** Academic enums */
+  /** ===== ACADEMICS ===== */
   getTermTypes() { return this.fetchEnum('term-types'); }
   getAssessmentTypes() { return this.fetchEnum('assessment-types'); }
   getCompetencyLevels() { return this.fetchEnum('competency-levels'); }
 
-  /** Payment enums */
+  /** ===== TEACHER ===== */
+  getTeacherEmploymentTypes() { return this.fetchEnum('teacher-employment-types'); }
+  getTeacherDesignations() { return this.fetchEnum('teacher-designations'); }
+
+  /** ===== PAYMENTS ===== */
   getPaymentStatuses() { return this.fetchEnum('payment-statuses'); }
   getMpesaPaymentStatuses() { return this.fetchEnum('mpesa-payment-statuses'); }
   getMpesaResultCodes() { return this.fetchEnum('mpesa-result-codes'); }
 
-  /** Entity enums */
+  /** ===== ENTITY ===== */
   getEntityStatuses() { return this.fetchEnum('entity-statuses'); }
 
   /** Clear cache for all enums */

@@ -21,8 +21,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Acad
             builder.HasKey(t => t.Id);
 
             builder.HasQueryFilter(t =>
-                _tenantContext.TenantId == null ||
-                t.TenantId == _tenantContext.TenantId);
+                _tenantContext.TenantId == null || t.TenantId == _tenantContext.TenantId);
 
             // Indexes
             builder.HasIndex(t => new { t.TenantId, t.TeacherNumber }).IsUnique();
@@ -30,26 +29,22 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Acad
             builder.HasIndex(t => new { t.TenantId, t.IsActive });
 
             // Properties
-            builder.Property(t => t.FirstName)
-                .IsRequired()
-                .HasMaxLength(100);
-
-            builder.Property(t => t.LastName)
-                .IsRequired()
-                .HasMaxLength(100);
-
-            builder.Property(t => t.TeacherNumber)
-                .IsRequired()
-                .HasMaxLength(50);
-
-            builder.Property(t => t.TscNumber)
-                .HasMaxLength(50);
+            builder.Property(t => t.FirstName).IsRequired().HasMaxLength(100);
+            builder.Property(t => t.LastName).IsRequired().HasMaxLength(100);
+            builder.Property(t => t.TeacherNumber).IsRequired().HasMaxLength(50);
+            builder.Property(t => t.TscNumber).HasMaxLength(50);
 
             // Relationships
             builder.HasMany(t => t.Classes)
-                .WithOne(c => c.ClassTeacher)
-                .HasForeignKey(c => c.TeacherId)
-                .OnDelete(DeleteBehavior.SetNull);
+                   .WithOne(c => c.ClassTeacher)
+                   .HasForeignKey(c => c.TeacherId)
+                   .OnDelete(DeleteBehavior.SetNull);
+
+            // CBC Levels
+            builder.HasMany(t => t.CBCLevels)
+                   .WithOne(c => c.Teacher)
+                   .HasForeignKey(c => c.TeacherId)
+                   .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

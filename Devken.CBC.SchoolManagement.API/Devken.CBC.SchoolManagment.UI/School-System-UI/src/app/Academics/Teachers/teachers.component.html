@@ -1,0 +1,204 @@
+<div class="absolute inset-0 flex min-w-0 flex-col overflow-y-auto" cdkScrollable>
+
+  <!-- ── Reusable Page Header ────────────────────────────────────────────── -->
+  <app-page-header
+    title="Teachers Management"
+    description="Manage all teaching staff across the school"
+    icon="groups"
+    [breadcrumbs]="breadcrumbs"
+    [actionTemplate]="headerActions">
+  </app-page-header>
+
+  <!-- Header Actions Template -->
+  <ng-template #headerActions>
+    <button mat-flat-button 
+      class="bg-white text-indigo-700 hover:bg-yellow-200 hover:text-indigo-900 shadow-lg transition-all hover:shadow-xl font-bold" 
+      (click)="openCreate()">
+      <mat-icon class="icon-size-5">person_add</mat-icon>
+      <span class="ml-2">Add</span>
+    </button>
+  </ng-template>
+
+  <!-- ── Main Content ───────────────────────────────────────────────────── -->
+  <div class="bg-card -mt-10 flex-auto rounded-t-2xl p-6 shadow sm:p-10">
+
+    <!-- Stats Cards (Reusable Component) -->
+    <app-stats-cards [cards]="statsCards" [columns]="4"></app-stats-cards>
+
+    <!-- Table Section -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+
+      <!-- Table Header -->
+      <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-gradient-to-br from-indigo-500 via-violet-600 to-purple-700 rounded-lg flex items-center justify-center shadow-lg">
+              <mat-icon class="text-white icon-size-5">table_chart</mat-icon>
+            </div>
+            <div>
+              <h3 class="text-xl font-bold text-gray-900 dark:text-white">Teachers List</h3>
+              <p class="text-sm text-gray-500 dark:text-gray-400">{{ filteredData.length }} teachers found</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter Panel (Reusable Component) -->
+        <app-filter-panel
+          [fields]="filterFields"
+          [showPanel]="showFilterPanel"
+          [columns]="4"
+          (filterChange)="onFilterChange($event)"
+          (clearAll)="onClearFilters()"
+          (togglePanel)="toggleFilterPanel()">
+        </app-filter-panel>
+      </div>
+
+      <!-- Loading -->
+      <div *ngIf="isLoading" class="flex items-center justify-center p-12">
+        <mat-spinner diameter="36"></mat-spinner>
+      </div>
+
+      <!-- Table -->
+      <div *ngIf="!isLoading" class="overflow-x-auto">
+        <table class="w-full">
+          <thead class="bg-gray-50 dark:bg-gray-700/50">
+            <tr>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Teacher</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Number</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Contact</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Designation</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Employment</th>
+              <th class="px-6 py-4 text-center text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Status</th>
+              <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+
+          <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+            <tr *ngFor="let t of paginatedData" class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+
+              <!-- Teacher Avatar + Name -->
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center border">
+                    <img *ngIf="photoCache[t.id]"
+                        [src]="photoCache[t.id]"
+                        [alt]="t.fullName"
+                        class="w-full h-full object-cover" />
+                    <span *ngIf="!photoCache[t.id]"
+                            class="text-sm font-bold text-indigo-600">
+                        {{ t.firstName[0] }}{{ t.lastName[0] }}
+                    </span>
+                  </div>
+                  <div>
+                    <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ t.fullName }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ t.tscNumber || '—' }}</p>
+                  </div>
+                </div>
+              </td>
+
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                  {{ t.teacherNumber }}
+                </span>
+              </td>
+
+              <td class="px-6 py-4">
+                <p class="text-sm text-gray-700 dark:text-gray-300">{{ t.phoneNumber || '—' }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-40">{{ t.email || '—' }}</p>
+              </td>
+
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="text-sm text-gray-700 dark:text-gray-300">{{ t.designation }}</span>
+                <div *ngIf="t.isClassTeacher" class="mt-0.5">
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300">
+                    <mat-icon class="icon-size-3">class</mat-icon> Class Teacher
+                  </span>
+                </div>
+              </td>
+
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="text-sm text-gray-700 dark:text-gray-300">{{ t.employmentType }}</span>
+              </td>
+
+              <!-- Status Badge -->
+              <td class="px-6 py-4 whitespace-nowrap text-center">
+                <span class="px-3 py-1 rounded-full text-xs font-semibold"
+                  [ngClass]="{
+                    'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400': t.isActive,
+                    'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400': !t.isActive
+                  }">
+                  {{ t.isActive ? 'Active' : 'Inactive' }}
+                </span>
+              </td>
+
+              <!-- Actions -->
+              <td class="px-6 py-4 whitespace-nowrap text-right">
+                <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Actions">
+                  <mat-icon>more_vert</mat-icon>
+                </button>
+                <mat-menu #menu="matMenu">
+                  <button mat-menu-item (click)="openEdit(t)"
+                    class="text-blue-600 dark:text-blue-400">
+                    <mat-icon class="text-blue-600 dark:text-blue-400">edit</mat-icon>
+                    <span>Edit</span>
+                  </button>
+                  <button mat-menu-item (click)="uploadPhoto(t)"
+                    class="text-violet-600 dark:text-violet-400">
+                    <mat-icon class="text-violet-600 dark:text-violet-400">photo_camera</mat-icon>
+                    <span>Upload Photo</span>
+                  </button>
+                  <button mat-menu-item (click)="toggleActive(t)"
+                    [class]="t.isActive ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'">
+                    <mat-icon [class]="t.isActive ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'">
+                      {{ t.isActive ? 'block' : 'check_circle' }}
+                    </mat-icon>
+                    <span>{{ t.isActive ? 'Deactivate' : 'Activate' }}</span>
+                  </button>
+                  <mat-divider></mat-divider>
+                  <button mat-menu-item (click)="removeTeacher(t)"
+                    class="text-red-600 dark:text-red-400">
+                    <mat-icon class="text-red-600 dark:text-red-400">delete</mat-icon>
+                    <span>Delete</span>
+                  </button>
+                </mat-menu>
+              </td>
+            </tr>
+
+            <!-- Empty State -->
+            <tr *ngIf="filteredData.length === 0">
+              <td colspan="7" class="px-6 py-16 text-center">
+                <div class="flex flex-col items-center justify-center gap-3">
+                  <div class="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center">
+                    <mat-icon class="text-indigo-400 icon-size-10">person_search</mat-icon>
+                  </div>
+                  <p class="text-gray-600 dark:text-gray-400 font-semibold">No teachers found</p>
+                  <p class="text-sm text-gray-400">Try adjusting your filters or add a new teacher</p>
+                  <button mat-flat-button color="primary" (click)="openCreate()" class="mt-2">
+                    <mat-icon class="icon-size-5">person_add</mat-icon>
+                    <span class="ml-1">Add First Teacher</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination (Reusable Component) -->
+      <app-pagination
+        *ngIf="!isLoading"
+        [currentPage]="currentPage"
+        [totalItems]="filteredData.length"
+        [itemsPerPage]="itemsPerPage"
+        [itemLabel]="'teachers'"
+        [showItemsPerPageSelector]="true"
+        [showPageNumbers]="true"
+        (pageChange)="onPageChange($event)"
+        (itemsPerPageChange)="onItemsPerPageChange($event)">
+      </app-pagination>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden file input for photo upload -->
+<input #photoInput type="file" class="hidden" accept="image/*" (change)="onPhotoFileSelected($event)" />

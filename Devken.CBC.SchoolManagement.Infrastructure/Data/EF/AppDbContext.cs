@@ -87,6 +87,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         public DbSet<FeeItem> FeeItems => Set<FeeItem>();
         public DbSet<SubscriptionPlanEntity> SubscriptionPlans { get; set; }
         public DbSet<MpesaPaymentRecord> MpesaPayments { get; set; }
+        public DbSet<TeacherCBCLevel> TeacherCBCLevels { get; set; } = null!;
         #endregion
 
         protected override void OnModelCreating(ModelBuilder mb)
@@ -174,6 +175,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             mb.ApplyConfiguration(new MpesaPaymentRecordConfiguration1());
             mb.ApplyConfiguration(new SubscriptionPlanConfiguration());
             mb.ApplyConfiguration(new SubscriptionPlanConfiguration());
+            mb.ApplyConfiguration(new TeacherCBCLevelConfiguration(_tenantContext));
         }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

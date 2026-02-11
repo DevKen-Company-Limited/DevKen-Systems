@@ -1,0 +1,42 @@
+// Stats Cards Component Styles
+
+:host {
+  display: block;
+}
+
+.stat-card {
+  cursor: default;
+  transition: all 0.2s ease-in-out;
+
+  &:hover {
+    transform: translateY(-2px);
+  }
+}
+
+// Animation for card appearance
+.stats-grid > .stat-card {
+  animation: fadeInUp 0.4s ease-out backwards;
+  
+  @for $i from 1 through 8 {
+    &:nth-child(#{$i}) {
+      animation-delay: #{$i * 0.05}s;
+    }
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Extra small text utility
+.text-2xs {
+  font-size: 0.625rem;
+  line-height: 0.75rem;
+}

@@ -23,7 +23,7 @@ namespace Devken.CBC.SchoolManagement.API.Controllers
                 {
                     Id = e.ToString().ToLower(),
                     Name = e.ToString(),
-                    Value = Convert.ToInt32(e), // 👈 numeric value sent to backend
+                    Value = Convert.ToInt32(e), // numeric value for backend
                     Description = GetEnumDescription(e)
                 })
                 .ToList();
@@ -108,15 +108,27 @@ namespace Devken.CBC.SchoolManagement.API.Controllers
 
         #endregion
 
+        #region ===== TEACHER =====
+
+        [HttpGet("teacher-employment-types")]
+        [AllowAnonymous]
+        public IActionResult GetTeacherEmploymentTypes()
+            => SuccessResponse(BuildEnumResponse<EmploymentType>());
+
+        [HttpGet("teacher-designations")]
+        [AllowAnonymous]
+        public IActionResult GetTeacherDesignations()
+            => SuccessResponse(BuildEnumResponse<Designation>());
+
+        #endregion
+
         #region ===== PAYMENTS =====
 
-        // General payment status
         [HttpGet("payment-statuses")]
         [AllowAnonymous]
         public IActionResult GetPaymentStatuses()
             => SuccessResponse(BuildEnumResponse<PaymentStatus>());
 
-        // STK / Mpesa specific payment status (from nested namespace)
         [HttpGet("mpesa-payment-statuses")]
         [AllowAnonymous]
         public IActionResult GetMpesaPaymentStatuses()

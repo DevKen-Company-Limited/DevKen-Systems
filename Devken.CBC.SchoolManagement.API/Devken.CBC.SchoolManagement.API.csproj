@@ -36,6 +36,7 @@
   <ItemGroup>
     <Folder Include="Controllers\Curiculum\" />
     <Folder Include="Controllers\Finance\" />
+    <Folder Include="wwwroot\" />
   </ItemGroup>
 
 </Project>

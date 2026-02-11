@@ -9,6 +9,7 @@ using Devken.CBC.SchoolManagement.Infrastructure.Middleware;
 using Devken.CBC.SchoolManagement.Infrastructure.Seed;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.OpenApi.Models;
 using System.Globalization;
 using System.Reflection;
@@ -16,6 +17,14 @@ using System.Reflection;
 StartupErrorHandler.Initialize();
 
 var builder = WebApplication.CreateBuilder(args);
+
+var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+if (!Directory.Exists(uploadsPath))
+{
+    Directory.CreateDirectory(uploadsPath);
+}
+
+
 
 // ══════════════════════════════════════════════════════════════
 // CORS Configuration
@@ -200,6 +209,11 @@ using (var scope = app.Services.CreateScope())
 
 app.UseCors(angularCorsPolicy);
 app.UseApiPipeline();
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadsPath),
+    RequestPath = "/uploads"
+});
 
 var localizationOptions = new RequestLocalizationOptions
 {
@@ -234,6 +248,13 @@ if (app.Environment.IsDevelopment())
 // Map Controllers
 // ══════════════════════════════════════════════════════════════
 app.MapControllers();
+app.UseStaticFiles(); // wwwroot
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadsPath),
+    RequestPath = "/uploads"
+});
+
 
 // ══════════════════════════════════════════════════════════════
 // Angular Development Server Launcher (Development Only)

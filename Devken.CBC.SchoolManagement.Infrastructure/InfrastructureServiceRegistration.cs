@@ -1,6 +1,7 @@
 ﻿using Devken.CBC.SchoolManagement.Application.Authorization;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academics;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Identity;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Payments;
@@ -12,6 +13,7 @@ using Devken.CBC.SchoolManagement.Application.Service.Isubscription;
 using Devken.CBC.SchoolManagement.Application.Service.ISubscription;
 using Devken.CBC.SchoolManagement.Application.Service.Navigation;
 using Devken.CBC.SchoolManagement.Application.Service.Subscription;
+using Devken.CBC.SchoolManagement.Application.Services.Interfaces.Images;
 using Devken.CBC.SchoolManagement.Application.Services.UserManagement;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academic;
@@ -22,6 +24,7 @@ using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Tenant;
 using Devken.CBC.SchoolManagement.Infrastructure.Security;
 using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Activities;
+using Devken.CBC.SchoolManagement.Infrastructure.Services.Images;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.RoleAssignment;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -255,7 +258,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IRepositoryManager, RepositoryManager>();
             
             services.AddScoped<IMpesaPaymentRepository, MpesaPaymentRepository>();
+            services.AddScoped<ITeacherRepository, TeacherRepository>();
             services.AddScoped<ISubscriptionPlanService, SubscriptionPlanService>();
+            services.AddScoped<IImageUploadService, ImageUploadService>();
 
             return services;
         }
