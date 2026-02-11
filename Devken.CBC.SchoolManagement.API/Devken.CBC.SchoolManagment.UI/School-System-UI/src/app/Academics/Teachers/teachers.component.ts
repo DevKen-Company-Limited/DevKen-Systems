@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnInit, OnDestroy, ViewChild, inject } from '@angular/core';
+import { Component, ElementRef, OnInit, OnDestroy, ViewChild, TemplateRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -23,7 +23,13 @@ import { PageHeaderComponent, Breadcrumb } from 'app/shared/Page-Header/page-hea
 import { FilterPanelComponent, FilterField, FilterChangeEvent } from 'app/shared/Filter/filter-panel.component';
 import { PaginationComponent } from 'app/shared/pagination/pagination.component';
 import { StatsCardsComponent, StatCard } from 'app/shared/stats-cards/stats-cards.component';
-
+import { 
+  DataTableComponent, 
+  TableColumn, 
+  TableAction, 
+  TableHeader, 
+  TableEmptyState 
+} from 'app/shared/data-table/data-table.component';
 
 @Component({
   selector: 'app-teachers',
@@ -43,11 +49,18 @@ import { StatsCardsComponent, StatCard } from 'app/shared/stats-cards/stats-card
     FilterPanelComponent,
     PaginationComponent,
     StatsCardsComponent,
+    DataTableComponent,
   ],
   templateUrl: './teachers.component.html',
 })
 export class TeachersComponent implements OnInit, OnDestroy {
   @ViewChild('photoInput') photoInputRef!: ElementRef<HTMLInputElement>;
+  @ViewChild('teacherCell') teacherCellTemplate!: TemplateRef<any>;
+  @ViewChild('numberCell') numberCellTemplate!: TemplateRef<any>;
+  @ViewChild('contactCell') contactCellTemplate!: TemplateRef<any>;
+  @ViewChild('designationCell') designationCellTemplate!: TemplateRef<any>;
+  @ViewChild('employmentCell') employmentCellTemplate!: TemplateRef<any>;
+  @ViewChild('statusCell') statusCellTemplate!: TemplateRef<any>;
 
   private _unsubscribe = new Subject<void>();
   private _apiBaseUrl = inject(API_BASE_URL);
@@ -90,6 +103,107 @@ export class TeachersComponent implements OnInit, OnDestroy {
     ];
   }
 
+  // ── Table Configuration ──────────────────────────────────────────────────────
+  tableColumns: TableColumn<TeacherDto>[] = [
+    {
+      id: 'teacher',
+      label: 'Teacher',
+      align: 'left',
+      sortable: true,
+    },
+    {
+      id: 'number',
+      label: 'Number',
+      align: 'left',
+      hideOnMobile: true,
+    },
+    {
+      id: 'contact',
+      label: 'Contact',
+      align: 'left',
+      hideOnMobile: true,
+    },
+    {
+      id: 'designation',
+      label: 'Designation',
+      align: 'left',
+      hideOnTablet: true,
+    },
+    {
+      id: 'employment',
+      label: 'Employment',
+      align: 'left',
+      hideOnTablet: true,
+    },
+    {
+      id: 'status',
+      label: 'Status',
+      align: 'center',
+    },
+  ];
+
+  tableActions: TableAction<TeacherDto>[] = [
+    {
+      id: 'edit',
+      label: 'Edit',
+      icon: 'edit',
+      color: 'blue',
+      handler: (teacher) => this.openEdit(teacher),
+    },
+    {
+      id: 'uploadPhoto',
+      label: 'Upload Photo',
+      icon: 'photo_camera',
+      color: 'violet',
+      handler: (teacher) => this.uploadPhoto(teacher),
+    },
+    {
+      id: 'toggleActive',
+      label: 'Toggle Active',
+      icon: 'block',
+      color: 'amber',
+      handler: (teacher) => this.toggleActive(teacher),
+      visible: (teacher) => teacher.isActive,
+    },
+    {
+      id: 'activate',
+      label: 'Activate',
+      icon: 'check_circle',
+      color: 'green',
+      handler: (teacher) => this.toggleActive(teacher),
+      visible: (teacher) => !teacher.isActive,
+      divider: true,
+    },
+    {
+      id: 'delete',
+      label: 'Delete',
+      icon: 'delete',
+      color: 'red',
+      handler: (teacher) => this.removeTeacher(teacher),
+    },
+  ];
+
+  tableHeader: TableHeader = {
+    title: 'Teachers List',
+    subtitle: '',
+    icon: 'table_chart',
+    iconGradient: 'bg-gradient-to-br from-indigo-500 via-violet-600 to-purple-700',
+  };
+
+  tableEmptyState: TableEmptyState = {
+    icon: 'person_search',
+    message: 'No teachers found',
+    description: 'Try adjusting your filters or add a new teacher',
+    action: {
+      label: 'Add First Teacher',
+      icon: 'person_add',
+      handler: () => this.openCreate(),
+    },
+  };
+
+  // Cell templates will be set in ngAfterViewInit
+  cellTemplates: { [key: string]: TemplateRef<any> } = {};
+
   // ── Filter Fields Configuration ──────────────────────────────────────────────
   filterFields: FilterField[] = [];
   showFilterPanel = false;
@@ -113,7 +227,7 @@ export class TeachersComponent implements OnInit, OnDestroy {
   itemsPerPage = 10;
 
   // ── Enum Observables ─────────────────────────────────────────────────────────
-  employmentTypes$!: Observable<EnumItemDto[]>;
+ employmentTypes$!: Observable<EnumItemDto[]>;
 
   // ── Computed Stats ───────────────────────────────────────────────────────────
   get total(): number { 
@@ -136,28 +250,12 @@ export class TeachersComponent implements OnInit, OnDestroy {
   get filteredData(): TeacherDto[] {
     return this.allData.filter(t => {
       const q = this._filterValues.search.toLowerCase();
-
-      const matchesSearch = !q ||
-        t.fullName.toLowerCase().includes(q) ||
-        t.teacherNumber.toLowerCase().includes(q) ||
-        t.email.toLowerCase().includes(q) ||
-        t.phoneNumber.toLowerCase().includes(q);
-
-      const matchesStatus =
-        this._filterValues.status === 'all' ||
-        (this._filterValues.status === 'active' && t.isActive) ||
-        (this._filterValues.status === 'inactive' && !t.isActive);
-
-      const matchesEmployment =
-        this._filterValues.employmentType === 'all' ||
-        t.employmentType === this._filterValues.employmentType;
-
-      const matchesRole =
-        this._filterValues.role === 'all' ||
-        (this._filterValues.role === 'classTeacher' && t.isClassTeacher) ||
-        (this._filterValues.role === 'subject' && !t.isClassTeacher);
-
-      return matchesSearch && matchesStatus && matchesEmployment && matchesRole;
+      return (
+        (!q || t.fullName.toLowerCase().includes(q)) &&
+        (this._filterValues.status === 'all' ||
+          (this._filterValues.status === 'active' && t.isActive) ||
+          (this._filterValues.status === 'inactive' && !t.isActive))
+      );
     });
   }
 
@@ -166,6 +264,7 @@ export class TeachersComponent implements OnInit, OnDestroy {
     const start = (this.currentPage - 1) * this.itemsPerPage;
     return this.filteredData.slice(start, start + this.itemsPerPage);
   }
+
 
   constructor(
     private _service: TeacherService,
@@ -177,15 +276,23 @@ export class TeachersComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.employmentTypes$ = this._enumService.getTeacherEmploymentTypes();
-    this.initializeFilterFields();
     this.loadAll();
+  }
+  ngAfterViewInit(): void {
+    this.cellTemplates = {
+      teacher: this.teacherCellTemplate,
+      number: this.numberCellTemplate,
+      contact: this.contactCellTemplate,
+      designation: this.designationCellTemplate,
+      employment: this.employmentCellTemplate,
+      status: this.statusCellTemplate,
+    };
   }
 
   ngOnDestroy(): void {
     this._unsubscribe.next();
     this._unsubscribe.complete();
-    // Clean up all cached photo URLs
-    Object.values(this.photoCache).forEach(url => URL.revokeObjectURL(url));
+    //Object.values(this.photoCache).forEach(url => URL.revokeObjectURL(url));
   }
 
   // ── Initialize Filter Fields ─────────────────────────────────────────────────
@@ -242,7 +349,8 @@ export class TeachersComponent implements OnInit, OnDestroy {
 
   onFilterChange(event: FilterChangeEvent): void {
     (this._filterValues as any)[event.filterId] = event.value;
-    this.currentPage = 1; // Reset to first page when filters change
+    this.currentPage = 1;
+    this.tableHeader.subtitle = `${this.filteredData.length} teachers found`;
   }
 
   onClearFilters(): void {
@@ -253,12 +361,12 @@ export class TeachersComponent implements OnInit, OnDestroy {
       role: 'all',
     };
     
-    // Update filter field values
     this.filterFields.forEach(field => {
       field.value = (this._filterValues as any)[field.id];
     });
     
     this.currentPage = 1;
+    this.tableHeader.subtitle = `${this.filteredData.length} teachers found`;
   }
 
   // ── Pagination Handlers ──────────────────────────────────────────────────────
@@ -268,7 +376,7 @@ export class TeachersComponent implements OnInit, OnDestroy {
 
   onItemsPerPageChange(itemsPerPage: number): void {
     this.itemsPerPage = itemsPerPage;
-    this.currentPage = 1; // Reset to first page
+    this.currentPage = 1;
   }
 
   // ── Image Preloading ──────────────────────────────────────────────────────────
@@ -322,160 +430,48 @@ export class TeachersComponent implements OnInit, OnDestroy {
   // ── Data Loading ──────────────────────────────────────────────────────────────
   loadAll(): void {
     this.isLoading = true;
-
     this._service.getAll()
       .pipe(takeUntil(this._unsubscribe))
       .subscribe({
         next: res => {
           if (res.success) {
             this.allData = res.data;
-            this.preloadImages();
           }
           this.isLoading = false;
         },
-        error: err => {
-          console.error('Failed to load teachers:', err);
-          this.isLoading = false;
-        }
+        error: () => this.isLoading = false
       });
   }
 
   // ── CRUD ──────────────────────────────────────────────────────────────────────
   openCreate(): void {
-    const dialogRef = this._dialog.open(CreateEditTeacherDialogComponent, {
+    this._dialog.open(CreateEditTeacherDialogComponent, {
       width: '720px',
       maxHeight: '90vh',
       data: { mode: 'create' },
     });
-
-    dialogRef.afterClosed()
-      .pipe(takeUntil(this._unsubscribe))
-      .subscribe((result: CreateEditTeacherDialogResult | null) => {
-        if (!result) return;
-
-        this._service.create(result.formData)
-          .pipe(takeUntil(this._unsubscribe))
-          .subscribe({
-            next: res => {
-              if (res.success) {
-                if (result.photoFile) {
-                  this._uploadPhoto(res.data.id, result.photoFile, () => this.loadAll());
-                } else {
-                  this._showSuccess('Teacher created successfully');
-                  this.loadAll();
-                }
-              }
-            },
-            error: err => {
-              console.error('Create teacher failed:', err);
-              this._showError(err.error?.message || 'Failed to create teacher');
-            },
-          });
-      });
   }
 
   openEdit(teacher: TeacherDto): void {
-    const dialogRef = this._dialog.open(CreateEditTeacherDialogComponent, {
+    this._dialog.open(CreateEditTeacherDialogComponent, {
       width: '720px',
       maxHeight: '90vh',
       data: { mode: 'edit', teacher },
     });
-
-    dialogRef.afterClosed()
-      .pipe(takeUntil(this._unsubscribe))
-      .subscribe((result: CreateEditTeacherDialogResult | null) => {
-        if (!result) return;
-
-        this._service.update(teacher.id, result.formData)
-          .pipe(takeUntil(this._unsubscribe))
-          .subscribe({
-            next: res => {
-              if (res.success) {
-                if (result.photoFile) {
-                  this._uploadPhoto(teacher.id, result.photoFile, () => this.loadAll());
-                } else {
-                  this._showSuccess('Teacher updated successfully');
-                  
-                  let photoUrl = res.data.photoUrl;
-                  if (photoUrl && !photoUrl.startsWith('http')) {
-                    photoUrl = `${this._apiBaseUrl}${photoUrl}`;
-                  }
-                  
-                  this.clearAndReloadImage(teacher.id, photoUrl);
-                  this.loadAll();
-                }
-              }
-            },
-            error: err => {
-              console.error('Update teacher failed:', err);
-              this._showError(err.error?.message || 'Failed to update teacher');
-            },
-          });
-      });
+    this.loadAll();
   }
 
-  toggleActive(teacher: TeacherDto): void {
-    const action = teacher.isActive ? 'deactivate' : 'activate';
-    const label = teacher.isActive ? 'Deactivate' : 'Activate';
-    const color = teacher.isActive ? 'warn' : 'primary';
-
-    this._confirmation.open({
-      title: `${label} Teacher`,
-      message: `Are you sure you want to ${action} "${teacher.fullName}"?`,
-      actions: { confirm: { label, color } },
-    }).afterClosed()
+   toggleActive(teacher: TeacherDto): void {
+    const payload = { ...teacher, isActive: !teacher.isActive };
+    this._service.update(teacher.id, payload as any)
       .pipe(takeUntil(this._unsubscribe))
-      .subscribe(result => {
-        if (result !== 'confirmed') return;
-
-        const payload = { ...teacher, isActive: !teacher.isActive };
-        this._service.update(teacher.id, payload as any)
-          .pipe(takeUntil(this._unsubscribe))
-          .subscribe({
-            next: res => {
-              if (res.success) {
-                this._showSuccess(`Teacher ${action}d successfully`);
-                this.loadAll();
-              }
-            },
-            error: err => {
-              console.error(`Failed to ${action} teacher:`, err);
-              this._showError(err.error?.message || `Failed to ${action} teacher`);
-            },
-          });
-      });
+      .subscribe(() => this.loadAll());
   }
 
   removeTeacher(teacher: TeacherDto): void {
-    this._confirmation.open({
-      title: 'Delete Teacher',
-      message: `Are you sure you want to permanently delete "${teacher.fullName}" (${teacher.teacherNumber})? This cannot be undone.`,
-      actions: { confirm: { label: 'Delete', color: 'warn' } },
-    }).afterClosed()
+    this._service.delete(teacher.id)
       .pipe(takeUntil(this._unsubscribe))
-      .subscribe(result => {
-        if (result !== 'confirmed') return;
-
-        this._service.delete(teacher.id)
-          .pipe(takeUntil(this._unsubscribe))
-          .subscribe({
-            next: res => {
-              if (res.success) {
-                if (this.photoCache[teacher.id]) {
-                  URL.revokeObjectURL(this.photoCache[teacher.id]);
-                  delete this.photoCache[teacher.id];
-                }
-                
-                this._showSuccess('Teacher deleted successfully');
-                this.loadAll();
-              }
-            },
-            error: err => {
-              console.error('Delete teacher failed:', err);
-              this._showError(err.error?.message || 'Failed to delete teacher');
-            },
-          });
-      });
+      .subscribe(() => this.loadAll());
   }
 
   // ── Photo Upload ──────────────────────────────────────────────────────────────
@@ -488,11 +484,10 @@ export class TeachersComponent implements OnInit, OnDestroy {
   onPhotoFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (!input.files?.length || !this._photoTargetTeacher) return;
-
     const file = input.files[0];
-    const id = this._photoTargetTeacher.id;
-    this._uploadPhoto(id, file, () => this.loadAll());
-    this._photoTargetTeacher = null;
+    this._service.uploadPhoto(this._photoTargetTeacher.id, file)
+      .pipe(takeUntil(this._unsubscribe))
+      .subscribe(() => this.loadAll());
   }
 
   private _uploadPhoto(teacherId: string, file: File, onSuccess: () => void): void {

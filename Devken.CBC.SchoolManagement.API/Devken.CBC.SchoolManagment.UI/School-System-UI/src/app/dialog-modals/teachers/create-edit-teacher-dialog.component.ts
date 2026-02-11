@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, Inject, OnInit, OnDestroy, ViewChild, TemplateRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
@@ -10,10 +10,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Observable, Subject } from 'rxjs';
+import { forkJoin, Observable, Subject, takeUntil } from 'rxjs';
 import { TeacherDto } from 'app/core/DevKenService/Types/Teacher';
 import { EnumItemDto, EnumService } from 'app/core/DevKenService/common/enum.service';
 import { API_BASE_URL } from 'app/app.config';
+import { FormDialogComponent, DialogHeader, DialogTab, PhotoUploadConfig, DialogFooter } from 'app/shared/dialogs/form/form-dialog.component';
 
 
 export interface CreateEditTeacherDialogData {
@@ -41,26 +42,54 @@ export interface CreateEditTeacherDialogResult {
     MatDatepickerModule,
     MatSlideToggleModule,
     MatProgressSpinnerModule,
+    // Reusable form dialog
+    FormDialogComponent,
   ],
   templateUrl: './create-edit-teacher-dialog.component.html',
 })
 export class CreateEditTeacherDialogComponent implements OnInit, OnDestroy {
+  @ViewChild('personalTab') personalTabTemplate!: TemplateRef<any>;
+  @ViewChild('contactTab') contactTabTemplate!: TemplateRef<any>;
+  @ViewChild('professionalTab') professionalTabTemplate!: TemplateRef<any>;
+
   private _unsubscribe = new Subject<void>();
   private _apiBaseUrl = inject(API_BASE_URL);
 
   form!: FormGroup;
-  isSaving = false;
   formSubmitted = false;
+  activeTab = 0;
+  
   photoPreview: string | null = null;
   selectedPhotoFile: File | null = null;
 
-  activeTab = 0;
-  tabs = [
-    { label: 'Personal',     icon: 'person'    },
-    { label: 'Contact',      icon: 'contacts'  },
-    { label: 'Professional', icon: 'work'      },
+  // ── Dialog Configuration ─────────────────────────────────────────────────────
+  dialogHeader!: DialogHeader;
+  dialogTabs: DialogTab[] = [
+    { 
+      id: 'personal', 
+      label: 'Personal', 
+      icon: 'person',
+      fields: ['firstName', 'lastName', 'teacherNumber', 'gender']
+    },
+    { 
+      id: 'contact', 
+      label: 'Contact', 
+      icon: 'contacts',
+      fields: ['email']
+    },
+    { 
+      id: 'professional', 
+      label: 'Professional', 
+      icon: 'work',
+      fields: []
+    },
   ];
 
+  photoConfig!: PhotoUploadConfig;
+  footerConfig!: DialogFooter;
+  tabTemplates: { [key: string]: TemplateRef<any> } = {};
+
+  // ── Enum Observables ─────────────────────────────────────────────────────────
   genders$!: Observable<EnumItemDto[]>;
   employmentTypes$!: Observable<EnumItemDto[]>;
   designations$!: Observable<EnumItemDto[]>;
@@ -76,18 +105,60 @@ export class CreateEditTeacherDialogComponent implements OnInit, OnDestroy {
     private _enumService: EnumService,
   ) {}
 
-  ngOnInit(): void {
+
+    ngOnInit(): void {
     this._buildForm();
     this._loadEnums();
+    this._configureDialog();
 
     if (this.isEditMode && this.data.teacher) {
-      this._patchForm(this.data.teacher);
+        this._patchFormAfterEnums(this.data.teacher);
     }
+    }
+
+
+  ngAfterViewInit(): void {
+    // Set up tab templates after view initialization
+    this.tabTemplates = {
+      'personal': this.personalTabTemplate,
+      'contact': this.contactTabTemplate,
+      'professional': this.professionalTabTemplate,
+    };
   }
 
   ngOnDestroy(): void {
     this._unsubscribe.next();
     this._unsubscribe.complete();
+  }
+
+  // ── Dialog Configuration ─────────────────────────────────────────────────────
+  private _configureDialog(): void {
+    this.dialogHeader = {
+      title: this.isEditMode ? 'Edit Teacher' : 'Add New Teacher',
+      subtitle: this.isEditMode ? 'Update teacher information' : 'Fill in teacher details below',
+      icon: this.isEditMode ? 'edit' : 'person_add',
+    };
+
+    this.photoConfig = {
+      enabled: true,
+      photoUrl: this.form.get('photoUrl')?.value,
+      preview: this.photoPreview,
+      label: 'Profile Photo',
+      description: 'JPEG, PNG or WebP · Max 5 MB',
+      buttonText: this.isEditMode ? 'Change Photo' : 'Upload Photo',
+      onChange: (file) => this.onPhotoSelected(file),
+      onRemove: () => this.removePhoto(),
+    };
+
+    this.footerConfig = {
+      cancelText: 'Cancel',
+      submitText: this.isEditMode ? 'Save Changes' : 'Create Teacher',
+      submitIcon: this.isEditMode ? 'save' : 'add',
+      loading: false,
+      loadingText: 'Saving...',
+      showError: true,
+      errorMessage: 'Please fix all errors before saving.',
+    };
   }
 
   // ── Form Setup ───────────────────────────────────────────────────────────────
@@ -120,39 +191,66 @@ export class CreateEditTeacherDialogComponent implements OnInit, OnDestroy {
     });
   }
 
-  private _patchForm(teacher: TeacherDto): void {
-    // Construct full photo URL if photoUrl exists and is not already a full URL
-    let fullPhotoUrl = '';
-    if (teacher.photoUrl) {
-      fullPhotoUrl = teacher.photoUrl.startsWith('http') 
-        ? teacher.photoUrl 
-        : `${this._apiBaseUrl}${teacher.photoUrl}`;
+    private _patchFormAfterEnums(teacher: TeacherDto): void {
+
+    forkJoin({
+        genders: this.genders$,
+        employmentTypes: this.employmentTypes$,
+        designations: this.designations$
+    })
+    .pipe(takeUntil(this._unsubscribe))
+    .subscribe(({ genders, employmentTypes, designations }) => {
+
+        const genderValue =
+        genders.find(g => g.name === teacher.gender)?.value ?? null;
+
+        const employmentValue =
+        employmentTypes.find(e => e.name === teacher.employmentType)?.value ?? null;
+
+        const designationValue =
+        designations.find(d => d.name === teacher.designation)?.value ?? null;
+
+        let fullPhotoUrl = '';
+        if (teacher.photoUrl) {
+        fullPhotoUrl = teacher.photoUrl.startsWith('http')
+            ? teacher.photoUrl
+            : `${this._apiBaseUrl}${teacher.photoUrl}`;
+        }
+
+        this.form.patchValue({
+        firstName: teacher.firstName,
+        middleName: teacher.middleName,
+        lastName: teacher.lastName,
+        teacherNumber: teacher.teacherNumber,
+        gender: genderValue,
+        dateOfBirth: teacher.dateOfBirth ? new Date(teacher.dateOfBirth) : null,
+        idNumber: teacher.idNumber,
+        nationality: teacher.nationality,
+        photoUrl: fullPhotoUrl,
+        phoneNumber: teacher.phoneNumber,
+        email: teacher.email,
+        address: teacher.address,
+        tscNumber: teacher.tscNumber,
+        employmentType: employmentValue,
+        designation: designationValue,
+        qualification: teacher.qualification,
+        specialization: teacher.specialization,
+        dateOfEmployment: teacher.dateOfEmployment ? new Date(teacher.dateOfEmployment) : null,
+        isClassTeacher: teacher.isClassTeacher,
+        isActive: teacher.isActive,
+        notes: teacher.notes,
+        });
+
+        this.photoPreview = fullPhotoUrl;
+
+        this.photoConfig = {
+        ...this.photoConfig,
+        photoUrl: fullPhotoUrl,
+        preview: fullPhotoUrl,
+        };
+    });
     }
 
-    this.form.patchValue({
-      firstName:        teacher.firstName,
-      middleName:       teacher.middleName,
-      lastName:         teacher.lastName,
-      teacherNumber:    teacher.teacherNumber,
-      gender:           this._enumNameToValue(teacher.gender),
-      dateOfBirth:      teacher.dateOfBirth ? new Date(teacher.dateOfBirth) : null,
-      idNumber:         teacher.idNumber,
-      nationality:      teacher.nationality,
-      photoUrl:         fullPhotoUrl,
-      phoneNumber:      teacher.phoneNumber,
-      email:            teacher.email,
-      address:          teacher.address,
-      tscNumber:        teacher.tscNumber,
-      employmentType:   this._enumNameToValue(teacher.employmentType),
-      designation:      this._enumNameToValue(teacher.designation),
-      qualification:    teacher.qualification,
-      specialization:   teacher.specialization,
-      dateOfEmployment: teacher.dateOfEmployment ? new Date(teacher.dateOfEmployment) : null,
-      isClassTeacher:   teacher.isClassTeacher,
-      isActive:         teacher.isActive,
-      notes:            teacher.notes,
-    });
-  }
 
   private _loadEnums(): void {
     this.genders$         = this._enumService.getGenders();
@@ -161,15 +259,17 @@ export class CreateEditTeacherDialogComponent implements OnInit, OnDestroy {
   }
 
   // ── Photo Handling ───────────────────────────────────────────────────────────
-  onPhotoSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (!input.files?.length) return;
-
-    const file = input.files[0];
+  onPhotoSelected(file: File): void {
     this.selectedPhotoFile = file;
 
     const reader = new FileReader();
-    reader.onload = () => { this.photoPreview = reader.result as string; };
+    reader.onload = () => { 
+      this.photoPreview = reader.result as string;
+      this.photoConfig = {
+        ...this.photoConfig,
+        preview: this.photoPreview,
+      };
+    };
     reader.readAsDataURL(file);
   }
 
@@ -177,28 +277,30 @@ export class CreateEditTeacherDialogComponent implements OnInit, OnDestroy {
     this.photoPreview = null;
     this.selectedPhotoFile = null;
     this.form.patchValue({ photoUrl: '' });
-  }
-
-  // ── Tab Validation Hints ─────────────────────────────────────────────────────
-  tabHasErrors(tabIndex: number): boolean {
-    if (!this.formSubmitted) return false;
-
-    const tabFields: Record<number, string[]> = {
-      0: ['firstName', 'lastName', 'teacherNumber', 'gender'],
-      1: ['email'],
-      2: [],
+    
+    this.photoConfig = {
+      ...this.photoConfig,
+      photoUrl: '',
+      preview: null,
     };
-
-    return (tabFields[tabIndex] || []).some(field => this.form.get(field)?.invalid);
   }
 
-  // ── Submit ───────────────────────────────────────────────────────────────────
+  // ── Event Handlers ───────────────────────────────────────────────────────────
+  onTabChange(tabIndex: number): void {
+    this.activeTab = tabIndex;
+  }
+
   onSubmit(): void {
     this.formSubmitted = true;
+    
     if (this.form.invalid) {
       // Jump to first tab with errors
-      for (let i = 0; i < this.tabs.length; i++) {
-        if (this.tabHasErrors(i)) { this.activeTab = i; break; }
+      for (let i = 0; i < this.dialogTabs.length; i++) {
+        const tab = this.dialogTabs[i];
+        if (tab.fields && tab.fields.some(field => this.form.get(field)?.invalid)) {
+          this.activeTab = i;
+          break;
+        }
       }
       return;
     }

@@ -1,0 +1,132 @@
+<div class="flex flex-col w-full" [ngClass]="[maxHeight, containerClass]">
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- Dialog Header -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <div class="flex items-center justify-between px-6 py-4 shrink-0" [ngClass]="getHeaderGradient()">
+    <div class="flex items-center gap-3">
+      <div *ngIf="header.icon" class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+        <mat-icon class="text-white">{{ header.icon }}</mat-icon>
+      </div>
+      <div>
+        <h2 class="text-lg font-bold text-white leading-tight">{{ header.title }}</h2>
+        <p *ngIf="header.subtitle" class="text-white/70 text-xs">{{ header.subtitle }}</p>
+      </div>
+    </div>
+    <button mat-icon-button 
+            (click)="onCancel()" 
+            class="text-white/80 hover:text-white hover:bg-white/10 rounded-xl">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- Tab Navigation -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <div *ngIf="tabs.length > 0" 
+       class="flex border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0 overflow-x-auto">
+    <button
+      *ngFor="let tab of tabs; let i = index; trackBy: trackByTab"
+      (click)="onTabChange(i)"
+      class="flex items-center gap-2 px-5 py-3 text-sm font-semibold whitespace-nowrap transition-all border-b-2 -mb-px"
+      [class.border-indigo-600]="activeTab === i"
+      [class.text-indigo-600]="activeTab === i"
+      [class.border-transparent]="activeTab !== i"
+      [class.text-gray-500]="activeTab !== i"
+      [class.dark:text-gray-400]="activeTab !== i"
+      [class.hover:text-gray-700]="activeTab !== i">
+      <mat-icon class="icon-size-4">{{ tab.icon }}</mat-icon>
+      <span>{{ tab.label }}</span>
+      <span *ngIf="tabHasErrors(tab)" class="w-2 h-2 rounded-full bg-red-500 ml-1"></span>
+    </button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- Scrollable Form Content -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <div class="flex flex-col flex-auto overflow-y-auto bg-gray-50 dark:bg-gray-900">
+    <form *ngIf="form" [formGroup]="form" class="flex flex-col flex-auto">
+      
+      <!-- Photo Upload Section (if enabled) -->
+      <div *ngIf="photoConfig?.enabled" 
+           class="p-6 grid grid-cols-1 gap-4">
+        <div class="flex items-center gap-5 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+          <div class="relative">
+            <div class="w-20 h-20 rounded-2xl overflow-hidden bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-indigo-900/30 dark:to-violet-900/30 flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-800">
+              <img *ngIf="getPhotoUrl()"
+                   [src]="getPhotoUrl()!"
+                   class="w-full h-full object-cover" 
+                   alt="Photo preview" />
+              <mat-icon *ngIf="!getPhotoUrl()"
+                        class="text-indigo-400 icon-size-10">person</mat-icon>
+            </div>
+            <button *ngIf="getPhotoUrl()"
+                    type="button" 
+                    (click)="onPhotoRemove()"
+                    class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center shadow-md hover:bg-red-600 transition-colors">
+              <mat-icon class="text-white icon-size-3 text-xs leading-none">close</mat-icon>
+            </button>
+          </div>
+          <div class="flex flex-col gap-2">
+            <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              {{ photoConfig.label || 'Profile Photo' }}
+            </p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              {{ photoConfig.description || 'JPEG, PNG or WebP · Max 5 MB' }}
+            </p>
+            <label class="cursor-pointer">
+              <span class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-600 border-2 border-indigo-300 dark:border-indigo-700 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
+                <mat-icon class="icon-size-4">upload</mat-icon>
+                {{ photoConfig.buttonText || 'Upload Photo' }}
+              </span>
+              <input type="file" 
+                     class="hidden" 
+                     accept="image/*" 
+                     (change)="onPhotoChange($event)" />
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content -->
+      <div class="flex-auto">
+        <ng-container *ngFor="let tab of tabs; let i = index">
+          <div *ngIf="activeTab === i" class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <ng-container *ngTemplateOutlet="tabTemplates[tab.id]"></ng-container>
+          </div>
+        </ng-container>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- Dialog Footer -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <div class="flex items-center justify-between px-6 py-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shrink-0">
+    <p *ngIf="footer.showError && form.invalid && formSubmitted" 
+       class="text-sm text-red-500 flex items-center gap-1">
+      <mat-icon class="icon-size-4">error_outline</mat-icon>
+      {{ footer.errorMessage }}
+    </p>
+    <div class="flex items-center gap-3 ml-auto">
+      <button mat-stroked-button 
+              (click)="onCancel()" 
+              [disabled]="footer.loading">
+        {{ footer.cancelText }}
+      </button>
+      <button mat-flat-button 
+              color="primary" 
+              (click)="onSubmit()" 
+              [disabled]="footer.loading"
+              class="bg-gradient-to-r from-indigo-600 to-violet-600 text-white min-w-28">
+        <mat-spinner *ngIf="footer.loading" diameter="18" class="mr-2"></mat-spinner>
+        <mat-icon *ngIf="!footer.loading && footer.submitIcon" class="icon-size-5 mr-1">
+          {{ footer.submitIcon }}
+        </mat-icon>
+        {{ footer.loading ? footer.loadingText : footer.submitText }}
+      </button>
+    </div>
+  </div>
+
+</div>
