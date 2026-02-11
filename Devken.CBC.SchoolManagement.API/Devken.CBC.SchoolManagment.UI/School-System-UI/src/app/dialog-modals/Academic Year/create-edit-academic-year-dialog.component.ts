@@ -14,8 +14,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { SchoolDto } from 'app/Tenant/types/school';
 import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
 import { UserService } from 'app/core/user/user.service';
-import { AcademicYearDto, CreateAcademicYearRequest, UpdateAcademicYearRequest } from 'app/AcademicYear/Types/AcademicYear';
 import { take } from 'rxjs/operators';
+import { AcademicYearDto, CreateAcademicYearRequest, UpdateAcademicYearRequest } from 'app/Academics/AcademicYear/Types/AcademicYear';
 
 @Component({
   selector: 'app-create-edit-academic-year-dialog',
