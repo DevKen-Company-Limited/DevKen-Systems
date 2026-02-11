@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 
 namespace Devken.CBC.SchoolManagement.Application.DTOs.RoleAssignment
 {
@@ -30,11 +31,7 @@ namespace Devken.CBC.SchoolManagement.Application.DTOs.RoleAssignment
         public bool HasPrevious => PageNumber > 1;
         public bool HasNext => PageNumber < TotalPages;
 
-        public PaginatedResult(
-            List<T> items,
-            int totalCount,
-            int pageNumber,
-            int pageSize)
+        public PaginatedResult(List<T> items, int totalCount, int pageNumber, int pageSize)
         {
             Items = items ?? new List<T>();
             TotalCount = totalCount;
@@ -46,33 +43,35 @@ namespace Devken.CBC.SchoolManagement.Application.DTOs.RoleAssignment
             => new(new List<T>(), 0, pageNumber, pageSize);
     }
 
-
     #endregion
 
-    #region ===================== User & Role DTOs =====================
+    #region ===================== Role DTOs =====================
 
-    public class UserWithRolesDto
+    /// <summary>
+    /// Simplified Role DTO for listing and selection
+    /// Used in dropdowns and role assignment
+    /// </summary>
+    public class RoleDto
     {
-        public Guid UserId { get; set; }
-        public string Email { get; set; } = string.Empty;
-        public string FullName { get; set; } = string.Empty;
-        public string UserName { get; set; } = string.Empty;
-        public string FirstName { get; set; } = string.Empty;
-        public string LastName { get; set; } = string.Empty;
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public bool IsSystemRole { get; set; }
         public Guid? TenantId { get; set; }
-        public List<UserRoleDto> Roles { get; set; } = new();
-        public List<string> Permissions { get; set; } = new();
-        public bool RequirePasswordChange { get; set; }
-        public bool IsSuperAdmin { get; set; }
     }
 
+    /// <summary>
+    /// Detailed Role DTO with permissions
+    /// Used when showing full role details
+    /// </summary>
     public class UserRoleDto
     {
         public Guid RoleId { get; set; }
         public string RoleName { get; set; } = string.Empty;
         public string? Description { get; set; }
-        public int PermissionCount { get; set; }
         public bool IsSystemRole { get; set; }
+        public int UserCount { get; set; }
+        public int PermissionCount { get; set; }
         public List<RolePermissionDto>? Permissions { get; set; }
     }
 
@@ -83,18 +82,37 @@ namespace Devken.CBC.SchoolManagement.Application.DTOs.RoleAssignment
         public string? Description { get; set; }
     }
 
+    #endregion
+
+    #region ===================== User DTOs =====================
+
+    public class UserWithRolesDto
+    {
+        public Guid UserId { get; set; }
+        public string Email { get; set; } = string.Empty;
+        public string UserName { get; set; } = string.Empty;
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
+        public Guid? TenantId { get; set; }
+        public List<UserRoleDto> Roles { get; set; } = new();
+        public List<string> Permissions { get; set; } = new();
+        public bool RequirePasswordChange { get; set; }
+        public bool IsSuperAdmin { get; set; }
+    }
+
     public class UserSearchResultDto
     {
         public Guid UserId { get; set; }
         public string Email { get; set; } = string.Empty;
-        public string FullName { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
         public bool IsSuperAdmin { get; set; }
     }
 
     #endregion
 
-    #region ===================== Requests =====================
+    #region ===================== Request DTOs =====================
 
     public class AssignRoleRequest
     {

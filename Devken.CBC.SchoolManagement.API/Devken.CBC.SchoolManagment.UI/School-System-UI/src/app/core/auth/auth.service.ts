@@ -25,6 +25,7 @@ export interface AuthUser {
     roles: string[];
     permissions: string[];
     isSuperAdmin: boolean;
+    requirePasswordChange?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -37,6 +38,9 @@ export class AuthService {
 
     private _permissions$ = new BehaviorSubject<string[]>([]);
     readonly permissions$ = this._permissions$.asObservable();
+
+    private _requirePasswordChange$ = new BehaviorSubject<boolean>(false);
+    readonly requirePasswordChange$ = this._requirePasswordChange$.asObservable();
 
     // Prevent multiple simultaneous refresh calls
     private _refreshInProgress$: Observable<boolean> | null = null;
@@ -77,6 +81,13 @@ export class AuthService {
         user
             ? localStorage.setItem(this.USER, JSON.stringify(user))
             : localStorage.removeItem(this.USER);
+    }
+
+    /**
+     * Check if the current user requires a password change
+     */
+    get requiresPasswordChange(): boolean {
+        return this.authUser?.requirePasswordChange ?? false;
     }
 
     /* =======================
@@ -134,15 +145,16 @@ export class AuthService {
         return this.get<any>('/api/auth/me').pipe(
             map(res => {
                 const data = res.data;
-                const fullName = `${data.firstName} ${data.lastName}`;
+                const fullName = `${data.firstName || ''} ${data.lastName || ''}`.trim();
                 return {
                     id: data.id,
-                    name: fullName,
+                    name: fullName || data.email,
                     email: data.email,
                     fullName,
                     roles: data.roles ?? [],
                     permissions: data.permissions ?? [],
-                    isSuperAdmin: data.isSuperAdmin ?? false
+                    isSuperAdmin: data.isSuperAdmin ?? false,
+                    requirePasswordChange: data.requirePasswordChange ?? false
                 };
             })
         );
@@ -180,15 +192,16 @@ export class AuthService {
                 // Update user session if user data is returned
                 if (res.data.user) {
                     const userData = res.data.user;
-                    const fullName = `${userData.firstName} ${userData.lastName}`;
+                    const fullName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
                     const user: AuthUser = {
                         id: userData.id,
-                        name: fullName,
+                        name: fullName || userData.email,
                         email: userData.email,
                         fullName,
                         roles: res.data.roles ?? userData.roles ?? [],
                         permissions: res.data.permissions ?? userData.permissions ?? [],
-                        isSuperAdmin: this.authUser?.isSuperAdmin ?? false
+                        isSuperAdmin: this.authUser?.isSuperAdmin ?? false,
+                        requirePasswordChange: userData.requirePasswordChange ?? false
                     };
                     this.setSession(user);
                 } else if (this.authUser) {
@@ -219,6 +232,7 @@ export class AuthService {
         localStorage.clear();
         this._authenticated$.next(false);
         this._permissions$.next([]);
+        this._requirePasswordChange$.next(false);
         this._userService.user = null;
         this._refreshInProgress$ = null;
     }
@@ -240,22 +254,46 @@ export class AuthService {
     }
 
     /* =======================
+       PASSWORD CHANGE
+    ======================= */
+    changePassword(credentials: { 
+        currentPassword: string; 
+        newPassword: string 
+    }): Observable<ApiResponse<any>> {
+        return this.post<any>('/api/auth/change-password', {
+            currentPassword: credentials.currentPassword,
+            newPassword: credentials.newPassword
+        }).pipe(
+            tap(() => {
+                // Update the requirePasswordChange flag
+                const currentUser = this.authUser;
+                if (currentUser) {
+                    currentUser.requirePasswordChange = false;
+                    this.authUser = currentUser;
+                    this._requirePasswordChange$.next(false);
+                }
+            })
+        );
+    }
+
+    /* =======================
        INTERNALS
     ======================= */
     private handleLoginResponse(data: any, isSuperAdmin: boolean): void {
         this.accessToken = data.accessToken;
         this.refreshToken = data.refreshToken;
 
-        const fullName = `${data.user.firstName} ${data.user.lastName}`;
+        const fullName = `${data.user.firstName || ''} ${data.user.lastName || ''}`.trim();
 
         const user: AuthUser = {
             id: data.user.id,
-            name: fullName,
+            name: fullName || data.user.email,
             email: data.user.email,
             fullName,
             roles: data.roles ?? [],
             permissions: data.permissions ?? [],
-            isSuperAdmin
+            isSuperAdmin,
+            requirePasswordChange: data.user.requirePasswordChange ?? false
         };
 
         this.setSession(user);
@@ -265,6 +303,7 @@ export class AuthService {
         this.authUser = user;
         this._permissions$.next(user.permissions);
         this._authenticated$.next(true);
+        this._requirePasswordChange$.next(user.requirePasswordChange ?? false);
         this._userService.user = user;
     }
 

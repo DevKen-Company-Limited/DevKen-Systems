@@ -1,0 +1,206 @@
+<div class="enrollment-shell">
+
+  <!-- ─── Left Sidebar / Step Navigator ──────────────────────────── -->
+  <aside class="step-nav" [class.collapsed]="isSidebarCollapsed">
+
+    <!-- Collapse Button -->
+    <button class="collapse-toggle" (click)="toggleSidebar()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline *ngIf="!isSidebarCollapsed" points="15 18 9 12 15 6"/>
+        <polyline *ngIf="isSidebarCollapsed" points="9 18 15 12 9 6"/>
+      </svg>
+    </button>
+
+    <!-- Brand -->
+    <div class="step-nav__brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 14l9-5-9-5-9 5 9 5z"/>
+          <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
+        </svg>
+      </div>
+
+      <div class="brand-text" *ngIf="!isSidebarCollapsed">
+        <span class="brand-title">Student Enrolment</span>
+        <span class="brand-sub">CBC School Management</span>
+      </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-ring-wrap" *ngIf="!isSidebarCollapsed">
+      <svg class="progress-ring" viewBox="0 0 80 80">
+        <circle class="ring-bg" cx="40" cy="40" r="34" />
+        <circle class="ring-fill" cx="40" cy="40" r="34"
+          [style.strokeDashoffset]="getRingOffset()" />
+      </svg>
+      <div class="progress-center">
+        <span class="prog-pct">{{ getProgressPercent() }}%</span>
+        <span class="prog-label">Done</span>
+      </div>
+    </div>
+
+    <!-- Steps -->
+    <nav class="step-list">
+      <button
+        *ngFor="let step of steps; let i = index"
+        class="step-item"
+        [class.active]="currentStep === i"
+        [class.completed]="isStepCompleted(i)"
+        [class.locked]="!canNavigateTo(i)"
+        (click)="navigateToStep(i)">
+
+        <div class="step-indicator">
+          <ng-container *ngIf="isStepCompleted(i); else notDone">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </ng-container>
+          <ng-template #notDone>
+            <span>{{ i + 1 }}</span>
+          </ng-template>
+        </div>
+
+        <div class="step-meta" *ngIf="!isSidebarCollapsed">
+          <span class="step-name">{{ step.label }}</span>
+          <span class="step-status">
+            {{ isStepCompleted(i) ? 'Saved ✓' : (currentStep === i ? 'In progress' : 'Pending') }}
+          </span>
+        </div>
+
+        <div *ngIf="isStepCompleted(i) && !isSidebarCollapsed" class="step-saved-dot"></div>
+      </button>
+    </nav>
+
+  </aside>
+
+  <!-- ─── Main Content Area ───────────────────────────────────────── -->
+  <main class="enrollment-main">
+
+    <!-- Top Bar -->
+    <header class="top-bar">
+      <div class="top-bar__left">
+        <button class="btn-ghost" (click)="goBack()" *ngIf="studentId">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          Back to Students
+        </button>
+      </div>
+      <div class="top-bar__center">
+        <div class="step-crumb">
+          <span class="crumb-step">Step {{ currentStep + 1 }} of {{ steps.length }}</span>
+          <span class="crumb-sep">—</span>
+          <span class="crumb-name">{{ steps[currentStep]?.label }}</span>
+        </div>
+      </div>
+      <div class="top-bar__right">
+        <button class="btn-outline-sm" (click)="saveDraft()" [disabled]="isSaving">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          {{ isSaving ? 'Saving…' : 'Save Draft' }}
+        </button>
+      </div>
+    </header>
+
+    <!-- Alert Banner -->
+    <div class="alert-bar" *ngIf="alert" [class]="'alert-bar--' + alert.type" [@fadeSlide]>
+      <svg *ngIf="alert.type === 'success'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+      <svg *ngIf="alert.type === 'error'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span>{{ alert.message }}</span>
+      <button class="alert-close" (click)="alert = null">×</button>
+    </div>
+
+    <!-- Step Content -->
+    <div class="step-content" [@stepTransition]="currentStep">
+
+      <!-- STEP 0: Personal Info -->
+      <app-student-personal-info
+        *ngIf="currentStep === 0"
+        [formData]="formSections.personal"
+        (formChanged)="onSectionChanged('personal', $event)"
+        (formValid)="onSectionValidChanged('personal', $event)">
+      </app-student-personal-info>
+
+      <!-- STEP 1: Location & Background -->
+      <app-student-location
+        *ngIf="currentStep === 1"
+        [formData]="formSections.location"
+        (formChanged)="onSectionChanged('location', $event)"
+        (formValid)="onSectionValidChanged('location', $event)">
+      </app-student-location>
+
+      <!-- STEP 2: Academic Info -->
+      <app-student-academic
+        *ngIf="currentStep === 2"
+        [formData]="formSections.academic"
+        [schools]="schools"
+        [classes]="classes"
+        [academicYears]="academicYears"
+        (formChanged)="onSectionChanged('academic', $event)"
+        (formValid)="onSectionValidChanged('academic', $event)">
+      </app-student-academic>
+
+      <!-- STEP 3: Medical Info -->
+      <app-student-medical
+        *ngIf="currentStep === 3"
+        [formData]="formSections.medical"
+        (formChanged)="onSectionChanged('medical', $event)"
+        (formValid)="onSectionValidChanged('medical', $event)">
+      </app-student-medical>
+
+      <!-- STEP 4: Guardian Info -->
+      <app-student-guardians
+        *ngIf="currentStep === 4"
+        [formData]="formSections.guardians"
+        (formChanged)="onSectionChanged('guardians', $event)"
+        (formValid)="onSectionValidChanged('guardians', $event)">
+      </app-student-guardians>
+
+      <!-- STEP 5: Review & Submit -->
+      <app-student-review
+        *ngIf="currentStep === 5"
+        [formSections]="formSections"
+        [steps]="steps"
+        [completedSteps]="completedSteps"
+        (editSection)="navigateToStep($event)">
+      </app-student-review>
+
+    </div>
+
+    <!-- Bottom Navigation -->
+    <footer class="step-footer">
+      <button
+        class="btn-secondary"
+        (click)="prevStep()"
+        [disabled]="currentStep === 0">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        Previous
+      </button>
+
+      <div class="footer-dots">
+        <span
+          *ngFor="let step of steps; let i = index"
+          class="foot-dot"
+          [class.active]="currentStep === i"
+          [class.done]="isStepCompleted(i)">
+        </span>
+      </div>
+
+      <button
+        *ngIf="currentStep < steps.length - 1"
+        class="btn-primary"
+        (click)="nextStep()"
+        [disabled]="!canProceed()">
+        Save & Continue
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+
+      <button
+        *ngIf="currentStep === steps.length - 1"
+        class="btn-success"
+        (click)="submitForm()"
+        [disabled]="!allStepsCompleted() || isSubmitting">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        {{ isSubmitting ? 'Submitting…' : 'Submit Enrolment' }}
+      </button>
+    </footer>
+
+  </main>
+</div>

@@ -2,3 +2,93 @@
 /*  @ Import/write your custom styles here.
 /*  @ Styles from this file will override 'vendors.scss' and Fuse's base styles.
 /* ----------------------------------------------------------------------------------------------------- */
+/* create-edit-school-dialog.component.scss */
+:host {
+  display: block;
+}
+
+.icon-size-4 {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+}
+
+.icon-size-5 {
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+}
+
+.icon-size-6 {
+  width: 24px;
+  height: 24px;
+  font-size: 24px;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Custom scrollbar for dialog content */
+.mat-mdc-dialog-content {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: #94a3b8;
+  }
+}
+
+/* Dark mode scrollbar */
+.dark .mat-mdc-dialog-content {
+  scrollbar-color: #475569 transparent;
+
+  &::-webkit-scrollbar-thumb {
+    background-color: #475569;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: #64748b;
+  }
+}
+
+/* Form field enhancements */
+.mat-mdc-form-field {
+  .mat-mdc-form-field-subscript-wrapper {
+    font-size: 0.75rem;
+  }
+
+  .mat-mdc-form-field-hint {
+    color: #6b7280;
+  }
+}
+
+.dark {
+  .mat-mdc-form-field {
+    .mat-mdc-form-field-hint {
+      color: #9ca3af;
+    }
+  }
+}

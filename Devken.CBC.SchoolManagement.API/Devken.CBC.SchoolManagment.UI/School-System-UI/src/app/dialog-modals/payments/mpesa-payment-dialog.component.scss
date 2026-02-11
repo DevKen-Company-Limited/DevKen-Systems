@@ -1,0 +1,56 @@
+// M-Pesa Payment Dialog Styles
+:host {
+  display: block;
+}
+
+.mat-mdc-dialog-container {
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+// Ensure proper spinner centering
+mat-spinner {
+  margin: 0 auto;
+}
+
+// Phone input styling
+mat-form-field {
+  width: 100%;
+}
+
+// Animations for status changes
+.status-icon {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+// Success state styling
+.payment-success {
+  .mat-icon {
+    color: #10b981;
+  }
+}
+
+// Failed state styling
+.payment-failed {
+  .mat-icon {
+    color: #ef4444;
+  }
+}
+
+// Polling state styling
+.payment-polling {
+  .mat-icon {
+    color: #3b82f6;
+  }
+}

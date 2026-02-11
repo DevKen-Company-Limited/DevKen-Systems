@@ -1,0 +1,469 @@
+<div class="flex flex-col flex-auto min-w-0">
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row flex-0 sm:items-center sm:justify-between p-6 sm:py-8 sm:px-10 border-b bg-card dark:bg-gray-900 shadow-sm">
+    <div class="flex-1 min-w-0">
+      <!-- Breadcrumbs -->
+      <div class="flex flex-wrap items-center text-sm font-medium text-gray-500 dark:text-gray-400">
+        <a class="hover:text-primary-500 transition-colors cursor-pointer">Administration</a>
+        <mat-icon class="icon-size-5 mx-1" [svgIcon]="'heroicons_solid:chevron-right'"></mat-icon>
+        <a class="hover:text-primary-500 transition-colors cursor-pointer">Role Management</a>
+        <mat-icon class="icon-size-5 mx-1" [svgIcon]="'heroicons_solid:chevron-right'"></mat-icon>
+        <span class="text-gray-400">Permission Management</span>
+      </div>
+
+      <!-- Title -->
+      <h2 class="mt-2 text-3xl md:text-4xl font-extrabold tracking-tight truncate text-gray-900 dark:text-white">
+        Role Permission Manager
+      </h2>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex shrink-0 items-center mt-6 sm:mt-0 sm:ml-4 gap-3">
+      <!-- Stats -->
+      <div class="hidden sm:flex items-center gap-4 mr-4">
+        <div class="text-center">
+          <div class="text-2xl font-bold text-primary">{{ stats.totalRoles }}</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400">Roles</div>
+        </div>
+        <div class="h-10 w-px bg-gray-300 dark:bg-gray-600"></div>
+        <div class="text-center">
+          <div class="text-2xl font-bold text-primary">{{ stats.totalPermissions }}</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400">Permissions</div>
+        </div>
+        <div class="h-10 w-px bg-gray-300 dark:bg-gray-600"></div>
+        <div class="text-center">
+          <div class="text-2xl font-bold text-primary">{{ stats.totalPermissionGroups }}</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400">Groups</div>
+        </div>
+        <div class="h-10 w-px bg-gray-300 dark:bg-gray-600"></div>
+        <div class="text-center">
+          <div class="text-2xl font-bold text-primary">{{ stats.totalUsers }}</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400">Total Users</div>
+        </div>
+      </div>
+
+      <button 
+        mat-flat-button 
+        color="primary" 
+        (click)="loadData()" 
+        [disabled]="isLoading" 
+        class="flex items-center gap-2"
+        matTooltip="Refresh data">
+        <mat-icon [svgIcon]="'heroicons_outline:arrow-path'" [class.animate-spin]="isLoading"></mat-icon>
+        <span class="hidden sm:inline">Refresh</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Clone Mode Banner -->
+  <div *ngIf="cloneSourceRole" class="p-4 bg-blue-50 dark:bg-blue-900 border-b border-blue-200 dark:border-blue-800 animate-pulse-slow">
+    <div class="flex items-center justify-between max-w-7xl mx-auto">
+      <div class="flex items-center gap-3">
+        <mat-icon class="text-blue-600 dark:text-blue-300" [svgIcon]="'heroicons_outline:clipboard-document-list'"></mat-icon>
+        <div>
+          <p class="font-semibold text-blue-900 dark:text-blue-100">Clone Mode Active</p>
+          <p class="text-sm text-blue-700 dark:text-blue-300">
+            Source: <strong>{{ cloneSourceRole.roleName }}</strong> 
+            <span class="inline-flex items-center ml-1 px-2 py-0.5 rounded-full bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 text-xs font-medium">
+              {{ cloneSourceRole.totalPermissions || 0 }} permissions
+            </span>
+            - Click "Clone Here" on any target role
+          </p>
+        </div>
+      </div>
+      <button mat-stroked-button color="warn" (click)="cancelClone()" class="flex items-center gap-2">
+        <mat-icon [svgIcon]="'heroicons_outline:x-mark'"></mat-icon>
+        <span class="hidden sm:inline">Cancel Clone</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Alert -->
+  <fuse-alert
+    class="m-6"
+    *ngIf="showAlert"
+    [appearance]="'outline'"
+    [showIcon]="true"
+    [type]="alert.type"
+    [dismissible]="true"
+    (dismissed)="dismissAlert()">
+    {{ alert.message }}
+  </fuse-alert>
+
+  <!-- Tabs -->
+  <mat-tab-group
+    [(selectedIndex)]="selectedTabIndex"
+    class="flex-auto p-6 sm:p-10"
+    [animationDuration]="'200ms'"
+    [disableRipple]="false">
+
+    <!-- Tab 1: Role Management -->
+    <mat-tab label="Role Management">
+      <ng-template mat-tab-label>
+        <mat-icon class="mr-2" [svgIcon]="'heroicons_outline:shield-check'"></mat-icon>
+        <span class="hidden sm:inline">Manage Role Permissions</span>
+        <span class="sm:hidden">Roles</span>
+      </ng-template>
+
+      <div class="mt-6">
+        <mat-card class="shadow-md hover:shadow-lg transition-shadow">
+          <mat-card-header class="pb-4">
+            <mat-card-title class="text-2xl font-semibold">Assign Permissions to Roles</mat-card-title>
+          </mat-card-header>
+
+          <mat-card-content>
+            <!-- Search and Filter -->
+            <div class="flex flex-col md:flex-row gap-4 mb-6">
+              <mat-form-field class="flex-auto" appearance="outline">
+                <mat-label>Search roles</mat-label>
+                <input
+                  matInput
+                  [ngModel]="roleSearchTerm"
+                  (ngModelChange)="onSearchChange($event)"
+                  placeholder="Role name or description"
+                  autocomplete="off">
+                <mat-icon matPrefix [svgIcon]="'heroicons_outline:magnifying-glass'"></mat-icon>
+                <button *ngIf="roleSearchTerm" mat-icon-button matSuffix (click)="clearRoleFilter()" matTooltip="Clear search">
+                  <mat-icon [svgIcon]="'heroicons_outline:x-mark'"></mat-icon>
+                </button>
+              </mat-form-field>
+
+              <mat-form-field class="md:w-64" appearance="outline">
+                <mat-label>Filter by permission group</mat-label>
+                <mat-select [(value)]="permissionGroupFilter" (selectionChange)="applyRoleFilter()">
+                  <mat-option [value]="null">All Groups</mat-option>
+                  <mat-option *ngFor="let group of permissionGroups; trackBy: trackByGroup" [value]="group">
+                    {{ group }}
+                    <span class="text-xs text-gray-500 ml-2">({{ getGroupPermissionCount(group) }})</span>
+                  </mat-option>
+                </mat-select>
+                <mat-icon matPrefix [svgIcon]="'heroicons_outline:funnel'"></mat-icon>
+              </mat-form-field>
+            </div>
+
+            <!-- Active Filters Display -->
+            <div *ngIf="roleSearchTerm || permissionGroupFilter" class="mb-4 flex flex-wrap gap-2 items-center">
+              <span class="text-sm text-gray-600 dark:text-gray-400">Active filters:</span>
+              <mat-chip-row *ngIf="roleSearchTerm" class="text-xs" (removed)="roleSearchTerm = ''; applyRoleFilter()">
+                Search: "{{ roleSearchTerm }}"
+                <button matChipRemove>
+                  <mat-icon [svgIcon]="'heroicons_outline:x-mark'"></mat-icon>
+                </button>
+              </mat-chip-row>
+              <mat-chip-row *ngIf="permissionGroupFilter" class="text-xs" (removed)="permissionGroupFilter = null; applyRoleFilter()">
+                Group: {{ permissionGroupFilter }}
+                <button matChipRemove>
+                  <mat-icon [svgIcon]="'heroicons_outline:x-mark'"></mat-icon>
+                </button>
+              </mat-chip-row>
+              <button mat-button color="warn" (click)="clearRoleFilter()" class="text-xs h-8">
+                Clear All
+              </button>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div *ngIf="isLoading" class="flex flex-col items-center justify-center h-64">
+              <mat-spinner [diameter]="48"></mat-spinner>
+              <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">Loading role permissions...</p>
+            </div>
+
+            <!-- Roles Table -->
+            <div *ngIf="!isLoading" class="overflow-x-auto rounded-md border border-gray-200 dark:border-gray-700">
+              <table mat-table [dataSource]="rolesDataSource" matSort class="w-full text-left">
+                
+                <!-- Role Column -->
+                <ng-container matColumnDef="role">
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header class="font-semibold px-4 py-3 bg-gray-50 dark:bg-gray-800">
+                    Role
+                  </th>
+                  <td mat-cell *matCellDef="let role" class="px-4 py-3">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-sm text-white font-semibold text-sm flex-shrink-0">
+                        {{ getRoleInitials(role.roleName) }}
+                      </div>
+                      <div class="truncate min-w-0">
+                        <div class="font-medium text-gray-900 dark:text-white flex items-center gap-2 flex-wrap">
+                          {{ role.roleName }}
+                          <span 
+                            *ngIf="role.isSystemRole" 
+                            class="inline-flex items-center px-1.5 py-0.5 text-xs rounded bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 flex-shrink-0">
+                            <mat-icon class="icon-size-3 mr-0.5" [svgIcon]="'heroicons_outline:lock-closed'"></mat-icon>
+                            System
+                          </span>
+                        </div>
+                        <div class="text-sm text-gray-500 dark:text-gray-400 line-clamp-1" *ngIf="role.description">
+                          {{ role.description }}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                </ng-container>
+
+                <!-- Permissions Column -->
+                <ng-container matColumnDef="permissions">
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header class="font-semibold px-4 py-3 bg-gray-50 dark:bg-gray-800">
+                    Assigned Permissions
+                  </th>
+                  <td mat-cell *matCellDef="let role" class="px-4 py-3">
+                    <div class="flex flex-wrap gap-2">
+                      <ng-container *ngIf="role.permissions && role.permissions.length > 0">
+                        <!-- Show permission groups as badges -->
+                        <ng-container *ngFor="let group of getRolePermissionGroups(role).slice(0, 3); trackBy: trackByGroup">
+                          <span 
+                            class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-full cursor-help"
+                            [ngClass]="getGroupBadgeColor(group)"
+                            [matTooltip]="group + ': ' + getRolePermissionsGrouped(role)[group]?.length + ' permissions'"
+                            matTooltipPosition="above">
+                            <mat-icon class="icon-size-3 mr-1" [svgIcon]="'heroicons_outline:key'"></mat-icon>
+                            {{ group }}
+                            <span class="ml-1 font-bold">{{ getRolePermissionsGrouped(role)[group]?.length }}</span>
+                          </span>
+                        </ng-container>
+                        <span 
+                          *ngIf="getRolePermissionGroups(role).length > 3" 
+                          class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 cursor-help"
+                          [matTooltip]="getRolePermissionGroups(role).slice(3).join(', ')"
+                          matTooltipPosition="above">
+                          +{{ getRolePermissionGroups(role).length - 3 }} more
+                        </span>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 w-full mt-1">
+                          <strong>{{ role.totalPermissions || 0 }}</strong> total permission{{ (role.totalPermissions || 0) !== 1 ? 's' : '' }}
+                        </div>
+                      </ng-container>
+                      <span *ngIf="!role.permissions || role.permissions.length === 0" class="text-sm text-gray-400 italic flex items-center gap-1">
+                        <mat-icon class="icon-size-4" [svgIcon]="'heroicons_outline:exclamation-circle'"></mat-icon>
+                        No permissions assigned
+                      </span>
+                    </div>
+                  </td>
+                </ng-container>
+
+                <!-- Users Column -->
+                <ng-container matColumnDef="users">
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header class="font-semibold px-4 py-3 bg-gray-50 dark:bg-gray-800">
+                    Users
+                    <mat-icon class="icon-size-3 ml-1 text-primary-500" [svgIcon]="'heroicons_outline:users'"></mat-icon>
+                  </th>
+                  <td mat-cell *matCellDef="let role" class="px-4 py-3">
+                    <div class="flex items-center gap-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded-lg transition-colors"
+                         (click)="viewRoleUsers(role)"
+                         [matTooltip]="'Click to view users in ' + role.roleName"
+                         [class.cursor-default]="!role.userCount || role.userCount === 0">
+                      <div class="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center">
+                        <mat-icon class="icon-size-4 text-primary-600 dark:text-primary-300" [svgIcon]="'heroicons_outline:user-group'"></mat-icon>
+                      </div>
+                      <div class="flex flex-col">
+                        <span class="font-semibold text-gray-900 dark:text-white text-sm"
+                              [class.text-primary-600]="(role.userCount || 0) > 0"
+                              [class.text-gray-400]="(role.userCount || 0) === 0">
+                          {{ role.userCount || 0 }}
+                        </span>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">
+                          user{{ (role.userCount || 0) !== 1 ? 's' : '' }}
+                        </span>
+                      </div>
+                    </div>
+                  </td>
+                </ng-container>
+
+                <!-- Actions Column -->
+                <ng-container matColumnDef="actions">
+                  <th mat-header-cell *matHeaderCellDef class="font-semibold px-4 py-3 text-right bg-gray-50 dark:bg-gray-800">
+                    Actions
+                  </th>
+                  <td mat-cell *matCellDef="let role" class="px-4 py-3 text-right">
+                    <!-- Clone Mode Active - Show Clone Button -->
+                    <button 
+                      *ngIf="cloneSourceRole && cloneSourceRole.roleId !== role.roleId"
+                      mat-raised-button 
+                      color="primary"
+                      (click)="clonePermissionsTo(role)"
+                      [disabled]="isLoading"
+                      class="mr-2 animate-pulse">
+                      <mat-icon [svgIcon]="'heroicons_outline:clipboard-document-check'"></mat-icon>
+                      Clone Here
+                    </button>
+                    
+                    <!-- Normal Mode - Show Menu -->
+                    <button 
+                      *ngIf="!cloneSourceRole" 
+                      mat-icon-button 
+                      [matMenuTriggerFor]="roleMenu" 
+                      [disabled]="isLoading"
+                      matTooltip="More actions"
+                      class="hover:bg-gray-100 dark:hover:bg-gray-700">
+                      <mat-icon [svgIcon]="'heroicons_outline:ellipsis-vertical'"></mat-icon>
+                    </button>
+                    
+                    <mat-menu #roleMenu="matMenu">
+                      <button mat-menu-item (click)="openManagePermissionsDialog(role)">
+                        <mat-icon [svgIcon]="'heroicons_outline:cog-6-tooth'"></mat-icon>
+                        <span>Manage Permissions</span>
+                      </button>
+                      <button mat-menu-item (click)="viewRoleDetails(role)">
+                        <mat-icon [svgIcon]="'heroicons_outline:eye'"></mat-icon>
+                        <span>View Details</span>
+                      </button>
+                      <button mat-menu-item (click)="viewRoleUsers(role)" [disabled]="!role.userCount || role.userCount === 0">
+                        <mat-icon [svgIcon]="'heroicons_outline:users'"></mat-icon>
+                        <span>View Users ({{ role.userCount || 0 }})</span>
+                      </button>
+                      <mat-divider></mat-divider>
+                      <button mat-menu-item (click)="setCloneSource(role)">
+                        <mat-icon [svgIcon]="'heroicons_outline:clipboard-document-list'"></mat-icon>
+                        <span>Set as Clone Source</span>
+                      </button>
+                      <mat-divider *ngIf="role.permissions && role.permissions.length > 0"></mat-divider>
+                      <button 
+                        *ngIf="role.permissions && role.permissions.length > 0" 
+                        mat-menu-item 
+                        (click)="removeAllPermissions(role.roleId, role.roleName)" 
+                        class="text-warn">
+                        <mat-icon [svgIcon]="'heroicons_outline:trash'"></mat-icon>
+                        <span>Remove All Permissions</span>
+                      </button>
+                    </mat-menu>
+                  </td>
+                </ng-container>
+
+                <!-- Header and Row Definitions -->
+                <tr mat-header-row *matHeaderRowDef="displayedColumns" class="bg-gray-50 dark:bg-gray-800"></tr>
+                <tr mat-row 
+                    *matRowDef="let row; columns: displayedColumns; trackBy: trackByRoleId" 
+                    class="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    [class.bg-blue-50]="cloneSourceRole?.roleId === row.roleId"
+                    [class.dark:bg-blue-900]="cloneSourceRole?.roleId === row.roleId"
+                    [class.border-l-4]="cloneSourceRole?.roleId === row.roleId"
+                    [class.border-blue-500]="cloneSourceRole?.roleId === row.roleId"></tr>
+              </table>
+
+              <!-- Paginator -->
+              <mat-paginator 
+                [pageSizeOptions]="[5, 10, 25, 50, 100]" 
+                [pageSize]="10"
+                showFirstLastButtons
+                class="border-t border-gray-200 dark:border-gray-700">
+              </mat-paginator>
+
+              <!-- Empty State -->
+              <div *ngIf="rolesDataSource.data.length === 0" class="text-center py-16 px-4">
+                <mat-icon class="icon-size-16 mb-4 text-gray-400 mx-auto" [svgIcon]="'heroicons_outline:shield-exclamation'"></mat-icon>
+                <h3 class="text-xl font-semibold mb-2 text-gray-900 dark:text-white">No Roles Found</h3>
+                <p class="text-gray-500 dark:text-gray-400 mb-4">
+                  {{ (roleSearchTerm || permissionGroupFilter) ? 'Try adjusting your filters' : 'No roles available in the system' }}
+                </p>
+                <button 
+                  *ngIf="roleSearchTerm || permissionGroupFilter" 
+                  mat-stroked-button 
+                  color="primary" 
+                  (click)="clearRoleFilter()">
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </mat-tab>
+
+    <!-- Tab 2: Permissions Overview -->
+    <mat-tab label="Permissions Overview">
+      <ng-template mat-tab-label>
+        <mat-icon class="mr-2" [svgIcon]="'heroicons_outline:key'"></mat-icon>
+        <span class="hidden sm:inline">All Permissions</span>
+        <span class="sm:hidden">Permissions</span>
+      </ng-template>
+
+      <div class="mt-6">
+        <!-- Loading Spinner -->
+        <div *ngIf="isLoading" class="flex flex-col items-center justify-center h-64">
+          <mat-spinner [diameter]="48"></mat-spinner>
+          <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">Loading permissions...</p>
+        </div>
+
+        <!-- Permissions Accordion -->
+        <div *ngIf="!isLoading && Object.keys(groupedPermissions).length > 0">
+          <mat-accordion class="space-y-4" multi>
+            <mat-expansion-panel 
+              *ngFor="let group of permissionGroups; trackBy: trackByGroup"
+              class="shadow-md hover:shadow-lg transition-shadow"
+              [expanded]="false">
+              <mat-expansion-panel-header class="bg-gray-50 dark:bg-gray-800">
+                <mat-panel-title class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-sm flex-shrink-0">
+                    <mat-icon class="text-white icon-size-5" [svgIcon]="'heroicons_outline:folder-open'"></mat-icon>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="font-semibold text-lg text-gray-900 dark:text-white truncate">{{ group }}</div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400">
+                      {{ groupedPermissions[group].length }} permission{{ groupedPermissions[group].length !== 1 ? 's' : '' }}
+                      · {{ getTotalGroupUserCount(group) }} user{{ getTotalGroupUserCount(group) !== 1 ? 's' : '' }}
+                    </div>
+                  </div>
+                  <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium {{ getGroupBadgeColor(group) }} flex-shrink-0">
+                    {{ groupedPermissions[group].length }}
+                  </span>
+                </mat-panel-title>
+              </mat-expansion-panel-header>
+
+              <div class="p-4 bg-gray-50 dark:bg-gray-900">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div 
+                    *ngFor="let permission of groupedPermissions[group]; trackBy: trackByPermissionId" 
+                    class="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-md transition-shadow bg-white dark:bg-gray-800 hover:border-primary-300 dark:hover:border-primary-600 cursor-pointer"
+                    (click)="viewPermissionUsers(permission)"
+                    [matTooltip]="'Click to view ' + (permission.userCount || 0) + ' user(s) with this permission'">
+                    <div class="flex items-start gap-3">
+                      <div class="w-8 h-8 rounded bg-primary-100 dark:bg-primary-900 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <mat-icon class="text-primary-600 dark:text-primary-300 icon-size-4" [svgIcon]="'heroicons_outline:key'"></mat-icon>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="font-semibold text-gray-900 dark:text-white mb-1 truncate" [matTooltip]="permission.displayName">
+                          {{ permission.displayName }}
+                        </div>
+                        <div class="text-xs font-mono text-gray-500 dark:text-gray-400 mb-2 truncate bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded" [matTooltip]="permission.key">
+                          {{ permission.key }}
+                        </div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-2" *ngIf="permission.description">
+                          {{ permission.description }}
+                        </div>
+                        <div class="text-xs text-gray-400 italic mb-2" *ngIf="!permission.description">
+                          No description available
+                        </div>
+                        
+                        <!-- User Count Badge -->
+                        <div class="flex items-center gap-2 mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                          <mat-icon class="icon-size-4 text-gray-400" [svgIcon]="'heroicons_outline:users'"></mat-icon>
+                          <span class="text-sm font-semibold" 
+                                [class.text-primary-600]="(permission.userCount || 0) > 0"
+                                [class.text-gray-400]="(permission.userCount || 0) === 0">
+                            {{ permission.userCount || 0 }} user{{ (permission.userCount || 0) !== 1 ? 's' : '' }}
+                          </span>
+                          <button 
+                            *ngIf="(permission.userCount || 0) > 0"
+                            mat-icon-button 
+                            class="ml-auto"
+                            (click)="$event.stopPropagation(); viewPermissionUsers(permission)"
+                            matTooltip="View users with this permission">
+                            <mat-icon class="icon-size-4" [svgIcon]="'heroicons_outline:arrow-right'"></mat-icon>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </mat-expansion-panel>
+          </mat-accordion>
+        </div>
+
+        <!-- Empty State -->
+        <div *ngIf="!isLoading && Object.keys(groupedPermissions).length === 0" class="text-center py-16 px-4">
+          <mat-icon class="icon-size-16 mb-4 text-gray-400 mx-auto" [svgIcon]="'heroicons_outline:key'"></mat-icon>
+          <h3 class="text-xl font-semibold mb-2 text-gray-900 dark:text-white">No Permissions Available</h3>
+          <p class="text-gray-500 dark:text-gray-400">Contact your system administrator to seed permissions</p>
+        </div>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</div>

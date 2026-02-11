@@ -1,0 +1,124 @@
+<!-- steps/student-guardians/student-guardians.component.html -->
+<div class="section-header">
+  <div class="section-icon-row">
+    <div class="section-icon" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+    </div>
+    <div>
+      <h2 class="section-title">Guardian & Emergency Contacts</h2>
+      <p class="section-subtitle">Primary guardian is required. Secondary and emergency contacts are optional.</p>
+    </div>
+  </div>
+</div>
+
+<form [formGroup]="form" novalidate>
+
+  <!-- Primary Guardian -->
+  <div class="subsection">
+    <h3 class="subsection-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Primary Guardian <span class="required-badge">Required</span>
+    </h3>
+    <div class="form-grid cols-3">
+      <div class="form-group">
+        <label class="form-label">Full Name <span class="required">*</span></label>
+        <input class="form-input" formControlName="primaryGuardianName" placeholder="e.g. John Mwangi"
+          [class.error]="isInvalid('primaryGuardianName')">
+        <span class="field-error" *ngIf="isInvalid('primaryGuardianName')">Guardian name is required</span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Relationship <span class="required">*</span></label>
+        <select class="form-select" formControlName="primaryGuardianRelationship"
+          [class.error]="isInvalid('primaryGuardianRelationship')">
+          <option value="">Select relationship</option>
+          <option>Father</option><option>Mother</option>
+          <option>Guardian</option><option>Uncle</option>
+          <option>Aunt</option><option>Grandparent</option><option>Other</option>
+        </select>
+        <span class="field-error" *ngIf="isInvalid('primaryGuardianRelationship')">Relationship is required</span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Phone Number <span class="required">*</span></label>
+        <input class="form-input" formControlName="primaryGuardianPhone" placeholder="+254 7XX XXX XXX"
+          [class.error]="isInvalid('primaryGuardianPhone')">
+        <span class="field-error" *ngIf="isInvalid('primaryGuardianPhone')">Phone number is required</span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input class="form-input" type="email" formControlName="primaryGuardianEmail" placeholder="email@example.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Occupation</label>
+        <input class="form-input" formControlName="primaryGuardianOccupation" placeholder="e.g. Teacher, Farmer">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Address</label>
+        <input class="form-input" formControlName="primaryGuardianAddress" placeholder="Residential address">
+      </div>
+    </div>
+  </div>
+
+  <!-- Secondary Guardian (collapsible) -->
+  <div class="subsection">
+    <button type="button" class="expand-toggle" (click)="showSecondary = !showSecondary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path *ngIf="!showSecondary" d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle *ngIf="!showSecondary" cx="9" cy="7" r="4"/>
+        <path *ngIf="!showSecondary" d="M23 21v-2a4 4 0 00-3-3.87"/><path *ngIf="!showSecondary" d="M16 3.13a4 4 0 010 7.75"/>
+        <line *ngIf="showSecondary" x1="5" y1="12" x2="19" y2="12"/>
+        <line *ngIf="!showSecondary" x1="12" y1="5" x2="12" y2="19"/><line *ngIf="!showSecondary" x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      <span>{{ showSecondary ? 'Hide' : 'Add' }} Secondary Guardian (Optional)</span>
+    </button>
+
+    <div *ngIf="showSecondary" class="form-grid cols-3" style="margin-top:18px">
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input class="form-input" formControlName="secondaryGuardianName" placeholder="Full name">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Relationship</label>
+        <select class="form-select" formControlName="secondaryGuardianRelationship">
+          <option value="">Select relationship</option>
+          <option>Father</option><option>Mother</option>
+          <option>Guardian</option><option>Uncle</option>
+          <option>Aunt</option><option>Grandparent</option><option>Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Phone Number</label>
+        <input class="form-input" formControlName="secondaryGuardianPhone" placeholder="+254 7XX XXX XXX">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" type="email" formControlName="secondaryGuardianEmail" placeholder="email@example.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Occupation</label>
+        <input class="form-input" formControlName="secondaryGuardianOccupation" placeholder="e.g. Engineer">
+      </div>
+    </div>
+  </div>
+
+  <!-- Emergency Contact -->
+  <div class="subsection">
+    <h3 class="subsection-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.21 8.77a19.79 19.79 0 01-3.07-8.67A2 2 0 012.12 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 9.91a16 16 0 006.16 6.16l1.27-.46a2 2 0 012.11.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+      Emergency Contact
+    </h3>
+    <div class="form-grid cols-3">
+      <div class="form-group">
+        <label class="form-label">Name</label>
+        <input class="form-input" formControlName="emergencyContactName" placeholder="Full name">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Phone</label>
+        <input class="form-input" formControlName="emergencyContactPhone" placeholder="+254 7XX XXX XXX">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Relationship</label>
+        <input class="form-input" formControlName="emergencyContactRelationship" placeholder="e.g. Aunt">
+      </div>
+    </div>
+  </div>
+
+</form>

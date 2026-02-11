@@ -14,11 +14,13 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     '/api/auth/super-admin/login',
     '/api/auth/register',
     '/api/auth/forgot-password',
-    '/api/auth/reset-password'
+    '/api/auth/reset-password',
+    '/api/auth/change-password'
   ];
 
   const isAuthEndpoint = AUTH_ENDPOINTS.some(url => req.url.includes(url));
 
+  // Add authorization header to non-auth endpoints
   if (!isAuthEndpoint && authService.accessToken) {
     req = req.clone({
       setHeaders: {
@@ -29,6 +31,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
+      // Handle 401 Unauthorized
       if (error.status === 401 && !isAuthEndpoint) {
         return authService.refreshAccessToken().pipe(
           switchMap(success => {
@@ -37,6 +40,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
               router.navigate(['/sign-in']);
               return throwError(() => error);
             }
+            
+            // Retry the request with new token
             const retryReq = req.clone({
               setHeaders: {
                 Authorization: `Bearer ${authService.accessToken}`
@@ -51,6 +56,17 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
           })
         );
       }
+
+      // Handle 403 Forbidden - Password change required
+      if (error.status === 403) {
+        const errorMessage = error.error?.message?.toLowerCase() || '';
+        if (errorMessage.includes('password change required') || 
+            errorMessage.includes('must change password')) {
+          router.navigate(['/change-password']);
+          return throwError(() => error);
+        }
+      }
+
       return throwError(() => error);
     })
   );

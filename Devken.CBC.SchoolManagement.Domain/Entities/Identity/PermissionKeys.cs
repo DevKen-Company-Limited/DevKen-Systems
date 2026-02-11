@@ -60,6 +60,11 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
         public const string CurriculumWrite = "Curriculum.Write";
         public const string LessonPlanRead = "LessonPlan.Read";
         public const string LessonPlanWrite = "LessonPlan.Write";
+        // ✅ NEW: M-Pesa Specific Permissions
+        public const string MpesaInitiate = "Mpesa.Initiate";
+        public const string MpesaViewTransactions = "Mpesa.ViewTransactions";
+        public const string MpesaRefund = "Mpesa.Refund";
+        public const string MpesaReconcile = "Mpesa.Reconcile";
 
         /// <summary>
         /// Returns a list of all permission keys.

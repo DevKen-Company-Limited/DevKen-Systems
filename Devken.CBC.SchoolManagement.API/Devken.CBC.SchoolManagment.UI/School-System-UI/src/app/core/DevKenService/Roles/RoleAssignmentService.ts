@@ -12,7 +12,7 @@ import {
     UpdateUserRolesRequest,
     ApiResponse,
     PaginatedResponse,
-    UserSearchRequest,
+    
     UserSearchResult
 } from '../Types/roles';
 
@@ -207,21 +207,28 @@ export class RoleAssignmentService {
     /**
      * Get users assigned to a role (paginated)
      */
-    getUsersByRole(
-        roleId: string,
-        pageNumber = 1,
-        pageSize = 20
-    ): Observable<ApiResponse<PaginatedResponse<UserWithRoles>>> {
+getUsersByRole(
+    roleId: string | null | undefined,
+    pageNumber = 1,
+    pageSize = 20
+): Observable<ApiResponse<PaginatedResponse<UserWithRoles>>> {
 
-        const params = new HttpParams()
-            .set('pageNumber', pageNumber.toString())
-            .set('pageSize', pageSize.toString());
-
-        return this._httpClient.get<ApiResponse<PaginatedResponse<UserWithRoles>>>(
-            `${this._apiUrl}/role/${roleId}/users`,
-            { params }
-        );
+    if (!roleId) {
+        return new Observable(observer => {
+            observer.complete(); // silently do nothing
+        });
     }
+
+    const params = new HttpParams()
+        .set('pageNumber', pageNumber.toString())
+        .set('pageSize', pageSize.toString());
+
+    return this._httpClient.get<ApiResponse<PaginatedResponse<UserWithRoles>>>(
+        `${this._apiUrl}/role/${roleId}/users`,
+        { params }
+    );
+}
+
 
     /**
      * Get all available roles for current tenant

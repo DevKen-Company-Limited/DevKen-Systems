@@ -4,9 +4,9 @@
     <div class="flex-1 min-w-0">
       <!-- Breadcrumbs -->
       <div class="flex flex-wrap items-center text-sm font-medium text-gray-500 dark:text-gray-400">
-        <a class="hover:text-primary-500 transition-colors">Administration</a>
+        <a class="hover:text-primary-500 transition-colors cursor-pointer">Administration</a>
         <mat-icon class="icon-size-5 mx-1" [svgIcon]="'heroicons_solid:chevron-right'"></mat-icon>
-        <a class="hover:text-primary-500 transition-colors">Role Management</a>
+        <a class="hover:text-primary-500 transition-colors cursor-pointer">Role Management</a>
         <mat-icon class="icon-size-5 mx-1" [svgIcon]="'heroicons_solid:chevron-right'"></mat-icon>
         <span class="text-gray-400">Role Assignment</span>
       </div>
@@ -32,9 +32,15 @@
         </div>
       </div>
 
-      <button mat-flat-button color="primary" (click)="loadData()" class="flex items-center gap-2">
-        <mat-icon [svgIcon]="'heroicons_outline:arrow-path'"></mat-icon>
-        Refresh
+      <button 
+        mat-flat-button 
+        color="primary" 
+        (click)="loadData()" 
+        [disabled]="isLoading" 
+        class="flex items-center gap-2"
+        matTooltip="Refresh data">
+        <mat-icon [svgIcon]="'heroicons_outline:arrow-path'" [class.animate-spin]="isLoading"></mat-icon>
+        <span class="hidden sm:inline">Refresh</span>
       </button>
     </div>
   </div>
@@ -55,25 +61,30 @@
   <mat-tab-group
     [(selectedIndex)]="selectedTabIndex"
     class="flex-auto p-6 sm:p-10"
-    [animationDuration]="'200ms'">
+    [animationDuration]="'200ms'"
+    [disableRipple]="false">
 
     <!-- Tab 1: User Management -->
     <mat-tab label="User Management">
       <ng-template mat-tab-label>
         <mat-icon class="mr-2" [svgIcon]="'heroicons_outline:users'"></mat-icon>
-        All Users
+        <span class="hidden sm:inline">All Users</span>
+        <span class="sm:hidden">Users</span>
       </ng-template>
 
       <div class="mt-6">
         <mat-card class="shadow-md hover:shadow-lg transition-shadow">
           <mat-card-header class="pb-4">
             <mat-card-title class="text-2xl font-semibold">Manage User Roles</mat-card-title>
+            <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Assign and manage roles for users in the system
+            </div>
           </mat-card-header>
 
           <mat-card-content>
             <!-- Search and Filter -->
             <div class="flex flex-col md:flex-row gap-4 mb-6">
-              <mat-form-field class="flex-auto">
+              <mat-form-field class="flex-auto" appearance="outline">
                 <mat-label>Search users</mat-label>
                 <input
                   matInput
@@ -82,42 +93,72 @@
                   placeholder="Name, email, or username"
                   autocomplete="off">
                 <mat-icon matPrefix [svgIcon]="'heroicons_outline:magnifying-glass'"></mat-icon>
-                <button *ngIf="userSearchTerm" mat-icon-button matSuffix (click)="clearUserFilter()">
+                <button *ngIf="userSearchTerm" mat-icon-button matSuffix (click)="clearUserFilter()" matTooltip="Clear search">
                   <mat-icon [svgIcon]="'heroicons_outline:x-mark'"></mat-icon>
                 </button>
               </mat-form-field>
 
-              <mat-form-field class="md:w-64">
+              <mat-form-field class="md:w-64" appearance="outline">
                 <mat-label>Filter by role</mat-label>
                 <mat-select [(value)]="roleFilterValue" (selectionChange)="applyUserFilter()">
                   <mat-option [value]="null">All Users</mat-option>
-                  <mat-option *ngFor="let role of availableRoles" [value]="role.roleId">
-                    {{ role.roleName }}
+                  <mat-option *ngFor="let role of availableRoles; trackBy: trackByRoleId" [value]="role.id || role.roleId">
+                    {{ role.name || role.roleName }}
+                    <span class="text-xs text-gray-500 ml-2">({{ getRoleUserCount(role.id || role.roleId) }})</span>
                   </mat-option>
                 </mat-select>
                 <mat-icon matPrefix [svgIcon]="'heroicons_outline:funnel'"></mat-icon>
               </mat-form-field>
             </div>
 
+            <!-- Active Filters Display -->
+            <div *ngIf="userSearchTerm || roleFilterValue" class="mb-4 flex flex-wrap gap-2 items-center">
+              <span class="text-sm text-gray-600 dark:text-gray-400">Active filters:</span>
+              <mat-chip-row *ngIf="userSearchTerm" class="text-xs" (removed)="userSearchTerm = ''; applyUserFilter()">
+                Search: "{{ userSearchTerm }}"
+                <button matChipRemove>
+                  <mat-icon [svgIcon]="'heroicons_outline:x-mark'"></mat-icon>
+                </button>
+              </mat-chip-row>
+             <mat-chip-row
+                *ngIf="roleFilterValue"
+                class="text-xs"
+                (removed)="roleFilterValue = null; applyUserFilter()"
+              >
+                Role: {{ getRoleName(roleFilterValue) }}
+                <button matChipRemove>
+                  <mat-icon [svgIcon]="'heroicons_outline:x-mark'"></mat-icon>
+                </button>
+              </mat-chip-row>
+
+              <button mat-button color="warn" (click)="clearUserFilter()" class="text-xs h-8">
+                Clear All
+              </button>
+            </div>
+
             <!-- Loading Spinner -->
-            <div *ngIf="isLoading" class="flex items-center justify-center h-64">
+            <div *ngIf="isLoading" class="flex flex-col items-center justify-center h-64">
               <mat-spinner [diameter]="48"></mat-spinner>
+              <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">Loading users...</p>
             </div>
 
             <!-- Users Table -->
             <div *ngIf="!isLoading" class="overflow-x-auto rounded-md border border-gray-200 dark:border-gray-700">
               <table mat-table [dataSource]="usersDataSource" matSort class="w-full text-left">
+                
                 <!-- User Column -->
                 <ng-container matColumnDef="user">
-                  <th mat-header-cell *matHeaderCellDef mat-sort-header class="font-semibold px-4 py-3 bg-gray-50 dark:bg-gray-800">User</th>
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header class="font-semibold px-4 py-3 bg-gray-50 dark:bg-gray-800">
+                    User
+                  </th>
                   <td mat-cell *matCellDef="let user" class="px-4 py-3">
                     <div class="flex items-center gap-3">
-                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-sm text-white font-semibold text-sm">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-sm text-white font-semibold text-sm flex-shrink-0">
                         {{ getUserInitials(user.fullName) }}
                       </div>
-                      <div class="truncate">
-                        <div class="font-medium text-gray-900 dark:text-white">{{ user.fullName }}</div>
-                        <div class="text-sm text-gray-500 dark:text-gray-400">{{ user.userName }}</div>
+                      <div class="min-w-0">
+                        <div class="font-medium text-gray-900 dark:text-white truncate">{{ user.fullName }}</div>
+                        <div class="text-sm text-gray-500 dark:text-gray-400 truncate">{{ user.userName }}</div>
                       </div>
                     </div>
                   </td>
@@ -125,72 +166,118 @@
 
                 <!-- Email Column -->
                 <ng-container matColumnDef="email">
-                  <th mat-header-cell *matHeaderCellDef mat-sort-header class="font-semibold px-4 py-3 bg-gray-50 dark:bg-gray-800">Email</th>
-                  <td mat-cell *matCellDef="let user" class="px-4 py-3 flex items-center gap-2">
-                    <mat-icon class="icon-size-4 text-gray-400" [svgIcon]="'heroicons_outline:envelope'"></mat-icon>
-                    {{ user.email }}
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header class="font-semibold px-4 py-3 bg-gray-50 dark:bg-gray-800">
+                    Email
+                  </th>
+                  <td mat-cell *matCellDef="let user" class="px-4 py-3">
+                    <div class="flex items-center gap-2">
+                      <mat-icon class="icon-size-4 text-gray-400" [svgIcon]="'heroicons_outline:envelope'"></mat-icon>
+                      <span class="truncate">{{ user.email }}</span>
+                    </div>
                   </td>
                 </ng-container>
 
                 <!-- Roles Column -->
                 <ng-container matColumnDef="roles">
-                  <th mat-header-cell *matHeaderCellDef class="font-semibold px-4 py-3 bg-gray-50 dark:bg-gray-800">Assigned Roles</th>
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header class="font-semibold px-4 py-3 bg-gray-50 dark:bg-gray-800">
+                    Assigned Roles
+                  </th>
                   <td mat-cell *matCellDef="let user" class="px-4 py-3">
                     <div class="flex flex-wrap gap-2">
-                      <ng-container *ngIf="user.roles.length > 0">
-                        <span *ngFor="let role of user.roles.slice(0,3)" class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-full bg-primary-100 dark:bg-primary-900 text-primary-800 dark:text-primary-200">
+                      <ng-container *ngIf="user.roles && user.roles.length > 0">
+                        <span 
+                          *ngFor="let role of user.roles.slice(0,3)" 
+                          class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-full bg-primary-100 dark:bg-primary-900 text-primary-800 dark:text-primary-200">
                           <mat-icon class="icon-size-3 mr-1" [svgIcon]="'heroicons_outline:shield-check'"></mat-icon>
                           {{ role.roleName }}
                         </span>
-                        <span *ngIf="user.roles.length > 3" class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                        <span 
+                          *ngIf="user.roles.length > 3" 
+                          class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 cursor-help"
+                          [matTooltip]="getExtraRolesTooltip(user.roles)"
+                          matTooltipPosition="above">
                           +{{ user.roles.length - 3 }} more
                         </span>
                       </ng-container>
-                      <span *ngIf="user.roles.length === 0" class="text-sm text-gray-400 italic">No roles assigned</span>
+                      <span *ngIf="!user.roles || user.roles.length === 0" class="text-sm text-gray-400 italic flex items-center gap-1">
+                        <mat-icon class="icon-size-4" [svgIcon]="'heroicons_outline:exclamation-circle'"></mat-icon>
+                        No roles assigned
+                      </span>
                     </div>
                   </td>
                 </ng-container>
 
                 <!-- Actions Column -->
                 <ng-container matColumnDef="actions">
-                  <th mat-header-cell *matHeaderCellDef class="font-semibold px-4 py-3 text-right bg-gray-50 dark:bg-gray-800">Actions</th>
+                  <th mat-header-cell *matHeaderCellDef class="font-semibold px-4 py-3 text-right bg-gray-50 dark:bg-gray-800">
+                    Actions
+                  </th>
                   <td mat-cell *matCellDef="let user" class="px-4 py-3 text-right">
-                    <button mat-icon-button [matMenuTriggerFor]="userMenu" matTooltip="More actions">
+                    <button 
+                      mat-icon-button 
+                      [matMenuTriggerFor]="userMenu" 
+                      [disabled]="isLoading"
+                      matTooltip="More actions"
+                      class="hover:bg-gray-100 dark:hover:bg-gray-700">
                       <mat-icon [svgIcon]="'heroicons_outline:ellipsis-vertical'"></mat-icon>
                     </button>
+                    
                     <mat-menu #userMenu="matMenu">
                       <button mat-menu-item (click)="openManageRolesDialog(user)">
                         <mat-icon [svgIcon]="'heroicons_outline:cog-6-tooth'"></mat-icon>
-                        Manage Roles
+                        <span>Manage Roles</span>
                       </button>
                       <button mat-menu-item (click)="viewUserDetails(user)">
                         <mat-icon [svgIcon]="'heroicons_outline:eye'"></mat-icon>
-                        View Details
+                        <span>View Details</span>
                       </button>
-                      <mat-divider *ngIf="user.roles.length > 0"></mat-divider>
-                      <button *ngIf="user.roles.length > 0" mat-menu-item (click)="removeAllRoles(user.userId)" class="text-warn">
+                      <mat-divider *ngIf="user.roles && user.roles.length > 0"></mat-divider>
+                      <button 
+                        *ngIf="user.roles && user.roles.length > 0" 
+                        mat-menu-item 
+                        (click)="removeAllRoles(user.userId)" 
+                        class="text-warn">
                         <mat-icon [svgIcon]="'heroicons_outline:trash'"></mat-icon>
-                        Remove All Roles
+                        <span>Remove All Roles</span>
                       </button>
                     </mat-menu>
                   </td>
                 </ng-container>
 
+                <!-- Header and Row Definitions -->
                 <tr mat-header-row *matHeaderRowDef="displayedColumns" class="bg-gray-50 dark:bg-gray-800"></tr>
-                <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"></tr>
+                <tr mat-row 
+                    *matRowDef="let row; columns: displayedColumns; trackBy: trackByUserId" 
+                    class="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"></tr>
               </table>
 
-              <!-- Empty State -->
-              <div *ngIf="usersDataSource.data.length === 0" class="text-center py-16">
-                <mat-icon class="icon-size-16 mb-4 text-gray-400" [svgIcon]="'heroicons_outline:user-group'"></mat-icon>
-                <h3 class="text-xl font-semibold mb-2 text-gray-900 dark:text-white">No Users Found</h3>
-                <p class="text-gray-500 dark:text-gray-400">
-                  {{ userSearchTerm || roleFilterValue ? 'Try adjusting your filters' : 'No users available' }}
-                </p>
-              </div>
-
               <!-- Paginator -->
-              <mat-paginator *ngIf="usersDataSource.data.length > 0" [length]="totalUsers" [pageSize]="pageSize" [pageSizeOptions]="[10,20,50,100]" (page)="onPageChange($event)" class="border-t mt-4"></mat-paginator>
+              <mat-paginator 
+                *ngIf="usersDataSource.data.length > 0" 
+                [length]="totalUsers" 
+                [pageSize]="pageSize" 
+                [pageSizeOptions]="[10, 20, 50, 100]" 
+                [pageIndex]="currentPage - 1"
+                (page)="onPageChange($event)"
+                showFirstLastButtons
+                class="border-t border-gray-200 dark:border-gray-700">
+              </mat-paginator>
+
+              <!-- Empty State -->
+              <div *ngIf="usersDataSource.data.length === 0" class="text-center py-16 px-4">
+                <mat-icon class="icon-size-16 mb-4 text-gray-400 mx-auto" [svgIcon]="'heroicons_outline:user-group'"></mat-icon>
+                <h3 class="text-xl font-semibold mb-2 text-gray-900 dark:text-white">No Users Found</h3>
+                <p class="text-gray-500 dark:text-gray-400 mb-4">
+                  {{ (userSearchTerm || roleFilterValue) ? 'Try adjusting your filters' : 'No users available in the system' }}
+                </p>
+                <button 
+                  *ngIf="userSearchTerm || roleFilterValue" 
+                  mat-stroked-button 
+                  color="primary" 
+                  (click)="clearUserFilter()">
+                  Clear Filters
+                </button>
+              </div>
             </div>
           </mat-card-content>
         </mat-card>
@@ -201,55 +288,89 @@
     <mat-tab label="Role Overview">
       <ng-template mat-tab-label>
         <mat-icon class="mr-2" [svgIcon]="'heroicons_outline:shield-check'"></mat-icon>
-        Roles Overview
+        <span class="hidden sm:inline">Roles Overview</span>
+        <span class="sm:hidden">Roles</span>
       </ng-template>
 
       <div class="mt-6">
         <!-- Loading Spinner -->
-        <div *ngIf="isLoading" class="flex items-center justify-center h-64">
+        <div *ngIf="isLoading" class="flex flex-col items-center justify-center h-64">
           <mat-spinner [diameter]="48"></mat-spinner>
+          <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">Loading roles...</p>
         </div>
 
         <!-- Roles Grid -->
         <div *ngIf="!isLoading && availableRoles.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <mat-card *ngFor="let role of availableRoles" class="shadow-md hover:shadow-lg transition-shadow cursor-pointer" (click)="viewRoleUsers(role)">
-            <mat-card-header class="pb-4 flex items-center gap-4">
-              <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-sm">
-                <mat-icon class="text-white icon-size-6" [svgIcon]="'heroicons_outline:shield-check'"></mat-icon>
+          <mat-card 
+            *ngFor="let role of availableRoles; trackBy: trackByRoleId" 
+            class="shadow-md hover:shadow-lg transition-shadow cursor-pointer" 
+            (click)="viewRoleUsers(role)">
+            <mat-card-header class="pb-4">
+              <div class="flex items-center gap-4 w-full">
+                <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-sm flex-shrink-0">
+                  <mat-icon class="text-white icon-size-6" [svgIcon]="'heroicons_outline:shield-check'"></mat-icon>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <mat-card-title class="text-xl font-bold truncate">
+                    {{ role.name || role.roleName }}
+                  </mat-card-title>
+                  <div class="flex gap-2 mt-1">
+                    <span 
+                      *ngIf="role.isSystemRole" 
+                      class="inline-flex items-center px-2 py-0.5 text-xs rounded-full bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300">
+                      <mat-icon class="icon-size-3 mr-1" [svgIcon]="'heroicons_outline:lock-closed'"></mat-icon>
+                      System
+                    </span>
+                  </div>
+                </div>
               </div>
-              <mat-card-title class="text-xl font-bold">{{ role.roleName }}</mat-card-title>
             </mat-card-header>
+            
             <mat-card-content>
-              <p *ngIf="role.description" class="text-gray-500 mb-4">{{ role.description }}</p>
+              <p *ngIf="role.description" class="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">
+                {{ role.description }}
+              </p>
+              <p *ngIf="!role.description" class="text-gray-400 dark:text-gray-500 text-sm mb-4 italic">
+                No description available
+              </p>
+              
               <div class="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
                 <div class="flex items-center gap-4">
                   <div class="text-center">
-                    <div class="text-2xl font-bold text-primary">{{ role.userCount || 0 }}</div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400">Users</div>
+                    <div class="text-2xl font-bold text-primary-600 dark:text-primary-400">
+                      {{ getRoleUserCount(role.id || role.roleId) }}
+                    </div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                      {{ getRoleUserCount(role.id || role.roleId) === 1 ? 'User' : 'Users' }}
+                    </div>
                   </div>
                   <div class="h-8 w-px bg-gray-300 dark:bg-gray-600"></div>
                   <div class="text-center">
-                    <div class="text-2xl font-bold text-primary">{{ role.permissionCount }}</div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400">Permissions</div>
+                    <div class="text-2xl font-bold text-primary-600 dark:text-primary-400">
+                      {{ role.permissionCount || role.totalPermissions || 0 }}
+                    </div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                      {{ (role.permissionCount || role.totalPermissions || 0) === 1 ? 'Permission' : 'Permissions' }}
+                    </div>
                   </div>
                 </div>
-                <button mat-icon-button color="primary" (click)="$event.stopPropagation(); viewRoleUsers(role)" matTooltip="View users">
+                
+                <button 
+                  mat-icon-button 
+                  color="primary" 
+                  (click)="$event.stopPropagation(); viewRoleUsers(role)" 
+                  matTooltip="View users with this role"
+                  [disabled]="getRoleUserCount(role.id || role.roleId) === 0">
                   <mat-icon [svgIcon]="'heroicons_outline:arrow-right'"></mat-icon>
                 </button>
-              </div>
-
-              <div class="mt-3 flex flex-wrap gap-2">
-                <span *ngIf="role.isSystemRole" class="inline-flex items-center px-2 py-1 text-xs rounded-full bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300">
-                  System Role
-                </span>
               </div>
             </mat-card-content>
           </mat-card>
         </div>
 
         <!-- Empty State -->
-        <div *ngIf="!isLoading && availableRoles.length === 0" class="text-center py-16">
-          <mat-icon class="icon-size-16 mb-4 text-gray-400" [svgIcon]="'heroicons_outline:shield-exclamation'"></mat-icon>
+        <div *ngIf="!isLoading && availableRoles.length === 0" class="text-center py-16 px-4">
+          <mat-icon class="icon-size-16 mb-4 text-gray-400 mx-auto" [svgIcon]="'heroicons_outline:shield-exclamation'"></mat-icon>
           <h3 class="text-xl font-semibold mb-2 text-gray-900 dark:text-white">No Roles Available</h3>
           <p class="text-gray-500 dark:text-gray-400">Contact your administrator to create roles</p>
         </div>

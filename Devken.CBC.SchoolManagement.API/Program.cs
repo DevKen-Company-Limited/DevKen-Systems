@@ -2,6 +2,7 @@
 using Devken.CBC.SchoolManagement.API.Registration;
 using Devken.CBC.SchoolManagement.API.Services;
 using Devken.CBC.SchoolManagement.Application.Service;
+using Devken.CBC.SchoolManagement.Application.Service.ISubscription; // ADD THIS
 using Devken.CBC.SchoolManagement.Infrastructure;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF;
 using Devken.CBC.SchoolManagement.Infrastructure.Middleware;
@@ -39,7 +40,6 @@ builder.Services.AddControllers();
 // ══════════════════════════════════════════════════════════════
 // Database Configuration
 // ══════════════════════════════════════════════════════════════
-// In your DbContext configuration
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -50,13 +50,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         sql.EnableRetryOnFailure();
     });
 
-    // ⭐ Disable change tracking globally if you have issues
-    // options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
-
-    // Or configure it to track only when needed
     options.UseQueryTrackingBehavior(QueryTrackingBehavior.TrackAll);
-
-    // Enable identity resolution
     options.EnableServiceProviderCaching();
 
     if (builder.Environment.IsDevelopment())
@@ -78,7 +72,6 @@ builder.Services.AddSwaggerGen(c =>
         Description = "CBC School Management System API"
     });
 
-    // JWT Bearer Authentication in Swagger
     var securityScheme = new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -105,7 +98,6 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 
-    // Include XML comments for Swagger documentation
     var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
     if (File.Exists(xmlPath))
@@ -120,7 +112,6 @@ builder.Services.AddSchoolManagement(builder.Configuration);
 
 // ══════════════════════════════════════════════════════════════
 // Infrastructure Services (includes JWT Authentication & Authorization)
-// This is the CRITICAL configuration that sets up JWT authentication
 // ══════════════════════════════════════════════════════════════
 builder.Services.AddInfrastructure(builder.Configuration);
 
@@ -164,6 +155,21 @@ using (var scope = app.Services.CreateScope())
         // Seed database
         await dbContext.SeedDatabaseAsync(logger);
 
+        // ═══════════════════════════════════════════════════════════
+        // NEW: Seed Subscription Plans
+        // ═══════════════════════════════════════════════════════════
+        try
+        {
+            var planService = scope.ServiceProvider.GetRequiredService<ISubscriptionPlanService>();
+            await SubscriptionPlanSeeder.SeedSubscriptionPlansAsync(planService, logger);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred while seeding subscription plans.");
+            // Don't throw - allow application to continue even if plan seeding fails
+        }
+        // ═══════════════════════════════════════════════════════════
+
         // Seed permissions for default school
         var defaultSchool = await dbContext.Schools
             .FirstOrDefaultAsync(s => s.SlugName == "default-school");
@@ -190,16 +196,11 @@ using (var scope = app.Services.CreateScope())
 
 // ══════════════════════════════════════════════════════════════
 // Middleware Pipeline Configuration
-// CRITICAL: Order matters! Each middleware must be in the correct position
 // ══════════════════════════════════════════════════════════════
 
-// 1. CORS - Must be early in pipeline, before authentication
 app.UseCors(angularCorsPolicy);
-
-// 2. Custom API Pipeline (exception handling, request logging, etc.)
 app.UseApiPipeline();
 
-// 3. Localization
 var localizationOptions = new RequestLocalizationOptions
 {
     DefaultRequestCulture = new RequestCulture("en-US"),
@@ -208,16 +209,8 @@ var localizationOptions = new RequestLocalizationOptions
 };
 app.UseRequestLocalization(localizationOptions);
 
-// 4. AUTHENTICATION - Validates JWT token and populates User.Identity
-//    This MUST come before TenantMiddleware and Authorization
 app.UseAuthentication();
-
-// 5. TENANT MIDDLEWARE - Extracts tenant information from authenticated user's claims
-//    This MUST come after Authentication and before Authorization
 app.UseMiddleware<TenantMiddleware>();
-
-// 6. AUTHORIZATION - Checks user permissions against required permissions
-//    This MUST come after Authentication and TenantMiddleware
 app.UseAuthorization();
 
 // ══════════════════════════════════════════════════════════════
@@ -229,9 +222,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "DevKen School Management API v1");
-        c.RoutePrefix = string.Empty; // Swagger at root URL
+        c.RoutePrefix = string.Empty;
         c.DocumentTitle = "DevKen School Management API";
-        c.DisplayRequestDuration(); // Show request duration in Swagger UI
+        c.DisplayRequestDuration();
     });
 
     app.Logger.LogInformation("Swagger UI is available at: https://localhost:7258");

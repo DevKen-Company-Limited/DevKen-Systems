@@ -6,6 +6,7 @@ using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
 using Devken.CBC.SchoolManagement.Domain.Entities.Finance;
 using Devken.CBC.SchoolManagement.Domain.Entities.Helpers;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
+using Devken.CBC.SchoolManagement.Domain.Entities.Payments;
 using Devken.CBC.SchoolManagement.Domain.Entities.Reports;
 using Devken.CBC.SchoolManagement.Domain.Entities.Subscription;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations;
@@ -13,6 +14,7 @@ using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Academic
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Assessments;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Finance;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Identity;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Payments;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Reports;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.SchoolConf;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Subscription;
@@ -83,11 +85,14 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
         public DbSet<Payment> Payments => Set<Payment>();
         public DbSet<FeeItem> FeeItems => Set<FeeItem>();
+        public DbSet<SubscriptionPlanEntity> SubscriptionPlans { get; set; }
+        public DbSet<MpesaPaymentRecord> MpesaPayments { get; set; }
         #endregion
 
         protected override void OnModelCreating(ModelBuilder mb)
         {
             base.OnModelCreating(mb);
+            //mb.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
             // ── GLOBAL CONVENTIONS ───────────────────────────────
             DecimalPrecisionConvention.Apply(mb);
@@ -165,6 +170,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             mb.ApplyConfiguration(new InvoiceItemConfiguration(_tenantContext));
             mb.ApplyConfiguration(new PaymentConfiguration(_tenantContext));
             mb.ApplyConfiguration(new FeeItemConfiguration(_tenantContext));
+            
+            mb.ApplyConfiguration(new MpesaPaymentRecordConfiguration1());
+            mb.ApplyConfiguration(new SubscriptionPlanConfiguration());
+            mb.ApplyConfiguration(new SubscriptionPlanConfiguration());
         }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

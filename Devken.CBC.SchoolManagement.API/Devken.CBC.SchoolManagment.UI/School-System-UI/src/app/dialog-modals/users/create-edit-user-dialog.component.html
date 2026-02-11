@@ -1,0 +1,244 @@
+<div class="user-dialog">
+  <!-- Dialog Header -->
+  <div class="dialog-header">
+    <div class="header-content">
+      <div class="header-icon">
+        <mat-icon>{{ isEditMode ? 'edit' : 'person_add' }}</mat-icon>
+      </div>
+      <div class="header-text">
+        <h2 class="dialog-title">{{ dialogTitle }}</h2>
+        <p class="dialog-subtitle">
+          {{ isEditMode ? 'Update user information and roles' : 'Add a new user to the system' }}
+        </p>
+      </div>
+    </div>
+    <button 
+      mat-icon-button 
+      (click)="onCancel()" 
+      class="close-btn"
+      aria-label="Close dialog"
+    >
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <mat-divider></mat-divider>
+
+  <!-- Dialog Content -->
+  <div class="dialog-content" [formGroup]="form">
+    
+    <!-- School Selection Section (SuperAdmin Only, Create Mode) -->
+    <div class="form-section" *ngIf="showSchoolSelection">
+      <h3 class="section-title">School Assignment</h3>
+      
+      <mat-form-field appearance="outline" class="form-field full-width">
+        <mat-label>School</mat-label>
+        <mat-select formControlName="schoolId">
+          <mat-option 
+            *ngFor="let school of availableSchools" 
+            [value]="school.id"
+          >
+            <div class="school-option">
+              <span class="school-name">{{ school.name }}</span>
+              <span class="school-location" *ngIf="school.location">
+                {{ school.location }}
+              </span>
+            </div>
+          </mat-option>
+        </mat-select>
+        <mat-icon matPrefix>school</mat-icon>
+        <mat-error *ngIf="form.get('schoolId')?.invalid">
+          {{ getErrorMessage('schoolId') }}
+        </mat-error>
+        <mat-hint>Select the school for this user</mat-hint>
+      </mat-form-field>
+
+      <div class="loading-schools" *ngIf="isLoadingSchools">
+        <mat-spinner diameter="24"></mat-spinner>
+        <span>Loading available schools...</span>
+      </div>
+    </div>
+
+    <!-- Personal Information Section -->
+    <div class="form-section">
+      <h3 class="section-title">Personal Information</h3>
+      
+      <div class="form-row">
+        <mat-form-field appearance="outline" class="form-field">
+          <mat-label>First Name</mat-label>
+          <input 
+            matInput 
+            formControlName="firstName" 
+            placeholder="Enter first name"
+            autocomplete="given-name"
+          />
+          <mat-icon matPrefix>person</mat-icon>
+          <mat-error *ngIf="form.get('firstName')?.invalid">
+            {{ getErrorMessage('firstName') }}
+          </mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="form-field">
+          <mat-label>Last Name</mat-label>
+          <input 
+            matInput 
+            formControlName="lastName" 
+            placeholder="Enter last name"
+            autocomplete="family-name"
+          />
+          <mat-icon matPrefix>person</mat-icon>
+          <mat-error *ngIf="form.get('lastName')?.invalid">
+            {{ getErrorMessage('lastName') }}
+          </mat-error>
+        </mat-form-field>
+      </div>
+    </div>
+
+    <!-- Contact Information Section -->
+    <div class="form-section">
+      <h3 class="section-title">Contact Information</h3>
+      
+      <mat-form-field appearance="outline" class="form-field full-width">
+        <mat-label>Email Address</mat-label>
+        <input 
+          matInput 
+          type="email"
+          formControlName="email" 
+          placeholder="user@example.com"
+          autocomplete="email"
+        />
+        <mat-icon matPrefix>email</mat-icon>
+        <mat-error *ngIf="form.get('email')?.invalid">
+          {{ getErrorMessage('email') }}
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="form-field full-width">
+        <mat-label>Phone Number</mat-label>
+        <input 
+          matInput 
+          type="tel"
+          formControlName="phoneNumber" 
+          placeholder="+1 (555) 123-4567"
+          autocomplete="tel"
+        />
+        <mat-icon matPrefix>phone</mat-icon>
+        <mat-hint>Optional</mat-hint>
+      </mat-form-field>
+    </div>
+
+    <!-- Password Section (Create Mode Only) -->
+    <div class="form-section" *ngIf="!isEditMode">
+      <h3 class="section-title">Security</h3>
+      
+      <mat-form-field appearance="outline" class="form-field full-width">
+        <mat-label>Password</mat-label>
+        <input 
+          matInput 
+          [type]="hidePassword ? 'password' : 'text'"
+          formControlName="password" 
+          placeholder="Enter password"
+          autocomplete="new-password"
+        />
+        <mat-icon matPrefix>lock</mat-icon>
+        <button 
+          mat-icon-button 
+          matSuffix 
+          (click)="hidePassword = !hidePassword"
+          type="button"
+        >
+          <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+        </button>
+        <mat-error *ngIf="form.get('password')?.invalid">
+          {{ getErrorMessage('password') }}
+        </mat-error>
+        <mat-hint>Must be at least 8 characters</mat-hint>
+      </mat-form-field>
+    </div>
+
+    <!-- Roles Section -->
+    <div class="form-section">
+      <h3 class="section-title">Role Assignment</h3>
+      
+      <mat-form-field appearance="outline" class="form-field full-width">
+        <mat-label>Roles</mat-label>
+        <mat-select formControlName="roleIds" multiple>
+          <mat-option 
+            *ngFor="let role of availableRoles" 
+            [value]="role.id"
+          >
+            <div class="role-option">
+              <span class="role-name">{{ role.name }}</span>
+              <span class="role-badge" *ngIf="role.isSystemRole">System</span>
+            </div>
+            <div class="role-description" *ngIf="role.description">
+              {{ role.description }}
+            </div>
+          </mat-option>
+        </mat-select>
+        <mat-icon matPrefix>admin_panel_settings</mat-icon>
+        <mat-hint>Optional - Select one or more roles or leave empty</mat-hint>
+      </mat-form-field>
+
+      <div class="loading-roles" *ngIf="isLoadingRoles">
+        <mat-spinner diameter="24"></mat-spinner>
+        <span>Loading available roles...</span>
+      </div>
+    </div>
+
+    <!-- Status Section (Edit Mode Only) -->
+    <div class="form-section" *ngIf="isEditMode">
+      <h3 class="section-title">Account Status</h3>
+      
+      <div class="checkbox-field">
+        <mat-checkbox formControlName="isActive" color="primary">
+          <span class="checkbox-label">Active Account</span>
+        </mat-checkbox>
+        <p class="checkbox-hint">
+          Inactive users cannot log in to the system
+        </p>
+      </div>
+    </div>
+
+    <!-- Options Section (Create Mode Only) -->
+    <div class="form-section" *ngIf="!isEditMode">
+      <h3 class="section-title">Options</h3>
+      
+      <div class="checkbox-field">
+        <mat-checkbox formControlName="sendWelcomeEmail" color="primary">
+          <span class="checkbox-label">Send Welcome Email</span>
+        </mat-checkbox>
+        <p class="checkbox-hint">
+          Send an email with login instructions to the user
+        </p>
+      </div>
+    </div>
+
+  </div>
+
+  <mat-divider></mat-divider>
+
+  <!-- Dialog Actions -->
+  <div class="dialog-actions">
+    <button 
+      mat-stroked-button 
+      (click)="onCancel()" 
+      [disabled]="isSaving"
+      class="cancel-btn"
+    >
+      Cancel
+    </button>
+    
+    <button 
+      mat-flat-button 
+      color="primary" 
+      (click)="onSave()" 
+      [disabled]="form.invalid || isSaving"
+      class="save-btn"
+    >
+      <mat-spinner *ngIf="isSaving" diameter="20" class="button-spinner"></mat-spinner>
+      <mat-icon *ngIf="!isSaving">{{ isEditMode ? 'save' : 'add' }}</mat-icon>
+      <span>{{ isSaving ? 'Saving...' : (isEditMode ? 'Update User' : 'Create User') }}</span>
+    </button>
+  </div>
+</div>

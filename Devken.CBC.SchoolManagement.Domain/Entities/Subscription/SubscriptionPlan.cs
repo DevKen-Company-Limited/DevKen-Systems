@@ -1,11 +1,8 @@
-﻿using Devken.CBC.SchoolManagement.Domain.Common;
+﻿// Domain/Entities/Subscription/Subscription.cs
+using Devken.CBC.SchoolManagement.Domain.Common;
 using Devken.CBC.SchoolManagement.Domain.Entities.Administration;
 using Devken.CBC.SchoolManagement.Domain.Enums;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Domain.Entities.Subscription
 {
@@ -13,6 +10,10 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Subscription
     {
         public Guid SchoolId { get; set; }
         public School? School { get; set; }
+
+        // Link to plan template
+        public Guid? PlanId { get; set; }
+        public SubscriptionPlanEntity? PlanTemplate { get; set; }
 
         public SubscriptionPlan Plan { get; set; }
         public BillingCycle BillingCycle { get; set; }
@@ -31,32 +32,56 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Subscription
         public decimal Amount { get; set; }
         public string Currency { get; set; } = "KES";
 
-        public new SubscriptionStatus Status { get; set; } = SubscriptionStatus.Active;
+        public SubscriptionStatus Status { get; set; } = SubscriptionStatus.Active;
 
         public int GracePeriodDays { get; set; } = 7;
+
         public string? AdminNotes { get; set; }
 
-        // Helper properties
+        /* ===================== Computed Properties ===================== */
+
         public bool IsExpired => DateTime.UtcNow > ExpiryDate;
 
-        public bool IsInGracePeriod => IsExpired && DateTime.UtcNow <= ExpiryDate.AddDays(GracePeriodDays);
+        public bool IsInGracePeriod =>
+            IsExpired &&
+            DateTime.UtcNow <= ExpiryDate.AddDays(GracePeriodDays);
 
-        public bool CanAccess => Status == SubscriptionStatus.Active || IsInGracePeriod;
+        public bool CanAccess =>
+            Status == SubscriptionStatus.Active ||
+            Status == SubscriptionStatus.GracePeriod;
 
         public bool IsActive
         {
             get => Status == SubscriptionStatus.Active;
-            set => Status = value ? SubscriptionStatus.Active : SubscriptionStatus.Cancelled;
+            set => Status = value
+                ? SubscriptionStatus.Active
+                : SubscriptionStatus.Cancelled;
         }
 
         public int DaysRemaining
         {
             get
             {
-                var diff = ExpiryDate - DateTime.UtcNow;
-                return diff.Days > 0 ? diff.Days : 0;
+                var remaining = (ExpiryDate - DateTime.UtcNow).Days;
+                return remaining > 0 ? remaining : 0;
             }
         }
-    }
 
+        public void RefreshStatus()
+        {
+            if (Status == SubscriptionStatus.Cancelled ||
+                Status == SubscriptionStatus.Suspended)
+                return;
+
+            if (!IsExpired)
+            {
+                Status = SubscriptionStatus.Active;
+                return;
+            }
+
+            Status = IsInGracePeriod
+                ? SubscriptionStatus.GracePeriod
+                : SubscriptionStatus.Expired;
+        }
+    }
 }

@@ -1,32 +1,41 @@
-﻿using Devken.CBC.SchoolManagement.Domain.Entities.Administration;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Services
 {
+    /// <summary>
+    /// Scoped service that holds the current tenant and user context
+    /// UPDATED: Added IsSuperAdmin flag to handle SuperAdmin vs User table separation
+    /// </summary>
     public class TenantContext
     {
         /// <summary>
-        /// Null when the request has not yet been resolved
-        /// (e.g. login endpoint before credentials are checked).
+        /// The current tenant (school) ID
+        /// Null for SuperAdmin users who don't belong to a specific school
         /// </summary>
         public Guid? TenantId { get; set; }
 
         /// <summary>
-        /// The School object if already loaded (cached to avoid re-querying).
-        /// </summary>
-        public School? CurrentTenant { get; set; }
-
-        /// <summary>
-        /// The Id of the user performing the current request.
-        /// Set by TenantMiddleware after the JWT is validated.
-        /// Null for unauthenticated requests (login, register-school)
-        /// and for platform seed operations that run before any user exists.
-        /// RepositoryBase reads this to stamp CreatedBy / UpdatedBy.
+        /// The ID of the currently acting user
+        /// For SuperAdmins, this ID exists in SuperAdmins table
+        /// For regular users, this ID exists in Users table
         /// </summary>
         public Guid? ActingUserId { get; set; }
+
+        /// <summary>
+        /// ADDED: Flag to indicate if the current user is a SuperAdmin
+        /// Critical for handling audit fields correctly since SuperAdmins
+        /// exist in a separate table from Users
+        /// </summary>
+        public bool IsSuperAdmin { get; set; }
+
+        /// <summary>
+        /// Email of the current user (for logging/audit purposes)
+        /// </summary>
+        public string? UserEmail { get; set; }
+
+        /// <summary>
+        /// Display name for the current user (optional)
+        /// </summary>
+        public string? UserDisplayName { get; set; }
     }
 }

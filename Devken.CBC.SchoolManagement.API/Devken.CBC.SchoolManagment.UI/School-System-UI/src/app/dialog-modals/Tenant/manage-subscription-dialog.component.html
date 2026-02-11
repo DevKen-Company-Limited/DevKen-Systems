@@ -1,0 +1,261 @@
+<div class="flex h-full max-h-[90vh] flex-col overflow-hidden rounded-2xl bg-white dark:bg-gray-900">
+
+  <!-- ================= HEADER ================= -->
+  <header class="flex items-center justify-between bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4 text-white shadow-lg">
+    <div class="flex items-center gap-3">
+      <mat-icon class="text-3xl">subscriptions</mat-icon>
+      <div>
+        <h3 class="text-xl font-bold">Manage Subscription</h3>
+        <p class="text-sm opacity-90">{{ data.school.name }}</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <span
+        *ngIf="data.school.subscription"
+        class="rounded-full px-4 py-1.5 text-xs font-bold text-white shadow-md"
+        [ngClass]="getStatusClass()"
+      >
+        {{ getStatusDisplayName() }}
+      </span>
+      <button mat-icon-button (click)="close()" aria-label="Close dialog" class="hover:bg-white/20 transition-colors">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= BODY ================= -->
+  <main class="flex-1 overflow-y-auto p-6 space-y-8 bg-gray-50 dark:bg-gray-800">
+
+    <!-- Loading State -->
+    <div *ngIf="isLoading && subscriptionPlans.length === 0"
+         class="flex flex-col items-center justify-center py-16">
+      <mat-spinner diameter="48" color="accent"></mat-spinner>
+      <p class="mt-4 text-sm text-gray-600">Loading subscription options…</p>
+    </div>
+
+    <!-- Content -->
+    <ng-container *ngIf="!isLoading || subscriptionPlans.length > 0">
+
+      <!-- ================= CURRENT SUBSCRIPTION ================= -->
+      <section *ngIf="data.school.subscription" class="space-y-4">
+        <h4 class="flex items-center gap-2 font-bold text-gray-800 text-lg dark:text-gray-100">
+          <mat-icon class="text-emerald-600">info</mat-icon>
+          Current Subscription
+        </h4>
+
+        <div class="grid gap-4 md:grid-cols-2">
+
+          <!-- Plan Details -->
+          <div class="rounded-xl border-2 border-gray-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow dark:border-gray-700 dark:bg-gray-900">
+            <h6 class="mb-4 text-sm font-bold text-gray-500 uppercase tracking-wide">Plan Details</h6>
+            <div class="space-y-3 text-sm">
+              <div>
+                <span class="block text-gray-500 text-xs mb-1">Plan</span>
+                <div class="font-bold text-gray-800 dark:text-gray-100">{{ getPlanName(data.school.subscription.plan) }}</div>
+              </div>
+              <div>
+                <span class="block text-gray-500 text-xs mb-1">Billing Cycle</span>
+                <div class="font-bold text-gray-800 dark:text-gray-100">{{ getBillingCycleName(data.school.subscription.billingCycle) }}</div>
+              </div>
+              <div>
+                <span class="block text-gray-500 text-xs mb-1">Amount</span>
+                <div class="text-2xl font-bold text-emerald-600">{{ formatKES(data.school.subscription.amount) }}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Status & Dates -->
+          <div class="rounded-xl border-2 border-gray-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow dark:border-gray-700 dark:bg-gray-900">
+            <h6 class="mb-4 text-sm font-bold text-gray-500 uppercase tracking-wide">Status & Dates</h6>
+            <div class="space-y-3 text-sm">
+              <div>
+                <span class="block text-gray-500 text-xs mb-1">Status</span>
+                <div>
+                  <span class="rounded-full px-4 py-1.5 text-xs font-bold text-white shadow-sm"
+                        [ngClass]="getStatusClass()">
+                    {{ getStatusDisplayName() }}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <span class="block text-gray-500 text-xs mb-1">Start Date</span>
+                <div class="font-medium text-gray-800 dark:text-gray-100">{{ data.school.subscription.startDate | date:'mediumDate' }}</div>
+              </div>
+              <div>
+                <span class="block text-gray-500 text-xs mb-1">Expiry Date</span>
+                <div class="font-medium"
+                  [class.text-red-600]="data.school.isSubscriptionExpired"
+                  [class.text-amber-600]="data.school.daysRemaining <= 7 && !data.school.isSubscriptionExpired"
+                  [class.text-gray-800]="data.school.daysRemaining > 7 && !data.school.isSubscriptionExpired">
+                  {{ data.school.subscription.expiryDate | date:'mediumDate' }}
+                  <span *ngIf="data.school.daysRemaining > 0 && !data.school.isSubscriptionExpired" class="text-xs text-gray-500">
+                    ({{ data.school.daysRemaining }} days left)
+                  </span>
+                  <span *ngIf="data.school.isSubscriptionExpired" class="ml-1 font-bold">- EXPIRED</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ================= PLAN SELECTION ================= -->
+      <section class="space-y-4">
+        <h4 class="flex items-center gap-2 font-bold text-gray-800 text-lg dark:text-gray-100">
+          <mat-icon class="text-emerald-600">
+            {{ data.school.subscription ? 'autorenew' : 'add_circle' }}
+          </mat-icon>
+          {{ data.school.subscription ? 'Renew / Upgrade Subscription' : 'Create New Subscription' }}
+        </h4>
+
+        <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div *ngFor="let plan of subscriptionPlans"
+               (click)="selectedPlan = plan.planValue"
+               class="relative cursor-pointer rounded-xl border-2 p-6 transition-all hover:shadow-xl hover:-translate-y-1 bg-white dark:bg-gray-900"
+               [class.border-emerald-500]="selectedPlan === plan.planValue"
+               [class.shadow-lg]="selectedPlan === plan.planValue"
+               [class.border-gray-200]="selectedPlan !== plan.planValue"
+               [class.dark:border-gray-700]="selectedPlan !== plan.planValue">
+
+            <span *ngIf="plan.isMostPopular"
+                  class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-1 text-xs font-bold text-white shadow-md">
+              ⭐ Most Popular
+            </span>
+
+            <div class="text-center">
+              <h5 class="font-bold text-lg text-gray-800 dark:text-gray-100">{{ plan.name }}</h5>
+              <div class="mt-3 text-3xl font-bold text-emerald-600">{{ formatKES(getPlanPriceForPlan(plan.planValue)) }}</div>
+              <p class="text-xs text-gray-500 mt-1">{{ getCycleSuffix() }}</p>
+              <p class="mt-3 text-sm text-gray-600 dark:text-gray-400">{{ plan.description }}</p>
+            </div>
+
+            <ul class="mt-5 space-y-2.5 text-sm">
+              <ng-container *ngIf="plan.features?.length > 0">
+                <li *ngFor="let feature of plan.features" class="flex items-start gap-2">
+                  <mat-icon class="text-emerald-600 flex-shrink-0" style="font-size: 18px; width: 18px; height: 18px;">check_circle</mat-icon>
+                  <span class="text-gray-700 dark:text-gray-300">{{ feature }}</span>
+                </li>
+              </ng-container>
+              <li *ngIf="!plan.features?.length" class="text-gray-400 text-center py-2">No features listed</li>
+            </ul>
+
+            <button mat-flat-button
+                    class="mt-5 w-full font-bold"
+                    [class.bg-emerald-600]="selectedPlan !== plan.planValue"
+                    [class.hover:bg-emerald-700]="selectedPlan !== plan.planValue"
+                    [class.text-white]="selectedPlan !== plan.planValue"
+                    [class.bg-gray-300]="selectedPlan === plan.planValue"
+                    [class.text-gray-600]="selectedPlan === plan.planValue"
+                    type="button"
+                    [disabled]="selectedPlan === plan.planValue">
+              {{ selectedPlan === plan.planValue ? '✓ Selected' : 'Choose Plan' }}
+            </button>
+          </div>
+        </div>
+
+        <div *ngIf="subscriptionPlans.length === 0 && !isLoading"
+             class="mt-4 flex items-center gap-3 rounded-lg bg-amber-50 border border-amber-200 p-4 text-sm text-amber-800">
+          <mat-icon class="text-amber-600">warning</mat-icon>
+          <span>No subscription plans are currently available.</span>
+        </div>
+      </section>
+
+      <!-- ================= BILLING OPTIONS ================= -->
+      <section class="grid gap-4 md:grid-cols-2">
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>Billing Cycle</mat-label>
+          <mat-select [(ngModel)]="selectedCycle">
+            <mat-option *ngFor="let cycle of billingCycles" [value]="cycle.value">{{ cycle.name }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>Custom Amount (KES)</mat-label>
+          <input matInput type="number" [(ngModel)]="customAmount" min="1">
+          <mat-hint>Leave empty to use plan price</mat-hint>
+        </mat-form-field>
+      </section>
+
+      <!-- Notes -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Notes (Optional)</mat-label>
+        <textarea matInput rows="3" [(ngModel)]="notes"></textarea>
+      </mat-form-field>
+
+      <!-- ================= ORDER SUMMARY ================= -->
+      <section *ngIf="selectedPlan && selectedCycle && getSelectedPlan()" class="rounded-xl border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 p-5 shadow-md">
+        <h6 class="mb-4 font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+          <mat-icon class="text-emerald-600">receipt</mat-icon>
+          Order Summary
+        </h6>
+        <div class="space-y-3 text-sm">
+          <div class="flex justify-between">
+            <span class="text-gray-600 dark:text-gray-400">Plan</span>
+            <span class="font-semibold text-gray-800 dark:text-gray-100">{{ getSelectedPlan()?.name }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600 dark:text-gray-400">Billing Cycle</span>
+            <span class="font-semibold text-gray-800 dark:text-gray-100">{{ getBillingCycleName(selectedCycle) }}</span>
+          </div>
+          <div class="flex justify-between border-t-2 border-emerald-300 pt-3 font-bold text-lg">
+            <span class="text-gray-800 dark:text-gray-100">Total</span>
+            <span class="text-emerald-600">{{ formatKES(getPlanAmount()) }} {{ getCycleDescription() }}</span>
+          </div>
+          <div *ngIf="getPlanAmount() === 0" class="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
+            <mat-icon class="text-amber-600" style="font-size: 16px; width: 16px; height: 16px;">info</mat-icon>
+            <span>This is a free subscription - no payment required</span>
+          </div>
+        </div>
+      </section>
+
+    </ng-container>
+  </main>
+
+  <!-- ================= FOOTER ================= -->
+  <footer class="flex flex-wrap items-center justify-between gap-3 border-t-2 border-gray-200 bg-white px-6 py-4 dark:border-gray-700 dark:bg-gray-900">
+
+    <div class="flex gap-2" *ngIf="data.school.subscription">
+      <button mat-stroked-button 
+              class="border-red-500 text-red-600 hover:bg-red-50 font-semibold" 
+              (click)="cancelSubscription()">
+        Cancel
+      </button>
+      <button mat-stroked-button 
+              class="border-amber-500 text-amber-600 hover:bg-amber-50 font-semibold" 
+              (click)="suspendSubscription()">
+        Suspend
+      </button>
+      <button *ngIf="canActivateSubscription()" 
+              mat-stroked-button 
+              class="border-emerald-500 text-emerald-600 hover:bg-emerald-50 font-semibold" 
+              (click)="activateSubscription()">
+        Activate
+      </button>
+    </div>
+
+    <div class="ml-auto flex gap-2">
+      <button mat-stroked-button 
+              class="border-gray-400 text-gray-600 hover:bg-gray-100 font-semibold" 
+              (click)="close()">
+        Close
+      </button>
+      <button mat-flat-button
+              class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md"
+              [disabled]="!selectedPlan || !selectedCycle || isLoading"
+              (click)="data.school.subscription ? renewSubscription() : createNewSubscription()">
+        <ng-container *ngIf="!isLoading">
+          {{ data.school.subscription ? 'Renew Subscription' : 'Create Subscription' }}
+        </ng-container>
+        <ng-container *ngIf="isLoading">
+          <div class="flex items-center gap-2">
+            <mat-spinner diameter="20"></mat-spinner>
+            Processing...
+          </div>
+        </ng-container>
+      </button>
+    </div>
+  </footer>
+
+</div>

@@ -80,6 +80,18 @@ export class AuthSignInComponent implements OnInit {
     // -----------------------------------------------------------------------------------------------------
 
     /**
+ * Logout
+ */
+logout(): void {
+    // Show confirmation dialog if needed
+    const confirmed = confirm('Are you sure you want to cancel? You must change your password to access the system.');
+    
+    if (confirmed) {
+        this._authService.signOut();
+        this._router.navigate(['/sign-in']);
+    }
+}
+    /**
      * Sign in
      */
 // In your sign-in.component.ts
@@ -91,7 +103,6 @@ signIn(): void {
     this.signInForm.disable();
     this.showAlert = false;
 
-    // Check if it's a super admin email
     const email = this.signInForm.get('email').value;
     const isSuperAdmin = email.toLowerCase().includes('superadmin');
     
@@ -100,7 +111,15 @@ signIn(): void {
         : this._authService.signIn(this.signInForm.value);
 
     authService.subscribe({
-        next: () => {
+        next: (response) => {
+            // Check if password change is required
+            if (response.data.user.requirePasswordChange) {
+                // Redirect to change password page
+                this._router.navigate(['/change-password']);
+                return;
+            }
+
+            // Normal redirect
             const redirectURL = this._activatedRoute.snapshot.queryParamMap.get('redirectURL') || '/signed-in-redirect';
             this._router.navigateByUrl(redirectURL);
         },

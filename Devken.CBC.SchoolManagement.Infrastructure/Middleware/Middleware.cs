@@ -1,81 +1,91 @@
-﻿using System;
-using System.Threading.Tasks;
-using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
-using Devken.CBC.SchoolManagement.Infrastructure.Security;
-using Devken.CBC.SchoolManagement.Infrastructure.Services;
+﻿using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.DependencyInjection;
+using System;
+using System.Linq;
+using System.Security.Claims;
+using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Middleware
 {
     /// <summary>
-    /// Extracts the tenant (school) from either:
-    ///   1. The JWT claim (tenant_id) – for authenticated requests.
-    ///   2. A query-string parameter – for the login flow before a token exists.
-    ///
-    /// Sets TenantContext.TenantId so that EF global filters activate.
+    /// Middleware to extract and populate tenant context from JWT claims
+    /// UPDATED: Now extracts IsSuperAdmin flag to handle audit correctly
     /// </summary>
     public class TenantMiddleware
     {
         private readonly RequestDelegate _next;
-        private readonly ILogger<TenantMiddleware> _logger;
 
-        public TenantMiddleware(RequestDelegate next, ILogger<TenantMiddleware> logger)
+        public TenantMiddleware(RequestDelegate next)
         {
             _next = next;
-            _logger = logger;
         }
 
-        public async Task InvokeAsync(HttpContext context)
+        public async Task InvokeAsync(HttpContext context, TenantContext tenantContext)
         {
-            var tenantContext = context.RequestServices.GetRequiredService<TenantContext>();
-
-            if (tenantContext == null)
+            if (context.User?.Identity?.IsAuthenticated == true)
             {
-                _logger.LogError("TenantContext is not registered in DI.");
-                await _next(context);
-                return;
-            }
+                // Extract User ID
+                var userIdClaim = context.User.FindFirst("user_id")
+                               ?? context.User.FindFirst(ClaimTypes.NameIdentifier)
+                               ?? context.User.FindFirst("sub");
 
-            // 1. Try JWT claim first (already-authenticated user)
-            if (context.User?.Identity != null && context.User.Identity.IsAuthenticated)
-            {
-                var tenantClaim = context.User.FindFirst(CustomClaimTypes.TenantId);
-                if (tenantClaim != null && Guid.TryParse(tenantClaim.Value, out var tenantId))
+                if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))
                 {
-                    tenantContext.TenantId = tenantId;
-                    _logger.LogDebug("TenantMiddleware: resolved tenant {TenantId} from JWT", tenantId);
+                    tenantContext.ActingUserId = userId;
                 }
 
-                // Resolve the acting user so RepositoryBase can stamp CreatedBy/UpdatedBy
-                var userIdClaim = context.User.FindFirst(CustomClaimTypes.UserId);
-                if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var actingUserId))
-                {
-                    tenantContext.ActingUserId = actingUserId;
-                    _logger.LogDebug("TenantMiddleware: acting user {ActingUserId}", actingUserId);
-                }
-            }
+                // Extract Email
+                var emailClaim = context.User.FindFirst(ClaimTypes.Email)
+                              ?? context.User.FindFirst("email")
+                              ?? context.User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress");
 
-            // 2. Fall back to ?tenant=<slug> query parameter (login flow)
-            if (tenantContext.TenantId == null)
-            {
-                var slug = context.Request.Query["tenant"].ToString();
-                if (!string.IsNullOrWhiteSpace(slug))
+                if (emailClaim != null)
                 {
-                    var repoManager = context.RequestServices.GetRequiredService<IRepositoryManager>();
-                    var school = await repoManager.School.GetBySlugAsync(slug);
-                    if (school != null)
+                    tenantContext.UserEmail = emailClaim.Value;
+                }
+
+                // Extract Display Name
+                var nameClaim = context.User.FindFirst(ClaimTypes.Name)
+                             ?? context.User.FindFirst("full_name")
+                             ?? context.User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name");
+
+                if (nameClaim != null)
+                {
+                    tenantContext.UserDisplayName = nameClaim.Value;
+                }
+
+                // CRITICAL: Extract SuperAdmin status
+                // Check multiple claim types for SuperAdmin flag
+                var isSuperAdminClaim = context.User.FindFirst("is_super_admin");
+                var roleClaim = context.User.FindFirst(ClaimTypes.Role)
+                             ?? context.User.FindFirst("http://schemas.microsoft.com/ws/2008/06/identity/claims/role");
+
+                // User is SuperAdmin if:
+                // 1. is_super_admin claim is "true", OR
+                // 2. Role claim contains "SuperAdmin"
+                tenantContext.IsSuperAdmin =
+                    (isSuperAdminClaim?.Value?.ToLower() == "true") ||
+                    (roleClaim?.Value == "SuperAdmin") ||
+                    (context.User.IsInRole("SuperAdmin"));
+
+                // Extract Tenant ID (only for non-SuperAdmins)
+                // SuperAdmins don't belong to a specific tenant/school
+                if (!tenantContext.IsSuperAdmin)
+                {
+                    var tenantIdClaim = context.User.FindFirst("tenant_id")
+                                     ?? context.User.FindFirst("school_id");
+
+                    if (tenantIdClaim != null && Guid.TryParse(tenantIdClaim.Value, out var tenantId))
                     {
-                        tenantContext.TenantId = school.Id;
-                        tenantContext.CurrentTenant = school;
-                        _logger.LogDebug("TenantMiddleware: resolved tenant {TenantId} from slug '{Slug}'", school.Id, slug);
+                        tenantContext.TenantId = tenantId;
                     }
                 }
+                else
+                {
+                    // SuperAdmin has no tenant
+                    tenantContext.TenantId = null;
+                }
             }
-
-            // 3. If still null, request will hit global filters with TenantId == null,
-            //    which allows cross-tenant queries (only for SuperAdmin or unauthenticated login endpoints).
 
             await _next(context);
         }

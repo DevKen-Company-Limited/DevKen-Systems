@@ -45,6 +45,8 @@
                             "includePaths": ["src/@fuse/styles"]
                         },
                         "styles": [
+                            "node_modules/bootstrap/dist/css/bootstrap.min.css",
+                            "node_modules/bootstrap-icons/font/bootstrap-icons.css",
                             "src/styles/splash-screen.css",
                             "src/styles/inter.css",
                             "src/@fuse/styles/tailwind.scss",
@@ -52,9 +54,12 @@
                             "src/styles/vendors.scss",
                             "src/@fuse/styles/main.scss",
                             "src/styles/styles.scss",
-                            "src/styles/tailwind.scss"
+                            "src/styles/tailwind.scss",
+                            "src/app/shared/scss/shared-step.scss"
                         ],
-                        "scripts": []
+                        "scripts": [
+                            "node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"
+                        ]
                     },
                     "configurations": {
                         "production": {

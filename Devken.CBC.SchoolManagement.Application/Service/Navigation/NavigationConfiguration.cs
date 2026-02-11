@@ -53,7 +53,8 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             Items = new[]
             {
                 new NavItem("users", "Users", "heroicons_outline:users", "/administration/users", PermissionKeys.UserRead),
-                new NavItem("roles", "Roles & Permissions", "heroicons_outline:shield-check", "/administration/roles", PermissionKeys.RoleRead)
+                new NavItem("roles", "Roles", "heroicons_outline:shield-check", "/administration/roles", PermissionKeys.RoleRead),
+                new NavItem("permissions", "permissions", "heroicons_outline:shield-check", "/administration/permissions", PermissionKeys.RoleRead)
             }
         };
 

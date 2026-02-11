@@ -1,4 +1,7 @@
-﻿using Devken.CBC.SchoolManagement.Api.Controllers.Common;
+﻿using System;
+using System.Linq;
+using System.Threading.Tasks;
+using Devken.CBC.SchoolManagement.Api.Controllers.Common;
 using Devken.CBC.SchoolManagement.Application.Dtos;
 using Devken.CBC.SchoolManagement.Application.Service;
 using Devken.CBC.SchoolManagement.Application.Service.Activities;
@@ -7,9 +10,7 @@ using Devken.CBC.SchoolManagement.Infrastructure.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
 {
@@ -23,11 +24,12 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
         public AuthController(
             IAuthService authService,
             JwtSettings jwtSettings,
-            IUserActivityService activityService)
-            : base(activityService)
+            IUserActivityService activityService,
+            ILogger<AuthController> logger)
+            : base(activityService, logger)
         {
-            _authService = authService;
-            _jwtSettings = jwtSettings;
+            _authService = authService ?? throw new ArgumentNullException(nameof(authService));
+            _jwtSettings = jwtSettings ?? throw new ArgumentNullException(nameof(jwtSettings));
         }
 
         #region School Registration / Login
@@ -51,12 +53,15 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                 "RegisterSchool",
                 $"School: {request.SchoolName}");
 
-            return SuccessResponse(new RegisterSchoolResponseDto
+            var responseDto = new RegisterSchoolResponseDto
             {
                 AccessToken = result.AccessToken,
                 ExpiresInSeconds = _jwtSettings.AccessTokenLifetimeMinutes * 60,
+                RefreshToken = result.RefreshToken,
                 User = result.User
-            }, "School registration successful");
+            };
+
+            return SuccessResponse(responseDto, "School registration successful");
         }
 
         [HttpPost("login")]
@@ -67,14 +72,11 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                 return ValidationErrorResponse(ToErrorDictionary(ModelState));
 
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-
-            // Provide a default tenant if not supplied
             var tenantSlug = string.IsNullOrWhiteSpace(request.TenantSlug) ? "default-school" : request.TenantSlug;
 
             var result = await _authService.LoginAsync(
                 new LoginRequest(tenantSlug, request.Email, request.Password),
-                ip
-            );
+                ip);
 
             if (result == null)
                 return ErrorResponse("Invalid credentials.", StatusCodes.Status401Unauthorized);
@@ -87,27 +89,26 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                 "Login",
                 $"IP: {ip}");
 
-            return SuccessResponse(new LoginResponseDto
+            // Ensure user DTO has permissions populated
+            var userDto = result.User;
+            if (userDto != null && result.Permissions?.Any() == true)
+            {
+                userDto.Permissions = result.Permissions.ToList();
+            }
+
+            var responseDto = new LoginResponseDto
             {
                 AccessToken = result.AccessToken,
                 ExpiresInSeconds = result.AccessTokenExpiresInSeconds,
-                User = result.User == null
-                    ? null
-                    : new UserDto(
-                        result.User.Id,
-                        result.User.Email,
-                        result.User.FullName,
-                        result.User.TenantId,
-                        string.Empty,
-                        result.User.Roles,
-                        result.User.Permissions,
-                        result.User.RequirePasswordChange),
-                Message = result.User != null && result.User.RequirePasswordChange
+                RefreshToken = result.RefreshToken,
+                User = userDto,
+                Message = result.User?.RequirePasswordChange == true
                     ? "Password change required. Please change your password to continue."
                     : "Login successful"
-            }, "Login successful");
-        }
+            };
 
+            return SuccessResponse(responseDto, "Login successful");
+        }
 
         #endregion
 
@@ -129,27 +130,29 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
 
             await LogUserActivitySafeAsync(null, null, "RefreshToken");
 
-            return SuccessResponse(new
+            var response = new
             {
                 AccessToken = result.AccessToken,
-                AccessTokenExpiresInSeconds = result.AccessTokenExpiresInSeconds
-            }, "Token refreshed successfully");
+                AccessTokenExpiresInSeconds = result.AccessTokenExpiresInSeconds,
+                RefreshToken = result.RefreshToken
+            };
+
+            return SuccessResponse(response, "Token refreshed successfully");
         }
 
-            [HttpPost("logout")]
-            [Authorize]
-            public async Task<IActionResult> Logout()
-            {
-                var token = Request.Cookies["refreshToken"];
-                if (!string.IsNullOrWhiteSpace(token))
-                    await _authService.LogoutAsync(token);
+        [HttpPost("logout")]
+        [Authorize]
+        public async Task<IActionResult> Logout()
+        {
+            var token = Request.Cookies["refreshToken"];
+            if (!string.IsNullOrWhiteSpace(token))
+                await _authService.LogoutAsync(token);
 
-                DeleteRefreshTokenCookie();
+            DeleteRefreshTokenCookie();
+            await LogUserActivitySafeAsync(CurrentUserId, CurrentTenantId, "Logout");
 
-                await LogUserActivitySafeAsync(CurrentUserId, CurrentTenantId, "Logout");
-
-                return SuccessResponse(new { }, "Logged out successfully");
-            }
+            return SuccessResponse(new { }, "Logged out successfully");
+        }
 
         #endregion
 
@@ -171,14 +174,17 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
             if (result.User?.Id != Guid.Empty)
                 await LogUserActivitySafeAsync(result.User.Id, null, "SuperAdminLogin");
 
-            return SuccessResponse(new
+            var response = new
             {
                 AccessToken = result.AccessToken,
                 AccessTokenExpiresInSeconds = result.AccessTokenExpiresInSeconds,
-                User = result.User,
+                RefreshToken = result.RefreshToken,
+                User = MapSuperAdminToUserDto(result.User, result.Permissions),
                 Roles = result.Roles,
                 Permissions = result.Permissions
-            }, "Super admin login successful");
+            };
+
+            return SuccessResponse(response, "Super admin login successful");
         }
 
         [HttpPost("super-admin/refresh")]
@@ -189,26 +195,22 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
             if (string.IsNullOrWhiteSpace(token))
                 return ErrorResponse("Refresh token missing.", StatusCodes.Status401Unauthorized);
 
-            var result = await _authService.SuperAdminRefreshTokenAsync(
-                new RefreshTokenRequest(token)
-            );
-
+            var result = await _authService.SuperAdminRefreshTokenAsync(new RefreshTokenRequest(token));
             if (result == null)
                 return ErrorResponse("Invalid or expired refresh token.", StatusCodes.Status401Unauthorized);
 
-            // IMPORTANT: rotate refresh token
             SetRefreshTokenCookie(result.RefreshToken);
-
             await LogUserActivitySafeAsync(null, null, "SuperAdminRefresh");
 
-            return SuccessResponse(new
+            var response = new
             {
                 AccessToken = result.AccessToken,
                 AccessTokenExpiresInSeconds = result.AccessTokenExpiresInSeconds,
                 RefreshToken = result.RefreshToken
-            }, "Super admin token refreshed successfully");
-        }
+            };
 
+            return SuccessResponse(response, "Super admin token refreshed successfully");
+        }
 
         #endregion
 
@@ -288,13 +290,93 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
         private Task LogUserActivitySafeAsync(
             Guid? userId = null,
             Guid? tenantId = null,
-            string activityType = null,
-            string details = null)
+            string? activityType = null,
+            string? details = null)
         {
-            if (!userId.HasValue) return Task.CompletedTask;
+            if (!userId.HasValue || string.IsNullOrWhiteSpace(activityType))
+                return Task.CompletedTask;
             return LogUserActivityAsync(userId.Value, tenantId, activityType, details ?? string.Empty);
         }
 
+        private static UserDto MapToUserDto(UserInfo user, string[]? permissions = null)
+        {
+            if (user == null) return null!;
+
+            // Split full name into first and last names
+            string firstName = string.Empty;
+            string lastName = string.Empty;
+
+            if (!string.IsNullOrEmpty(user.FullName))
+            {
+                var nameParts = user.FullName.Split(' ', 2);
+                firstName = nameParts[0];
+                lastName = nameParts.Length > 1 ? nameParts[1] : string.Empty;
+            }
+
+            return new UserDto
+            {
+                Id = user.Id,
+                Email = user.Email,
+                FirstName = firstName,
+                LastName = lastName,
+                SchoolId = user.TenantId,
+                SchoolName = string.Empty, // SchoolName will be filled by service if needed
+                IsActive = true, // Assuming active if we have UserInfo
+                IsEmailVerified = true, // Assuming verified if we have UserInfo
+                RequirePasswordChange = user.RequirePasswordChange,
+                RoleNames = new List<string>(user.Roles ?? Array.Empty<string>()),
+                Permissions = permissions?.ToList() ?? new List<string>(),
+                CreatedOn = DateTime.UtcNow,
+                UpdatedOn = DateTime.UtcNow
+            };
+        }
+
+        private static UserDto MapSuperAdminToUserDto(SuperAdminDto admin, string[]? permissions = null)
+        {
+            if (admin == null) return null!;
+
+            return new UserDto
+            {
+                Id = admin.Id,
+                Email = admin.Email,
+                FirstName = admin.FirstName,
+                LastName = admin.LastName,
+                SchoolId = Guid.Empty, // SuperAdmin has no tenant
+                SchoolName = "SuperAdmin",
+                IsActive = true,
+                IsEmailVerified = true,
+                RequirePasswordChange = false,
+                RoleNames = new List<string> { "SuperAdmin" },
+                Permissions = permissions?.ToList() ?? new List<string>(),
+                CreatedOn = DateTime.UtcNow,
+                UpdatedOn = DateTime.UtcNow
+            };
+        }
+
+        // Additional mapping method for UserManagementDto to UserDto if needed
+        private static UserDto MapUserManagementToUserDto(UserManagementDto userManagement)
+        {
+            if (userManagement == null) return null!;
+
+            return new UserDto
+            {
+                Id = userManagement.Id,
+                Email = userManagement.Email,
+                FirstName = userManagement.FirstName,
+                LastName = userManagement.LastName,
+                PhoneNumber = userManagement.PhoneNumber,
+                ProfileImageUrl = userManagement.ProfileImageUrl,
+                SchoolId = userManagement.TenantId,
+                SchoolName = userManagement.SchoolName,
+                IsActive = userManagement.IsActive,
+                IsEmailVerified = userManagement.IsEmailVerified,
+                RequirePasswordChange = userManagement.RequirePasswordChange,
+                RoleNames = userManagement.Roles?.Select(r => r.Name).ToList() ?? new List<string>(),
+                Permissions = new List<string>(), // Add permissions if available in userManagement
+                CreatedOn = userManagement.CreatedOn,
+                UpdatedOn = userManagement.UpdatedOn
+            };
+        }
         #endregion
     }
 }
