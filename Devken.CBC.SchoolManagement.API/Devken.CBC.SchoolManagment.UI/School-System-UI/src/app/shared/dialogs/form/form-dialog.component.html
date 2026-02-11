@@ -1,130 +1,372 @@
-<div class="flex flex-col w-full" [ngClass]="[maxHeight, containerClass]">
+<div class="flex flex-col w-full" 
+     [ngClass]="[
+       size.width || 'w-full',
+       size.maxWidth || '',
+       size.height || 'h-auto',
+       size.maxHeight || 'max-h-screen',
+       containerClass
+     ]"
+     [class.embedded]="embedded">
 
   <!-- ══════════════════════════════════════════════════════════════════════ -->
-  <!-- Dialog Header -->
+  <!-- Custom Header Template (if provided) -->
   <!-- ══════════════════════════════════════════════════════════════════════ -->
-  <div class="flex items-center justify-between px-6 py-4 shrink-0" [ngClass]="getHeaderGradient()">
+  <ng-container *ngIf="headerTemplate" 
+                [ngTemplateOutlet]="headerTemplate"
+                [ngTemplateOutletContext]="{ $implicit: header, activeTab, form, photoConfig }">
+  </ng-container>
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- Default Dialog Header -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <div *ngIf="!headerTemplate" 
+       [ngClass]="getHeaderClasses()"
+       [style.height]="header.height">
+
+    <!-- Header Left Section -->
     <div class="flex items-center gap-3">
-      <div *ngIf="header.icon" class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-        <mat-icon class="text-white">{{ header.icon }}</mat-icon>
+      
+      <!-- Custom Icon Template -->
+      <div *ngIf="header.iconTemplate" 
+           class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center"
+           [ngClass]="theme.header?.iconBackground">
+        <ng-container *ngTemplateOutlet="header.iconTemplate"></ng-container>
       </div>
+      
+      <!-- Default Icon -->
+      <div *ngIf="!header.iconTemplate && header.icon" 
+           class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center"
+           [ngClass]="theme.header?.iconBackground">
+        <mat-icon [ngClass]="theme.header?.iconColor || 'text-white'">{{ header.icon }}</mat-icon>
+      </div>
+      
+      <!-- Title and Subtitle -->
       <div>
-        <h2 class="text-lg font-bold text-white leading-tight">{{ header.title }}</h2>
-        <p *ngIf="header.subtitle" class="text-white/70 text-xs">{{ header.subtitle }}</p>
+        <h2 class="text-lg font-bold leading-tight"
+            [ngClass]="theme.header?.textColor || 'text-white'">
+          {{ header.title }}
+        </h2>
+        <p *ngIf="header.subtitle" 
+           class="text-xs opacity-70"
+           [ngClass]="theme.header?.textColor || 'text-white'">
+          {{ header.subtitle }}
+        </p>
       </div>
     </div>
-    <button mat-icon-button 
+
+    <!-- Close Button -->
+    <button *ngIf="header.showCloseButton !== false" 
+            mat-icon-button 
             (click)="onCancel()" 
-            class="text-white/80 hover:text-white hover:bg-white/10 rounded-xl">
+            [ngClass]="[
+              theme.header?.closeButtonColor || 'text-white/80',
+              theme.header?.closeButtonHoverColor || 'hover:text-white hover:bg-white/10',
+              'rounded-xl'
+            ]">
       <mat-icon>close</mat-icon>
     </button>
   </div>
 
   <!-- ══════════════════════════════════════════════════════════════════════ -->
-  <!-- Tab Navigation -->
+  <!-- Custom Tabs Template -->
   <!-- ══════════════════════════════════════════════════════════════════════ -->
-  <div *ngIf="tabs.length > 0" 
-       class="flex border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0 overflow-x-auto">
-    <button
-      *ngFor="let tab of tabs; let i = index; trackBy: trackByTab"
-      (click)="onTabChange(i)"
-      class="flex items-center gap-2 px-5 py-3 text-sm font-semibold whitespace-nowrap transition-all border-b-2 -mb-px"
-      [class.border-indigo-600]="activeTab === i"
-      [class.text-indigo-600]="activeTab === i"
-      [class.border-transparent]="activeTab !== i"
-      [class.text-gray-500]="activeTab !== i"
-      [class.dark:text-gray-400]="activeTab !== i"
-      [class.hover:text-gray-700]="activeTab !== i">
-      <mat-icon class="icon-size-4">{{ tab.icon }}</mat-icon>
+  <ng-container *ngIf="tabsTemplate" 
+                [ngTemplateOutlet]="tabsTemplate"
+                [ngTemplateOutletContext]="{ 
+                  $implicit: tabs, 
+                  activeTab, 
+                  form, 
+                  formSubmitted,
+                  tabHasErrors: tabHasErrors.bind(this),
+                  onTabChange: onTabChange.bind(this)
+                }">
+  </ng-container>
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- Default Tab Navigation -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <div *ngIf="!tabsTemplate && tabs.length > 0" 
+       class="flex border-b shrink-0 overflow-x-auto"
+       [ngClass]="[
+         theme.tabs?.containerBackground || 'bg-white dark:bg-gray-800',
+         theme.tabs?.borderColor || 'border-gray-200 dark:border-gray-700'
+       ]">
+    
+    <button *ngFor="let tab of tabs; let i = index; trackBy: trackByTab"
+            (click)="onTabChange(i)"
+            [disabled]="tab.disabled"
+            [ngClass]="getTabClasses(tab, i)"
+            [class.hidden]="tab.hidden">
+      
+      <!-- Custom Tab Icon -->
+      <ng-container *ngIf="tab.iconTemplate">
+        <ng-container *ngTemplateOutlet="tab.iconTemplate"></ng-container>
+      </ng-container>
+      
+      <!-- Default Tab Icon -->
+      <mat-icon *ngIf="!tab.iconTemplate" class="icon-size-4">{{ tab.icon }}</mat-icon>
+      
+      <!-- Tab Label -->
       <span>{{ tab.label }}</span>
-      <span *ngIf="tabHasErrors(tab)" class="w-2 h-2 rounded-full bg-red-500 ml-1"></span>
+      
+      <!-- Badge -->
+      <span *ngIf="tab.badge" 
+            class="ml-1 px-1.5 py-0.5 text-xs rounded-full"
+            [ngClass]="tab.badgeColor || 'bg-red-500 text-white'">
+        {{ tab.badge }}
+      </span>
+      
+      <!-- Error Indicator -->
+      <span *ngIf="tabHasErrors(tab)" 
+            class="w-2 h-2 rounded-full ml-1"
+            [ngClass]="tab.badgeColor || 'bg-red-500'">
+      </span>
     </button>
   </div>
 
   <!-- ══════════════════════════════════════════════════════════════════════ -->
   <!-- Scrollable Form Content -->
   <!-- ══════════════════════════════════════════════════════════════════════ -->
-  <div class="flex flex-col flex-auto overflow-y-auto bg-gray-50 dark:bg-gray-900">
+  <div class="flex flex-col flex-auto overflow-y-auto relative"
+       [ngClass]="theme.content?.background || 'bg-gray-50 dark:bg-gray-900'"
+       (scroll)="onScroll($event)">
+
+    <!-- Top Scroll Shadow -->
+    <div *ngIf="showScrollIndicators && !isScrolledToTop" 
+         class="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-black/5 to-transparent pointer-events-none z-10">
+    </div>
+
+    <!-- Form -->
     <form *ngIf="form" [formGroup]="form" class="flex flex-col flex-auto">
       
-      <!-- Photo Upload Section (if enabled) -->
-      <div *ngIf="photoConfig?.enabled" 
-           class="p-6 grid grid-cols-1 gap-4">
-        <div class="flex items-center gap-5 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+      <!-- Custom Content Header -->
+      <ng-container *ngIf="contentHeaderTemplate" 
+                    [ngTemplateOutlet]="contentHeaderTemplate"
+                    [ngTemplateOutletContext]="{ form, activeTab, photoConfig }">
+      </ng-container>
+
+      <!-- ══════════════════════════════════════════════════════════════════════ -->
+      <!-- Custom Photo Upload Template -->
+      <!-- ══════════════════════════════════════════════════════════════════════ -->
+      <ng-container *ngIf="photoUploadTemplate" 
+                    [ngTemplateOutlet]="photoUploadTemplate"
+                    [ngTemplateOutletContext]="{ 
+                      $implicit: photoConfig, 
+                      form,
+                      photoUrl: getPhotoUrl(),
+                      onPhotoChange: onPhotoChange.bind(this),
+                      onPhotoRemove: onPhotoRemove.bind(this)
+                    }">
+      </ng-container>
+
+      <!-- ══════════════════════════════════════════════════════════════════════ -->
+      <!-- Default Photo Upload Section -->
+      <!-- ══════════════════════════════════════════════════════════════════════ -->
+      <div *ngIf="!photoUploadTemplate && photoConfig?.enabled" 
+           class="p-6 grid grid-cols-1 gap-4"
+           [ngClass]="photoConfig.class || ''">
+        
+        <div class="flex items-center gap-5 p-4 rounded-xl border"
+             [ngClass]="[
+               theme.photo?.containerBackground || 'bg-white dark:bg-gray-800',
+               theme.photo?.borderColor || 'border-gray-200 dark:border-gray-700'
+             ]">
+          
+          <!-- Photo Preview -->
           <div class="relative">
-            <div class="w-20 h-20 rounded-2xl overflow-hidden bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-indigo-900/30 dark:to-violet-900/30 flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-800">
-              <img *ngIf="getPhotoUrl()"
-                   [src]="getPhotoUrl()!"
-                   class="w-full h-full object-cover" 
-                   alt="Photo preview" />
-              <mat-icon *ngIf="!getPhotoUrl()"
-                        class="text-indigo-400 icon-size-10">person</mat-icon>
+            <div class="overflow-hidden flex items-center justify-center border-2"
+                 [ngClass]="[
+                   getPhotoShapeClasses(),
+                   theme.photo?.previewBorderColor || 'border-indigo-200 dark:border-indigo-800'
+                 ]"
+                 [style.width]="getPhotoPreviewSize()"
+                 [style.height]="getPhotoPreviewSize()">
+              
+              <!-- Custom Preview Template -->
+              <ng-container *ngIf="photoConfig.previewTemplate">
+                <ng-container *ngTemplateOutlet="photoConfig.previewTemplate; context: { $implicit: getPhotoUrl() }">
+                </ng-container>
+              </ng-container>
+              
+              <!-- Default Preview -->
+              <ng-container *ngIf="!photoConfig.previewTemplate">
+                <img *ngIf="getPhotoUrl()"
+                     [src]="getPhotoUrl()!"
+                     class="w-full h-full object-cover" 
+                     alt="Photo preview" />
+                <mat-icon *ngIf="!getPhotoUrl()"
+                          class="text-indigo-400 icon-size-10">person</mat-icon>
+              </ng-container>
             </div>
-            <button *ngIf="getPhotoUrl()"
+            
+            <!-- Remove Button -->
+            <button *ngIf="photoConfig.showRemoveButton !== false && getPhotoUrl()"
                     type="button" 
                     (click)="onPhotoRemove()"
-                    class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center shadow-md hover:bg-red-600 transition-colors">
-              <mat-icon class="text-white icon-size-3 text-xs leading-none">close</mat-icon>
+                    class="absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center shadow-md transition-colors"
+                    [ngClass]="[
+                      theme.photo?.removeButtonBackground || 'bg-red-500',
+                      theme.photo?.removeButtonHoverBackground || 'hover:bg-red-600'
+                    ]">
+              <mat-icon class="text-white icon-size-3 text-xs leading-none"
+                       [ngClass]="theme.photo?.removeButtonIconColor || 'text-white'">
+                close
+              </mat-icon>
             </button>
           </div>
+          
+          <!-- Photo Info and Upload Button -->
           <div class="flex flex-col gap-2">
             <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">
               {{ photoConfig.label || 'Profile Photo' }}
             </p>
             <p class="text-xs text-gray-500 dark:text-gray-400">
-              {{ photoConfig.description || 'JPEG, PNG or WebP · Max 5 MB' }}
+              {{ photoConfig.description || 'JPEG, PNG or WebP · Max ' + (photoConfig.maxSize || 5) + ' MB' }}
             </p>
-            <label class="cursor-pointer">
+            
+            <!-- Custom Button Template -->
+            <ng-container *ngIf="photoConfig.buttonTemplate">
+              <ng-container *ngTemplateOutlet="photoConfig.buttonTemplate; context: { onPhotoChange: onPhotoChange.bind(this) }">
+              </ng-container>
+            </ng-container>
+            
+            <!-- Default Upload Button -->
+            <label *ngIf="!photoConfig.buttonTemplate" class="cursor-pointer">
               <span class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-600 border-2 border-indigo-300 dark:border-indigo-700 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
                 <mat-icon class="icon-size-4">upload</mat-icon>
                 {{ photoConfig.buttonText || 'Upload Photo' }}
               </span>
               <input type="file" 
                      class="hidden" 
-                     accept="image/*" 
+                     [accept]="photoConfig.accept || 'image/*'" 
                      (change)="onPhotoChange($event)" />
             </label>
           </div>
         </div>
       </div>
 
+      <!-- ══════════════════════════════════════════════════════════════════════ -->
       <!-- Tab Content -->
+      <!-- ══════════════════════════════════════════════════════════════════════ -->
       <div class="flex-auto">
         <ng-container *ngFor="let tab of tabs; let i = index">
-          <div *ngIf="activeTab === i" class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <ng-container *ngTemplateOutlet="tabTemplates[tab.id]"></ng-container>
+          <div *ngIf="activeTab === i && !tab.hidden" 
+               class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            <!-- Empty State -->
+            <ng-container *ngIf="emptyStateTemplate && !tabTemplates[tab.id]">
+              <ng-container *ngTemplateOutlet="emptyStateTemplate; context: { tab }">
+              </ng-container>
+            </ng-container>
+            
+            <!-- Tab Content Template -->
+            <ng-container *ngIf="tabTemplates[tab.id]">
+              <ng-container *ngTemplateOutlet="tabTemplates[tab.id]; context: { form, tab, activeTab: i }">
+              </ng-container>
+            </ng-container>
           </div>
         </ng-container>
       </div>
 
+      <!-- Custom Content Footer -->
+      <ng-container *ngIf="contentFooterTemplate" 
+                    [ngTemplateOutlet]="contentFooterTemplate"
+                    [ngTemplateOutletContext]="{ form, activeTab, photoConfig }">
+      </ng-container>
+
     </form>
+
+    <!-- Bottom Scroll Shadow -->
+    <div *ngIf="showScrollIndicators && !isScrolledToBottom" 
+         class="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-black/5 to-transparent pointer-events-none z-10">
+    </div>
   </div>
 
   <!-- ══════════════════════════════════════════════════════════════════════ -->
-  <!-- Dialog Footer -->
+  <!-- Custom Footer Template -->
   <!-- ══════════════════════════════════════════════════════════════════════ -->
-  <div class="flex items-center justify-between px-6 py-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shrink-0">
-    <p *ngIf="footer.showError && form.invalid && formSubmitted" 
-       class="text-sm text-red-500 flex items-center gap-1">
-      <mat-icon class="icon-size-4">error_outline</mat-icon>
-      {{ footer.errorMessage }}
-    </p>
-    <div class="flex items-center gap-3 ml-auto">
-      <button mat-stroked-button 
+  <ng-container *ngIf="footerTemplate" 
+                [ngTemplateOutlet]="footerTemplate"
+                [ngTemplateOutletContext]="{ 
+                  $implicit: footer, 
+                  form, 
+                  formSubmitted,
+                  onCancel: onCancel.bind(this),
+                  onSubmit: onSubmit.bind(this)
+                }">
+  </ng-container>
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- Default Dialog Footer -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <div *ngIf="!footerTemplate" 
+       class="flex items-center px-6 py-4 border-t shrink-0"
+       [ngClass]="[
+         footer.class || '',
+         theme.footer?.background || 'bg-white dark:bg-gray-800',
+         theme.footer?.borderColor || 'border-gray-200 dark:border-gray-700',
+         theme.footer?.textColor || 'text-gray-900 dark:text-gray-100'
+       ]">
+    
+    <!-- Error Message -->
+    <ng-container *ngIf="footer.showError && form?.invalid && formSubmitted">
+      
+      <!-- Custom Error Template -->
+      <ng-container *ngIf="footer.errorTemplate || errorTemplate">
+        <ng-container *ngTemplateOutlet="footer.errorTemplate || errorTemplate; context: { $implicit: footer.errorMessage }">
+        </ng-container>
+      </ng-container>
+      
+      <!-- Default Error Message -->
+      <p *ngIf="!footer.errorTemplate && !errorTemplate" 
+         class="text-sm text-red-500 flex items-center gap-1"
+         [ngClass]="{
+           'ml-auto': footer.errorPosition === 'right',
+           'mx-auto': footer.errorPosition === 'center'
+         }">
+        <mat-icon class="icon-size-4">{{ footer.errorIcon || 'error_outline' }}</mat-icon>
+        {{ footer.errorMessage || 'Please fix all errors before saving.' }}
+      </p>
+    </ng-container>
+
+    <!-- Buttons Container -->
+    <div class="flex items-center gap-3"
+         [ngClass]="{
+           'ml-auto': footer.errorPosition !== 'right' || !footer.showError || !form?.invalid || !formSubmitted
+         }">
+      
+      <!-- Custom Cancel Button -->
+      <ng-container *ngIf="footer.cancelButtonTemplate">
+        <ng-container *ngTemplateOutlet="footer.cancelButtonTemplate; context: { onCancel: onCancel.bind(this), disabled: isCancelDisabled() }">
+        </ng-container>
+      </ng-container>
+      
+      <!-- Default Cancel Button -->
+      <button *ngIf="!footer.cancelButtonTemplate && footer.showCancel !== false" 
+              mat-stroked-button 
               (click)="onCancel()" 
-              [disabled]="footer.loading">
-        {{ footer.cancelText }}
+              [disabled]="isCancelDisabled()">
+        {{ footer.cancelText || 'Cancel' }}
       </button>
-      <button mat-flat-button 
+      
+      <!-- Custom Submit Button -->
+      <ng-container *ngIf="footer.submitButtonTemplate">
+        <ng-container *ngTemplateOutlet="footer.submitButtonTemplate; context: { onSubmit: onSubmit.bind(this), loading: footer.loading, disabled: footer.loading }">
+        </ng-container>
+      </ng-container>
+      
+      <!-- Default Submit Button -->
+      <button *ngIf="!footer.submitButtonTemplate && footer.showSubmit !== false" 
+              mat-flat-button 
               color="primary" 
               (click)="onSubmit()" 
               [disabled]="footer.loading"
               class="bg-gradient-to-r from-indigo-600 to-violet-600 text-white min-w-28">
-        <mat-spinner *ngIf="footer.loading" diameter="18" class="mr-2"></mat-spinner>
+        <mat-spinner *ngIf="footer.loading" diameter="18" class="mr-2 inline-block"></mat-spinner>
         <mat-icon *ngIf="!footer.loading && footer.submitIcon" class="icon-size-5 mr-1">
           {{ footer.submitIcon }}
         </mat-icon>
-        {{ footer.loading ? footer.loadingText : footer.submitText }}
+        {{ footer.loading ? (footer.loadingText || 'Saving...') : (footer.submitText || 'Save') }}
       </button>
     </div>
   </div>

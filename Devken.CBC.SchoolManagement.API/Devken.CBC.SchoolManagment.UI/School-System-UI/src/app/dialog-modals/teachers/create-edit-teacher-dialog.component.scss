@@ -1,0 +1,121 @@
+:host {
+  display: block;
+}
+
+::ng-deep {
+  // Responsive dialog styles
+  .responsive-dialog {
+    @media (max-width: 640px) {
+      width: 100vw !important;
+      height: 100vh !important;
+      max-width: 100vw !important;
+      max-height: 100vh !important;
+      border-radius: 0 !important;
+      margin: 0 !important;
+      
+      .mat-dialog-container {
+        border-radius: 0 !important;
+        padding: 0 !important;
+      }
+    }
+  }
+
+  // Photo upload section styles
+  .photo-upload-section {
+    .photo-preview-container {
+      transition: all 0.3s ease;
+      
+      &:hover {
+        transform: scale(1.05);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+      }
+    }
+    
+    .upload-button {
+      transition: all 0.2s ease;
+      
+      &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      }
+    }
+  }
+
+  // Form field styles
+  .mat-form-field {
+    &.mat-form-field-appearance-outline {
+      .mat-form-field-outline {
+        color: rgba(0, 0, 0, 0.12);
+      }
+      
+      &:hover {
+        .mat-form-field-outline {
+          color: rgba(0, 0, 0, 0.24);
+        }
+      }
+      
+      &.mat-focused {
+        .mat-form-field-outline {
+          color: #4f46e5;
+        }
+      }
+    }
+  }
+
+  // Dark mode adjustments
+  .dark {
+    .mat-form-field {
+      &.mat-form-field-appearance-outline {
+        .mat-form-field-outline {
+          color: rgba(255, 255, 255, 0.12);
+        }
+        
+        &:hover {
+          .mat-form-field-outline {
+            color: rgba(255, 255, 255, 0.24);
+          }
+        }
+      }
+    }
+  }
+
+  // Slide toggle styles
+  .mat-slide-toggle {
+    &.mat-checked {
+      .mat-slide-toggle-bar {
+        background-color: rgba(79, 70, 229, 0.5);
+      }
+      
+      .mat-slide-toggle-thumb {
+        background-color: #4f46e5;
+      }
+    }
+  }
+
+  // Date picker styles
+  .mat-datepicker-toggle {
+    color: rgba(0, 0, 0, 0.54);
+    
+    .dark & {
+      color: rgba(255, 255, 255, 0.54);
+    }
+  }
+
+  // Error message styles
+  .mat-error {
+    font-size: 11px;
+    margin-top: 2px;
+  }
+
+  // Footer button styles
+  .dialog-footer {
+    button {
+      transition: all 0.2s ease;
+      
+      &:hover:not([disabled]) {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      }
+    }
+  }
+}

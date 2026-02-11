@@ -1,5 +1,5 @@
 <!-- ══════════════════════════════════════════════════════════════════════════ -->
-<!-- Reusable Form Dialog Component -->
+<!-- Reusable Form Dialog Component with Enhanced Features -->
 <!-- ══════════════════════════════════════════════════════════════════════════ -->
 <app-form-dialog
   [header]="dialogHeader"
@@ -8,187 +8,346 @@
   [activeTab]="activeTab"
   [photoConfig]="photoConfig"
   [footer]="footerConfig"
+  [size]="dialogSize"
+  [theme]="dialogTheme"
   [tabTemplates]="tabTemplates"
   [formSubmitted]="formSubmitted"
+  [showScrollIndicators]="true"
   (tabChange)="onTabChange($event)"
   (cancel)="onCancel()"
   (submit)="onSubmit()">
+  
+  <!-- Custom Photo Preview Template -->
+  <ng-template #customPhotoPreview let-photoUrl>
+    <div class="relative w-full h-full flex items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-900/30 dark:to-primary-800/30">
+      <img *ngIf="photoUrl" 
+           [src]="photoUrl" 
+           class="w-full h-full object-cover"
+           alt="Profile photo preview" />
+      <div *ngIf="!photoUrl && isLoadingPhoto" 
+           class="flex items-center justify-center">
+        <mat-spinner diameter="30"></mat-spinner>
+      </div>
+      <div *ngIf="!photoUrl && !isLoadingPhoto && photoError" 
+           class="flex flex-col items-center justify-center text-gray-400">
+        <mat-icon class="icon-size-8">error_outline</mat-icon>
+        <span class="text-xs mt-1">Failed to load</span>
+      </div>
+      <mat-icon *ngIf="!photoUrl && !isLoadingPhoto && !photoError" 
+                class="text-primary-400 icon-size-10">person</mat-icon>
+    </div>
+  </ng-template>
+  
+  <!-- Custom Upload Button Template -->
+  <ng-template #customUploadButton let-onPhotoChange="onPhotoChange">
+    <button type="button"
+            class="upload-button inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-primary-600 bg-primary-50 border-2 border-primary-200 rounded-lg hover:bg-primary-100 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800 dark:hover:bg-primary-900/30 transition-all">
+      <mat-icon class="icon-size-4">cloud_upload</mat-icon>
+      {{ photoConfig.buttonText }}
+      <input type="file" 
+             class="hidden" 
+             [accept]="photoConfig.accept" 
+             (change)="onPhotoChange($event)" />
+    </button>
+  </ng-template>
+
 </app-form-dialog>
 
 <!-- ══════════════════════════════════════════════════════════════════════════ -->
-<!-- Tab Content Templates -->
+<!-- Enhanced Loading Overlay -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div *ngIf="isEnumsLoading" 
+     class="absolute inset-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm flex items-center justify-center z-50">
+  <div class="flex flex-col items-center max-w-xs text-center p-6">
+    <div class="relative">
+      <mat-spinner diameter="48" class="text-primary-600"></mat-spinner>
+      <div class="absolute inset-0 flex items-center justify-center">
+        <mat-icon class="text-primary-600 icon-size-6 animate-pulse">school</mat-icon>
+      </div>
+    </div>
+    <p class="mt-6 text-base font-medium text-gray-700 dark:text-gray-300">
+      Loading teacher data...
+    </p>
+    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+      Please wait while we prepare the form
+    </p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- Tab Content Templates with Improved Layout -->
 <!-- ══════════════════════════════════════════════════════════════════════════ -->
 
 <!-- ── Personal Tab ─────────────────────────────────────────────────────────── -->
 <ng-template #personalTab>
-  
-  <!-- First Name -->
-  <mat-form-field class="w-full" appearance="outline">
-    <mat-label>First Name <span class="text-red-500">*</span></mat-label>
-    <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">badge</mat-icon>
-    <input matInput formControlName="firstName" placeholder="e.g. John" />
-    <mat-error *ngIf="form.get('firstName')?.hasError('required')">Required</mat-error>
-  </mat-form-field>
+  <div [formGroup]="form" class="grid grid-cols-1 md:grid-cols-2 gap-6 p-1">
+    
+    <!-- Full Name Section (spans 2 columns on desktop) -->
+    <div class="md:col-span-2">
+      <div class="flex items-center gap-2 mb-2">
+        <mat-icon class="text-primary-500 icon-size-5">badge</mat-icon>
+        <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Full Name</span>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- First Name -->
+        <mat-form-field class="w-full" appearance="outline">
+          <mat-label>First Name <span class="text-red-500">*</span></mat-label>
+          <input matInput formControlName="firstName" placeholder="e.g. John" />
+          <mat-error *ngIf="form.get('firstName')?.hasError('required')">
+            First name is required
+          </mat-error>
+          <mat-error *ngIf="form.get('firstName')?.hasError('maxlength')">
+            Maximum 100 characters
+          </mat-error>
+        </mat-form-field>
 
-  <!-- Middle Name -->
-  <mat-form-field class="w-full" appearance="outline">
-    <mat-label>Middle Name</mat-label>
-    <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">badge</mat-icon>
-    <input matInput formControlName="middleName" placeholder="Optional" />
-  </mat-form-field>
+        <!-- Middle Name -->
+        <mat-form-field class="w-full" appearance="outline">
+          <mat-label>Middle Name</mat-label>
+          <input matInput formControlName="middleName" placeholder="Optional" />
+          <mat-hint align="end">Optional</mat-hint>
+        </mat-form-field>
 
-  <!-- Last Name -->
-  <mat-form-field class="w-full" appearance="outline">
-    <mat-label>Last Name <span class="text-red-500">*</span></mat-label>
-    <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">badge</mat-icon>
-    <input matInput formControlName="lastName" placeholder="e.g. Doe" />
-    <mat-error *ngIf="form.get('lastName')?.hasError('required')">Required</mat-error>
-  </mat-form-field>
+        <!-- Last Name -->
+        <mat-form-field class="w-full" appearance="outline">
+          <mat-label>Last Name <span class="text-red-500">*</span></mat-label>
+          <input matInput formControlName="lastName" placeholder="e.g. Doe" />
+          <mat-error *ngIf="form.get('lastName')?.hasError('required')">
+            Last name is required
+          </mat-error>
+          <mat-error *ngIf="form.get('lastName')?.hasError('maxlength')">
+            Maximum 100 characters
+          </mat-error>
+        </mat-form-field>
+      </div>
+    </div>
 
-  <!-- Teacher Number -->
-  <mat-form-field class="w-full" appearance="outline">
-    <mat-label>Teacher Number <span class="text-red-500">*</span></mat-label>
-    <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">tag</mat-icon>
-    <input matInput formControlName="teacherNumber" placeholder="e.g. TCH-001" />
-    <mat-error *ngIf="form.get('teacherNumber')?.hasError('required')">Required</mat-error>
-  </mat-form-field>
+    <!-- Teacher Number -->
+    <mat-form-field class="w-full" appearance="outline">
+      <mat-label>Teacher Number <span class="text-red-500">*</span></mat-label>
+      <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">tag</mat-icon>
+      <input matInput formControlName="teacherNumber" placeholder="e.g. TCH-001" />
+      <mat-hint align="end">Unique identifier</mat-hint>
+      <mat-error *ngIf="form.get('teacherNumber')?.hasError('required')">
+        Teacher number is required
+      </mat-error>
+      <mat-error *ngIf="form.get('teacherNumber')?.hasError('maxlength')">
+        Maximum 50 characters
+      </mat-error>
+    </mat-form-field>
 
-  <!-- Gender -->
-  <mat-form-field class="w-full" appearance="outline">
-    <mat-label>Gender <span class="text-red-500">*</span></mat-label>
-    <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">wc</mat-icon>
-    <mat-select formControlName="gender">
-      <mat-option *ngFor="let g of (genders$ | async)" [value]="g.value">{{ g.name }}</mat-option>
-    </mat-select>
-    <mat-error *ngIf="form.get('gender')?.hasError('required')">Required</mat-error>
-  </mat-form-field>
+    <!-- Gender -->
+    <mat-form-field class="w-full" appearance="outline">
+      <mat-label>Gender <span class="text-red-500">*</span></mat-label>
+      <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">wc</mat-icon>
+      <mat-select formControlName="gender">
+        <mat-option [value]="null">Select Gender</mat-option>
+        <mat-option *ngFor="let g of (genders$ | async)" [value]="g.value">
+          {{ g.name }}
+        </mat-option>
+      </mat-select>
+      <mat-error *ngIf="form.get('gender')?.hasError('required')">
+        Gender is required
+      </mat-error>
+    </mat-form-field>
 
-  <!-- Date of Birth -->
-  <mat-form-field class="w-full" appearance="outline">
-    <mat-label>Date of Birth</mat-label>
-    <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">cake</mat-icon>
-    <input matInput [matDatepicker]="dobPicker" formControlName="dateOfBirth" />
-    <mat-datepicker-toggle matIconSuffix [for]="dobPicker"></mat-datepicker-toggle>
-    <mat-datepicker #dobPicker></mat-datepicker>
-  </mat-form-field>
+    <!-- Date of Birth -->
+    <mat-form-field class="w-full" appearance="outline">
+      <mat-label>Date of Birth</mat-label>
+      <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">cake</mat-icon>
+      <input matInput [matDatepicker]="dobPicker" formControlName="dateOfBirth" />
+      <mat-datepicker-toggle matIconSuffix [for]="dobPicker"></mat-datepicker-toggle>
+      <mat-datepicker #dobPicker></mat-datepicker>
+      <mat-hint align="end">DD/MM/YYYY</mat-hint>
+    </mat-form-field>
 
-  <!-- National ID -->
-  <mat-form-field class="w-full" appearance="outline">
-    <mat-label>National ID Number</mat-label>
-    <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">credit_card</mat-icon>
-    <input matInput formControlName="idNumber" placeholder="National ID / Passport" />
-  </mat-form-field>
+    <!-- National ID -->
+    <mat-form-field class="w-full" appearance="outline">
+      <mat-label>National ID Number</mat-label>
+      <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">credit_card</mat-icon>
+      <input matInput formControlName="idNumber" placeholder="National ID / Passport" />
+      <mat-error *ngIf="form.get('idNumber')?.hasError('maxlength')">
+        Maximum 100 characters
+      </mat-error>
+    </mat-form-field>
 
-  <!-- Nationality -->
-  <mat-form-field class="w-full" appearance="outline">
-    <mat-label>Nationality</mat-label>
-    <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">flag</mat-icon>
-    <input matInput formControlName="nationality" placeholder="e.g. Kenyan" />
-  </mat-form-field>
+    <!-- Nationality -->
+    <mat-form-field class="w-full" appearance="outline">
+      <mat-label>Nationality</mat-label>
+      <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">flag</mat-icon>
+      <input matInput formControlName="nationality" placeholder="e.g. Kenyan" />
+      <mat-error *ngIf="form.get('nationality')?.hasError('maxlength')">
+        Maximum 100 characters
+      </mat-error>
+    </mat-form-field>
 
+  </div>
 </ng-template>
 
 <!-- ── Contact Tab ──────────────────────────────────────────────────────────── -->
 <ng-template #contactTab>
+  <div [formGroup]="form" class="grid grid-cols-1 md:grid-cols-2 gap-6 p-1">
 
-  <!-- Phone -->
-  <mat-form-field class="w-full" appearance="outline">
-    <mat-label>Phone Number</mat-label>
-    <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">phone</mat-icon>
-    <input matInput formControlName="phoneNumber" placeholder="+254 7XX XXX XXX" />
-  </mat-form-field>
+    <!-- Phone -->
+    <mat-form-field class="w-full" appearance="outline">
+      <mat-label>Phone Number</mat-label>
+      <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">phone</mat-icon>
+      <input matInput formControlName="phoneNumber" placeholder="+254 7XX XXX XXX" />
+      <mat-hint align="end">Include country code</mat-hint>
+      <mat-error *ngIf="form.get('phoneNumber')?.hasError('pattern')">
+        Enter a valid phone number
+      </mat-error>
+      <mat-error *ngIf="form.get('phoneNumber')?.hasError('maxlength')">
+        Maximum 100 characters
+      </mat-error>
+    </mat-form-field>
 
-  <!-- Email -->
-  <mat-form-field class="w-full" appearance="outline">
-    <mat-label>Email Address</mat-label>
-    <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">email</mat-icon>
-    <input matInput type="email" formControlName="email" placeholder="teacher@school.ac.ke" />
-    <mat-error *ngIf="form.get('email')?.hasError('email')">Enter a valid email</mat-error>
-  </mat-form-field>
+    <!-- Email -->
+    <mat-form-field class="w-full" appearance="outline">
+      <mat-label>Email Address</mat-label>
+      <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">email</mat-icon>
+      <input matInput type="email" formControlName="email" placeholder="teacher@school.ac.ke" />
+      <mat-error *ngIf="form.get('email')?.hasError('email')">
+        Enter a valid email address
+      </mat-error>
+      <mat-error *ngIf="form.get('email')?.hasError('maxlength')">
+        Maximum 100 characters
+      </mat-error>
+    </mat-form-field>
 
-  <!-- Address -->
-  <mat-form-field class="w-full md:col-span-2" appearance="outline">
-    <mat-label>Home Address</mat-label>
-    <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">home</mat-icon>
-    <textarea matInput formControlName="address" rows="3" placeholder="Postal address or physical location"></textarea>
-  </mat-form-field>
+    <!-- Address -->
+    <mat-form-field class="w-full md:col-span-2" appearance="outline">
+      <mat-label>Home Address</mat-label>
+      <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">home</mat-icon>
+      <textarea matInput 
+                formControlName="address" 
+                rows="3" 
+                placeholder="Postal address or physical location"></textarea>
+      <mat-error *ngIf="form.get('address')?.hasError('maxlength')">
+        Maximum 500 characters
+      </mat-error>
+    </mat-form-field>
 
+  </div>
 </ng-template>
 
 <!-- ── Professional Tab ─────────────────────────────────────────────────────── -->
 <ng-template #professionalTab>
+  <div [formGroup]="form" class="grid grid-cols-1 md:grid-cols-2 gap-6 p-1">
 
-  <!-- TSC Number -->
-  <mat-form-field class="w-full" appearance="outline">
-    <mat-label>TSC Number</mat-label>
-    <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">school</mat-icon>
-    <input matInput formControlName="tscNumber" placeholder="Teachers Service Commission No." />
-  </mat-form-field>
+    <!-- TSC Number -->
+    <mat-form-field class="w-full" appearance="outline">
+      <mat-label>TSC Number</mat-label>
+      <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">school</mat-icon>
+      <input matInput formControlName="tscNumber" placeholder="Teachers Service Commission No." />
+      <mat-error *ngIf="form.get('tscNumber')?.hasError('maxlength')">
+        Maximum 50 characters
+      </mat-error>
+    </mat-form-field>
 
-  <!-- Employment Type -->
-  <mat-form-field class="w-full" appearance="outline">
-    <mat-label>Employment Type</mat-label>
-    <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">work</mat-icon>
-    <mat-select formControlName="employmentType">
-      <mat-option *ngFor="let et of (employmentTypes$ | async)" [value]="et.value">{{ et.name }}</mat-option>
-    </mat-select>
-  </mat-form-field>
+    <!-- Employment Type -->
+    <mat-form-field class="w-full" appearance="outline">
+      <mat-label>Employment Type</mat-label>
+      <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">work</mat-icon>
+      <mat-select formControlName="employmentType">
+        <mat-option [value]="null">Select Employment Type</mat-option>
+        <mat-option *ngFor="let et of (employmentTypes$ | async)" [value]="et.value">
+          {{ et.name }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
 
-  <!-- Designation -->
-  <mat-form-field class="w-full" appearance="outline">
-    <mat-label>Designation</mat-label>
-    <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">military_tech</mat-icon>
-    <mat-select formControlName="designation">
-      <mat-option *ngFor="let d of (designations$ | async)" [value]="d.value">{{ d.name }}</mat-option>
-    </mat-select>
-  </mat-form-field>
+    <!-- Designation -->
+    <mat-form-field class="w-full" appearance="outline">
+      <mat-label>Designation</mat-label>
+      <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">military_tech</mat-icon>
+      <mat-select formControlName="designation">
+        <mat-option [value]="null">Select Designation</mat-option>
+        <mat-option *ngFor="let d of (designations$ | async)" [value]="d.value">
+          {{ d.name }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
 
-  <!-- Date of Employment -->
-  <mat-form-field class="w-full" appearance="outline">
-    <mat-label>Date of Employment</mat-label>
-    <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">event</mat-icon>
-    <input matInput [matDatepicker]="empPicker" formControlName="dateOfEmployment" />
-    <mat-datepicker-toggle matIconSuffix [for]="empPicker"></mat-datepicker-toggle>
-    <mat-datepicker #empPicker></mat-datepicker>
-  </mat-form-field>
+    <!-- Date of Employment -->
+    <mat-form-field class="w-full" appearance="outline">
+      <mat-label>Date of Employment</mat-label>
+      <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">event</mat-icon>
+      <input matInput [matDatepicker]="empPicker" formControlName="dateOfEmployment" />
+      <mat-datepicker-toggle matIconSuffix [for]="empPicker"></mat-datepicker-toggle>
+      <mat-datepicker #empPicker></mat-datepicker>
+    </mat-form-field>
 
-  <!-- Qualification -->
-  <mat-form-field class="w-full" appearance="outline">
-    <mat-label>Qualification</mat-label>
-    <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">menu_book</mat-icon>
-    <input matInput formControlName="qualification" placeholder="e.g. B.Ed, PGDE" />
-  </mat-form-field>
+    <!-- Qualification -->
+    <mat-form-field class="w-full" appearance="outline">
+      <mat-label>Qualification</mat-label>
+      <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">menu_book</mat-icon>
+      <input matInput formControlName="qualification" placeholder="e.g. B.Ed, PGDE" />
+      <mat-error *ngIf="form.get('qualification')?.hasError('maxlength')">
+        Maximum 100 characters
+      </mat-error>
+    </mat-form-field>
 
-  <!-- Specialization -->
-  <mat-form-field class="w-full" appearance="outline">
-    <mat-label>Specialization</mat-label>
-    <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">science</mat-icon>
-    <input matInput formControlName="specialization" placeholder="e.g. Mathematics, Science" />
-  </mat-form-field>
+    <!-- Specialization -->
+    <mat-form-field class="w-full" appearance="outline">
+      <mat-label>Specialization</mat-label>
+      <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">science</mat-icon>
+      <input matInput formControlName="specialization" placeholder="e.g. Mathematics, Science" />
+      <mat-error *ngIf="form.get('specialization')?.hasError('maxlength')">
+        Maximum 100 characters
+      </mat-error>
+    </mat-form-field>
 
-  <!-- Is Class Teacher -->
-  <div class="md:col-span-2 flex items-center gap-3 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-    <mat-slide-toggle formControlName="isClassTeacher" color="primary"></mat-slide-toggle>
-    <div>
-      <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">Class Teacher</p>
-      <p class="text-xs text-gray-500 dark:text-gray-400">This teacher is assigned as a class teacher</p>
+    <!-- Settings Cards -->
+    <div class="md:col-span-2 space-y-4 mt-2">
+      
+      <!-- Is Class Teacher -->
+      <div class="flex items-center gap-4 p-5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
+        <div class="flex-shrink-0">
+          <mat-slide-toggle formControlName="isClassTeacher" color="primary"></mat-slide-toggle>
+        </div>
+        <div class="flex-1">
+          <div class="flex items-center gap-2">
+            <mat-icon class="text-primary-500 icon-size-5">class</mat-icon>
+            <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">Class Teacher</p>
+          </div>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            This teacher is assigned as a class teacher and will have additional responsibilities
+          </p>
+        </div>
+      </div>
+
+      <!-- Is Active -->
+      <div class="flex items-center gap-4 p-5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
+        <div class="flex-shrink-0">
+          <mat-slide-toggle formControlName="isActive" color="primary"></mat-slide-toggle>
+        </div>
+        <div class="flex-1">
+          <div class="flex items-center gap-2">
+            <mat-icon class="text-green-500 icon-size-5">check_circle</mat-icon>
+            <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">Active Status</p>
+          </div>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Toggle to activate or deactivate this teacher account
+          </p>
+        </div>
+      </div>
+
     </div>
+
+    <!-- Notes -->
+    <mat-form-field class="w-full md:col-span-2" appearance="outline">
+      <mat-label>Additional Notes</mat-label>
+      <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">notes</mat-icon>
+      <textarea matInput 
+                formControlName="notes" 
+                rows="4" 
+                placeholder="Any additional notes, comments, or special instructions..."></textarea>
+      <mat-hint align="end">{{ form.get('notes')?.value?.length || 0 }}/2000</mat-hint>
+      <mat-error *ngIf="form.get('notes')?.hasError('maxlength')">
+        Maximum 2000 characters
+      </mat-error>
+    </mat-form-field>
+
   </div>
-
-  <!-- Is Active -->
-  <div class="md:col-span-2 flex items-center gap-3 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-    <mat-slide-toggle formControlName="isActive" color="primary"></mat-slide-toggle>
-    <div>
-      <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">Active Status</p>
-      <p class="text-xs text-gray-500 dark:text-gray-400">Toggle to activate or deactivate this teacher</p>
-    </div>
-  </div>
-
-  <!-- Notes -->
-  <mat-form-field class="w-full md:col-span-2" appearance="outline">
-    <mat-label>Notes</mat-label>
-    <mat-icon matPrefix class="icon-size-5 mr-2 text-gray-400">notes</mat-icon>
-    <textarea matInput formControlName="notes" rows="3" placeholder="Any additional notes..."></textarea>
-  </mat-form-field>
-
 </ng-template>

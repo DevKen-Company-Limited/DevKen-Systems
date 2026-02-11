@@ -73,14 +73,27 @@
 <!-- Teacher Cell Template -->
 <ng-template #teacherCell let-row>
   <div class="flex items-center gap-3">
-    <div class="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center border">
-      <img *ngIf="photoCache[row.id]"
-          [src]="photoCache[row.id]"
+    <div class="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center border border-indigo-200 dark:border-indigo-800">
+      <!-- Loading Spinner -->
+      <div *ngIf="photoCache[row.id]?.isLoading" class="w-full h-full flex items-center justify-center">
+        <mat-spinner diameter="20"></mat-spinner>
+      </div>
+      
+      <!-- Error State -->
+      <div *ngIf="photoCache[row.id]?.error" class="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800">
+        <mat-icon class="text-gray-400 icon-size-5">error_outline</mat-icon>
+      </div>
+      
+      <!-- Image -->
+      <img *ngIf="photoCache[row.id]?.url"
+          [src]="photoCache[row.id]?.url"
           [alt]="row.fullName"
           class="w-full h-full object-cover" />
-      <span *ngIf="!photoCache[row.id]"
-              class="text-sm font-bold text-indigo-600">
-          {{ row.firstName[0] }}{{ row.lastName[0] }}
+      
+      <!-- Initials Fallback -->
+      <span *ngIf="!photoCache[row.id]?.url && !photoCache[row.id]?.isLoading && !photoCache[row.id]?.error"
+              class="text-sm font-bold text-indigo-600 dark:text-indigo-400">
+          {{ row.firstName?.[0] || '' }}{{ row.lastName?.[0] || '' }}
       </span>
     </div>
     <div>
@@ -108,7 +121,7 @@
 <!-- Designation Cell Template -->
 <ng-template #designationCell let-row>
   <div>
-    <span class="text-sm text-gray-700 dark:text-gray-300">{{ row.designation }}</span>
+    <span class="text-sm text-gray-700 dark:text-gray-300">{{ row.designation || '—' }}</span>
     <div *ngIf="row.isClassTeacher" class="mt-0.5">
       <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300">
         <mat-icon class="icon-size-3">class</mat-icon> Class Teacher
@@ -119,7 +132,7 @@
 
 <!-- Employment Cell Template -->
 <ng-template #employmentCell let-row>
-  <span class="text-sm text-gray-700 dark:text-gray-300">{{ row.employmentType }}</span>
+  <span class="text-sm text-gray-700 dark:text-gray-300">{{ row.employmentType || '—' }}</span>
 </ng-template>
 
 <!-- Status Cell Template -->

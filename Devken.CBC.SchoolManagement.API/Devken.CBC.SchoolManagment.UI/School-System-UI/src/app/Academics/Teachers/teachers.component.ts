@@ -8,15 +8,17 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { FuseConfirmationService } from '@fuse/services/confirmation';
-import { Observable, Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { Observable, of, Subject } from 'rxjs';
+import { catchError, takeUntil } from 'rxjs/operators';
 import { EnumItemDto, EnumService } from 'app/core/DevKenService/common/enum.service';
 import { TeacherService } from 'app/core/DevKenService/Teacher/TeacherService';
 import { TeacherDto } from 'app/core/DevKenService/Types/Teacher';
 import { CreateEditTeacherDialogComponent, CreateEditTeacherDialogResult } from 'app/dialog-modals/teachers/create-edit-teacher-dialog.component';
 import { API_BASE_URL } from 'app/app.config';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { AuthService } from 'app/core/auth/auth.service';
 
 // Import reusable components
 import { PageHeaderComponent, Breadcrumb } from 'app/shared/Page-Header/page-header.component';
@@ -30,6 +32,13 @@ import {
   TableHeader, 
   TableEmptyState 
 } from 'app/shared/data-table/data-table.component';
+
+interface PhotoCacheEntry {
+  url: SafeUrl;
+  blobUrl: string;
+  isLoading: boolean;
+  error: boolean;
+}
 
 @Component({
   selector: 'app-teachers',
@@ -65,6 +74,8 @@ export class TeachersComponent implements OnInit, OnDestroy {
   private _unsubscribe = new Subject<void>();
   private _apiBaseUrl = inject(API_BASE_URL);
   private _http = inject(HttpClient);
+  private _sanitizer = inject(DomSanitizer);
+  private _authService = inject(AuthService);
 
   // ── Breadcrumbs ──────────────────────────────────────────────────────────────
   breadcrumbs: Breadcrumb[] = [
@@ -211,7 +222,7 @@ export class TeachersComponent implements OnInit, OnDestroy {
   // ── State ────────────────────────────────────────────────────────────────────
   allData: TeacherDto[] = [];
   isLoading = false;
-  photoCache: { [key: string]: string } = {};
+  photoCache: { [key: string]: PhotoCacheEntry } = {};
   private _photoTargetTeacher: TeacherDto | null = null;
 
   // ── Filter Values ────────────────────────────────────────────────────────────
@@ -227,7 +238,7 @@ export class TeachersComponent implements OnInit, OnDestroy {
   itemsPerPage = 10;
 
   // ── Enum Observables ─────────────────────────────────────────────────────────
- employmentTypes$!: Observable<EnumItemDto[]>;
+  employmentTypes$!: Observable<EnumItemDto[]>;
 
   // ── Computed Stats ───────────────────────────────────────────────────────────
   get total(): number { 
@@ -251,10 +262,14 @@ export class TeachersComponent implements OnInit, OnDestroy {
     return this.allData.filter(t => {
       const q = this._filterValues.search.toLowerCase();
       return (
-        (!q || t.fullName.toLowerCase().includes(q)) &&
+        (!q || t.fullName.toLowerCase().includes(q) || t.teacherNumber.toLowerCase().includes(q)) &&
         (this._filterValues.status === 'all' ||
           (this._filterValues.status === 'active' && t.isActive) ||
-          (this._filterValues.status === 'inactive' && !t.isActive))
+          (this._filterValues.status === 'inactive' && !t.isActive)) &&
+        (this._filterValues.employmentType === 'all' ||
+          t.employmentType === this._filterValues.employmentType) &&
+        (this._filterValues.role === 'all' ||
+          (this._filterValues.role === 'classTeacher' && t.isClassTeacher))
       );
     });
   }
@@ -264,7 +279,6 @@ export class TeachersComponent implements OnInit, OnDestroy {
     const start = (this.currentPage - 1) * this.itemsPerPage;
     return this.filteredData.slice(start, start + this.itemsPerPage);
   }
-
 
   constructor(
     private _service: TeacherService,
@@ -276,8 +290,10 @@ export class TeachersComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.employmentTypes$ = this._enumService.getTeacherEmploymentTypes();
+    this.initializeFilterFields();
     this.loadAll();
   }
+
   ngAfterViewInit(): void {
     this.cellTemplates = {
       teacher: this.teacherCellTemplate,
@@ -292,7 +308,13 @@ export class TeachersComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this._unsubscribe.next();
     this._unsubscribe.complete();
-    //Object.values(this.photoCache).forEach(url => URL.revokeObjectURL(url));
+    
+    // Revoke all blob URLs to prevent memory leaks
+    Object.values(this.photoCache).forEach(entry => {
+      if (entry.blobUrl) {
+        URL.revokeObjectURL(entry.blobUrl);
+      }
+    });
   }
 
   // ── Initialize Filter Fields ─────────────────────────────────────────────────
@@ -379,52 +401,83 @@ export class TeachersComponent implements OnInit, OnDestroy {
     this.currentPage = 1;
   }
 
-  // ── Image Preloading ──────────────────────────────────────────────────────────
-  private preloadImages(): void {
-    this.allData.forEach(teacher => {
-      if (!teacher.photoUrl) return;
-      if (this.photoCache[teacher.id]) return;
+  // ── Image Loading ────────────────────────────────────────────────────────────
+  private loadTeacherPhoto(teacherId: string, photoUrl: string): void {
+    // Initialize cache entry
+    if (!this.photoCache[teacherId]) {
+      this.photoCache[teacherId] = {
+        url: null!,
+        blobUrl: '',
+        isLoading: true,
+        error: false
+      };
+    } else {
+      this.photoCache[teacherId].isLoading = true;
+      this.photoCache[teacherId].error = false;
+    }
 
-      const url = teacher.photoUrl.startsWith('http')
-        ? teacher.photoUrl
-        : `${this._apiBaseUrl}${teacher.photoUrl}`;
+    const url = photoUrl.startsWith('http')
+      ? photoUrl
+      : `${this._apiBaseUrl}${photoUrl}`;
 
-      this._http.get(url, { responseType: 'blob' })
-        .pipe(takeUntil(this._unsubscribe))
-        .subscribe({
-          next: blob => {
-            const objectUrl = URL.createObjectURL(blob);
-            this.photoCache[teacher.id] = objectUrl;
-          },
-          error: err => {
-            console.error('Image load failed for teacher:', teacher.id, err);
-          }
-        });
+    const token = this._authService.accessToken;
+    const headers = token ? new HttpHeaders().set('Authorization', `Bearer ${token}`) : undefined;
+    const authUrl = token ? `${url}?token=${token}` : url;
+
+    this._http.get(authUrl, { 
+      responseType: 'blob',
+      headers 
+    }).pipe(
+      takeUntil(this._unsubscribe),
+      catchError((error) => {
+        console.error(`Failed to load photo for teacher ${teacherId}:`, error);
+        this.photoCache[teacherId] = {
+          ...this.photoCache[teacherId],
+          isLoading: false,
+          error: true
+        };
+        return of(null);
+      })
+    ).subscribe(blob => {
+      if (blob) {
+        // Revoke previous blob URL if exists
+        if (this.photoCache[teacherId]?.blobUrl) {
+          URL.revokeObjectURL(this.photoCache[teacherId].blobUrl);
+        }
+
+        const blobUrl = URL.createObjectURL(blob);
+        const safeUrl = this._sanitizer.bypassSecurityTrustUrl(blobUrl);
+        
+        this.photoCache[teacherId] = {
+          url: safeUrl,
+          blobUrl: blobUrl,
+          isLoading: false,
+          error: false
+        };
+      }
+    });
+  }
+
+  // ── Preload Images for Visible Data ─────────────────────────────────────────
+  private preloadVisibleImages(): void {
+    this.paginatedData.forEach(teacher => {
+      if (teacher.photoUrl && !this.photoCache[teacher.id]?.url) {
+        this.loadTeacherPhoto(teacher.id, teacher.photoUrl);
+      }
     });
   }
 
   // ── Clear and Reload Single Image ────────────────────────────────────────────
   private clearAndReloadImage(teacherId: string, photoUrl: string | null): void {
-    if (this.photoCache[teacherId]) {
-      URL.revokeObjectURL(this.photoCache[teacherId]);
-      delete this.photoCache[teacherId];
+    if (this.photoCache[teacherId]?.blobUrl) {
+      URL.revokeObjectURL(this.photoCache[teacherId].blobUrl);
     }
+    
+    delete this.photoCache[teacherId];
 
-    if (!photoUrl) return;
-
-    const cacheBustedUrl = `${photoUrl}?t=${Date.now()}`;
-
-    this._http.get(cacheBustedUrl, { responseType: 'blob' })
-      .pipe(takeUntil(this._unsubscribe))
-      .subscribe({
-        next: blob => {
-          const objectUrl = URL.createObjectURL(blob);
-          this.photoCache[teacherId] = objectUrl;
-        },
-        error: err => {
-          console.error('Image reload failed for teacher:', teacherId, err);
-        }
-      });
+    if (photoUrl) {
+      this.loadTeacherPhoto(teacherId, photoUrl);
+    }
   }
 
   // ── Data Loading ──────────────────────────────────────────────────────────────
@@ -436,42 +489,104 @@ export class TeachersComponent implements OnInit, OnDestroy {
         next: res => {
           if (res.success) {
             this.allData = res.data;
+            setTimeout(() => this.preloadVisibleImages(), 0);
           }
           this.isLoading = false;
         },
-        error: () => this.isLoading = false
+        error: () => {
+          this.isLoading = false;
+          this._showError('Failed to load teachers');
+        }
       });
   }
 
   // ── CRUD ──────────────────────────────────────────────────────────────────────
   openCreate(): void {
-    this._dialog.open(CreateEditTeacherDialogComponent, {
+    const dialogRef = this._dialog.open(CreateEditTeacherDialogComponent, {
       width: '720px',
       maxHeight: '90vh',
+      disableClose: true,
       data: { mode: 'create' },
+    });
+
+    dialogRef.afterClosed().pipe(takeUntil(this._unsubscribe)).subscribe(result => {
+      if (result) {
+        this.loadAll();
+      }
     });
   }
 
   openEdit(teacher: TeacherDto): void {
-    this._dialog.open(CreateEditTeacherDialogComponent, {
+    const dialogRef = this._dialog.open(CreateEditTeacherDialogComponent, {
       width: '720px',
       maxHeight: '90vh',
+      disableClose: true,
       data: { mode: 'edit', teacher },
     });
-    this.loadAll();
+
+    dialogRef.afterClosed().pipe(takeUntil(this._unsubscribe)).subscribe(result => {
+      if (result) {
+        this.loadAll();
+      }
+    });
   }
 
-   toggleActive(teacher: TeacherDto): void {
+  toggleActive(teacher: TeacherDto): void {
     const payload = { ...teacher, isActive: !teacher.isActive };
     this._service.update(teacher.id, payload as any)
       .pipe(takeUntil(this._unsubscribe))
-      .subscribe(() => this.loadAll());
+      .subscribe({
+        next: (res) => {
+          if (res.success) {
+            this._showSuccess(`Teacher ${teacher.isActive ? 'deactivated' : 'activated'} successfully`);
+            this.loadAll();
+          }
+        },
+        error: () => this._showError('Failed to update teacher status')
+      });
   }
 
   removeTeacher(teacher: TeacherDto): void {
-    this._service.delete(teacher.id)
-      .pipe(takeUntil(this._unsubscribe))
-      .subscribe(() => this.loadAll());
+    const confirmation = this._confirmation.open({
+      title: 'Delete Teacher',
+      message: `Are you sure you want to delete ${teacher.fullName}? This action cannot be undone.`,
+      icon: {
+        name: 'delete',
+        color: 'warn',
+      },
+      actions: {
+        confirm: {
+          label: 'Delete',
+          color: 'warn',
+        },
+        cancel: {
+          label: 'Cancel',
+        },
+      },
+    });
+
+    confirmation.afterClosed().pipe(takeUntil(this._unsubscribe)).subscribe(result => {
+      if (result === 'confirmed') {
+        this._service.delete(teacher.id)
+          .pipe(takeUntil(this._unsubscribe))
+          .subscribe({
+            next: (res) => {
+              if (res.success) {
+                this._showSuccess('Teacher deleted successfully');
+                
+                // Clean up cache
+                if (this.photoCache[teacher.id]?.blobUrl) {
+                  URL.revokeObjectURL(this.photoCache[teacher.id].blobUrl);
+                }
+                delete this.photoCache[teacher.id];
+                
+                this.loadAll();
+              }
+            },
+            error: () => this._showError('Failed to delete teacher')
+          });
+      }
+    });
   }
 
   // ── Photo Upload ──────────────────────────────────────────────────────────────
@@ -484,10 +599,25 @@ export class TeachersComponent implements OnInit, OnDestroy {
   onPhotoFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (!input.files?.length || !this._photoTargetTeacher) return;
+    
     const file = input.files[0];
-    this._service.uploadPhoto(this._photoTargetTeacher.id, file)
-      .pipe(takeUntil(this._unsubscribe))
-      .subscribe(() => this.loadAll());
+    
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      this._showError('File size must be less than 5MB');
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      this._showError('File must be an image');
+      return;
+    }
+
+    this._uploadPhoto(this._photoTargetTeacher.id, file, () => {
+      this._showSuccess('Photo uploaded successfully');
+      this.loadAll();
+    });
   }
 
   private _uploadPhoto(teacherId: string, file: File, onSuccess: () => void): void {
@@ -496,12 +626,11 @@ export class TeachersComponent implements OnInit, OnDestroy {
       .subscribe({
         next: res => {
           if (res.success) {
-            this._showSuccess('Photo uploaded successfully');
-            
-            if (this.photoCache[teacherId]) {
-              URL.revokeObjectURL(this.photoCache[teacherId]);
-              delete this.photoCache[teacherId];
+            // Clear cache for this teacher
+            if (this.photoCache[teacherId]?.blobUrl) {
+              URL.revokeObjectURL(this.photoCache[teacherId].blobUrl);
             }
+            delete this.photoCache[teacherId];
             
             onSuccess();
           }
@@ -517,14 +646,14 @@ export class TeachersComponent implements OnInit, OnDestroy {
   private _showSuccess(message: string): void {
     this._snackBar.open(message, 'Close', { 
       duration: 3000, 
-      panelClass: ['snack-success'] 
+      panelClass: ['bg-green-600', 'text-white'] 
     });
   }
 
   private _showError(message: string): void {
     this._snackBar.open(message, 'Close', { 
       duration: 5000, 
-      panelClass: ['snack-error'] 
+      panelClass: ['bg-red-600', 'text-white'] 
     });
   }
 }
