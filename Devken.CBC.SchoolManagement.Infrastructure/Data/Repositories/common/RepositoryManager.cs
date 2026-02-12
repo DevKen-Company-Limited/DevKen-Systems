@@ -3,6 +3,7 @@ using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Acad
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academics;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Identity;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.NumberSeries;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Payments;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Tenant;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF;
@@ -11,10 +12,10 @@ using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academics;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Identity;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Payments;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Tenant;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSeries;
 using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore.Storage;
 using System;
-using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
 {
@@ -25,7 +26,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
 
         // ── Academic ─────────────────────────────────────────────────────────
         private readonly Lazy<IStudentRepository> _studentRepository;
-        private readonly Lazy<ITeacherRepository> _teacherRepository;     // ← NEW
+        private readonly Lazy<ITeacherRepository> _teacherRepository;
         private readonly Lazy<ISchoolRepository> _schoolRepository;
         private readonly Lazy<IAcademicYearRepository> _academicYearRepository;
         private readonly Lazy<IClassRepository> _classRepository;
@@ -39,6 +40,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         private readonly Lazy<IRefreshTokenRepository> _refreshTokenRepository;
         private readonly Lazy<ISuperAdminRepository> _superAdminRepository;
 
+        // ── Number Series ───────────────────────────────────────────────────
+        private readonly Lazy<IDocumentNumberSeriesRepository> _documentNumberSeriesRepository;
+
         // ── Payments ─────────────────────────────────────────────────────────
         private readonly Lazy<IMpesaPaymentRepository> _mpesaPaymentRepository;
 
@@ -50,7 +54,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
             // Academic
             _studentRepository = new Lazy<IStudentRepository>(() =>
                 new StudentRepository(_context, _tenantContext));
-            _teacherRepository = new Lazy<ITeacherRepository>(() =>     // ← NEW
+            _teacherRepository = new Lazy<ITeacherRepository>(() =>
                 new TeacherRepository(_context, _tenantContext));
             _schoolRepository = new Lazy<ISchoolRepository>(() =>
                 new SchoolRepository(_context, _tenantContext));
@@ -75,6 +79,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
             _superAdminRepository = new Lazy<ISuperAdminRepository>(() =>
                 new SuperAdminRepository(_context, _tenantContext));
 
+            // Number Series
+            _documentNumberSeriesRepository = new Lazy<IDocumentNumberSeriesRepository>(() =>
+                new DocumentNumberService(_context, _tenantContext, this));
+
             // Payments
             _mpesaPaymentRepository = new Lazy<IMpesaPaymentRepository>(() =>
                 new MpesaPaymentRepository(_context, _tenantContext));
@@ -82,7 +90,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
 
         // ── Properties ───────────────────────────────────────────────────────
         public IStudentRepository Student => _studentRepository.Value;
-        public ITeacherRepository Teacher => _teacherRepository.Value;   // ← NEW
+        public ITeacherRepository Teacher => _teacherRepository.Value;
         public ISchoolRepository School => _schoolRepository.Value;
         public IAcademicYearRepository AcademicYear => _academicYearRepository.Value;
         public IClassRepository Class => _classRepository.Value;
@@ -94,6 +102,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         public IUserRoleRepository UserRole => _userRoleRepository.Value;
         public IRefreshTokenRepository RefreshToken => _refreshTokenRepository.Value;
         public ISuperAdminRepository SuperAdmin => _superAdminRepository.Value;
+
+        public IDocumentNumberSeriesRepository DocumentNumberSeries => _documentNumberSeriesRepository.Value;
 
         public IMpesaPaymentRepository MpesaPayment => _mpesaPaymentRepository.Value;
 

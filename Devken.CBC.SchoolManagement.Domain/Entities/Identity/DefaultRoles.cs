@@ -73,6 +73,11 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                     PermissionKeys.CurriculumWrite,
                     PermissionKeys.LessonPlanRead,
                     PermissionKeys.LessonPlanWrite,
+
+                                        // ✅ Settings - Full Access
+                    PermissionKeys.DocumentNumberSeriesRead,
+                    PermissionKeys.DocumentNumberSeriesWrite,
+                    PermissionKeys.DocumentNumberSeriesDelete,
                 }
             ),
 
@@ -160,6 +165,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
 
                     // Student - Read Only (to view student info for billing)
                     PermissionKeys.StudentRead,
+                     PermissionKeys.DocumentNumberSeriesRead,
                 }
             ),
 

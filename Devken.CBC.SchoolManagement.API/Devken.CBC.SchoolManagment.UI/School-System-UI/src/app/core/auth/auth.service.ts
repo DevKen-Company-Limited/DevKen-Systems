@@ -146,14 +146,21 @@ export class AuthService {
             map(res => {
                 const data = res.data;
                 const fullName = `${data.firstName || ''} ${data.lastName || ''}`.trim();
+                
+                // Check for SuperAdmin role from multiple possible sources
+                const hasSuperAdminRole = data.roleNames?.includes('SuperAdmin') || 
+                                         data.roles?.includes('SuperAdmin') || 
+                                         data.isSuperAdmin || 
+                                         false;
+                
                 return {
                     id: data.id,
                     name: fullName || data.email,
                     email: data.email,
                     fullName,
-                    roles: data.roles ?? [],
+                    roles: data.roleNames ?? data.roles ?? [],
                     permissions: data.permissions ?? [],
-                    isSuperAdmin: data.isSuperAdmin ?? false,
+                    isSuperAdmin: hasSuperAdminRole,
                     requirePasswordChange: data.requirePasswordChange ?? false
                 };
             })
@@ -193,14 +200,21 @@ export class AuthService {
                 if (res.data.user) {
                     const userData = res.data.user;
                     const fullName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
+                    
+                    // Check for SuperAdmin role
+                    const hasSuperAdminRole = userData.roleNames?.includes('SuperAdmin') || 
+                                             res.data.roles?.includes('SuperAdmin') || 
+                                             this.authUser?.isSuperAdmin || 
+                                             false;
+                    
                     const user: AuthUser = {
                         id: userData.id,
                         name: fullName || userData.email,
                         email: userData.email,
                         fullName,
-                        roles: res.data.roles ?? userData.roles ?? [],
+                        roles: res.data.roles ?? userData.roleNames ?? [],
                         permissions: res.data.permissions ?? userData.permissions ?? [],
-                        isSuperAdmin: this.authUser?.isSuperAdmin ?? false,
+                        isSuperAdmin: hasSuperAdminRole,
                         requirePasswordChange: userData.requirePasswordChange ?? false
                     };
                     this.setSession(user);
@@ -284,15 +298,20 @@ export class AuthService {
         this.refreshToken = data.refreshToken;
 
         const fullName = `${data.user.firstName || ''} ${data.user.lastName || ''}`.trim();
+        
+        // Check if user has SuperAdmin role from multiple possible sources
+        const hasSuperAdminRole = data.user.roleNames?.includes('SuperAdmin') || 
+                                  data.roles?.includes('SuperAdmin') || 
+                                  isSuperAdmin;
 
         const user: AuthUser = {
             id: data.user.id,
             name: fullName || data.user.email,
             email: data.user.email,
             fullName,
-            roles: data.roles ?? [],
-            permissions: data.permissions ?? [],
-            isSuperAdmin,
+            roles: data.roles ?? data.user.roleNames ?? [],
+            permissions: data.permissions ?? data.user.permissions ?? [],
+            isSuperAdmin: hasSuperAdminRole,
             requirePasswordChange: data.user.requirePasswordChange ?? false
         };
 

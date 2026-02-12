@@ -13,6 +13,7 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             yield return Assessment;
             yield return Finance;
             yield return Curriculum;
+            yield return Settings;
         }
 
         public static NavigationSection Design => new()
@@ -106,6 +107,26 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             {
                 new NavItem("structure", "Structure", "heroicons_outline:squares-2x2", "/curriculum/structure", PermissionKeys.CurriculumRead),
                 new NavItem("lessonplans", "Lesson Plans", "heroicons_outline:document-duplicate", "/curriculum/lesson-plans", PermissionKeys.LessonPlanRead)
+            }
+        };
+
+        public static NavigationSection Settings => new()
+            {
+                Id = "settings",
+                Title = "Settings",
+                Icon = "heroicons_outline:cog-8-tooth",
+                Items = new[]
+            {
+                new NavItem(
+                    "document-number-series",
+                    "Number Series",
+                    "heroicons_outline:hashtag",
+                    "/settings/document-number-series",
+                    PermissionKeys.DocumentNumberSeriesRead
+                ),
+                // You can add more settings items here in the future
+                // new NavItem("general-settings", "General Settings", "heroicons_outline:adjustments-horizontal", "/settings/general", PermissionKeys.SchoolWrite),
+                // new NavItem("email-templates", "Email Templates", "heroicons_outline:envelope", "/settings/email-templates", PermissionKeys.SchoolWrite),
             }
         };
 

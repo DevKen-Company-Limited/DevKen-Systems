@@ -60,6 +60,13 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
             (PermissionKeys.MpesaViewTransactions, "View M-Pesa Transactions", "Finance - M-Pesa", "View M-Pesa payment history and status"),
             (PermissionKeys.MpesaRefund, "Process M-Pesa Refunds", "Finance - M-Pesa", "Initiate refunds for M-Pesa transactions"),
             (PermissionKeys.MpesaReconcile, "Reconcile M-Pesa Payments", "Finance - M-Pesa", "Match M-Pesa transactions with invoices"),
+
+            // Add this section after the Curriculum permissions in the All array
+
+            // Settings / Configuration
+            (PermissionKeys.DocumentNumberSeriesRead,   "View Number Series",    "Settings", "View document numbering configuration"),
+            (PermissionKeys.DocumentNumberSeriesWrite,  "Manage Number Series",  "Settings", "Create and update document numbering rules"),
+            (PermissionKeys.DocumentNumberSeriesDelete, "Delete Number Series",  "Settings", "Remove document numbering configurations"),
         };
     }
 }

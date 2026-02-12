@@ -136,6 +136,12 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                 // ══════════════════════════════════════════════════════════
                 // Permission-based policies (from PermissionKeys)
                 // ══════════════════════════════════════════════════════════
+                // Add after the M-Pesa Permissions section
+
+                // Settings / Configuration Permissions
+                RegisterPermissionPolicy(options, PermissionKeys.DocumentNumberSeriesRead);
+                RegisterPermissionPolicy(options, PermissionKeys.DocumentNumberSeriesWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.DocumentNumberSeriesDelete);
 
                 // Administration Permissions
                 RegisterPermissionPolicy(options, PermissionKeys.SchoolRead);

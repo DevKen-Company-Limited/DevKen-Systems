@@ -1,6 +1,7 @@
 ﻿using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academics;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Identity;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.NumberSeries; // ← Added
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Payments;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Tenant;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -12,11 +13,10 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
     {
         // ================= ACADEMIC =================
         IStudentRepository Student { get; }
-        ITeacherRepository Teacher { get; }        // ← NEW
+        ITeacherRepository Teacher { get; }
         ISchoolRepository School { get; }
         IAcademicYearRepository AcademicYear { get; }
         IClassRepository Class { get; }
-
 
         // ================= IDENTITY =================
         IUserRepository User { get; }
@@ -29,6 +29,9 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
 
         // ================= PAYMENTS =================
         IMpesaPaymentRepository MpesaPayment { get; }
+
+        // ================= NUMBER SERIES =================
+        IDocumentNumberSeriesRepository DocumentNumberSeries { get; }  // ← Added
 
         // ================= UNIT OF WORK =================
         Task SaveAsync();

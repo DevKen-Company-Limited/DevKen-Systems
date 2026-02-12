@@ -141,6 +141,14 @@ export const appRoutes: Route[] = [
                 ]
             },
 
+            {
+                path: 'settings',
+                children: [
+                    { path: 'document-number-series', loadChildren: () => import('app/Settings/NumberSeries/document-number-series.component.routes') },
+
+                ]
+            },           
+
             // ================= ASSESSMENT =================
             {
                 path: 'assessment',

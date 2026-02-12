@@ -22,6 +22,11 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
         public const string RoleWrite = "Role.Write";
         public const string RoleDelete = "Role.Delete";
 
+        // ── Settings / Configuration ─────────────────────
+        public const string DocumentNumberSeriesRead = "DocumentNumberSeries.Read";
+        public const string DocumentNumberSeriesWrite = "DocumentNumberSeries.Write";
+        public const string DocumentNumberSeriesDelete = "DocumentNumberSeries.Delete";
+
         // ── Academic ─────────────────────────────────────
         public const string AcademicYearRead = "AcademicYear.Read";
         public const string AcademicYearWrite = "AcademicYear.Write";
@@ -72,7 +77,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
         /// </summary>
         public static IEnumerable<string> AllPermissions => new[]
         {
-            SchoolRead, SchoolWrite,
+            SchoolRead, SchoolWrite, SchoolDelete,
             UserRead, UserWrite, UserDelete,
             RoleRead, RoleWrite, RoleDelete,
             StudentRead, StudentWrite, StudentDelete,
@@ -86,7 +91,9 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
             PaymentRead, PaymentWrite,
             InvoiceRead, InvoiceWrite,
             CurriculumRead, CurriculumWrite,
-            LessonPlanRead, LessonPlanWrite
+            LessonPlanRead, LessonPlanWrite,
+            MpesaInitiate, MpesaViewTransactions, MpesaRefund, MpesaReconcile,
+            DocumentNumberSeriesRead, DocumentNumberSeriesWrite, DocumentNumberSeriesDelete  // ✅ Added
         };
     }
 }

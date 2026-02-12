@@ -6,6 +6,7 @@ using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
 using Devken.CBC.SchoolManagement.Domain.Entities.Finance;
 using Devken.CBC.SchoolManagement.Domain.Entities.Helpers;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
+using Devken.CBC.SchoolManagement.Domain.Entities.NumberSeries;
 using Devken.CBC.SchoolManagement.Domain.Entities.Payments;
 using Devken.CBC.SchoolManagement.Domain.Entities.Reports;
 using Devken.CBC.SchoolManagement.Domain.Entities.Subscription;
@@ -88,6 +89,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         public DbSet<SubscriptionPlanEntity> SubscriptionPlans { get; set; }
         public DbSet<MpesaPaymentRecord> MpesaPayments { get; set; }
         public DbSet<TeacherCBCLevel> TeacherCBCLevels { get; set; } = null!;
+        public DbSet<DocumentNumberSeries> DocumentNumberSeries => Set<DocumentNumberSeries>();
         #endregion
 
         protected override void OnModelCreating(ModelBuilder mb)
@@ -176,6 +178,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             mb.ApplyConfiguration(new SubscriptionPlanConfiguration());
             mb.ApplyConfiguration(new SubscriptionPlanConfiguration());
             mb.ApplyConfiguration(new TeacherCBCLevelConfiguration(_tenantContext));
+            mb.ApplyConfiguration(new DocumentNumberSeriesConfiguration(_tenantContext));
         }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

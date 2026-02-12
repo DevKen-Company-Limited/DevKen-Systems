@@ -1,0 +1,402 @@
+<app-form-dialog
+  [header]="dialogHeader"
+  [tabs]="dialogTabs"
+  [form]="form"
+  [activeTab]="activeTab"
+  [footer]="footerConfig"
+  [size]="dialogSize"
+  [theme]="dialogTheme"
+  [formSubmitted]="formSubmitted"
+  [tabTemplates]="tabTemplates"
+  [showTabErrors]="true"
+  (tabChange)="onTabChange($event)"
+  (cancel)="onCancel()"
+  (submit)="onSubmit()">
+  
+  <!-- ==================== CONFIGURATION TAB ==================== -->
+  <ng-template #configTab let-form="form" let-tab="tab">
+    <!-- ✅ CRITICAL: Add [formGroup]="form" to the wrapper div -->
+    <div [formGroup]="form" class="col-span-2 space-y-6">
+      
+      <!-- School Selection - SuperAdmin Only (Create Mode) -->
+      <ng-container *ngIf="isSuperAdmin && !isEditMode">
+        <!-- Loading State -->
+        <div *ngIf="isLoadingSchools" 
+             class="flex items-center justify-center p-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+          <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
+            <mat-spinner diameter="24"></mat-spinner>
+            <span class="text-sm font-medium">Loading schools...</span>
+          </div>
+        </div>
+
+        <!-- Schools Selector -->
+        <mat-form-field *ngIf="!isLoadingSchools && schools.length > 0" 
+                       class="w-full" 
+                       appearance="outline">
+          <mat-label>Select School</mat-label>
+          <mat-select formControlName="schoolId">
+            <mat-option *ngFor="let school of schools" [value]="school.id">
+              <div class="flex items-center gap-2">
+                <!-- <mat-icon class="text-blue-500 text-lg">school</mat-icon> -->
+                <span>{{ school.name }}</span>
+                <!-- <span class="text-xs text-gray-500 ml-1">({{ school.code }})</span> -->
+              </div>
+            </mat-option>
+          </mat-select>
+          <mat-icon matPrefix class="text-blue-500">business</mat-icon>
+          <mat-hint>Select the school where this number series will be used</mat-hint>
+          <mat-error *ngIf="form.get('schoolId')?.hasError('required')">
+            School selection is required
+          </mat-error>
+        </mat-form-field>
+
+        <!-- No Schools Available -->
+        <div *ngIf="!isLoadingSchools && schools.length === 0" 
+             class="p-6 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
+          <div class="flex items-center gap-3 text-amber-700 dark:text-amber-300">
+            <mat-icon class="text-amber-600 dark:text-amber-400">warning_amber</mat-icon>
+            <div>
+              <p class="text-sm font-semibold mb-1">No Active Schools Found</p>
+              <p class="text-xs opacity-90">Please create a school first before creating number series.</p>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- Entity Type Selection -->
+      <mat-form-field class="w-full" appearance="outline">
+        <mat-label>Entity Type</mat-label>
+        <mat-select formControlName="entityName" [disabled]="isEditMode">
+          <mat-option *ngFor="let type of entityTypes" [value]="type.value">
+            <div class="flex items-center justify-between w-full">
+              <span>{{ type.label }}</span>
+              <span class="text-xs text-gray-500 ml-4">{{ type.description }}</span>
+            </div>
+          </mat-option>
+        </mat-select>
+        <mat-icon matPrefix class="text-indigo-500">category</mat-icon>
+        <mat-hint>
+          {{ isEditMode ? 'Entity type cannot be changed after creation' : 'Select the type of records that will use this number series' }}
+        </mat-hint>
+        <mat-error *ngIf="form.get('entityName')?.hasError('required')">
+          Entity type is required
+        </mat-error>
+      </mat-form-field>
+
+      <!-- Prefix and Padding Row -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <!-- Prefix Field -->
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>Number Prefix</mat-label>
+          <input 
+            matInput 
+            formControlName="prefix" 
+            placeholder="e.g., STU, TCH, INV"
+            maxlength="10"
+            autocomplete="off">
+          <mat-icon matPrefix class="text-violet-500">text_fields</mat-icon>
+          <mat-hint>Optional prefix (max 10 chars)</mat-hint>
+          <mat-error *ngIf="form.get('prefix')?.hasError('maxlength')">
+            Maximum 10 characters allowed
+          </mat-error>
+          <mat-error *ngIf="form.get('prefix')?.hasError('pattern')">
+            Only letters and numbers allowed
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Padding Field -->
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>Number Padding</mat-label>
+          <input 
+            matInput 
+            type="number" 
+            formControlName="padding" 
+            min="1" 
+            max="10"
+            autocomplete="off">
+          <mat-icon matPrefix class="text-purple-500">exposure_plus_1</mat-icon>
+          <mat-hint>Number of digits (1-10)</mat-hint>
+          <mat-error *ngIf="form.get('padding')?.hasError('required')">
+            Padding is required
+          </mat-error>
+          <mat-error *ngIf="form.get('padding')?.hasError('min')">
+            Minimum padding is 1 digit
+          </mat-error>
+          <mat-error *ngIf="form.get('padding')?.hasError('max')">
+            Maximum padding is 10 digits
+          </mat-error>
+        </mat-form-field>
+      </div>
+
+      <!-- Yearly Reset Option -->
+      <div class="flex items-center justify-between p-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors">
+        <div class="flex items-start gap-3">
+          <mat-checkbox 
+            formControlName="resetEveryYear" 
+            color="primary"
+            class="mt-1">
+          </mat-checkbox>
+          <div>
+            <label class="text-sm font-medium text-gray-900 dark:text-white cursor-pointer" 
+                   (click)="form.get('resetEveryYear')?.setValue(!form.get('resetEveryYear')?.value)">
+              Reset counter every year
+            </label>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-lg">
+              When enabled, the counter will reset to 1 at the beginning of each calendar year.
+              Ideal for academic year-based numbering systems.
+            </p>
+          </div>
+        </div>
+        <mat-icon 
+          class="text-gray-400 dark:text-gray-500" 
+          matTooltip="The counter will automatically reset to 1 on January 1st each year"
+          matTooltipPosition="left">
+          info
+        </mat-icon>
+      </div>
+
+      <!-- Live Preview Card -->
+      <div class="p-5 rounded-xl border-2 border-dashed border-indigo-300 dark:border-indigo-700 bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-900/20 dark:to-violet-900/20">
+        <div class="flex items-start justify-between">
+          <div class="space-y-2">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                Live Preview
+              </span>
+              <span class="px-2 py-0.5 text-xs bg-indigo-200 dark:bg-indigo-800 text-indigo-800 dark:text-indigo-200 rounded-full">
+                {{ form.get('resetEveryYear')?.value ? 'Yearly Reset' : 'Sequential' }}
+              </span>
+            </div>
+            <p class="text-2xl font-bold font-mono text-indigo-700 dark:text-indigo-300 tracking-wider">
+              {{ getPreview() }}
+            </p>
+            <div class="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+              <mat-icon class="text-sm">info</mat-icon>
+              <span>This is how generated numbers will look</span>
+            </div>
+          </div>
+          <div class="w-12 h-12 rounded-full bg-white dark:bg-gray-800 shadow-md flex items-center justify-center">
+            <mat-icon class="text-indigo-600 dark:text-indigo-400">visibility</mat-icon>
+          </div>
+        </div>
+        
+        <!-- Preview Breakdown -->
+        <div class="mt-4 pt-4 border-t border-indigo-200 dark:border-indigo-800 grid grid-cols-3 gap-4 text-center text-xs">
+          <div>
+            <p class="text-gray-500 dark:text-gray-400 mb-1">Prefix</p>
+            <p class="font-mono font-semibold text-gray-900 dark:text-white">
+              {{ form.get('prefix')?.value || '(none)' }}
+            </p>
+          </div>
+          <div>
+            <p class="text-gray-500 dark:text-gray-400 mb-1">Number</p>
+            <p class="font-mono font-semibold text-gray-900 dark:text-white">
+              {{ form.get('resetEveryYear')?.value ? '2024-001' : '00001' }}
+            </p>
+          </div>
+          <div>
+            <p class="text-gray-500 dark:text-gray-400 mb-1">Format</p>
+            <p class="font-mono font-semibold text-gray-900 dark:text-white">
+              {{ form.get('padding')?.value || 5 }}-digit
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </ng-template>
+
+  <!-- ==================== INFORMATION TAB ==================== -->
+  <ng-template #infoTab let-form="form" let-tab="tab">
+    <!-- ✅ CRITICAL: Add [formGroup]="form" here too if accessing form controls -->
+    <div [formGroup]="form" class="col-span-2 space-y-6">
+      
+      <!-- ======== EDIT MODE ======== -->
+      <ng-container *ngIf="isEditMode">
+        <!-- Current Status Overview -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- Last Number Card -->
+          <div class="p-5 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
+            <div class="flex items-center justify-between mb-3">
+              <mat-icon class="text-indigo-500">counter_1</mat-icon>
+              <span class="text-xs text-gray-500 dark:text-gray-400">Current</span>
+            </div>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Last Number</p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-white font-mono">
+              {{ data.numberSeries?.lastNumber || 0 }}
+            </p>
+          </div>
+
+          <!-- Last Generated Card -->
+          <div class="p-5 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
+            <div class="flex items-center justify-between mb-3">
+              <mat-icon class="text-violet-500">calendar_today</mat-icon>
+              <span class="text-xs text-gray-500 dark:text-gray-400">Recent</span>
+            </div>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Last Generated</p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-white">
+              {{ data.numberSeries?.lastGeneratedYear || '—' }}
+            </p>
+          </div>
+
+          <!-- Current Format Card -->
+          <div class="p-5 bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-900/30 dark:to-violet-900/30 rounded-xl border border-indigo-200 dark:border-indigo-800">
+            <div class="flex items-center justify-between mb-3">
+              <mat-icon class="text-indigo-500">format_list_numbered</mat-icon>
+              <span class="text-xs text-indigo-600 dark:text-indigo-400">Active</span>
+            </div>
+            <p class="text-sm text-indigo-700 dark:text-indigo-300 mb-1">Current Format</p>
+            <p class="text-xl font-bold font-mono text-indigo-800 dark:text-indigo-200 break-all">
+              {{ data.numberSeries?.prefix || '' }}{{ '1'.padStart(data.numberSeries?.padding || 5, '0') }}
+            </p>
+          </div>
+        </div>
+
+        <!-- Important Notes - Edit Mode -->
+        <div class="p-5 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+          <div class="flex items-start gap-4">
+            <div class="w-8 h-8 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center flex-shrink-0">
+              <mat-icon class="text-amber-700 dark:text-amber-300 text-lg">warning</mat-icon>
+            </div>
+            <div class="flex-1">
+              <h4 class="text-sm font-semibold text-amber-900 dark:text-amber-200 mb-3">
+                Important Update Information
+              </h4>
+              <ul class="space-y-2 text-sm text-amber-800 dark:text-amber-300">
+                <li class="flex items-start gap-2">
+                  <span class="text-amber-600 dark:text-amber-400 mt-0.5">•</span>
+                  <span>Changing the <strong>prefix or padding</strong> will only affect newly generated numbers</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="text-amber-600 dark:text-amber-400 mt-0.5">•</span>
+                  <span>All existing records will <strong>keep their original numbers</strong></span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="text-amber-600 dark:text-amber-400 mt-0.5">•</span>
+                  <span>The counter <strong>cannot be manually reset</strong> - this ensures data integrity</span>
+                </li>
+                <li class="flex items-start gap-2" *ngIf="form.get('resetEveryYear')?.value">
+                  <span class="text-amber-600 dark:text-amber-400 mt-0.5">•</span>
+                  <span>Counter will <strong>automatically reset to 1</strong> on January 1st each year</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- ======== CREATE MODE ======== -->
+      <ng-container *ngIf="!isEditMode">
+        
+        <!-- SuperAdmin Mode Notice -->
+        <div *ngIf="isSuperAdmin" 
+             class="p-5 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+          <div class="flex items-start gap-4">
+            <div class="w-8 h-8 rounded-full bg-blue-200 dark:bg-blue-800 flex items-center justify-center flex-shrink-0">
+              <mat-icon class="text-blue-700 dark:text-blue-300">admin_panel_settings</mat-icon>
+            </div>
+            <div class="flex-1">
+              <h4 class="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-2">
+                SuperAdmin Mode Active
+              </h4>
+              <p class="text-sm text-blue-800 dark:text-blue-300">
+                You are creating a number series as a SuperAdmin. The series will be associated with 
+                the school you select and will only be available for that specific institution.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Tips Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Configuration Tips -->
+          <div class="p-5 rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-900/40 border border-indigo-200 dark:border-indigo-800">
+            <div class="flex items-center gap-2 mb-4">
+              <div class="w-6 h-6 rounded-full bg-indigo-200 dark:bg-indigo-800 flex items-center justify-center">
+                <mat-icon class="text-indigo-700 dark:text-indigo-300 text-sm">settings</mat-icon>
+              </div>
+              <h5 class="text-sm font-semibold text-indigo-900 dark:text-indigo-200">Configuration Tips</h5>
+            </div>
+            <ul class="space-y-2 text-sm text-indigo-800 dark:text-indigo-300">
+              <li class="flex items-start gap-2">
+                <mat-icon class="text-xs mt-1 text-indigo-600 dark:text-indigo-400">check_circle</mat-icon>
+                <span>Each entity can have only one active series per school</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <mat-icon class="text-xs mt-1 text-indigo-600 dark:text-indigo-400">check_circle</mat-icon>
+                <span>Choose prefix/padding carefully - changes apply only to new records</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <mat-icon class="text-xs mt-1 text-indigo-600 dark:text-indigo-400">check_circle</mat-icon>
+                <span>Leave prefix empty for pure sequential numbers (00001, 00002...)</span>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Benefits -->
+          <div class="p-5 rounded-xl bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-900/40 border border-green-200 dark:border-green-800">
+            <div class="flex items-center gap-2 mb-4">
+              <div class="w-6 h-6 rounded-full bg-green-200 dark:bg-green-800 flex items-center justify-center">
+                <mat-icon class="text-green-700 dark:text-green-300 text-sm">emoji_objects</mat-icon>
+              </div>
+              <h5 class="text-sm font-semibold text-green-900 dark:text-green-200">Key Benefits</h5>
+            </div>
+            <ul class="space-y-2 text-sm text-green-800 dark:text-green-300">
+              <li class="flex items-start gap-2">
+                <mat-icon class="text-xs mt-1 text-green-600 dark:text-green-400">auto_awesome</mat-icon>
+                <span>Automatic unique number generation</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <mat-icon class="text-xs mt-1 text-green-600 dark:text-green-400">auto_awesome</mat-icon>
+                <span>Consistent formatting across all records</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <mat-icon class="text-xs mt-1 text-green-600 dark:text-green-400">auto_awesome</mat-icon>
+                <span>Duplicate prevention and usage tracking</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Yearly Reset Information -->
+        <div class="p-5 rounded-xl bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
+          <div class="flex items-center gap-3">
+            <mat-icon class="text-purple-600 dark:text-purple-400">event_repeat</mat-icon>
+            <div>
+              <h5 class="text-sm font-semibold text-purple-900 dark:text-purple-200 mb-1">
+                About Yearly Reset
+              </h5>
+              <p class="text-sm text-purple-800 dark:text-purple-300">
+                Enable "Reset every year" for academic year-based numbering. 
+                Example: <span class="font-mono bg-white dark:bg-gray-800 px-2 py-1 rounded mx-1">2024-001</span>, 
+                <span class="font-mono bg-white dark:bg-gray-800 px-2 py-1 rounded">2025-001</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- System Metadata (Always Visible in Edit Mode) -->
+      <div *ngIf="isEditMode" 
+           class="p-5 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+        <div class="flex items-center gap-3 mb-4">
+          <mat-icon class="text-gray-500 dark:text-gray-400">info</mat-icon>
+          <h5 class="text-sm font-semibold text-gray-700 dark:text-gray-300">System Information</h5>
+        </div>
+        <div class="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Created</p>
+            <p class="text-gray-900 dark:text-white font-medium">
+              {{ (data.numberSeries?.createdAt | date:'medium') || '—' }}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Last Updated</p>
+            <p class="text-gray-900 dark:text-white font-medium">
+              {{ (data.numberSeries?.updatedAt | date:'medium') || '—' }}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </ng-template>
+</app-form-dialog>
