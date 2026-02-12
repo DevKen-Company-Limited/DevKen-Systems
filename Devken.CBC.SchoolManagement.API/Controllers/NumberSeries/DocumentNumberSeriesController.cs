@@ -35,23 +35,27 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.NumberSeries
             if (!HasPermission("DocumentNumberSeries.Read"))
                 return ForbiddenResponse("You do not have permission to view document number series.");
 
-            // SuperAdmin must specify tenantId
+            IQueryable<DocumentNumberSeries> query;
+
             if (IsSuperAdmin)
             {
-                if (!tenantId.HasValue || tenantId == Guid.Empty)
-                    return ValidationErrorResponse("SuperAdmin must specify a school/tenant ID.");
+                // SuperAdmin: get all if no tenantId specified
+                query = tenantId.HasValue && tenantId != Guid.Empty
+                    ? _repositories.DocumentNumberSeries.FindByCondition(x => x.TenantId == tenantId, trackChanges: false)
+                    : _repositories.DocumentNumberSeries.FindAll(trackChanges: false); // ALL schools
             }
             else
             {
-                tenantId = GetCurrentUserTenantId();
+                // Normal user: only own tenant
+                var currentTenantId = GetCurrentUserTenantId();
+                query = _repositories.DocumentNumberSeries.FindByCondition(x => x.TenantId == currentTenantId, trackChanges: false);
             }
 
-            var list = _repositories.DocumentNumberSeries
-                .FindByCondition(x => x.TenantId == tenantId, trackChanges: false)
-                .ToList();
+            var list = query.OrderBy(x => x.EntityName).ToList();
 
             return SuccessResponse(list);
         }
+
 
         // ───────────────────────────────────────────────
         // CREATE

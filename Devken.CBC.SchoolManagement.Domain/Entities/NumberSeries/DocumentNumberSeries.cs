@@ -1,4 +1,5 @@
 ﻿using Devken.CBC.SchoolManagement.Domain.Common;
+using Devken.CBC.SchoolManagement.Domain.Entities.Administration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,6 +17,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.NumberSeries
         public int LastNumber { get; set; }
         public bool ResetEveryYear { get; set; }
         public int? LastGeneratedYear { get; set; }
+        public School? Tenant { get; set; }
     }
 
 }

@@ -24,6 +24,16 @@
 
     <!-- Stats Cards -->
     <app-stats-cards [cards]="statsCards" [columns]="4"></app-stats-cards>
+    <!-- Filter Panel -->
+        <app-filter-panel
+        [fields]="filterFields"
+        [showPanel]="showFilters"
+        [columns]="3"
+        (filterChange)="onFilterChange($event)"
+        (clearAll)="onClearFilters()"
+        (togglePanel)="showFilters = !showFilters">
+        </app-filter-panel>
+
 
     <!-- Data Table -->
     <app-data-table
