@@ -104,6 +104,7 @@ export class CreateEditTeacherDialogComponent implements OnInit, AfterViewInit, 
   isLoadingPhoto = false;
   photoError = false;
   photoErrorMessage = '';
+  existingPhotoUrl: string | null = null; // Track existing photo URL separately
 
   // ── Enum State ──────────────────────────────────────────────────────────────
   genders: EnumItemDto[] = [];
@@ -197,7 +198,6 @@ export class CreateEditTeacherDialogComponent implements OnInit, AfterViewInit, 
       dateOfBirth:      [null],
       idNumber:         ['', [Validators.maxLength(100)]],
       nationality:      ['Kenyan', [Validators.maxLength(100)]],
-      photoUrl:         [''],
       phoneNumber:      ['', [Validators.pattern('^[+0-9\\s\\-]{7,20}$')]],
       email:            ['', [Validators.email, Validators.maxLength(100)]],
       address:          ['', [Validators.maxLength(500)]],
@@ -304,9 +304,9 @@ export class CreateEditTeacherDialogComponent implements OnInit, AfterViewInit, 
     const empVal        = this._getEnumValue('employmentType', teacher.employmentType);
     const designVal     = this._getEnumValue('designation', teacher.designation);
 
-    let photoUrl = '';
+    // Store existing photo URL separately (don't put in form)
     if (teacher.photoUrl) {
-      photoUrl = teacher.photoUrl.startsWith('http')
+      this.existingPhotoUrl = teacher.photoUrl.startsWith('http')
         ? teacher.photoUrl
         : `${this._apiBaseUrl}${teacher.photoUrl}`;
     }
@@ -320,7 +320,6 @@ export class CreateEditTeacherDialogComponent implements OnInit, AfterViewInit, 
       dateOfBirth:      teacher.dateOfBirth      ? new Date(teacher.dateOfBirth) : null,
       idNumber:         teacher.idNumber         || '',
       nationality:      teacher.nationality      || 'Kenyan',
-      photoUrl:         photoUrl,
       phoneNumber:      teacher.phoneNumber      || '',
       email:            teacher.email            || '',
       address:          teacher.address          || '',
@@ -337,8 +336,8 @@ export class CreateEditTeacherDialogComponent implements OnInit, AfterViewInit, 
 
     this._cdr.detectChanges();
 
-    if (photoUrl) {
-      this._loadTeacherPhoto(photoUrl);
+    if (this.existingPhotoUrl) {
+      this._loadTeacherPhoto(this.existingPhotoUrl);
     }
   }
 
@@ -400,7 +399,6 @@ export class CreateEditTeacherDialogComponent implements OnInit, AfterViewInit, 
     reader.onload = () => {
       const result = reader.result as string;
       this.photoPreview = this._sanitizer.bypassSecurityTrustUrl(result);
-      this.form.patchValue({ photoUrl: result });
       this._cdr.detectChanges();
     };
     reader.onerror = () => {
@@ -415,9 +413,9 @@ export class CreateEditTeacherDialogComponent implements OnInit, AfterViewInit, 
   removePhoto(): void {
     this.photoPreview = null;
     this.selectedPhotoFile = null;
+    this.existingPhotoUrl = null;
     this.photoError = false;
     this.photoErrorMessage = '';
-    this.form.patchValue({ photoUrl: '' });
     this._cdr.detectChanges();
   }
 
@@ -479,6 +477,18 @@ export class CreateEditTeacherDialogComponent implements OnInit, AfterViewInit, 
       return isNaN(d.getTime()) ? null : d.toISOString();
     };
 
+    // Only include existing photoUrl if we're editing and haven't selected a new photo
+    let photoUrl = null;
+    if (this.isEditMode && !this.selectedPhotoFile && this.existingPhotoUrl) {
+      // Extract the relative path from the full URL
+      const url = this.existingPhotoUrl;
+      if (url.includes('/uploads/')) {
+        photoUrl = url.substring(url.indexOf('/uploads/'));
+      } else if (url.startsWith('/')) {
+        photoUrl = url;
+      }
+    }
+
     return {
       firstName:        v.firstName?.trim()     || null,
       middleName:       v.middleName?.trim()     || null,
@@ -488,7 +498,7 @@ export class CreateEditTeacherDialogComponent implements OnInit, AfterViewInit, 
       dateOfBirth:      toIso(v.dateOfBirth),
       idNumber:         v.idNumber?.trim()       || null,
       nationality:      v.nationality?.trim()    || 'Kenyan',
-      photoUrl:         v.photoUrl               || null,
+      photoUrl:         photoUrl,  // Either null or existing path (not base64)
       phoneNumber:      v.phoneNumber?.trim()    || null,
       email:            v.email?.trim()          || null,
       address:          v.address?.trim()        || null,
