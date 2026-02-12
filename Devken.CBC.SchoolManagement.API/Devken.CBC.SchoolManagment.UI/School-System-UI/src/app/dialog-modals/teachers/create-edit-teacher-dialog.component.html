@@ -111,6 +111,27 @@
 
         <!-- ══ PERSONAL TAB ══ -->
         <div *ngIf="activeTab === 'personal'" class="tab-pane" role="tabpanel">
+          
+          <!-- School Selection (SuperAdmin Only) -->
+          <div *ngIf="isSuperAdmin" class="school-section">
+            <div class="section-label">
+              <mat-icon>school</mat-icon>
+              <span>School Assignment</span>
+            </div>
+            <mat-form-field appearance="outline" class="field w-full">
+              <mat-label>School <span class="req">*</span></mat-label>
+              <mat-icon matPrefix class="field-prefix-icon">business</mat-icon>
+              <mat-select formControlName="schoolId">
+                <mat-option [value]="null">— Select School —</mat-option>
+                <mat-option *ngFor="let school of schools" [value]="school.id">
+                  {{ school.name }}{{ school.code ? ' (' + school.code + ')' : '' }}
+                </mat-option>
+              </mat-select>
+              <mat-hint>Assign this teacher to a specific school</mat-hint>
+              <mat-error>{{ getFieldError('schoolId') }}</mat-error>
+            </mat-form-field>
+          </div>
+
           <div class="section-label">
             <mat-icon>badge</mat-icon>
             <span>Full Name</span>

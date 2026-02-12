@@ -2063,3 +2063,19 @@
   }
 }
 
+// School selection section
+.school-section {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.w-full {
+  width: 100%;
+}
+
+// Dark mode support
+.dark .school-section {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+

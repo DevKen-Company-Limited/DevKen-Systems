@@ -43,6 +43,8 @@ import { EnumItemDto, EnumService } from 'app/core/DevKenService/common/enum.ser
 import { API_BASE_URL } from 'app/app.config';
 import { AuthService } from 'app/core/auth/auth.service';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
+import { SchoolDto } from 'app/Tenant/types/school';
 
 export interface CreateEditTeacherDialogData {
   mode: 'create' | 'edit';
@@ -92,6 +94,7 @@ export class CreateEditTeacherDialogComponent implements OnInit, AfterViewInit, 
   private readonly _authService = inject(AuthService);
   private readonly _http = inject(HttpClient);
   private readonly _enumService = inject(EnumService);
+  private readonly _schoolService = inject(SchoolService); // Add this
 
   // ── Form State ──────────────────────────────────────────────────────────────
   form!: FormGroup;
@@ -104,12 +107,13 @@ export class CreateEditTeacherDialogComponent implements OnInit, AfterViewInit, 
   isLoadingPhoto = false;
   photoError = false;
   photoErrorMessage = '';
-  existingPhotoUrl: string | null = null; // Track existing photo URL separately
+  existingPhotoUrl: string | null = null;
 
   // ── Enum State ──────────────────────────────────────────────────────────────
   genders: EnumItemDto[] = [];
   employmentTypes: EnumItemDto[] = [];
   designations: EnumItemDto[] = [];
+  schools: SchoolDto[] = []; // Add this
   isEnumsLoading = true;
 
   // Enum lookup maps
@@ -125,7 +129,7 @@ export class CreateEditTeacherDialogComponent implements OnInit, AfterViewInit, 
       id: 'personal',
       label: 'Personal',
       icon: 'person',
-      fields: ['firstName', 'lastName', 'teacherNumber', 'gender']
+      fields: ['firstName', 'lastName', 'teacherNumber', 'gender', 'schoolId'] // Add schoolId to validation
     },
     {
       id: 'contact',
@@ -143,6 +147,10 @@ export class CreateEditTeacherDialogComponent implements OnInit, AfterViewInit, 
 
   // ── Getters ──────────────────────────────────────────────────────────────────
   get isEditMode(): boolean { return this.data.mode === 'edit'; }
+
+  get isSuperAdmin(): boolean { 
+    return this._authService.authUser?.isSuperAdmin ?? false; 
+  }
 
   get dialogTitle(): string {
     return this.isEditMode ? 'Edit Teacher' : 'Add New Teacher';
@@ -190,6 +198,7 @@ export class CreateEditTeacherDialogComponent implements OnInit, AfterViewInit, 
   // ── Form Setup ───────────────────────────────────────────────────────────────
   private _buildForm(): void {
     this.form = this._fb.group({
+      schoolId:         [null, this.isSuperAdmin ? [Validators.required] : []], // Add this
       firstName:        ['', [Validators.required, Validators.maxLength(100)]],
       middleName:       ['', [Validators.maxLength(100)]],
       lastName:         ['', [Validators.required, Validators.maxLength(100)]],
@@ -217,25 +226,41 @@ export class CreateEditTeacherDialogComponent implements OnInit, AfterViewInit, 
   private _loadEnums(): void {
     this.isEnumsLoading = true;
 
-    forkJoin({
+    const requests: any = {
       genders:         this._enumService.getGenders(),
       employmentTypes: this._enumService.getTeacherEmploymentTypes(),
       designations:    this._enumService.getTeacherDesignations(),
-    }).pipe(
+    };
+
+    // Add schools request only for SuperAdmin
+    if (this.isSuperAdmin) {
+      requests.schools = this._schoolService.getAll().pipe(
+        catchError(err => {
+          console.error('Failed to load schools:', err);
+          return of({ success: false, message: '', data: [] });
+        })
+      );
+    }
+
+    forkJoin(requests).pipe(
       takeUntil(this._unsubscribe),
       finalize(() => {
         this.isEnumsLoading = false;
         this._cdr.detectChanges();
       })
     ).subscribe({
-      next: ({ genders, employmentTypes, designations }) => {
-        this.genders = genders;
-        this.employmentTypes = employmentTypes;
-        this.designations = designations;
+      next: (results: any) => {
+        this.genders = results.genders;
+        this.employmentTypes = results.employmentTypes;
+        this.designations = results.designations;
+        
+        if (results.schools) {
+          this.schools = results.schools.data || [];
+        }
 
-        this._buildEnumMaps('gender', genders);
-        this._buildEnumMaps('employmentType', employmentTypes);
-        this._buildEnumMaps('designation', designations);
+        this._buildEnumMaps('gender', this.genders);
+        this._buildEnumMaps('employmentType', this.employmentTypes);
+        this._buildEnumMaps('designation', this.designations);
 
         if (this.isEditMode && this.data.teacher) {
           this._patchFormWithTeacher(this.data.teacher);
@@ -312,10 +337,11 @@ export class CreateEditTeacherDialogComponent implements OnInit, AfterViewInit, 
     }
 
     this.form.patchValue({
-      firstName:        teacher.firstName     || '',
-      middleName:       teacher.middleName    || '',
-      lastName:         teacher.lastName      || '',
-      teacherNumber:    teacher.teacherNumber || '',
+      schoolId:         teacher.schoolId         || null, // Add this
+      firstName:        teacher.firstName        || '',
+      middleName:       teacher.middleName       || '',
+      lastName:         teacher.lastName         || '',
+      teacherNumber:    teacher.teacherNumber    || '',
       gender:           genderVal,
       dateOfBirth:      teacher.dateOfBirth      ? new Date(teacher.dateOfBirth) : null,
       idNumber:         teacher.idNumber         || '',
@@ -489,7 +515,7 @@ export class CreateEditTeacherDialogComponent implements OnInit, AfterViewInit, 
       }
     }
 
-    return {
+    const payload: any = {
       firstName:        v.firstName?.trim()     || null,
       middleName:       v.middleName?.trim()     || null,
       lastName:         v.lastName?.trim()       || null,
@@ -498,7 +524,7 @@ export class CreateEditTeacherDialogComponent implements OnInit, AfterViewInit, 
       dateOfBirth:      toIso(v.dateOfBirth),
       idNumber:         v.idNumber?.trim()       || null,
       nationality:      v.nationality?.trim()    || 'Kenyan',
-      photoUrl:         photoUrl,  // Either null or existing path (not base64)
+      photoUrl:         photoUrl,
       phoneNumber:      v.phoneNumber?.trim()    || null,
       email:            v.email?.trim()          || null,
       address:          v.address?.trim()        || null,
@@ -512,6 +538,13 @@ export class CreateEditTeacherDialogComponent implements OnInit, AfterViewInit, 
       isActive:         v.isActive               ?? true,
       notes:            v.notes?.trim()          || null,
     };
+
+    // Add schoolId for SuperAdmins
+    if (this.isSuperAdmin && v.schoolId) {
+      payload.schoolId = v.schoolId;
+    }
+
+    return payload;
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
