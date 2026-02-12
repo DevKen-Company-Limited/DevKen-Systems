@@ -1,137 +1,242 @@
-<!-- steps/student-review/student-review.component.html -->
-<div class="section-header">
-  <div class="section-icon-row">
-    <div class="section-icon" style="background:linear-gradient(135deg,#10b981,#047857)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+<!-- Student Review Component - Fuse/Material + Tailwind -->
+<div class="max-w-6xl">
+
+  <!-- Section Header -->
+  <div class="flex items-start gap-4 mb-8">
+    <div class="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg">
+      <mat-icon class="text-white !w-7 !h-7" svgIcon="heroicons_outline:check-badge"></mat-icon>
     </div>
-    <div>
-      <h2 class="section-title">Review & Submit</h2>
-      <p class="section-subtitle">Review all information before submitting. Click any section to edit.</p>
-    </div>
-  </div>
-</div>
-
-<!-- Completion checklist -->
-<div class="completion-bar">
-  <div class="completion-bar__inner" [style.width]="getCompletionPct() + '%'"></div>
-</div>
-<div class="completion-label">
-  {{ completedCount() }} of {{ steps.length - 1 }} sections completed
-</div>
-
-<!-- Incomplete warning -->
-<div *ngIf="!allComplete()" class="info-card info-card--warn" style="margin-bottom:20px">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-  <span>Some sections are incomplete. Please go back and fill in the required fields before submitting.</span>
-</div>
-
-<!-- Section summaries -->
-<div class="review-grid">
-
-  <!-- Personal -->
-  <div class="review-card" [class.complete]="isComplete(0)" (click)="editSection.emit(0)">
-    <div class="review-card__head">
-      <div class="review-card__icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      </div>
-      <div class="review-card__title">Personal Information</div>
-      <div class="review-card__status" [class.done]="isComplete(0)">
-        {{ isComplete(0) ? '✓ Complete' : 'Incomplete' }}
-      </div>
-      <button class="review-card__edit">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      </button>
-    </div>
-    <div class="review-data-grid">
-      <div class="rd-item"><span class="rd-key">Full Name</span><span class="rd-val">{{ fullName }}</span></div>
-      <div class="rd-item"><span class="rd-key">Admission No.</span><span class="rd-val">{{ formSections.personal?.admissionNumber || '—' }}</span></div>
-      <div class="rd-item"><span class="rd-key">Gender</span><span class="rd-val">{{ formSections.personal?.gender || '—' }}</span></div>
-      <div class="rd-item"><span class="rd-key">Date of Birth</span><span class="rd-val">{{ formatDate(formSections.personal?.dateOfBirth) }}</span></div>
-      <div class="rd-item"><span class="rd-key">NEMIS No.</span><span class="rd-val">{{ formSections.personal?.nemisNumber || '—' }}</span></div>
-      <div class="rd-item"><span class="rd-key">Religion</span><span class="rd-val">{{ formSections.personal?.religion || '—' }}</span></div>
+    <div class="flex-1">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Review & Submit</h2>
+      <p class="text-gray-600 dark:text-gray-400">Review all information before submitting. Click any section to edit.</p>
     </div>
   </div>
 
-  <!-- Location -->
-  <div class="review-card" [class.complete]="isComplete(1)" (click)="editSection.emit(1)">
-    <div class="review-card__head">
-      <div class="review-card__icon" style="background:linear-gradient(135deg,#0ea5e9,#0284c7)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+  <!-- Completion Progress -->
+  <div class="mb-6">
+    <div class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
+      <div 
+        class="h-full bg-gradient-to-r from-green-500 to-emerald-600 transition-all duration-500"
+        [style.width.%]="getCompletionPct()">
       </div>
-      <div class="review-card__title">Location</div>
-      <div class="review-card__status done">✓ Saved</div>
-      <button class="review-card__edit">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      </button>
     </div>
-    <div class="review-data-grid">
-      <div class="rd-item"><span class="rd-key">County</span><span class="rd-val">{{ formSections.location?.county || '—' }}</span></div>
-      <div class="rd-item"><span class="rd-key">Sub-County</span><span class="rd-val">{{ formSections.location?.subCounty || '—' }}</span></div>
-      <div class="rd-item span-full"><span class="rd-key">Home Address</span><span class="rd-val">{{ formSections.location?.homeAddress || '—' }}</span></div>
+    <div class="text-sm text-gray-600 dark:text-gray-400">
+      {{ completedCount() }} of {{ steps.length - 1 }} sections completed
     </div>
   </div>
 
-  <!-- Academic -->
-  <div class="review-card" [class.complete]="isComplete(2)" (click)="editSection.emit(2)">
-    <div class="review-card__head">
-      <div class="review-card__icon" style="background:linear-gradient(135deg,#f59e0b,#d97706)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 14l9-5-9-5-9 5 9 5z"/><path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/></svg>
-      </div>
-      <div class="review-card__title">Academic</div>
-      <div class="review-card__status" [class.done]="isComplete(2)">
-        {{ isComplete(2) ? '✓ Complete' : 'Incomplete' }}
-      </div>
-      <button class="review-card__edit">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      </button>
-    </div>
-    <div class="review-data-grid">
-      <div class="rd-item"><span class="rd-key">Level</span><span class="rd-val">{{ formSections.academic?.currentLevel || '—' }}</span></div>
-      <div class="rd-item"><span class="rd-key">Status</span><span class="rd-val"><span class="status-chip" [class]="'status-' + (formSections.academic?.status || 'Active').toLowerCase()">{{ formSections.academic?.status || 'Active' }}</span></span></div>
-      <div class="rd-item"><span class="rd-key">Previous School</span><span class="rd-val">{{ formSections.academic?.previousSchool || 'N/A' }}</span></div>
-    </div>
-  </div>
+  <!-- Incomplete Warning -->
+  <fuse-alert 
+    *ngIf="!allComplete()"
+    type="warning" 
+    appearance="soft"
+    [showIcon]="true"
+    class="mb-6">
+    Some sections are incomplete. Please go back and fill in the required fields before submitting.
+  </fuse-alert>
 
-  <!-- Medical -->
-  <div class="review-card" [class.complete]="isComplete(3)" (click)="editSection.emit(3)">
-    <div class="review-card__head">
-      <div class="review-card__icon" style="background:linear-gradient(135deg,#ec4899,#be185d)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-      </div>
-      <div class="review-card__title">Medical</div>
-      <div class="review-card__status done">✓ Saved</div>
-      <button class="review-card__edit">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      </button>
-    </div>
-    <div class="review-data-grid">
-      <div class="rd-item"><span class="rd-key">Blood Group</span><span class="rd-val">{{ formSections.medical?.bloodGroup || '—' }}</span></div>
-      <div class="rd-item"><span class="rd-key">Needs Support</span><span class="rd-val">{{ formSections.medical?.requiresSpecialSupport ? 'Yes' : 'No' }}</span></div>
-      <div class="rd-item span-full"><span class="rd-key">Allergies</span><span class="rd-val">{{ formSections.medical?.allergies || 'None reported' }}</span></div>
-    </div>
-  </div>
+  <!-- Section Summaries -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-  <!-- Guardians – full width -->
-  <div class="review-card full-width" [class.complete]="isComplete(4)" (click)="editSection.emit(4)">
-    <div class="review-card__head">
-      <div class="review-card__icon" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-      </div>
-      <div class="review-card__title">Guardians & Contacts</div>
-      <div class="review-card__status" [class.done]="isComplete(4)">
-        {{ isComplete(4) ? '✓ Complete' : 'Incomplete' }}
-      </div>
-      <button class="review-card__edit">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      </button>
-    </div>
-    <div class="review-data-grid four-col">
-      <div class="rd-item"><span class="rd-key">Guardian Name</span><span class="rd-val">{{ formSections.guardians?.primaryGuardianName || '—' }}</span></div>
-      <div class="rd-item"><span class="rd-key">Relationship</span><span class="rd-val">{{ formSections.guardians?.primaryGuardianRelationship || '—' }}</span></div>
-      <div class="rd-item"><span class="rd-key">Phone</span><span class="rd-val">{{ formSections.guardians?.primaryGuardianPhone || '—' }}</span></div>
-      <div class="rd-item"><span class="rd-key">Email</span><span class="rd-val">{{ formSections.guardians?.primaryGuardianEmail || '—' }}</span></div>
-      <div class="rd-item" *ngIf="formSections.guardians?.emergencyContactName"><span class="rd-key">Emergency</span><span class="rd-val">{{ formSections.guardians?.emergencyContactName }} · {{ formSections.guardians?.emergencyContactPhone }}</span></div>
-    </div>
+    <!-- Personal Info -->
+    <mat-card class="shadow-md hover:shadow-lg transition-shadow cursor-pointer" (click)="editSection.emit(0)">
+      <mat-card-header class="!pb-2">
+        <div class="flex items-center justify-between w-full">
+          <div class="flex items-center gap-3">
+            <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/20">
+              <mat-icon class="text-blue-600" svgIcon="heroicons_outline:user"></mat-icon>
+            </div>
+            <mat-card-title class="!text-base !font-semibold !mb-0">Personal Information</mat-card-title>
+          </div>
+          <div class="flex items-center gap-2">
+            <span 
+              class="text-xs font-medium px-2 py-1 rounded"
+              [class.bg-green-100]="isComplete(0)"
+              [class.text-green-700]="isComplete(0)"
+              [class.dark:bg-green-30]="isComplete(0)"
+              [class.dark:text-green-300]="isComplete(0)"
+              [class.bg-gray-100]="!isComplete(0)"
+              [class.text-gray-600]="!isComplete(0)"
+              [class.dark:bg-gray-700]="!isComplete(0)"
+              [class.dark:text-gray-400]="!isComplete(0)">
+              {{ isComplete(0) ? '✓ Complete' : 'Incomplete' }}
+            </span>
+            <mat-icon class="text-gray-400" svgIcon="heroicons_outline:pencil"></mat-icon>
+          </div>
+        </div>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <div class="space-y-2">
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600 dark:text-gray-400">Full Name</span>
+            <span class="font-medium text-gray-900 dark:text-white">{{ fullName }}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600 dark:text-gray-400">Admission No.</span>
+            <span class="font-medium text-gray-900 dark:text-white">{{ formSections.personal?.admissionNumber || '—' }}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600 dark:text-gray-400">Date of Birth</span>
+            <span class="font-medium text-gray-900 dark:text-white">{{ formatDate(formSections.personal?.dateOfBirth) }}</span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Location -->
+    <mat-card class="shadow-md hover:shadow-lg transition-shadow cursor-pointer" (click)="editSection.emit(1)">
+      <mat-card-header class="!pb-2">
+        <div class="flex items-center justify-between w-full">
+          <div class="flex items-center gap-3">
+            <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-cyan-100 dark:bg-cyan-900/20">
+              <mat-icon class="text-cyan-600" svgIcon="heroicons_outline:map-pin"></mat-icon>
+            </div>
+            <mat-card-title class="!text-base !font-semibold !mb-0">Location</mat-card-title>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-medium px-2 py-1 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+              ✓ Saved
+            </span>
+            <mat-icon class="text-gray-400" svgIcon="heroicons_outline:pencil"></mat-icon>
+          </div>
+        </div>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <div class="space-y-2">
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600 dark:text-gray-400">County</span>
+            <span class="font-medium text-gray-900 dark:text-white">{{ formSections.location?.county || '—' }}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600 dark:text-gray-400">Sub-County</span>
+            <span class="font-medium text-gray-900 dark:text-white">{{ formSections.location?.subCounty || '—' }}</span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Academic -->
+    <mat-card class="shadow-md hover:shadow-lg transition-shadow cursor-pointer" (click)="editSection.emit(2)">
+      <mat-card-header class="!pb-2">
+        <div class="flex items-center justify-between w-full">
+          <div class="flex items-center gap-3">
+            <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-orange-100 dark:bg-orange-900/20">
+              <mat-icon class="text-orange-600" svgIcon="heroicons_outline:academic-cap"></mat-icon>
+            </div>
+            <mat-card-title class="!text-base !font-semibold !mb-0">Academic</mat-card-title>
+          </div>
+          <div class="flex items-center gap-2">
+            <span 
+              class="text-xs font-medium px-2 py-1 rounded"
+              [class.bg-green-100]="isComplete(2)"
+              [class.text-green-700]="isComplete(2)"
+              [class.dark:bg-green-30]="isComplete(2)"
+              [class.dark:text-green-300]="isComplete(2)"
+              [class.bg-gray-100]="!isComplete(2)"
+              [class.text-gray-600]="!isComplete(2)"
+              [class.dark:bg-gray-700]="!isComplete(2)"
+              [class.dark:text-gray-400]="!isComplete(2)">
+              {{ isComplete(2) ? '✓ Complete' : 'Incomplete' }}
+            </span>
+            <mat-icon class="text-gray-400" svgIcon="heroicons_outline:pencil"></mat-icon>
+          </div>
+        </div>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <div class="space-y-2">
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600 dark:text-gray-400">Level</span>
+            <span class="font-medium text-gray-900 dark:text-white">{{ formSections.academic?.currentLevel || '—' }}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600 dark:text-gray-400">Previous School</span>
+            <span class="font-medium text-gray-900 dark:text-white">{{ formSections.academic?.previousSchool || 'N/A' }}</span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Medical -->
+    <mat-card class="shadow-md hover:shadow-lg transition-shadow cursor-pointer" (click)="editSection.emit(3)">
+      <mat-card-header class="!pb-2">
+        <div class="flex items-center justify-between w-full">
+          <div class="flex items-center gap-3">
+            <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-pink-100 dark:bg-pink-900/20">
+              <mat-icon class="text-pink-600" svgIcon="heroicons_outline:heart"></mat-icon>
+            </div>
+            <mat-card-title class="!text-base !font-semibold !mb-0">Medical</mat-card-title>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-medium px-2 py-1 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+              ✓ Saved
+            </span>
+            <mat-icon class="text-gray-400" svgIcon="heroicons_outline:pencil"></mat-icon>
+          </div>
+        </div>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <div class="space-y-2">
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600 dark:text-gray-400">Blood Group</span>
+            <span class="font-medium text-gray-900 dark:text-white">{{ formSections.medical?.bloodGroup || '—' }}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600 dark:text-gray-400">Special Support</span>
+            <span class="font-medium text-gray-900 dark:text-white">{{ formSections.medical?.requiresSpecialSupport ? 'Yes' : 'No' }}</span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Guardians (Full Width) -->
+    <mat-card class="shadow-md hover:shadow-lg transition-shadow cursor-pointer lg:col-span-2" (click)="editSection.emit(4)">
+      <mat-card-header class="!pb-2">
+        <div class="flex items-center justify-between w-full">
+          <div class="flex items-center gap-3">
+            <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/20">
+              <mat-icon class="text-purple-600" svgIcon="heroicons_outline:users"></mat-icon>
+            </div>
+            <mat-card-title class="!text-base !font-semibold !mb-0">Guardians & Contacts</mat-card-title>
+          </div>
+          <div class="flex items-center gap-2">
+            <span 
+              class="text-xs font-medium px-2 py-1 rounded"
+              [class.bg-green-100]="isComplete(4)"
+              [class.text-green-700]="isComplete(4)"
+              [class.dark:bg-green-30]="isComplete(4)"
+              [class.dark:text-green-300]="isComplete(4)"
+              [class.bg-gray-100]="!isComplete(4)"
+              [class.text-gray-600]="!isComplete(4)"
+              [class.dark:bg-gray-700]="!isComplete(4)"
+              [class.dark:text-gray-400]="!isComplete(4)">
+              {{ isComplete(4) ? '✓ Complete' : 'Incomplete' }}
+            </span>
+            <mat-icon class="text-gray-400" svgIcon="heroicons_outline:pencil"></mat-icon>
+          </div>
+        </div>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">Guardian Name</div>
+            <div class="font-medium text-gray-900 dark:text-white">{{ formSections.guardians?.primaryGuardianName || '—' }}</div>
+          </div>
+          <div>
+            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">Relationship</div>
+            <div class="font-medium text-gray-900 dark:text-white">{{ formSections.guardians?.primaryGuardianRelationship || '—' }}</div>
+          </div>
+          <div>
+            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">Phone</div>
+            <div class="font-medium text-gray-900 dark:text-white">{{ formSections.guardians?.primaryGuardianPhone || '—' }}</div>
+          </div>
+          <div>
+            <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">Email</div>
+            <div class="font-medium text-gray-900 dark:text-white truncate">{{ formSections.guardians?.primaryGuardianEmail || '—' }}</div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
   </div>
 
 </div>

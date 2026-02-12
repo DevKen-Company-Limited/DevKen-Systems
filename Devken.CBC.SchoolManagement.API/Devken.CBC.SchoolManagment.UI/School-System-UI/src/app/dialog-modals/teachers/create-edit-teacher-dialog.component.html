@@ -1,0 +1,368 @@
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- Teacher Dialog — Responsive Design                                     -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<div class="teacher-dialog-wrapper" [class.is-loading]="isEnumsLoading">
+
+  <!-- ── Gradient Header ──────────────────────────────────────────────────── -->
+  <div class="dialog-header">
+    <div class="header-left">
+      <div class="header-icon-ring">
+        <mat-icon class="header-icon">{{ isEditMode ? 'edit' : 'person_add' }}</mat-icon>
+      </div>
+      <div class="header-text">
+        <h2 class="header-title">{{ dialogTitle }}</h2>
+        <p class="header-subtitle">{{ dialogSubtitle }}</p>
+      </div>
+    </div>
+    <button mat-icon-button class="close-btn" (click)="onCancel()" matTooltip="Close">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <!-- ── Loading Overlay ──────────────────────────────────────────────────── -->
+  <div *ngIf="isEnumsLoading" class="loading-overlay">
+    <div class="loading-content">
+      <div class="loading-spinner-wrap">
+        <mat-spinner diameter="44" class="primary-spinner"></mat-spinner>
+        <mat-icon class="loading-icon">school</mat-icon>
+      </div>
+      <p class="loading-title">Preparing Form…</p>
+      <p class="loading-sub">Loading options and teacher data</p>
+    </div>
+  </div>
+
+  <!-- ── Two-Column Layout: Photo + Form ─────────────────────────────────── -->
+  <div class="dialog-body" [class.hidden]="isEnumsLoading">
+
+    <!-- ── Left: Photo Panel ──────────────────────────────────────────────── -->
+    <div class="photo-panel">
+      <div class="photo-avatar-wrap">
+        <!-- Preview -->
+        <div class="photo-avatar" [class.has-photo]="photoPreview">
+          <img *ngIf="photoPreview && !isLoadingPhoto"
+               [src]="photoPreview"
+               alt="Teacher photo"
+               class="photo-img" />
+          <mat-spinner *ngIf="isLoadingPhoto" diameter="32" class="photo-spinner"></mat-spinner>
+          <div *ngIf="!photoPreview && !isLoadingPhoto" class="photo-placeholder">
+            <mat-icon class="placeholder-icon">person</mat-icon>
+          </div>
+
+          <!-- Remove overlay -->
+          <button *ngIf="photoPreview && !isLoadingPhoto"
+                  type="button"
+                  class="photo-remove-btn"
+                  (click)="removePhoto()"
+                  matTooltip="Remove photo">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+
+        <!-- Upload Button -->
+        <button type="button"
+                class="upload-btn"
+                (click)="triggerPhotoUpload()">
+          <mat-icon class="upload-icon">cloud_upload</mat-icon>
+          <span>{{ isEditMode ? 'Change Photo' : 'Upload Photo' }}</span>
+        </button>
+        <input id="teacher-photo-input"
+               type="file"
+               class="hidden"
+               accept="image/jpeg,image/png,image/webp,image/jpg"
+               (change)="onPhotoSelected($event)" />
+
+        <!-- Photo hint / error -->
+        <p *ngIf="!photoError" class="photo-hint">JPEG, PNG or WebP · Max 5 MB</p>
+        <p *ngIf="photoError" class="photo-error">
+          <mat-icon class="error-icon-sm">warning</mat-icon>
+          {{ photoErrorMessage }}
+        </p>
+      </div>
+
+      <!-- Info box (desktop only) -->
+      <div class="photo-info-box">
+        <mat-icon class="info-icon">info</mat-icon>
+        <p>A clear photo helps identify the teacher across the system.</p>
+      </div>
+    </div>
+
+    <!-- ── Right: Tabbed Form ──────────────────────────────────────────────── -->
+    <div class="form-panel">
+
+      <!-- Tab Bar -->
+      <div class="tab-bar" role="tablist">
+        <button *ngFor="let tab of tabs; let i = index"
+                type="button"
+                role="tab"
+                class="tab-btn"
+                [class.active]="activeTab === tab.id"
+                [class.has-error]="tabHasErrors(tab)"
+                (click)="setTab(tab.id)"
+                [attr.aria-selected]="activeTab === tab.id">
+          <mat-icon class="tab-icon">{{ tab.icon }}</mat-icon>
+          <span class="tab-label">{{ tab.label }}</span>
+          <span *ngIf="tabHasErrors(tab)" class="tab-error-dot"></span>
+        </button>
+      </div>
+
+      <!-- ── Tab Content ─────────────────────────────────────────────────── -->
+      <form [formGroup]="form" class="form-content" novalidate (ngSubmit)="onSubmit()">
+
+        <!-- ══ PERSONAL TAB ══ -->
+        <div *ngIf="activeTab === 'personal'" class="tab-pane" role="tabpanel">
+          <div class="section-label">
+            <mat-icon>badge</mat-icon>
+            <span>Full Name</span>
+          </div>
+          <div class="grid-3">
+            <!-- First Name -->
+            <mat-form-field appearance="outline" class="field">
+              <mat-label>First Name <span class="req">*</span></mat-label>
+              <input matInput formControlName="firstName" placeholder="John" />
+              <mat-error>{{ getFieldError('firstName') }}</mat-error>
+            </mat-form-field>
+
+            <!-- Middle Name -->
+            <mat-form-field appearance="outline" class="field">
+              <mat-label>Middle Name</mat-label>
+              <input matInput formControlName="middleName" placeholder="Optional" />
+              <mat-hint align="end">Optional</mat-hint>
+            </mat-form-field>
+
+            <!-- Last Name -->
+            <mat-form-field appearance="outline" class="field">
+              <mat-label>Last Name <span class="req">*</span></mat-label>
+              <input matInput formControlName="lastName" placeholder="Doe" />
+              <mat-error>{{ getFieldError('lastName') }}</mat-error>
+            </mat-form-field>
+          </div>
+
+          <div class="grid-2">
+            <!-- Teacher Number -->
+            <mat-form-field appearance="outline" class="field">
+              <mat-label>Teacher Number <span class="req">*</span></mat-label>
+              <mat-icon matPrefix class="field-prefix-icon">tag</mat-icon>
+              <input matInput formControlName="teacherNumber" placeholder="TCH-001" />
+              <mat-hint align="end">Unique identifier</mat-hint>
+              <mat-error>{{ getFieldError('teacherNumber') }}</mat-error>
+            </mat-form-field>
+
+            <!-- Gender -->
+            <mat-form-field appearance="outline" class="field">
+              <mat-label>Gender <span class="req">*</span></mat-label>
+              <mat-icon matPrefix class="field-prefix-icon">wc</mat-icon>
+              <mat-select formControlName="gender">
+                <mat-option [value]="null">— Select —</mat-option>
+                <mat-option *ngFor="let g of genders" [value]="g.value">{{ g.name }}</mat-option>
+              </mat-select>
+              <mat-error>{{ getFieldError('gender') }}</mat-error>
+            </mat-form-field>
+
+            <!-- Date of Birth -->
+            <mat-form-field appearance="outline" class="field">
+              <mat-label>Date of Birth</mat-label>
+              <mat-icon matPrefix class="field-prefix-icon">cake</mat-icon>
+              <input matInput [matDatepicker]="dobPicker" formControlName="dateOfBirth" />
+              <mat-datepicker-toggle matIconSuffix [for]="dobPicker"></mat-datepicker-toggle>
+              <mat-datepicker #dobPicker></mat-datepicker>
+              <mat-hint>DD/MM/YYYY</mat-hint>
+            </mat-form-field>
+
+            <!-- National ID -->
+            <mat-form-field appearance="outline" class="field">
+              <mat-label>National ID / Passport</mat-label>
+              <mat-icon matPrefix class="field-prefix-icon">credit_card</mat-icon>
+              <input matInput formControlName="idNumber" placeholder="ID or Passport No." />
+              <mat-error>{{ getFieldError('idNumber') }}</mat-error>
+            </mat-form-field>
+
+            <!-- Nationality -->
+            <mat-form-field appearance="outline" class="field">
+              <mat-label>Nationality</mat-label>
+              <mat-icon matPrefix class="field-prefix-icon">flag</mat-icon>
+              <input matInput formControlName="nationality" placeholder="e.g. Kenyan" />
+              <mat-error>{{ getFieldError('nationality') }}</mat-error>
+            </mat-form-field>
+          </div>
+        </div>
+
+        <!-- ══ CONTACT TAB ══ -->
+        <div *ngIf="activeTab === 'contact'" class="tab-pane" role="tabpanel">
+          <div class="grid-2">
+            <!-- Phone -->
+            <mat-form-field appearance="outline" class="field">
+              <mat-label>Phone Number</mat-label>
+              <mat-icon matPrefix class="field-prefix-icon">phone</mat-icon>
+              <input matInput formControlName="phoneNumber" placeholder="+254 7XX XXX XXX" />
+              <mat-hint>Include country code</mat-hint>
+              <mat-error>{{ getFieldError('phoneNumber') }}</mat-error>
+            </mat-form-field>
+
+            <!-- Email -->
+            <mat-form-field appearance="outline" class="field">
+              <mat-label>Email Address</mat-label>
+              <mat-icon matPrefix class="field-prefix-icon">email</mat-icon>
+              <input matInput type="email" formControlName="email" placeholder="teacher@school.ac.ke" />
+              <mat-error>{{ getFieldError('email') }}</mat-error>
+            </mat-form-field>
+
+            <!-- Address -->
+            <mat-form-field appearance="outline" class="field col-span-full">
+              <mat-label>Home Address</mat-label>
+              <mat-icon matPrefix class="field-prefix-icon">home</mat-icon>
+              <textarea matInput formControlName="address" rows="3"
+                        placeholder="Postal or physical address"></textarea>
+              <mat-error>{{ getFieldError('address') }}</mat-error>
+            </mat-form-field>
+          </div>
+        </div>
+
+        <!-- ══ PROFESSIONAL TAB ══ -->
+        <div *ngIf="activeTab === 'professional'" class="tab-pane" role="tabpanel">
+          <div class="grid-2">
+            <!-- TSC Number -->
+            <mat-form-field appearance="outline" class="field">
+              <mat-label>TSC Number</mat-label>
+              <mat-icon matPrefix class="field-prefix-icon">school</mat-icon>
+              <input matInput formControlName="tscNumber" placeholder="Teachers Service Commission No." />
+              <mat-error>{{ getFieldError('tscNumber') }}</mat-error>
+            </mat-form-field>
+
+            <!-- Employment Type -->
+            <mat-form-field appearance="outline" class="field">
+              <mat-label>Employment Type</mat-label>
+              <mat-icon matPrefix class="field-prefix-icon">work</mat-icon>
+              <mat-select formControlName="employmentType">
+                <mat-option [value]="null">— Select —</mat-option>
+                <mat-option *ngFor="let et of employmentTypes" [value]="et.value">{{ et.name }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <!-- Designation -->
+            <mat-form-field appearance="outline" class="field">
+              <mat-label>Designation</mat-label>
+              <mat-icon matPrefix class="field-prefix-icon">military_tech</mat-icon>
+              <mat-select formControlName="designation">
+                <mat-option [value]="null">— Select —</mat-option>
+                <mat-option *ngFor="let d of designations" [value]="d.value">{{ d.name }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <!-- Date of Employment -->
+            <mat-form-field appearance="outline" class="field">
+              <mat-label>Date of Employment</mat-label>
+              <mat-icon matPrefix class="field-prefix-icon">event</mat-icon>
+              <input matInput [matDatepicker]="empPicker" formControlName="dateOfEmployment" />
+              <mat-datepicker-toggle matIconSuffix [for]="empPicker"></mat-datepicker-toggle>
+              <mat-datepicker #empPicker></mat-datepicker>
+            </mat-form-field>
+
+            <!-- Qualification -->
+            <mat-form-field appearance="outline" class="field">
+              <mat-label>Qualification</mat-label>
+              <mat-icon matPrefix class="field-prefix-icon">menu_book</mat-icon>
+              <input matInput formControlName="qualification" placeholder="e.g. B.Ed, PGDE" />
+              <mat-error>{{ getFieldError('qualification') }}</mat-error>
+            </mat-form-field>
+
+            <!-- Specialization -->
+            <mat-form-field appearance="outline" class="field">
+              <mat-label>Specialization</mat-label>
+              <mat-icon matPrefix class="field-prefix-icon">science</mat-icon>
+              <input matInput formControlName="specialization" placeholder="e.g. Mathematics, Science" />
+              <mat-error>{{ getFieldError('specialization') }}</mat-error>
+            </mat-form-field>
+          </div>
+
+          <!-- Toggle Cards -->
+          <div class="toggle-cards">
+            <div class="toggle-card">
+              <div class="toggle-card-text">
+                <mat-icon class="toggle-icon indigo">class</mat-icon>
+                <div>
+                  <p class="toggle-title">Class Teacher</p>
+                  <p class="toggle-desc">Assigned as a class teacher with additional responsibilities</p>
+                </div>
+              </div>
+              <mat-slide-toggle formControlName="isClassTeacher" color="primary"></mat-slide-toggle>
+            </div>
+
+            <div class="toggle-card">
+              <div class="toggle-card-text">
+                <mat-icon class="toggle-icon green">check_circle</mat-icon>
+                <div>
+                  <p class="toggle-title">Active Status</p>
+                  <p class="toggle-desc">Teacher account is active and has system access</p>
+                </div>
+              </div>
+              <mat-slide-toggle formControlName="isActive" color="primary"></mat-slide-toggle>
+            </div>
+          </div>
+
+          <!-- Notes -->
+          <mat-form-field appearance="outline" class="field w-full">
+            <mat-label>Additional Notes</mat-label>
+            <mat-icon matPrefix class="field-prefix-icon">notes</mat-icon>
+            <textarea matInput formControlName="notes" rows="4"
+                      placeholder="Any additional notes or special instructions…"></textarea>
+            <mat-hint align="end">{{ notesLength }}/2000</mat-hint>
+            <mat-error>{{ getFieldError('notes') }}</mat-error>
+          </mat-form-field>
+        </div>
+
+      </form><!-- /form -->
+
+      <!-- ── Tab Navigation ─────────────────────────────────────────────── -->
+      <div class="tab-nav">
+        <div class="tab-nav-left">
+          <button *ngIf="!isFirstTab"
+                  type="button"
+                  mat-stroked-button
+                  class="nav-btn prev-btn"
+                  (click)="prevTab()">
+            <mat-icon>chevron_left</mat-icon>
+            Previous
+          </button>
+        </div>
+        <div class="tab-nav-right">
+          <button *ngIf="!isLastTab"
+                  type="button"
+                  mat-flat-button
+                  class="nav-btn next-btn"
+                  (click)="nextTab()">
+            Next
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+        </div>
+      </div>
+    </div><!-- /form-panel -->
+  </div><!-- /dialog-body -->
+
+  <!-- ── Footer ────────────────────────────────────────────────────────────── -->
+  <div class="dialog-footer">
+    <!-- Validation message -->
+    <div *ngIf="formSubmitted && form.invalid" class="footer-error">
+      <mat-icon class="footer-error-icon">warning_amber</mat-icon>
+      <span>Please fill in all required fields before submitting</span>
+    </div>
+
+    <div class="footer-actions">
+      <button type="button"
+              mat-stroked-button
+              class="cancel-btn"
+              (click)="onCancel()">
+        Cancel
+      </button>
+      <button type="button"
+              mat-flat-button
+              class="submit-btn"
+              [disabled]="isEnumsLoading"
+              (click)="onSubmit()">
+        <mat-icon class="submit-icon">{{ isEditMode ? 'save' : 'check_circle' }}</mat-icon>
+        {{ isEditMode ? 'Save Changes' : 'Create Teacher' }}
+      </button>
+    </div>
+  </div>
+
+</div><!-- /teacher-dialog-wrapper -->

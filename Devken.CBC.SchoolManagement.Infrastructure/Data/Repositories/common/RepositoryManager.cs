@@ -23,13 +23,14 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         private readonly AppDbContext _context;
         private readonly TenantContext _tenantContext;
 
-        // Lazy Repositories - Academic
+        // ── Academic ─────────────────────────────────────────────────────────
         private readonly Lazy<IStudentRepository> _studentRepository;
+        private readonly Lazy<ITeacherRepository> _teacherRepository;     // ← NEW
         private readonly Lazy<ISchoolRepository> _schoolRepository;
         private readonly Lazy<IAcademicYearRepository> _academicYearRepository;
         private readonly Lazy<IClassRepository> _classRepository;
 
-        // Lazy Repositories - Identity
+        // ── Identity ─────────────────────────────────────────────────────────
         private readonly Lazy<IUserRepository> _userRepository;
         private readonly Lazy<IRoleRepository> _roleRepository;
         private readonly Lazy<IPermissionRepository> _permissionRepository;
@@ -37,18 +38,20 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         private readonly Lazy<IUserRoleRepository> _userRoleRepository;
         private readonly Lazy<IRefreshTokenRepository> _refreshTokenRepository;
         private readonly Lazy<ISuperAdminRepository> _superAdminRepository;
-        private readonly Lazy<IMpesaPaymentRepository> _mpesaPaymentRepository;
 
+        // ── Payments ─────────────────────────────────────────────────────────
+        private readonly Lazy<IMpesaPaymentRepository> _mpesaPaymentRepository;
 
         public RepositoryManager(AppDbContext context, TenantContext tenantContext)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
 
-            // Initialize Academic Repositories
+            // Academic
             _studentRepository = new Lazy<IStudentRepository>(() =>
                 new StudentRepository(_context, _tenantContext));
-
+            _teacherRepository = new Lazy<ITeacherRepository>(() =>     // ← NEW
+                new TeacherRepository(_context, _tenantContext));
             _schoolRepository = new Lazy<ISchoolRepository>(() =>
                 new SchoolRepository(_context, _tenantContext));
             _academicYearRepository = new Lazy<IAcademicYearRepository>(() =>
@@ -56,38 +59,34 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
             _classRepository = new Lazy<IClassRepository>(() =>
                 new ClassRepository(_context, _tenantContext));
 
-            // Initialize Identity Repositories
+            // Identity
             _userRepository = new Lazy<IUserRepository>(() =>
                 new UserRepository(_context, _tenantContext));
-
             _roleRepository = new Lazy<IRoleRepository>(() =>
                 new RoleRepository(_context, _tenantContext));
-
             _permissionRepository = new Lazy<IPermissionRepository>(() =>
                 new PermissionRepository(_context, _tenantContext));
-
             _rolePermissionRepository = new Lazy<IRolePermissionRepository>(() =>
                 new RolePermissionRepository(_context, _tenantContext));
-
             _userRoleRepository = new Lazy<IUserRoleRepository>(() =>
                 new UserRoleRepository(_context, _tenantContext));
-
             _refreshTokenRepository = new Lazy<IRefreshTokenRepository>(() =>
                 new RefreshTokenRepository(_context, _tenantContext));
-
             _superAdminRepository = new Lazy<ISuperAdminRepository>(() =>
                 new SuperAdminRepository(_context, _tenantContext));
+
+            // Payments
             _mpesaPaymentRepository = new Lazy<IMpesaPaymentRepository>(() =>
                 new MpesaPaymentRepository(_context, _tenantContext));
         }
 
-        // Academic Repository Properties
+        // ── Properties ───────────────────────────────────────────────────────
         public IStudentRepository Student => _studentRepository.Value;
+        public ITeacherRepository Teacher => _teacherRepository.Value;   // ← NEW
         public ISchoolRepository School => _schoolRepository.Value;
         public IAcademicYearRepository AcademicYear => _academicYearRepository.Value;
         public IClassRepository Class => _classRepository.Value;
 
-        // Identity Repository Properties
         public IUserRepository User => _userRepository.Value;
         public IRoleRepository Role => _roleRepository.Value;
         public IPermissionRepository Permission => _permissionRepository.Value;
@@ -95,9 +94,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         public IUserRoleRepository UserRole => _userRoleRepository.Value;
         public IRefreshTokenRepository RefreshToken => _refreshTokenRepository.Value;
         public ISuperAdminRepository SuperAdmin => _superAdminRepository.Value;
+
         public IMpesaPaymentRepository MpesaPayment => _mpesaPaymentRepository.Value;
 
-        // Unit of Work Methods
+        // ── Unit of Work ─────────────────────────────────────────────────────
         public async Task SaveAsync() => await _context.SaveChangesAsync();
 
         public async Task<IDbContextTransaction> BeginTransactionAsync() =>

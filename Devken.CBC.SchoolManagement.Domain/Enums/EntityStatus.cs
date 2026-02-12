@@ -173,6 +173,25 @@ namespace Devken.CBC.SchoolManagement.Domain.Enums
         [Description("Temporarily suspended")]
         Suspended = 5
     }
+    #region Supporting Enums
+
+    public enum EmploymentType
+    {
+        Permanent,
+        Contract,
+        Probation
+    }
+
+    public enum Designation
+    {
+        Teacher,
+        SeniorTeacher,
+        DeputyHeadTeacher,
+        HeadTeacher,
+        Coordinator
+    }
+
+    #endregion
 
     /// <summary>
     /// General Payment status

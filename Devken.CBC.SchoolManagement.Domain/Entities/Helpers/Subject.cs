@@ -2,36 +2,53 @@
 using Devken.CBC.SchoolManagement.Domain.Entities.Academic;
 using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
 using Devken.CBC.SchoolManagement.Domain.Enums;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace Devken.CBC.SchoolManagement.Domain.Entities.Helpers
+namespace Devken.CBC.SchoolManagement.Domain.Entities.Helpers;
+
+public class Subject(
+
+    string Name,
+    string Code,
+    CBCLevel Level
+) : TenantBaseEntity<Guid>
 {
-    public class Subject : TenantBaseEntity<Guid>
-    {
-        [Required]
-        [MaxLength(100)]
-        public string Name { get; set; } = null!;
+    #region Core Properties
 
-        [MaxLength(20)]
-        public string Code { get; set; } = null!;
+    [Required, MaxLength(100)]
+    public string Name { get; } = Name;
 
-        public CBCLevel Level { get; set; }
+    [Required, MaxLength(20)]
+    public string Code { get; } = Code;
 
-        [MaxLength(20)]
-        public string? SubjectType { get; set; } // Core, Optional, Elective
+    public CBCLevel Level { get; } = Level;
 
-        [MaxLength(500)]
-        public string? Description { get; set; }
+    [MaxLength(20)]
+    public string? SubjectType { get; set; } // Core, Optional, Elective
 
-        public bool IsActive { get; set; } = true;
+    [MaxLength(500)]
+    public string? Description { get; set; }
 
-        // Navigation Properties
-        public ICollection<Class> Classes { get; set; } = new List<Class>();
-        public ICollection<Grade> Grades { get; set; } = new List<Grade>();
-    }
+    public bool IsActive { get; set; } = true;
+
+    #endregion
+
+    #region Navigation Properties
+
+    /// <summary>
+    /// Classes where this subject is taught
+    /// </summary>
+    public ICollection<Class> Classes { get; set; } = new HashSet<Class>();
+
+    /// <summary>
+    /// Grades for this subject
+    /// </summary>
+    public ICollection<Grade> Grades { get; set; } = new HashSet<Grade>();
+
+    /// <summary>
+    /// Teachers who teach this subject
+    /// </summary>
+    public ICollection<Teacher> Teachers { get; set; } = new HashSet<Teacher>();
+
+    #endregion
 }

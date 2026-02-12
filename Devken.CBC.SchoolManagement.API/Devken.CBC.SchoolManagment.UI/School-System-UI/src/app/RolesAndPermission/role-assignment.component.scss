@@ -1,548 +1,548 @@
-// Role Permission Management Component Styles
+// // Role Permission Management Component Styles
 
-// ============================================
-// Variables
-// ============================================
-$primary-color: #3b82f6;
-$success-color: #10b981;
-$warning-color: #f59e0b;
-$error-color: #ef4444;
-$info-color: #06b6d4;
+// // ============================================
+// // Variables
+// // ============================================
+// $primary-color: #3b82f6;
+// $success-color: #10b981;
+// $warning-color: #f59e0b;
+// $error-color: #ef4444;
+// $info-color: #06b6d4;
 
-$border-radius: 0.5rem;
-$transition-duration: 200ms;
-$shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-$shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-$shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+// $border-radius: 0.5rem;
+// $transition-duration: 200ms;
+// $shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+// $shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+// $shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 
-// ============================================
-// Animations
-// ============================================
-@keyframes pulse-slow {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.8;
-  }
-}
+// // ============================================
+// // Animations
+// // ============================================
+// @keyframes pulse-slow {
+//   0%, 100% {
+//     opacity: 1;
+//   }
+//   50% {
+//     opacity: 0.8;
+//   }
+// }
 
-@keyframes slide-in {
-  from {
-    transform: translateY(-10px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
+// @keyframes slide-in {
+//   from {
+//     transform: translateY(-10px);
+//     opacity: 0;
+//   }
+//   to {
+//     transform: translateY(0);
+//     opacity: 1;
+//   }
+// }
 
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
+// @keyframes fade-in {
+//   from {
+//     opacity: 0;
+//   }
+//   to {
+//     opacity: 1;
+//   }
+// }
 
-.animate-pulse-slow {
-  animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
+// .animate-pulse-slow {
+//   animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+// }
 
-// ============================================
-// Component Container
-// ============================================
-:host {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  width: 100%;
-  min-width: 0;
-}
+// // ============================================
+// // Component Container
+// // ============================================
+// :host {
+//   display: flex;
+//   flex-direction: column;
+//   flex: 1 1 auto;
+//   width: 100%;
+//   min-width: 0;
+// }
 
-// ============================================
-// Custom Scrollbar
-// ============================================
-.overflow-x-auto {
-  &::-webkit-scrollbar {
-    height: 8px;
-  }
+// // ============================================
+// // Custom Scrollbar
+// // ============================================
+// .overflow-x-auto {
+//   &::-webkit-scrollbar {
+//     height: 8px;
+//   }
 
-  &::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.05);
-    border-radius: 4px;
-  }
+//   &::-webkit-scrollbar-track {
+//     background: rgba(0, 0, 0, 0.05);
+//     border-radius: 4px;
+//   }
 
-  &::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 4px;
+//   &::-webkit-scrollbar-thumb {
+//     background: rgba(0, 0, 0, 0.2);
+//     border-radius: 4px;
 
-    &:hover {
-      background: rgba(0, 0, 0, 0.3);
-    }
-  }
-}
+//     &:hover {
+//       background: rgba(0, 0, 0, 0.3);
+//     }
+//   }
+// }
 
-// ============================================
-// Header Enhancements
-// ============================================
-.text-primary {
-  color: $primary-color !important;
-}
+// // ============================================
+// // Header Enhancements
+// // ============================================
+// .text-primary {
+//   color: $primary-color !important;
+// }
 
-// Stats Animation
-.text-2xl.font-bold {
-  transition: transform $transition-duration ease;
+// // Stats Animation
+// .text-2xl.font-bold {
+//   transition: transform $transition-duration ease;
 
-  &:hover {
-    transform: scale(1.05);
-  }
-}
+//   &:hover {
+//     transform: scale(1.05);
+//   }
+// }
 
-// ============================================
-// Clone Mode Banner
-// ============================================
-.animate-pulse-slow {
-  animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
+// // ============================================
+// // Clone Mode Banner
+// // ============================================
+// .animate-pulse-slow {
+//   animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+// }
 
-// ============================================
-// Alert Customization
-// ============================================
-fuse-alert {
-  animation: slide-in 0.3s ease-out;
-}
+// // ============================================
+// // Alert Customization
+// // ============================================
+// fuse-alert {
+//   animation: slide-in 0.3s ease-out;
+// }
 
-// ============================================
-// Mat Card Enhancements
-// ============================================
-mat-card {
-  border-radius: $border-radius;
-  overflow: hidden;
-  transition: box-shadow $transition-duration ease;
+// // ============================================
+// // Mat Card Enhancements
+// // ============================================
+// mat-card {
+//   border-radius: $border-radius;
+//   overflow: hidden;
+//   transition: box-shadow $transition-duration ease;
 
-  &.shadow-md {
-    box-shadow: $shadow-md;
-  }
+//   &.shadow-md {
+//     box-shadow: $shadow-md;
+//   }
 
-  &:hover {
-    &.hover\:shadow-lg {
-      box-shadow: $shadow-lg;
-    }
-  }
+//   &:hover {
+//     &.hover\:shadow-lg {
+//       box-shadow: $shadow-lg;
+//     }
+//   }
 
-  mat-card-header {
-    padding: 1.5rem;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-    background: rgba(0, 0, 0, 0.02);
+//   mat-card-header {
+//     padding: 1.5rem;
+//     border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+//     background: rgba(0, 0, 0, 0.02);
 
-    @media (prefers-color-scheme: dark) {
-      border-bottom-color: rgba(255, 255, 255, 0.08);
-      background: rgba(255, 255, 255, 0.02);
-    }
-  }
+//     @media (prefers-color-scheme: dark) {
+//       border-bottom-color: rgba(255, 255, 255, 0.08);
+//       background: rgba(255, 255, 255, 0.02);
+//     }
+//   }
 
-  mat-card-content {
-    padding: 1.5rem;
-  }
-}
+//   mat-card-content {
+//     padding: 1.5rem;
+//   }
+// }
 
-// ============================================
-// Form Fields
-// ============================================
-mat-form-field {
-  &.mat-mdc-form-field {
-    .mat-mdc-text-field-wrapper {
-      transition: all $transition-duration ease;
-    }
+// // ============================================
+// // Form Fields
+// // ============================================
+// mat-form-field {
+//   &.mat-mdc-form-field {
+//     .mat-mdc-text-field-wrapper {
+//       transition: all $transition-duration ease;
+//     }
 
-    &.mat-focused {
-      .mat-mdc-text-field-wrapper {
-        box-shadow: 0 0 0 3px rgba($primary-color, 0.1);
-      }
-    }
-  }
-}
+//     &.mat-focused {
+//       .mat-mdc-text-field-wrapper {
+//         box-shadow: 0 0 0 3px rgba($primary-color, 0.1);
+//       }
+//     }
+//   }
+// }
 
-// ============================================
-// Chips Enhancement
-// ============================================
-mat-chip-row {
-  animation: fade-in 0.2s ease-out;
+// // ============================================
+// // Chips Enhancement
+// // ============================================
+// mat-chip-row {
+//   animation: fade-in 0.2s ease-out;
   
-  &.text-xs {
-    font-size: 0.75rem;
-    height: auto;
-    min-height: 24px;
-    padding: 0.25rem 0.5rem;
-  }
+//   &.text-xs {
+//     font-size: 0.75rem;
+//     height: auto;
+//     min-height: 24px;
+//     padding: 0.25rem 0.5rem;
+//   }
 
-  button[matChipRemove] {
-    opacity: 0.6;
-    transition: opacity $transition-duration ease;
+//   button[matChipRemove] {
+//     opacity: 0.6;
+//     transition: opacity $transition-duration ease;
 
-    &:hover {
-      opacity: 1;
-    }
-  }
-}
+//     &:hover {
+//       opacity: 1;
+//     }
+//   }
+// }
 
-// ============================================
-// Table Enhancements
-// ============================================
-.mat-mdc-table {
-  border-collapse: separate;
-  border-spacing: 0;
+// // ============================================
+// // Table Enhancements
+// // ============================================
+// .mat-mdc-table {
+//   border-collapse: separate;
+//   border-spacing: 0;
 
-  // Header Styling
-  .mat-mdc-header-row {
-    background: rgba(0, 0, 0, 0.03);
+//   // Header Styling
+//   .mat-mdc-header-row {
+//     background: rgba(0, 0, 0, 0.03);
 
-    @media (prefers-color-scheme: dark) {
-      background: rgba(255, 255, 255, 0.03);
-    }
+//     @media (prefers-color-scheme: dark) {
+//       background: rgba(255, 255, 255, 0.03);
+//     }
 
-    .mat-mdc-header-cell {
-      font-weight: 600;
-      font-size: 0.875rem;
-      letter-spacing: 0.025em;
-      text-transform: uppercase;
-      color: rgba(0, 0, 0, 0.6);
+//     .mat-mdc-header-cell {
+//       font-weight: 600;
+//       font-size: 0.875rem;
+//       letter-spacing: 0.025em;
+//       text-transform: uppercase;
+//       color: rgba(0, 0, 0, 0.6);
 
-      @media (prefers-color-scheme: dark) {
-        color: rgba(255, 255, 255, 0.6);
-      }
-    }
-  }
+//       @media (prefers-color-scheme: dark) {
+//         color: rgba(255, 255, 255, 0.6);
+//       }
+//     }
+//   }
 
-  // Row Hover Effects
-  .mat-mdc-row {
-    transition: all $transition-duration ease;
-    cursor: default;
+//   // Row Hover Effects
+//   .mat-mdc-row {
+//     transition: all $transition-duration ease;
+//     cursor: default;
 
-    &:hover {
-      background-color: rgba(0, 0, 0, 0.02);
+//     &:hover {
+//       background-color: rgba(0, 0, 0, 0.02);
 
-      @media (prefers-color-scheme: dark) {
-        background-color: rgba(255, 255, 255, 0.02);
-      }
-    }
+//       @media (prefers-color-scheme: dark) {
+//         background-color: rgba(255, 255, 255, 0.02);
+//       }
+//     }
 
-    // Clone Source Highlight
-    &.bg-blue-50 {
-      border-left: 4px solid $primary-color;
-      background-color: rgba($primary-color, 0.05);
+//     // Clone Source Highlight
+//     &.bg-blue-50 {
+//       border-left: 4px solid $primary-color;
+//       background-color: rgba($primary-color, 0.05);
       
-      @media (prefers-color-scheme: dark) {
-        background-color: rgba($primary-color, 0.15);
-      }
-    }
-  }
+//       @media (prefers-color-scheme: dark) {
+//         background-color: rgba($primary-color, 0.15);
+//       }
+//     }
+//   }
 
-  // Cell Padding
-  .mat-mdc-cell {
-    padding: 1rem;
-  }
-}
+//   // Cell Padding
+//   .mat-mdc-cell {
+//     padding: 1rem;
+//   }
+// }
 
-// ============================================
-// Role Avatar
-// ============================================
-.w-10.h-10.rounded-full {
-  background: linear-gradient(135deg, $primary-color, darken($primary-color, 10%));
-  box-shadow: $shadow-sm;
-  transition: transform $transition-duration ease;
+// // ============================================
+// // Role Avatar
+// // ============================================
+// .w-10.h-10.rounded-full {
+//   background: linear-gradient(135deg, $primary-color, darken($primary-color, 10%));
+//   box-shadow: $shadow-sm;
+//   transition: transform $transition-duration ease;
 
-  &:hover {
-    transform: scale(1.05);
-  }
-}
+//   &:hover {
+//     transform: scale(1.05);
+//   }
+// }
 
-// ============================================
-// Badge Styles
-// ============================================
-.inline-flex.items-center {
-  &.px-2\.5 {
-    transition: all $transition-duration ease;
+// // ============================================
+// // Badge Styles
+// // ============================================
+// .inline-flex.items-center {
+//   &.px-2\.5 {
+//     transition: all $transition-duration ease;
 
-    &:hover {
-      transform: translateY(-1px);
-      box-shadow: $shadow-sm;
-    }
-  }
-}
+//     &:hover {
+//       transform: translateY(-1px);
+//       box-shadow: $shadow-sm;
+//     }
+//   }
+// }
 
-// System Role Badge
-.bg-amber-100 {
-  backdrop-filter: blur(8px);
-}
+// // System Role Badge
+// .bg-amber-100 {
+//   backdrop-filter: blur(8px);
+// }
 
-// ============================================
-// Permission Groups
-// ============================================
-.rounded-full.cursor-help {
-  transition: all $transition-duration ease;
+// // ============================================
+// // Permission Groups
+// // ============================================
+// .rounded-full.cursor-help {
+//   transition: all $transition-duration ease;
 
-  &:hover {
-    transform: scale(1.05);
-    filter: brightness(1.1);
-  }
-}
+//   &:hover {
+//     transform: scale(1.05);
+//     filter: brightness(1.1);
+//   }
+// }
 
-// ============================================
-// Action Buttons
-// ============================================
-button {
-  &.mat-mdc-icon-button {
-    transition: all $transition-duration ease;
+// // ============================================
+// // Action Buttons
+// // ============================================
+// button {
+//   &.mat-mdc-icon-button {
+//     transition: all $transition-duration ease;
 
-    &:hover:not([disabled]) {
-      transform: scale(1.1);
-    }
-  }
+//     &:hover:not([disabled]) {
+//       transform: scale(1.1);
+//     }
+//   }
 
-  &.mat-mdc-raised-button {
-    &.animate-pulse {
-      animation: pulse-slow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-      box-shadow: 0 0 0 0 rgba($primary-color, 0.7);
-    }
-  }
-}
+//   &.mat-mdc-raised-button {
+//     &.animate-pulse {
+//       animation: pulse-slow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+//       box-shadow: 0 0 0 0 rgba($primary-color, 0.7);
+//     }
+//   }
+// }
 
-// ============================================
-// Menu Enhancements
-// ============================================
-.mat-mdc-menu-panel {
-  .mat-mdc-menu-item {
-    transition: background-color $transition-duration ease;
+// // ============================================
+// // Menu Enhancements
+// // ============================================
+// .mat-mdc-menu-panel {
+//   .mat-mdc-menu-item {
+//     transition: background-color $transition-duration ease;
 
-    &.text-warn {
-      color: $error-color;
+//     &.text-warn {
+//       color: $error-color;
 
-      &:hover {
-        background-color: rgba($error-color, 0.08);
-      }
-    }
+//       &:hover {
+//         background-color: rgba($error-color, 0.08);
+//       }
+//     }
 
-    mat-icon {
-      transition: transform $transition-duration ease;
-    }
+//     mat-icon {
+//       transition: transform $transition-duration ease;
+//     }
 
-    &:hover mat-icon {
-      transform: translateX(2px);
-    }
-  }
-}
+//     &:hover mat-icon {
+//       transform: translateX(2px);
+//     }
+//   }
+// }
 
-// ============================================
-// Empty State
-// ============================================
-.text-center.py-16 {
-  animation: fade-in 0.4s ease-out;
+// // ============================================
+// // Empty State
+// // ============================================
+// .text-center.py-16 {
+//   animation: fade-in 0.4s ease-out;
 
-  mat-icon {
-    opacity: 0.5;
-    transition: opacity $transition-duration ease;
-  }
+//   mat-icon {
+//     opacity: 0.5;
+//     transition: opacity $transition-duration ease;
+//   }
 
-  &:hover mat-icon {
-    opacity: 0.7;
-  }
-}
+//   &:hover mat-icon {
+//     opacity: 0.7;
+//   }
+// }
 
-// ============================================
-// Loading Spinner Container
-// ============================================
-.flex.flex-col.items-center.justify-center {
-  animation: fade-in 0.3s ease-out;
+// // ============================================
+// // Loading Spinner Container
+// // ============================================
+// .flex.flex-col.items-center.justify-center {
+//   animation: fade-in 0.3s ease-out;
 
-  mat-spinner {
-    ::ng-deep circle {
-      stroke: $primary-color;
-    }
-  }
-}
+//   mat-spinner {
+//     ::ng-deep circle {
+//       stroke: $primary-color;
+//     }
+//   }
+// }
 
-// ============================================
-// Expansion Panel
-// ============================================
-mat-expansion-panel {
-  border-radius: $border-radius !important;
-  overflow: hidden;
-  margin-bottom: 1rem;
+// // ============================================
+// // Expansion Panel
+// // ============================================
+// mat-expansion-panel {
+//   border-radius: $border-radius !important;
+//   overflow: hidden;
+//   margin-bottom: 1rem;
 
-  &.mat-expanded {
-    mat-expansion-panel-header {
-      background: rgba($primary-color, 0.05);
-    }
-  }
+//   &.mat-expanded {
+//     mat-expansion-panel-header {
+//       background: rgba($primary-color, 0.05);
+//     }
+//   }
 
-  mat-expansion-panel-header {
-    transition: all $transition-duration ease;
+//   mat-expansion-panel-header {
+//     transition: all $transition-duration ease;
 
-    &:hover:not(.mat-expanded) {
-      background: rgba(0, 0, 0, 0.02);
+//     &:hover:not(.mat-expanded) {
+//       background: rgba(0, 0, 0, 0.02);
 
-      @media (prefers-color-scheme: dark) {
-        background: rgba(255, 255, 255, 0.02);
-      }
-    }
-  }
+//       @media (prefers-color-scheme: dark) {
+//         background: rgba(255, 255, 255, 0.02);
+//       }
+//     }
+//   }
 
-  .mat-expansion-panel-content {
-    animation: fade-in 0.2s ease-out;
-  }
-}
+//   .mat-expansion-panel-content {
+//     animation: fade-in 0.2s ease-out;
+//   }
+// }
 
-// Permission Card in Expansion Panel
-.p-4.border.border-gray-200 {
-  transition: all $transition-duration ease;
-  cursor: default;
+// // Permission Card in Expansion Panel
+// .p-4.border.border-gray-200 {
+//   transition: all $transition-duration ease;
+//   cursor: default;
 
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: $shadow-md;
-    border-color: $primary-color;
+//   &:hover {
+//     transform: translateY(-2px);
+//     box-shadow: $shadow-md;
+//     border-color: $primary-color;
 
-    @media (prefers-color-scheme: dark) {
-      border-color: lighten($primary-color, 20%);
-    }
-  }
-}
+//     @media (prefers-color-scheme: dark) {
+//       border-color: lighten($primary-color, 20%);
+//     }
+//   }
+// }
 
-// ============================================
-// Permission Key Badge
-// ============================================
-.text-xs.font-mono {
-  font-family: 'Courier New', monospace;
-  transition: all $transition-duration ease;
+// // ============================================
+// // Permission Key Badge
+// // ============================================
+// .text-xs.font-mono {
+//   font-family: 'Courier New', monospace;
+//   transition: all $transition-duration ease;
 
-  &:hover {
-    background-color: rgba($primary-color, 0.1) !important;
-  }
-}
+//   &:hover {
+//     background-color: rgba($primary-color, 0.1) !important;
+//   }
+// }
 
-// ============================================
-// Paginator
-// ============================================
-mat-paginator {
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
-  background: rgba(0, 0, 0, 0.02);
+// // ============================================
+// // Paginator
+// // ============================================
+// mat-paginator {
+//   border-top: 1px solid rgba(0, 0, 0, 0.08);
+//   background: rgba(0, 0, 0, 0.02);
 
-  @media (prefers-color-scheme: dark) {
-    border-top-color: rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.02);
-  }
-}
+//   @media (prefers-color-scheme: dark) {
+//     border-top-color: rgba(255, 255, 255, 0.08);
+//     background: rgba(255, 255, 255, 0.02);
+//   }
+// }
 
-// ============================================
-// Snackbar Custom Styles
-// ============================================
-::ng-deep {
-  .success-snackbar {
-    .mdc-snackbar__surface {
-      background-color: $success-color !important;
-    }
+// // ============================================
+// // Snackbar Custom Styles
+// // ============================================
+// ::ng-deep {
+//   .success-snackbar {
+//     .mdc-snackbar__surface {
+//       background-color: $success-color !important;
+//     }
 
-    .mat-mdc-snack-bar-label {
-      color: white !important;
-    }
-  }
+//     .mat-mdc-snack-bar-label {
+//       color: white !important;
+//     }
+//   }
 
-  .error-snackbar {
-    .mdc-snackbar__surface {
-      background-color: $error-color !important;
-    }
+//   .error-snackbar {
+//     .mdc-snackbar__surface {
+//       background-color: $error-color !important;
+//     }
 
-    .mat-mdc-snack-bar-label {
-      color: white !important;
-    }
-  }
-}
+//     .mat-mdc-snack-bar-label {
+//       color: white !important;
+//     }
+//   }
+// }
 
-// ============================================
-// Responsive Adjustments
-// ============================================
-@media (max-width: 640px) {
-  mat-card {
-    mat-card-header,
-    mat-card-content {
-      padding: 1rem;
-    }
-  }
+// // ============================================
+// // Responsive Adjustments
+// // ============================================
+// @media (max-width: 640px) {
+//   mat-card {
+//     mat-card-header,
+//     mat-card-content {
+//       padding: 1rem;
+//     }
+//   }
 
-  .mat-mdc-table {
-    .mat-mdc-cell,
-    .mat-mdc-header-cell {
-      padding: 0.5rem;
-      font-size: 0.875rem;
-    }
-  }
+//   .mat-mdc-table {
+//     .mat-mdc-cell,
+//     .mat-mdc-header-cell {
+//       padding: 0.5rem;
+//       font-size: 0.875rem;
+//     }
+//   }
 
-  .text-3xl {
-    font-size: 1.875rem !important;
-  }
-}
+//   .text-3xl {
+//     font-size: 1.875rem !important;
+//   }
+// }
 
-// ============================================
-// Print Styles
-// ============================================
-@media print {
-  .mat-mdc-paginator,
-  button,
-  mat-form-field,
-  .animate-pulse-slow {
-    display: none !important;
-  }
+// // ============================================
+// // Print Styles
+// // ============================================
+// @media print {
+//   .mat-mdc-paginator,
+//   button,
+//   mat-form-field,
+//   .animate-pulse-slow {
+//     display: none !important;
+//   }
 
-  .mat-mdc-table {
-    .mat-mdc-row {
-      page-break-inside: avoid;
-    }
-  }
-}
+//   .mat-mdc-table {
+//     .mat-mdc-row {
+//       page-break-inside: avoid;
+//     }
+//   }
+// }
 
-// ============================================
-// Accessibility Enhancements
-// ============================================
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
+// // ============================================
+// // Accessibility Enhancements
+// // ============================================
+// @media (prefers-reduced-motion: reduce) {
+//   *,
+//   *::before,
+//   *::after {
+//     animation-duration: 0.01ms !important;
+//     animation-iteration-count: 1 !important;
+//     transition-duration: 0.01ms !important;
+//   }
+// }
 
-// Focus Visible Enhancement
-:focus-visible {
-  outline: 2px solid $primary-color;
-  outline-offset: 2px;
-  border-radius: 4px;
-}
+// // Focus Visible Enhancement
+// :focus-visible {
+//   outline: 2px solid $primary-color;
+//   outline-offset: 2px;
+//   border-radius: 4px;
+// }
 
-// ============================================
-// Utility Classes
-// ============================================
-.line-clamp-1 {
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
-}
+// // ============================================
+// // Utility Classes
+// // ============================================
+// .line-clamp-1 {
+//   overflow: hidden;
+//   display: -webkit-box;
+//   -webkit-box-orient: vertical;
+//   -webkit-line-clamp: 1;
+// }
 
-.line-clamp-2 {
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
+// .line-clamp-2 {
+//   overflow: hidden;
+//   display: -webkit-box;
+//   -webkit-box-orient: vertical;
+//   -webkit-line-clamp: 2;
+// }
 
-.truncate {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+// .truncate {
+//   overflow: hidden;
+//   text-overflow: ellipsis;
+//   white-space: nowrap;
+// }

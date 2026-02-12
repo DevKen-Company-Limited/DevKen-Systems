@@ -20,7 +20,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
             // Base table for all assessments (TPH)
             builder.ToTable("Assessments");
 
-            // Primary Key (only on base type)
+            // Primary Key
             builder.HasKey(a => a.Id);
 
             // Tenant Filter
@@ -32,44 +32,48 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
             builder.HasIndex(a => new { a.TenantId, a.SubjectId, a.ClassId, a.AssessmentDate });
             builder.HasIndex(a => new { a.TenantId, a.AssessmentType });
 
-            // Properties - Base properties only
+            // Properties
             builder.Property(a => a.Title)
-                .IsRequired()
-                .HasMaxLength(200);
+                   .IsRequired()
+                   .HasMaxLength(200);
 
             builder.Property(a => a.AssessmentType)
-                .IsRequired()
-                .HasMaxLength(20);
-
-            builder.Property(a => a.Description)
-                .HasMaxLength(1000);
+                   .IsRequired()
+                   .HasMaxLength(20);
 
             builder.Property(a => a.AssessmentDate)
-                .IsRequired();
+                   .IsRequired();
 
-            // Relationships - Base relationships only
+            builder.Property(a => a.MaximumScore)
+                   .IsRequired();
+
+            // Relationships
+            builder.HasOne(a => a.Teacher)
+                   .WithMany(t => t.AssessmentsCreated)
+                   .HasForeignKey(a => a.TeacherId)
+                   .OnDelete(DeleteBehavior.Restrict); // prevent multiple cascade paths
+
             builder.HasOne(a => a.Subject)
-                .WithMany()
-                .HasForeignKey(a => a.SubjectId)
-                .OnDelete(DeleteBehavior.Restrict);
+                   .WithMany()
+                   .HasForeignKey(a => a.SubjectId)
+                   .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne(a => a.Class)
-                .WithMany()
-                .HasForeignKey(a => a.ClassId)
-                .OnDelete(DeleteBehavior.Restrict);
+                   .WithMany()
+                   .HasForeignKey(a => a.ClassId)
+                   .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne(a => a.Term)
-                .WithMany(t => t.Assessments)
-                .HasForeignKey(a => a.TermId)
-                .OnDelete(DeleteBehavior.Restrict);
+                   .WithMany(t => t.Assessments)
+                   .HasForeignKey(a => a.TermId)
+                   .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne(a => a.AcademicYear)
-                .WithMany(ay => ay.Assessments)
-                .HasForeignKey(a => a.AcademicYearId)
-                .OnDelete(DeleteBehavior.Restrict);
+                   .WithMany(ay => ay.Assessments)
+                   .HasForeignKey(a => a.AcademicYearId)
+                   .OnDelete(DeleteBehavior.Restrict);
 
             // ── TPH Discriminator ─────────────────────────────────────────────
-            // This must be configured ONLY on the base type
             builder.HasDiscriminator<string>("AssessmentCategory")
                    .HasValue<Assessment1>("Base")
                    .HasValue<FormativeAssessment>("Formative")

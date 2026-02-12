@@ -1,0 +1,28 @@
+// Filter Panel Component Styles
+
+:host {
+  display: block;
+}
+
+.filter-panel {
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Custom input focus states
+.filter-field {
+  input:focus,
+  select:focus {
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  }
+}

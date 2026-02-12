@@ -1,0 +1,118 @@
+<!-- Pagination Container -->
+<div class="pagination-wrapper px-6 py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700">
+  <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+    
+    <!-- Items Info & Per Page Selector -->
+    <div class="flex items-center gap-4">
+      <!-- Showing X-Y of Z items -->
+      <p class="text-sm text-gray-700 dark:text-gray-300">
+        Showing 
+        <span class="font-semibold">{{ showingFrom }}-{{ showingTo }}</span>
+        of 
+        <span class="font-semibold">{{ totalItems }}</span>
+        {{ itemLabel }}
+      </p>
+
+      <!-- Items Per Page Selector -->
+      <div *ngIf="showItemsPerPageSelector" class="flex items-center gap-2">
+        <label class="text-sm text-gray-600 dark:text-gray-400">Per page:</label>
+        <select 
+          [value]="itemsPerPage"
+          (change)="onItemsPerPageChange(+$any($event.target).value)"
+          class="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none">
+          <option *ngFor="let option of itemsPerPageOptions" [value]="option">
+            {{ option }}
+          </option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Pagination Controls -->
+    <div class="flex items-center gap-2">
+      
+      <!-- First Page Button (optional) -->
+      <button 
+        *ngIf="showPageNumbers"
+        (click)="firstPage()" 
+        [disabled]="isFirstPage"
+        [class.opacity-50]="isFirstPage"
+        [class.cursor-not-allowed]="isFirstPage"
+        mat-icon-button
+        class="hidden sm:inline-flex">
+        <mat-icon>first_page</mat-icon>
+      </button>
+
+      <!-- Previous Button -->
+      <button 
+        (click)="previousPage()" 
+        [disabled]="isFirstPage"
+        [class.opacity-50]="isFirstPage"
+        [class.cursor-not-allowed]="isFirstPage"
+        mat-stroked-button 
+        color="primary" 
+        class="shadow-sm">
+        <mat-icon class="icon-size-5">chevron_left</mat-icon>
+        <span class="hidden sm:inline ml-1">Previous</span>
+      </button>
+
+      <!-- Page Number Buttons -->
+      <div *ngIf="showPageNumbers" class="hidden md:flex items-center gap-1">
+        <!-- Show first page if not in range -->
+        <ng-container *ngIf="pageNumbers[0] > 1">
+          <button mat-button (click)="goToPage(1)" class="min-w-[40px]">1</button>
+          <span *ngIf="pageNumbers[0] > 2" class="px-2 text-gray-500">...</span>
+        </ng-container>
+
+        <!-- Page number buttons -->
+        <button 
+          *ngFor="let page of pageNumbers"
+          (click)="goToPage(page)"
+          [class.bg-indigo-600]="page === currentPage"
+          [class.text-white]="page === currentPage"
+          [class.hover:bg-indigo-700]="page === currentPage"
+          [class.hover:bg-gray-100]="page !== currentPage"
+          [class.dark:hover:bg-gray-700]="page !== currentPage"
+          mat-button
+          class="min-w-[40px] transition-colors">
+          {{ page }}
+        </button>
+
+        <!-- Show last page if not in range -->
+        <ng-container *ngIf="pageNumbers[pageNumbers.length - 1] < totalPages">
+          <span *ngIf="pageNumbers[pageNumbers.length - 1] < totalPages - 1" class="px-2 text-gray-500">...</span>
+          <button mat-button (click)="goToPage(totalPages)" class="min-w-[40px]">{{ totalPages }}</button>
+        </ng-container>
+      </div>
+
+      <!-- Current Page Indicator (when not showing page numbers) -->
+      <div *ngIf="!showPageNumbers" class="hidden sm:flex items-center px-3 py-1 text-sm text-gray-700 dark:text-gray-300">
+        Page <span class="font-semibold mx-1">{{ currentPage }}</span> of <span class="font-semibold ml-1">{{ totalPages }}</span>
+      </div>
+
+      <!-- Next Button -->
+      <button 
+        (click)="nextPage()" 
+        [disabled]="isLastPage"
+        [class.opacity-50]="isLastPage"
+        [class.cursor-not-allowed]="isLastPage"
+        mat-flat-button 
+        color="primary" 
+        class="shadow-md">
+        <span class="hidden sm:inline mr-1">Next</span>
+        <mat-icon class="icon-size-5">chevron_right</mat-icon>
+      </button>
+
+      <!-- Last Page Button (optional) -->
+      <button 
+        *ngIf="showPageNumbers"
+        (click)="lastPage()" 
+        [disabled]="isLastPage"
+        [class.opacity-50]="isLastPage"
+        [class.cursor-not-allowed]="isLastPage"
+        mat-icon-button
+        class="hidden sm:inline-flex">
+        <mat-icon>last_page</mat-icon>
+      </button>
+    </div>
+  </div>
+</div>

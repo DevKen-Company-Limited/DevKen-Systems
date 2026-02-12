@@ -1,0 +1,60 @@
+<!-- Stats Cards Grid -->
+<div class="stats-grid grid gap-4" [ngClass]="gridColsClass" [class.mb-8]="!compact" [class.mb-4]="compact">
+  
+  <!-- Individual Stat Card -->
+  <div 
+    *ngFor="let card of cards" 
+    class="stat-card bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow duration-200"
+    [class.p-5]="!compact"
+    [class.p-4]="compact">
+    
+    <div class="flex items-center gap-4">
+      
+      <!-- Icon -->
+      <div 
+        class="rounded-xl flex items-center justify-center shrink-0"
+        [class.w-12]="!compact"
+        [class.h-12]="!compact"
+        [class.w-10]="compact"
+        [class.h-10]="compact"
+        [ngClass]="getIconBgClass(card.iconColor)">
+        <mat-icon [ngClass]="getIconTextClass(card.iconColor)">{{ card.icon }}</mat-icon>
+      </div>
+
+      <!-- Value & Label -->
+      <div class="min-w-0 flex-1">
+        <div class="flex items-baseline gap-2">
+          <p 
+            class="font-extrabold text-gray-900 dark:text-white truncate"
+            [class.text-2xl]="!compact"
+            [class.text-xl]="compact">
+            {{ card.value }}
+          </p>
+          
+          <!-- Trend Indicator (optional) -->
+          <div *ngIf="card.trend" class="flex items-center gap-0.5">
+            <mat-icon 
+              [class.text-green-600]="card.trend.isPositive"
+              [class.text-red-600]="!card.trend.isPositive"
+              class="icon-size-4">
+              {{ card.trend.isPositive ? 'trending_up' : 'trending_down' }}
+            </mat-icon>
+            <span 
+              class="text-xs font-semibold"
+              [class.text-green-600]="card.trend.isPositive"
+              [class.text-red-600]="!card.trend.isPositive">
+              {{ card.trend.value }}%
+            </span>
+          </div>
+        </div>
+        
+        <p 
+          class="text-gray-500 dark:text-gray-400 font-medium truncate"
+          [class.text-xs]="!compact"
+          [class.text-2xs]="compact">
+          {{ card.label }}
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

@@ -8,26 +8,23 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Reports
 {
     public class ProgressReport : TenantBaseEntity<Guid>
     {
+        #region Core Info
+
         public Guid StudentId { get; set; }
-
         public Guid ClassId { get; set; }
-
         public Guid TermId { get; set; }
-
         public Guid AcademicYearId { get; set; }
 
         [MaxLength(20)]
         public string ReportType { get; set; } = null!; // Termly, MidTerm, EndTerm
 
         public DateTime ReportDate { get; set; }
-
         public decimal? OverallScore { get; set; }
 
         [MaxLength(10)]
         public string? OverallGrade { get; set; }
 
         public int? ClassPosition { get; set; }
-
         public int? StreamPosition { get; set; }
 
         [MaxLength(2000)]
@@ -39,10 +36,12 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Reports
         public DateTime? NextReportDate { get; set; }
 
         public bool IsPublished { get; set; } = false;
-
         public DateTime? PublishedDate { get; set; }
 
-        // CBC Specific Fields
+        #endregion
+
+        #region CBC Specific
+
         [MaxLength(2000)]
         public string? CompetencyRemarks { get; set; }
 
@@ -54,12 +53,25 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Reports
 
         public bool RequiresParentConference { get; set; } = false;
 
-        // Navigation Properties
+        #endregion
+
+        #region Reviewer Info
+
+        // Track which teacher reviewed this report
+        public Guid? ReviewedById { get; set; }
+        public Teacher? ReviewedBy { get; set; }
+
+        #endregion
+
+        #region Navigation Properties
+
         public Student Student { get; set; } = null!;
         public Class Class { get; set; } = null!;
         public Term Term { get; set; } = null!;
         public AcademicYear AcademicYear { get; set; } = null!;
-        public ICollection<SubjectReport> SubjectReports { get; set; } = new List<SubjectReport>();
-        public ICollection<ProgressReportComment> Comments { get; set; } = new List<ProgressReportComment>();
+        public ICollection<SubjectReport> SubjectReports { get; set; } = new HashSet<SubjectReport>();
+        public ICollection<ProgressReportComment> Comments { get; set; } = new HashSet<ProgressReportComment>();
+
+        #endregion
     }
 }

@@ -1,0 +1,36 @@
+:host {
+  display: block;
+}
+
+.embedded {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+// Custom scrollbar styling
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+  
+  &:hover {
+    background: #94a3b8;
+  }
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+  
+  &:hover {
+    background: #64748b;
+  }
+}

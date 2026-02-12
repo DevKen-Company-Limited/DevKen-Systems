@@ -1,0 +1,128 @@
+<div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden" [ngClass]="wrapperClass">
+
+  <!-- Table Header -->
+  <div *ngIf="header" class="p-6 border-b border-gray-200 dark:border-gray-700">
+    <div class="flex items-center gap-3">
+      <div *ngIf="header.icon" 
+           class="w-10 h-10 rounded-lg flex items-center justify-center shadow-lg"
+           [ngClass]="header.iconGradient || 'bg-gradient-to-br from-indigo-500 via-violet-600 to-purple-700'">
+        <mat-icon class="text-white icon-size-5">{{ header.icon }}</mat-icon>
+      </div>
+      <div>
+        <h3 class="text-xl font-bold text-gray-900 dark:text-white">{{ header.title }}</h3>
+        <p *ngIf="header.subtitle" class="text-sm text-gray-500 dark:text-gray-400">{{ header.subtitle }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="flex items-center justify-center p-12">
+    <mat-spinner diameter="36"></mat-spinner>
+  </div>
+
+  <!-- Table -->
+  <div *ngIf="!loading" class="overflow-x-auto">
+    <table class="w-full">
+      <!-- Table Header -->
+      <thead class="bg-gray-50 dark:bg-gray-700/50">
+        <tr>
+          <!-- Column Headers -->
+          <th *ngFor="let column of columns; trackBy: trackByColumn"
+              class="px-6 py-4 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider"
+              [ngClass]="[getAlignmentClass(column), getResponsiveClass(column), column.headerClass || '']"
+              [class.cursor-pointer]="column.sortable"
+              (click)="column.sortable ? onColumnHeaderClick(column) : null">
+            <div class="flex items-center gap-2" [class.justify-center]="column.align === 'center'" [class.justify-end]="column.align === 'right'">
+              <span>{{ column.label }}</span>
+              <mat-icon *ngIf="column.sortable" class="icon-size-4 text-gray-400">unfold_more</mat-icon>
+            </div>
+          </th>
+
+          <!-- Actions Column -->
+          <th *ngIf="showActions && actions.length > 0"
+              class="px-6 py-4 text-right text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+            Actions
+          </th>
+        </tr>
+      </thead>
+
+      <!-- Table Body -->
+      <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+        <!-- Data Rows -->
+        <tr *ngFor="let row of data; let i = index; trackBy: trackByRow"
+            [ngClass]="getRowClass(i)"
+            (click)="onRowClick(row)">
+          
+          <!-- Data Cells -->
+          <td *ngFor="let column of columns; trackBy: trackByColumn"
+              class="px-6 py-4"
+              [ngClass]="[getAlignmentClass(column), getResponsiveClass(column), column.cellClass || '']">
+            
+            <!-- Custom Template -->
+            <ng-container *ngIf="cellTemplates[column.id]; else defaultCell">
+              <ng-container *ngTemplateOutlet="cellTemplates[column.id]; context: { $implicit: row, column: column }"></ng-container>
+            </ng-container>
+
+            <!-- Default Cell -->
+            <ng-template #defaultCell>
+              <span class="text-sm text-gray-700 dark:text-gray-300">
+                {{ getCellValue(row, column) || '—' }}
+              </span>
+            </ng-template>
+          </td>
+
+          <!-- Actions Cell -->
+          <td *ngIf="showActions && actions.length > 0" class="px-6 py-4 whitespace-nowrap text-right">
+            <ng-container *ngIf="getVisibleActions(row).length > 0">
+              <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Actions">
+                <mat-icon>more_vert</mat-icon>
+              </button>
+              <mat-menu #menu="matMenu">
+                <ng-container *ngFor="let action of getVisibleActions(row); trackBy: trackByAction">
+                  <button mat-menu-item 
+                          (click)="onActionClick(action, row, $event)"
+                          [disabled]="isActionDisabled(action, row)"
+                          [ngClass]="getActionColorClass(action)">
+                    <mat-icon [ngClass]="getActionColorClass(action)">{{ action.icon }}</mat-icon>
+                    <span>{{ action.label }}</span>
+                  </button>
+                  <mat-divider *ngIf="action.divider"></mat-divider>
+                </ng-container>
+              </mat-menu>
+            </ng-container>
+          </td>
+        </tr>
+
+        <!-- Empty State -->
+        <tr *ngIf="data.length === 0">
+          <td [attr.colspan]="columns.length + (showActions && actions.length > 0 ? 1 : 0)" 
+              class="px-6 py-16 text-center">
+            <div class="flex flex-col items-center justify-center gap-3">
+              <div class="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center">
+                <mat-icon class="text-indigo-400 icon-size-10">
+                  {{ emptyState?.icon || 'inbox' }}
+                </mat-icon>
+              </div>
+              <p class="text-gray-600 dark:text-gray-400 font-semibold">
+                {{ emptyState?.message || 'No data found' }}
+              </p>
+              <p *ngIf="emptyState?.description" class="text-sm text-gray-400">
+                {{ emptyState.description }}
+              </p>
+              <button *ngIf="emptyState?.action" 
+                      mat-flat-button 
+                      color="primary" 
+                      (click)="emptyState.action.handler()" 
+                      class="mt-2">
+                <mat-icon *ngIf="emptyState.action.icon" class="icon-size-5">
+                  {{ emptyState.action.icon }}
+                </mat-icon>
+                <span [class.ml-1]="emptyState.action.icon">{{ emptyState.action.label }}</span>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

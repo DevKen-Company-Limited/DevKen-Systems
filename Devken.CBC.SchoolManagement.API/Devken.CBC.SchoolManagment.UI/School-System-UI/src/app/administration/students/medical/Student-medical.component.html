@@ -1,74 +1,103 @@
-<!-- steps/student-medical/student-medical.component.html -->
-<div class="section-header">
-  <div class="section-icon-row">
-    <div class="section-icon" style="background: linear-gradient(135deg,#ec4899,#be185d)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+<!-- Student Medical Component - Fuse/Material + Tailwind -->
+<div class="max-w-6xl">
+
+  <!-- Section Header -->
+  <div class="flex items-start gap-4 mb-8">
+    <div class="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 shadow-lg">
+      <mat-icon class="text-white !w-7 !h-7" svgIcon="heroicons_outline:heart"></mat-icon>
     </div>
-    <div>
-      <h2 class="section-title">Medical & Health</h2>
-      <p class="section-subtitle">Health information helps school staff provide appropriate care. All fields are optional.</p>
+    <div class="flex-1">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Medical & Health</h2>
+      <p class="text-gray-600 dark:text-gray-400">Health information helps school staff provide appropriate care. All fields are optional.</p>
     </div>
   </div>
+
+  <form [formGroup]="form" novalidate class="space-y-6">
+
+    <!-- Info Card -->
+    <fuse-alert 
+      type="info" 
+      appearance="soft"
+      [showIcon]="true">
+      Medical information is kept confidential and only shared with authorised school health staff.
+    </fuse-alert>
+
+    <!-- Medical Details -->
+    <mat-card class="shadow-md">
+      <mat-card-header class="!pb-2">
+        <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+          <mat-icon svgIcon="heroicons_outline:clipboard-document-list" class="text-pink-600"></mat-icon>
+          Medical Details
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Blood Group</mat-label>
+            <mat-select formControlName="bloodGroup">
+              <mat-option value="">Select blood group</mat-option>
+              <mat-option value="A+">A+</mat-option>
+              <mat-option value="A-">A-</mat-option>
+              <mat-option value="B+">B+</mat-option>
+              <mat-option value="B-">B-</mat-option>
+              <mat-option value="AB+">AB+</mat-option>
+              <mat-option value="AB-">AB-</mat-option>
+              <mat-option value="O+">O+</mat-option>
+              <mat-option value="O-">O-</mat-option>
+              <mat-option value="Unknown">Unknown</mat-option>
+            </mat-select>
+            <mat-icon matPrefix svgIcon="heroicons_outline:beaker" class="text-gray-400"></mat-icon>
+          </mat-form-field>
+        </div>
+
+        <div class="space-y-4">
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Medical Conditions</mat-label>
+            <textarea matInput formControlName="medicalConditions" rows="2" placeholder="e.g. Asthma, Diabetes, Epilepsy…"></textarea>
+            <mat-hint>Any chronic or ongoing medical conditions</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Allergies</mat-label>
+            <textarea matInput formControlName="allergies" rows="2" placeholder="e.g. Peanuts, Penicillin, Dust…"></textarea>
+            <mat-hint>Food, medication, or environmental allergies</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Special Needs</mat-label>
+            <textarea matInput formControlName="specialNeeds" rows="2" placeholder="e.g. Hearing impairment, Visual impairment…"></textarea>
+            <mat-hint>Physical, learning, or developmental needs</mat-hint>
+          </mat-form-field>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Special Support -->
+    <mat-card class="shadow-md">
+      <mat-card-content class="!p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-4">
+            <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/20">
+              <mat-icon class="text-amber-600" svgIcon="heroicons_outline:star"></mat-icon>
+            </div>
+            <div>
+              <div class="font-semibold text-gray-900 dark:text-white">Requires Special Support</div>
+              <div class="text-sm text-gray-600 dark:text-gray-400">Student needs additional learning or physical support at school</div>
+            </div>
+          </div>
+          <mat-slide-toggle formControlName="requiresSpecialSupport" color="accent"></mat-slide-toggle>
+        </div>
+
+        <fuse-alert 
+          *ngIf="form.get('requiresSpecialSupport')?.value"
+          type="warning" 
+          appearance="soft"
+          [showIcon]="true">
+          Please ensure the Special Needs field above is filled in detail. This helps allocate the right support resources.
+        </fuse-alert>
+      </mat-card-content>
+    </mat-card>
+
+  </form>
+
 </div>
-
-<form [formGroup]="form" novalidate>
-
-  <div class="info-card" style="margin-bottom:24px">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-    <span>Medical information is kept confidential and only shared with authorised school health staff.</span>
-  </div>
-
-  <div class="subsection">
-    <h3 class="subsection-title">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-      Medical Details
-    </h3>
-    <div class="form-grid cols-3">
-      <div class="form-group">
-        <label class="form-label">Blood Group</label>
-        <select class="form-select" formControlName="bloodGroup">
-          <option value="">Select blood group</option>
-          <option>A+</option><option>A-</option>
-          <option>B+</option><option>B-</option>
-          <option>AB+</option><option>AB-</option>
-          <option>O+</option><option>O-</option>
-          <option>Unknown</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="form-grid cols-1" style="margin-top:16px">
-      <div class="form-group">
-        <label class="form-label">Medical Conditions</label>
-        <textarea class="form-textarea" formControlName="medicalConditions" rows="2"
-          placeholder="e.g. Asthma, Diabetes, Epilepsy…"></textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Allergies</label>
-        <textarea class="form-textarea" formControlName="allergies" rows="2"
-          placeholder="e.g. Peanuts, Penicillin, Dust…"></textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Special Needs</label>
-        <textarea class="form-textarea" formControlName="specialNeeds" rows="2"
-          placeholder="e.g. Hearing impairment, Visual impairment…"></textarea>
-      </div>
-    </div>
-  </div>
-
-  <div class="subsection">
-    <label class="toggle-row" for="specialSupportToggle">
-      <input class="toggle" id="specialSupportToggle" type="checkbox" formControlName="requiresSpecialSupport">
-      <div>
-        <div class="toggle-label">Requires Special Support</div>
-        <div class="toggle-sub">Student needs additional learning or physical support at school</div>
-      </div>
-    </label>
-
-    <div *ngIf="form.get('requiresSpecialSupport')?.value" class="special-support-note" style="margin-top:14px">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      Please ensure the Special Needs field above is filled in detail. This helps allocate the right support resources.
-    </div>
-  </div>
-
-</form>
