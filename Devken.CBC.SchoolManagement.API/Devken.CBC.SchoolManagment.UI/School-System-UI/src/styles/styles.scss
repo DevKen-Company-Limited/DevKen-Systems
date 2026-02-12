@@ -92,3 +92,23 @@
     }
   }
 }
+
+
+// Remove padding from dialog containers
+.no-padding-dialog {
+  .mat-mdc-dialog-container,
+  .mat-dialog-container {
+    padding: 0 !important;
+    overflow: hidden;
+  }
+  
+  .mdc-dialog__surface,
+  .mat-mdc-dialog-surface {
+    padding: 0 !important;
+  }
+}
+
+.teacher-dialog {
+  border-radius: 16px;
+  overflow: hidden;
+}

@@ -633,115 +633,119 @@ export class TeachersComponent implements OnInit, OnDestroy {
       });
   }
 
-  // ── Create Teacher ────────────────────────────────────────────────────────────
-  openCreate(): void {
-    const dialogRef = this._dialog.open(CreateEditTeacherDialogComponent, {
-      panelClass: 'teacher-dialog',
-      maxHeight: '95vh',
-      disableClose: true,
-      autoFocus: 'input',
-      data: { mode: 'create' },
-    });
+// ── Create Teacher ────────────────────────────────────────────────────────────
+openCreate(): void {
+  const dialogRef = this._dialog.open(CreateEditTeacherDialogComponent, {
+    panelClass: ['teacher-dialog', 'no-padding-dialog'],
+    width: '900px',
+    maxWidth: '95vw',
+    maxHeight: '95vh',
+    disableClose: true,
+    autoFocus: 'input',
+    data: { mode: 'create' },
+  });
 
-    dialogRef.afterClosed()
-      .pipe(takeUntil(this._unsubscribe))
-      .subscribe((result: CreateEditTeacherDialogResult | null) => {
-        if (!result) return;
+  dialogRef.afterClosed()
+    .pipe(takeUntil(this._unsubscribe))
+    .subscribe((result: CreateEditTeacherDialogResult | null) => {
+      if (!result) return;
 
-        const request: CreateTeacherRequest = result.formData;
-        const photoFile = result.photoFile ?? null;
+      const request: CreateTeacherRequest = result.formData;
+      const photoFile = result.photoFile ?? null;
 
-        // Step 1: Create the teacher (without photo in the payload)
-        this._service.create(request)
-          .pipe(takeUntil(this._unsubscribe))
-          .subscribe({
-            next: (res) => {
-              if (res.success) {
-                const teacherId = res.data.id;
+      // Step 1: Create the teacher (without photo in the payload)
+      this._service.create(request)
+        .pipe(takeUntil(this._unsubscribe))
+        .subscribe({
+          next: (res) => {
+            if (res.success) {
+              const teacherId = res.data.id;
 
-                // Step 2: Upload photo separately if provided
-                if (photoFile && teacherId) {
-                  this._service.uploadPhoto(teacherId, photoFile)
-                    .pipe(takeUntil(this._unsubscribe))
-                    .subscribe({
-                      next: () => {
-                        this._showSuccess('Teacher created with photo successfully');
-                        this.loadAll();
-                      },
-                      error: (photoErr) => {
-                        console.error('Photo upload failed:', photoErr);
-                        this._showSuccess('Teacher created, but photo upload failed. You can upload it later.');
-                        this.loadAll();
-                      }
-                    });
-                } else {
-                  this._showSuccess('Teacher created successfully');
-                  this.loadAll();
-                }
+              // Step 2: Upload photo separately if provided
+              if (photoFile && teacherId) {
+                this._service.uploadPhoto(teacherId, photoFile)
+                  .pipe(takeUntil(this._unsubscribe))
+                  .subscribe({
+                    next: () => {
+                      this._showSuccess('Teacher created with photo successfully');
+                      this.loadAll();
+                    },
+                    error: (photoErr) => {
+                      console.error('Photo upload failed:', photoErr);
+                      this._showSuccess('Teacher created, but photo upload failed. You can upload it later.');
+                      this.loadAll();
+                    }
+                  });
+              } else {
+                this._showSuccess('Teacher created successfully');
+                this.loadAll();
               }
-            },
-            error: (err) => {
-              console.error('Failed to create teacher:', err);
-              this._showError(err.error?.message || 'Failed to create teacher');
             }
-          });
-      });
-  }
-
-  // ── Edit Teacher ──────────────────────────────────────────────────────────────
-  openEdit(teacher: TeacherDto): void {
-    const dialogRef = this._dialog.open(CreateEditTeacherDialogComponent, {
-      panelClass: 'teacher-dialog',
-      maxHeight: '95vh',
-      disableClose: true,
-      autoFocus: 'input',
-      data: { mode: 'edit', teacher },
+          },
+          error: (err) => {
+            console.error('Failed to create teacher:', err);
+            this._showError(err.error?.message || 'Failed to create teacher');
+          }
+        });
     });
+}
 
-    dialogRef.afterClosed()
-      .pipe(takeUntil(this._unsubscribe))
-      .subscribe((result: CreateEditTeacherDialogResult | null) => {
-        if (!result) return;
+// ── Edit Teacher ──────────────────────────────────────────────────────────────
+openEdit(teacher: TeacherDto): void {
+  const dialogRef = this._dialog.open(CreateEditTeacherDialogComponent, {
+    panelClass: ['teacher-dialog', 'no-padding-dialog'],
+    width: '900px',
+    maxWidth: '95vw',
+    maxHeight: '95vh',
+    disableClose: true,
+    autoFocus: 'input',
+    data: { mode: 'edit', teacher },
+  });
 
-        const request: UpdateTeacherRequest = result.formData;
-        const photoFile = result.photoFile ?? null;
+  dialogRef.afterClosed()
+    .pipe(takeUntil(this._unsubscribe))
+    .subscribe((result: CreateEditTeacherDialogResult | null) => {
+      if (!result) return;
 
-        // Step 1: Update the teacher (without photo in the payload)
-        this._service.update(teacher.id, request)
-          .pipe(takeUntil(this._unsubscribe))
-          .subscribe({
-            next: (res) => {
-              if (res.success) {
+      const request: UpdateTeacherRequest = result.formData;
+      const photoFile = result.photoFile ?? null;
 
-                // Step 2: Upload photo separately if a new photo was provided
-                if (photoFile) {
-                  this._service.uploadPhoto(teacher.id, photoFile)
-                    .pipe(takeUntil(this._unsubscribe))
-                    .subscribe({
-                      next: () => {
-                        this._showSuccess('Teacher updated with photo successfully');
-                        this.clearAndReloadImage(teacher.id, null);
-                        this.loadAll();
-                      },
-                      error: (photoErr) => {
-                        console.error('Photo upload failed:', photoErr);
-                        this._showSuccess('Teacher updated, but photo upload failed. You can upload it later.');
-                        this.loadAll();
-                      }
-                    });
-                } else {
-                  this._showSuccess('Teacher updated successfully');
-                  this.loadAll();
-                }
+      // Step 1: Update the teacher (without photo in the payload)
+      this._service.update(teacher.id, request)
+        .pipe(takeUntil(this._unsubscribe))
+        .subscribe({
+          next: (res) => {
+            if (res.success) {
+
+              // Step 2: Upload photo separately if a new photo was provided
+              if (photoFile) {
+                this._service.uploadPhoto(teacher.id, photoFile)
+                  .pipe(takeUntil(this._unsubscribe))
+                  .subscribe({
+                    next: () => {
+                      this._showSuccess('Teacher updated with photo successfully');
+                      this.clearAndReloadImage(teacher.id, null);
+                      this.loadAll();
+                    },
+                    error: (photoErr) => {
+                      console.error('Photo upload failed:', photoErr);
+                      this._showSuccess('Teacher updated, but photo upload failed. You can upload it later.');
+                      this.loadAll();
+                    }
+                  });
+              } else {
+                this._showSuccess('Teacher updated successfully');
+                this.loadAll();
               }
-            },
-            error: (err) => {
-              console.error('Failed to update teacher:', err);
-              this._showError(err.error?.message || 'Failed to update teacher');
             }
-          });
-      });
-  }
+          },
+          error: (err) => {
+            console.error('Failed to update teacher:', err);
+            this._showError(err.error?.message || 'Failed to update teacher');
+          }
+        });
+    });
+}
 
   // ── Toggle Active Status ──────────────────────────────────────────────────────
   toggleActive(teacher: TeacherDto): void {
