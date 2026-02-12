@@ -2,7 +2,6 @@ import { Component, Inject, OnInit, ViewChild, TemplateRef, AfterViewInit } from
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -22,7 +21,9 @@ import { DocumentNumberSeriesService } from 'app/core/DevKenService/Settings/Num
 import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
 import { SchoolDto } from 'app/Tenant/types/school';
 import { UserService } from 'app/core/user/user.service';
+
 import { finalize } from 'rxjs/operators';
+import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
 
 export interface CreateEditDocumentNumberSeriesDialogData {
   mode: 'create' | 'edit';
@@ -38,7 +39,6 @@ export interface CreateEditDocumentNumberSeriesDialogData {
     CommonModule,
     ReactiveFormsModule,
     MatDialogModule,
-    MatSnackBarModule,
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
@@ -147,7 +147,7 @@ export class CreateEditDocumentNumberSeriesDialogComponent implements OnInit, Af
     private service: DocumentNumberSeriesService,
     private schoolService: SchoolService,
     private userService: UserService,
-    private snackBar: MatSnackBar,
+    private alertService: AlertService, // ✅ Replace MatSnackBar with AlertService
     private dialogRef: MatDialogRef<CreateEditDocumentNumberSeriesDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: CreateEditDocumentNumberSeriesDialogData
   ) {
@@ -287,10 +287,11 @@ export class CreateEditDocumentNumberSeriesDialogComponent implements OnInit, Af
         },
         error: (err) => {
           console.error('Failed to load schools:', err);
-          this.snackBar.open('Failed to load schools. Please try again.', 'Close', {
-            duration: 5000,
-            panelClass: ['bg-red-600', 'text-white']
-          });
+          // ✅ Use AlertService instead of MatSnackBar
+          this.alertService.error(
+            'Failed to load schools. Please try again.',
+            'Loading Error'
+          );
         }
       });
   }
@@ -312,10 +313,11 @@ export class CreateEditDocumentNumberSeriesDialogComponent implements OnInit, Af
         this.activeTab = invalidTabIndex;
       }
       
-      this.snackBar.open('Please fix all errors before saving', 'Close', { 
-        duration: 5000,
-        panelClass: ['bg-red-600', 'text-white']
-      });
+      // ✅ Use AlertService instead of MatSnackBar
+      this.alertService.error(
+        'Please fix all errors before saving',
+        'Validation Error'
+      );
       return;
     }
 
@@ -365,24 +367,26 @@ export class CreateEditDocumentNumberSeriesDialogComponent implements OnInit, Af
       .subscribe({
         next: (res) => {
           if (res.success) {
-            this.snackBar.open(res.message || 'Number series created successfully', 'Close', {
-              duration: 3000,
-              panelClass: ['bg-green-600', 'text-white']
-            });
+            // ✅ Use AlertService success alert
+            this.alertService.success(
+              res.message || 'Number series created successfully',
+              'Success'
+            );
             this.dialogRef.close({ success: true, data: res.data });
           } else {
-            this.snackBar.open(res.message || 'Failed to create number series', 'Close', {
-              duration: 5000,
-              panelClass: ['bg-red-600', 'text-white']
-            });
+            // ✅ Use AlertService error alert
+            this.alertService.error(
+              res.message || 'Failed to create number series',
+              'Creation Failed'
+            );
           }
         },
         error: (err) => {
           console.error('Create error:', err);
-          this.snackBar.open(
-            err?.error?.message || 'An error occurred while creating number series', 
-            'Close', 
-            { duration: 5000, panelClass: ['bg-red-600', 'text-white'] }
+          // ✅ Use AlertService error alert with detailed message
+          this.alertService.error(
+            err?.error?.message || 'An error occurred while creating number series',
+            'Error'
           );
         }
       });
@@ -402,24 +406,26 @@ export class CreateEditDocumentNumberSeriesDialogComponent implements OnInit, Af
       .subscribe({
         next: (res) => {
           if (res.success) {
-            this.snackBar.open(res.message || 'Number series updated successfully', 'Close', {
-              duration: 3000,
-              panelClass: ['bg-green-600', 'text-white']
-            });
+            // ✅ Use AlertService success alert
+            this.alertService.success(
+              res.message || 'Number series updated successfully',
+              'Success'
+            );
             this.dialogRef.close({ success: true, data: res.data });
           } else {
-            this.snackBar.open(res.message || 'Failed to update number series', 'Close', {
-              duration: 5000,
-              panelClass: ['bg-red-600', 'text-white']
-            });
+            // ✅ Use AlertService error alert
+            this.alertService.error(
+              res.message || 'Failed to update number series',
+              'Update Failed'
+            );
           }
         },
         error: (err) => {
           console.error('Update error:', err);
-          this.snackBar.open(
-            err?.error?.message || 'An error occurred while updating number series', 
-            'Close', 
-            { duration: 5000, panelClass: ['bg-red-600', 'text-white'] }
+          // ✅ Use AlertService error alert with detailed message
+          this.alertService.error(
+            err?.error?.message || 'An error occurred while updating number series',
+            'Error'
           );
         }
       });

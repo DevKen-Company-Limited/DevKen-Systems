@@ -1,0 +1,70 @@
+<div class="alert-container">
+  <div 
+    *ngFor="let alert of alerts; trackBy: trackByFn" 
+    class="alert-wrapper"
+    [@slideIn]
+  >
+    <div 
+      class="alert"
+      [ngClass]="'alert-' + alert.type"
+    >
+      <!-- Icon -->
+      <div class="alert-icon">
+        <mat-icon 
+          [svgIcon]="getIconClass(alert.type)"
+          class="icon-size-6"
+        ></mat-icon>
+      </div>
+
+      <!-- Content -->
+      <div class="alert-content">
+        <div class="alert-title" *ngIf="alert.title">
+          {{ alert.title }}
+        </div>
+        <div class="alert-message">
+          {{ alert.message }}
+        </div>
+
+        <!-- Confirm Actions -->
+        <div class="alert-actions" *ngIf="alert.type === 'confirm'">
+          <button 
+            type="button"
+            class="alert-button alert-button-cancel"
+            (click)="onCancel(alert)"
+          >
+            {{ alert.cancelText || 'Cancel' }}
+          </button>
+          <button 
+            type="button"
+            class="alert-button alert-button-confirm"
+            (click)="onConfirm(alert)"
+          >
+            {{ alert.confirmText || 'Confirm' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Close Button -->
+      <button 
+        *ngIf="alert.dismissible"
+        type="button"
+        class="alert-close"
+        (click)="dismiss(alert.id)"
+        aria-label="Close alert"
+      >
+        <mat-icon 
+          svgIcon="heroicons_solid:x-mark"
+          class="icon-size-5"
+        ></mat-icon>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Backdrop for confirm dialogs -->
+<div 
+  class="alert-backdrop"
+*ngIf="alerts.length > 0 && hasConfirmAlert"
+
+  [@fadeIn]
+></div>
