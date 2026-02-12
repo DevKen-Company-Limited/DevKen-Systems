@@ -58,8 +58,8 @@ namespace Devken.CBC.SchoolManagement.Application.DTOs.Academic
         [Required, MaxLength(100)]
         public string LastName { get; set; } = null!;
 
-        [Required, MaxLength(50)]
-        public string TeacherNumber { get; set; } = null!;
+        [MaxLength(50)]
+        public string? TeacherNumber { get; set; }
 
         public DateTime? DateOfBirth { get; set; }
         public Gender Gender { get; set; }

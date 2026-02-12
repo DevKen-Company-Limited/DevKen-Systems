@@ -18,6 +18,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.NumberSeries
         public bool ResetEveryYear { get; set; }
         public int? LastGeneratedYear { get; set; }
         public School? Tenant { get; set; }
+        public string? Description { get; set; }
     }
 
 }

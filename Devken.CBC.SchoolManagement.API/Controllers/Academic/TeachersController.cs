@@ -1,9 +1,11 @@
 ﻿using Devken.CBC.SchoolManagement.Api.Controllers.Common;
 using Devken.CBC.SchoolManagement.Application.DTOs.Academic;
+using Devken.CBC.SchoolManagement.Application.Exceptions;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
 using Devken.CBC.SchoolManagement.Application.Service.Activities;
+using Devken.CBC.SchoolManagement.Application.Services.Interfaces.Academic;
 using Devken.CBC.SchoolManagement.Application.Services.Interfaces.Images;
-using Devken.CBC.SchoolManagement.Domain.Entities.Academic;
+using Devken.CBC.SchoolManagement.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -18,347 +20,318 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Teachers
     [Authorize]
     public class TeachersController : BaseApiController
     {
+        private readonly ITeacherService _teacherService;
         private readonly IRepositoryManager _repositories;
         private readonly IImageUploadService _imageUpload;
 
         public TeachersController(
+            ITeacherService teacherService,
             IRepositoryManager repositories,
             IImageUploadService imageUpload,
             IUserActivityService? activityService = null)
             : base(activityService)
         {
+            _teacherService = teacherService ?? throw new ArgumentNullException(nameof(teacherService));
             _repositories = repositories ?? throw new ArgumentNullException(nameof(repositories));
             _imageUpload = imageUpload ?? throw new ArgumentNullException(nameof(imageUpload));
         }
 
-        // ── GET api/academic/teachers ─────────────────────────────────────────
-        /// <summary>
-        /// Get teachers – SuperAdmin sees all, others only their school.
-        /// </summary>
+        #region Helpers
+
+        private string GetFullExceptionMessage(Exception ex)
+        {
+            var message = ex.Message;
+            var inner = ex.InnerException;
+            while (inner != null)
+            {
+                message += $" | Inner: {inner.Message}";
+                inner = inner.InnerException;
+            }
+            return message;
+        }
+
+        private UpdateTeacherRequest MapExistingTeacherToUpdateRequest(TeacherDto existingTeacher, string? photoUrl = null)
+        {
+            return new UpdateTeacherRequest
+            {
+                FirstName = existingTeacher.FirstName,
+                MiddleName = existingTeacher.MiddleName,
+                LastName = existingTeacher.LastName,
+                DateOfBirth = existingTeacher.DateOfBirth,
+                Gender = Enum.Parse<Gender>(existingTeacher.Gender),
+                TscNumber = existingTeacher.TscNumber,
+                Nationality = existingTeacher.Nationality,
+                IdNumber = existingTeacher.IdNumber,
+                PhoneNumber = existingTeacher.PhoneNumber,
+                Email = existingTeacher.Email,
+                Address = existingTeacher.Address,
+                EmploymentType = Enum.Parse<EmploymentType>(existingTeacher.EmploymentType),
+                Designation = Enum.Parse<Designation>(existingTeacher.Designation),
+                Qualification = existingTeacher.Qualification,
+                Specialization = existingTeacher.Specialization,
+                DateOfEmployment = existingTeacher.DateOfEmployment,
+                IsClassTeacher = existingTeacher.IsClassTeacher,
+                CurrentClassId = existingTeacher.CurrentClassId,
+                PhotoUrl = photoUrl ?? existingTeacher.PhotoUrl,
+                IsActive = existingTeacher.IsActive,
+                Notes = existingTeacher.Notes
+            };
+        }
+
+        #endregion
+
+        #region GET
+
         [HttpGet]
         public async Task<IActionResult> GetAll([FromQuery] Guid? schoolId = null)
         {
             if (!HasPermission("Teacher.Read"))
                 return ForbiddenResponse("You do not have permission to view teachers.");
 
-            if (IsSuperAdmin)
+            try
             {
-                var teachers = schoolId.HasValue
-                    ? await _repositories.Teacher.GetBySchoolIdAsync(schoolId.Value, trackChanges: false)
-                    : await _repositories.Teacher.GetAllAsync(trackChanges: false);
+                // ✅ Using new helper method - clean and concise!
+                var userSchoolId = GetUserSchoolIdOrNullWithValidation();
+                var targetSchoolId = IsSuperAdmin ? schoolId : userSchoolId;
 
-                return SuccessResponse(teachers.Select(ToDto));
+                var teachers = await _teacherService.GetAllTeachersAsync(
+                    targetSchoolId,
+                    userSchoolId,
+                    IsSuperAdmin);
+
+                Response.Headers.Add("X-Access-Level", IsSuperAdmin ? "SuperAdmin" : "SchoolAdmin");
+                Response.Headers.Add("X-School-Filter", targetSchoolId?.ToString() ?? "All Schools");
+
+                return SuccessResponse(teachers);
             }
-
-            var userSchoolId = GetCurrentUserSchoolId();
-            if (userSchoolId == null)
-                return ForbiddenResponse("You must be assigned to a school to view teachers.");
-
-            var schoolTeachers = await _repositories.Teacher.GetBySchoolIdAsync(userSchoolId, trackChanges: false);
-            return SuccessResponse(schoolTeachers.Select(ToDto));
+            catch (UnauthorizedAccessException ex) { return UnauthorizedResponse(ex.Message); }
+            catch (UnauthorizedException ex) { return ForbiddenResponse(ex.Message); }
+            catch (Exception ex) { return InternalServerErrorResponse(GetFullExceptionMessage(ex)); }
         }
 
-        // ── GET api/academic/teachers/{id} ────────────────────────────────────
-        /// <summary>
-        /// Get teacher by ID – SuperAdmin or same school.
-        /// </summary>
         [HttpGet("{id:guid}")]
         public async Task<IActionResult> GetById(Guid id)
         {
             if (!HasPermission("Teacher.Read"))
                 return ForbiddenResponse("You do not have permission to view this teacher.");
 
-            var teacher = await _repositories.Teacher.GetByIdWithDetailsAsync(id, trackChanges: false);
-            if (teacher == null)
-                return NotFoundResponse();
+            try
+            {
+                // ✅ Using new helper method
+                var userSchoolId = GetUserSchoolIdOrNullWithValidation();
 
-            var accessError = ValidateSchoolAccess(teacher.TenantId);
-            if (accessError != null)
-                return accessError;
+                var teacher = await _teacherService.GetTeacherByIdAsync(
+                    id,
+                    userSchoolId,
+                    IsSuperAdmin);
 
-            return SuccessResponse(ToDto(teacher));
+                return SuccessResponse(teacher);
+            }
+            catch (NotFoundException ex) { return NotFoundResponse(ex.Message); }
+            catch (UnauthorizedAccessException ex) { return UnauthorizedResponse(ex.Message); }
+            catch (UnauthorizedException ex) { return ForbiddenResponse(ex.Message); }
+            catch (Exception ex) { return InternalServerErrorResponse(GetFullExceptionMessage(ex)); }
         }
 
-        // ── POST api/academic/teachers ────────────────────────────────────────
-        /// <summary>
-        /// Create a teacher – SuperAdmin or SchoolAdmin (own school).
-        /// </summary>
+        #endregion
+
+        #region CREATE
+
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateTeacherRequest request)
         {
             if (!HasPermission("Teacher.Write"))
                 return ForbiddenResponse("You do not have permission to create teachers.");
-
             if (!ModelState.IsValid)
-                return ValidationErrorResponse(ModelState.ToDictionary(
-                    k => k.Key,
-                    v => v.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
+                return ValidationErrorResponse(ModelState);
 
-            // Resolve target school
-            Guid targetSchoolId;
-            if (IsSuperAdmin)
+            try
             {
-                targetSchoolId = request.SchoolId;
+                // ✅ Using new helper method
+                var userSchoolId = GetUserSchoolIdOrNullWithValidation();
+
+                if (!IsSuperAdmin)
+                {
+                    request.SchoolId = userSchoolId!.Value;
+                }
+                else if (request.SchoolId == null || request.SchoolId == Guid.Empty)
+                {
+                    return ValidationErrorResponse("SchoolId is required for SuperAdmin.");
+                }
+
+                var result = await _teacherService.CreateTeacherAsync(request, userSchoolId, IsSuperAdmin);
+
+                await LogUserActivityAsync(
+                    "teacher.create",
+                    $"Created teacher {result.TeacherNumber} - {result.FullName} in school {result.SchoolId}");
+
+                return CreatedResponse(result, "Teacher created successfully");
             }
-            else
-            {
-                var userSchoolId = GetCurrentUserSchoolId();
-                if (userSchoolId == null)
-                    return ForbiddenResponse("You must be assigned to a school to create teachers.");
-                targetSchoolId = userSchoolId;
-            }
-
-            var accessError = ValidateSchoolAccess(targetSchoolId);
-            if (accessError != null)
-                return accessError;
-
-            var school = await _repositories.School.GetByIdAsync(targetSchoolId, trackChanges: false);
-            if (school == null)
-                return ErrorResponse("School not found.", 404);
-
-            var existing = await _repositories.Teacher.GetByTeacherNumberAsync(
-                request.TeacherNumber ?? string.Empty, targetSchoolId);
-
-            if (existing != null)
-                return ErrorResponse(
-                    $"Teacher with number '{request.TeacherNumber}' already exists in this school.", 409);
-
-            var teacher = new Teacher
-            {
-                Id = Guid.NewGuid(),
-                TenantId = targetSchoolId,
-                FirstName = request.FirstName.Trim(),
-                MiddleName = request.MiddleName?.Trim(),
-                LastName = request.LastName.Trim(),
-                TeacherNumber = request.TeacherNumber.Trim(),
-                DateOfBirth = request.DateOfBirth,
-                Gender = request.Gender,
-                TscNumber = request.TscNumber?.Trim(),
-                Nationality = request.Nationality?.Trim() ?? "Kenyan",
-                IdNumber = request.IdNumber?.Trim(),
-                PhoneNumber = request.PhoneNumber?.Trim(),
-                Email = request.Email?.Trim(),
-                Address = request.Address?.Trim(),
-                EmploymentType = request.EmploymentType,
-                Designation = request.Designation,
-                Qualification = request.Qualification?.Trim(),
-                Specialization = request.Specialization?.Trim(),
-                DateOfEmployment = request.DateOfEmployment,
-                IsClassTeacher = request.IsClassTeacher,
-                CurrentClassId = request.CurrentClassId,
-                PhotoUrl = request.PhotoUrl?.Trim(),
-                IsActive = request.IsActive,
-                Notes = request.Notes?.Trim()
-            };
-
-            _repositories.Teacher.Create(teacher);
-            await _repositories.SaveAsync();
-
-            await LogUserActivityAsync(
-                "teacher.create",
-                $"Created teacher {teacher.TeacherNumber} - {teacher.FullName}");
-
-            return SuccessResponse(ToDto(teacher), "Teacher created successfully");
+            catch (ValidationException ex) { return ValidationErrorResponse(ex.Message); }
+            catch (ConflictException ex) { return ConflictResponse(ex.Message); }
+            catch (NotFoundException ex) { return NotFoundResponse(ex.Message); }
+            catch (UnauthorizedAccessException ex) { return UnauthorizedResponse(ex.Message); }
+            catch (UnauthorizedException ex) { return ForbiddenResponse(ex.Message); }
+            catch (Exception ex) { return InternalServerErrorResponse(GetFullExceptionMessage(ex)); }
         }
 
-        // ── PUT api/academic/teachers/{id} ────────────────────────────────────
-        /// <summary>
-        /// Update a teacher – SuperAdmin or same school.
-        /// </summary>
+        #endregion
+
+        #region UPDATE
+
         [HttpPut("{id:guid}")]
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateTeacherRequest request)
         {
             if (!HasPermission("Teacher.Write"))
                 return ForbiddenResponse("You do not have permission to update teachers.");
-
             if (!ModelState.IsValid)
-                return ValidationErrorResponse(ModelState.ToDictionary(
-                    k => k.Key,
-                    v => v.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
+                return ValidationErrorResponse(ModelState);
 
-            var teacher = await _repositories.Teacher.GetByIdAsync(id, trackChanges: true);
-            if (teacher == null)
-                return NotFoundResponse();
+            try
+            {
+                // ✅ Using new helper method
+                var userSchoolId = GetUserSchoolIdOrNullWithValidation();
 
-            var accessError = ValidateSchoolAccess(teacher.TenantId);
-            if (accessError != null)
-                return accessError;
+                var result = await _teacherService.UpdateTeacherAsync(id, request, userSchoolId, IsSuperAdmin);
 
-            teacher.FirstName = request.FirstName.Trim();
-            teacher.MiddleName = request.MiddleName?.Trim();
-            teacher.LastName = request.LastName.Trim();
-            teacher.DateOfBirth = request.DateOfBirth;
-            teacher.Gender = request.Gender;
-            teacher.TscNumber = request.TscNumber?.Trim();
-            teacher.Nationality = request.Nationality?.Trim() ?? "Kenyan";
-            teacher.IdNumber = request.IdNumber?.Trim();
-            teacher.PhoneNumber = request.PhoneNumber?.Trim();
-            teacher.Email = request.Email?.Trim();
-            teacher.Address = request.Address?.Trim();
-            teacher.EmploymentType = request.EmploymentType;
-            teacher.Designation = request.Designation;
-            teacher.Qualification = request.Qualification?.Trim();
-            teacher.Specialization = request.Specialization?.Trim();
-            teacher.DateOfEmployment = request.DateOfEmployment;
-            teacher.IsClassTeacher = request.IsClassTeacher;
-            teacher.CurrentClassId = request.CurrentClassId;
-            teacher.PhotoUrl = request.PhotoUrl?.Trim();
-            teacher.IsActive = request.IsActive;
-            teacher.Notes = request.Notes?.Trim();
+                await LogUserActivityAsync("teacher.update", $"Updated teacher {result.TeacherNumber} - {result.FullName}");
 
-            _repositories.Teacher.Update(teacher);
-            await _repositories.SaveAsync();
-
-            await LogUserActivityAsync(
-                "teacher.update",
-                $"Updated teacher {teacher.TeacherNumber} - {teacher.FullName}");
-
-            return SuccessResponse(ToDto(teacher), "Teacher updated successfully");
+                return SuccessResponse(result, "Teacher updated successfully");
+            }
+            catch (ValidationException ex) { return ValidationErrorResponse(ex.Message); }
+            catch (ConflictException ex) { return ConflictResponse(ex.Message); }
+            catch (NotFoundException ex) { return NotFoundResponse(ex.Message); }
+            catch (UnauthorizedAccessException ex) { return UnauthorizedResponse(ex.Message); }
+            catch (UnauthorizedException ex) { return ForbiddenResponse(ex.Message); }
+            catch (Exception ex) { return InternalServerErrorResponse(GetFullExceptionMessage(ex)); }
         }
 
-        // ── DELETE api/academic/teachers/{id} ────────────────────────────────
-        /// <summary>
-        /// Delete a teacher – SuperAdmin or same school.
-        /// </summary>
-        [HttpDelete("{id:guid}")]
-        public async Task<IActionResult> Delete(Guid id)
-        {
-            if (!HasPermission("Teacher.Delete"))
-                return ForbiddenResponse("You do not have permission to delete teachers.");
+        #endregion
 
-            var teacher = await _repositories.Teacher.GetByIdAsync(id, trackChanges: true);
-            if (teacher == null)
-                return NotFoundResponse();
+        #region PHOTO MANAGEMENT
 
-            var accessError = ValidateSchoolAccess(teacher.TenantId);
-            if (accessError != null)
-                return accessError;
-
-            // If there is a stored photo, remove it from disk too
-            if (!string.IsNullOrWhiteSpace(teacher.PhotoUrl))
-                await _imageUpload.DeleteImageAsync(teacher.PhotoUrl);
-
-            _repositories.Teacher.Delete(teacher);
-            await _repositories.SaveAsync();
-
-            await LogUserActivityAsync(
-                "teacher.delete",
-                $"Deleted teacher {teacher.TeacherNumber} - {teacher.FullName}");
-
-            return SuccessResponse<object?>(null, "Teacher deleted successfully");
-        }
-
-        // ── POST api/academic/teachers/{id}/photo ────────────────────────────
-        /// <summary>
-        /// Upload or replace a teacher's profile photo.
-        /// Accepts multipart/form-data with field name "file".
-        /// </summary>
         [HttpPost("{id:guid}/photo")]
-        [Consumes("multipart/form-data")]
         public async Task<IActionResult> UploadPhoto(Guid id, IFormFile file)
         {
             if (!HasPermission("Teacher.Write"))
-                return ForbiddenResponse("You do not have permission to update teacher photos.");
+                return ForbiddenResponse("You do not have permission to upload teacher photos.");
+            if (file == null || file.Length == 0)
+                return ValidationErrorResponse("No file uploaded.");
 
-            var teacher = await _repositories.Teacher.GetByIdAsync(id, trackChanges: true);
-            if (teacher == null)
-                return NotFoundResponse();
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif" };
+            var extension = System.IO.Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!allowedExtensions.Contains(extension))
+                return ValidationErrorResponse("Only image files (jpg, jpeg, png, gif) are allowed.");
+            if (file.Length > 5 * 1024 * 1024)
+                return ValidationErrorResponse("File size cannot exceed 5MB.");
 
-            var accessError = ValidateSchoolAccess(teacher.TenantId);
-            if (accessError != null)
-                return accessError;
-
-            // Delete old photo if one already exists
-            if (!string.IsNullOrWhiteSpace(teacher.PhotoUrl))
-                await _imageUpload.DeleteImageAsync(teacher.PhotoUrl);
-
-            string photoUrl;
             try
             {
-                photoUrl = await _imageUpload.UploadImageAsync(file, subFolder: "teachers");
+                // ✅ Using new helper method
+                var userSchoolId = GetUserSchoolIdOrNullWithValidation();
+
+                var teacher = await _teacherService.GetTeacherByIdAsync(id, userSchoolId, IsSuperAdmin);
+                var photoUrl = await _imageUpload.UploadImageAsync(file, "teachers");
+
+                if (!string.IsNullOrWhiteSpace(teacher.PhotoUrl))
+                    await _imageUpload.DeleteImageAsync(teacher.PhotoUrl);
+
+                var updateRequest = MapExistingTeacherToUpdateRequest(teacher, photoUrl);
+
+                var result = await _teacherService.UpdateTeacherAsync(id, updateRequest, userSchoolId, IsSuperAdmin);
+
+                await LogUserActivityAsync("teacher.photo.upload", $"Uploaded photo for teacher {result.TeacherNumber} - {result.FullName}");
+
+                return SuccessResponse(new { photoUrl }, "Photo uploaded successfully");
             }
-            catch (Exception ex)
-            {
-                return ErrorResponse(ex.Message, 400);
-            }
-
-            teacher.PhotoUrl = photoUrl;
-
-            _repositories.Teacher.Update(teacher);
-            await _repositories.SaveAsync();
-
-            await LogUserActivityAsync(
-                "teacher.photo.upload",
-                $"Uploaded photo for teacher {teacher.TeacherNumber} - {teacher.FullName}");
-
-            return SuccessResponse(new { photoUrl }, "Photo uploaded successfully");
+            catch (NotFoundException ex) { return NotFoundResponse(ex.Message); }
+            catch (UnauthorizedAccessException ex) { return UnauthorizedResponse(ex.Message); }
+            catch (UnauthorizedException ex) { return ForbiddenResponse(ex.Message); }
+            catch (Exception ex) { return InternalServerErrorResponse(GetFullExceptionMessage(ex)); }
         }
 
-        // ── DELETE api/academic/teachers/{id}/photo ──────────────────────────
-        /// <summary>
-        /// Remove a teacher's profile photo.
-        /// </summary>
         [HttpDelete("{id:guid}/photo")]
         public async Task<IActionResult> DeletePhoto(Guid id)
         {
             if (!HasPermission("Teacher.Write"))
                 return ForbiddenResponse("You do not have permission to remove teacher photos.");
 
-            var teacher = await _repositories.Teacher.GetByIdAsync(id, trackChanges: true);
-            if (teacher == null)
-                return NotFoundResponse();
+            try
+            {
+                // ✅ Using new helper method
+                var userSchoolId = GetUserSchoolIdOrNullWithValidation();
 
-            var accessError = ValidateSchoolAccess(teacher.TenantId);
-            if (accessError != null)
-                return accessError;
+                var teacher = await _teacherService.GetTeacherByIdAsync(id, userSchoolId, IsSuperAdmin);
+                if (string.IsNullOrWhiteSpace(teacher.PhotoUrl))
+                    return ErrorResponse("This teacher has no photo to delete.", 400);
 
-            if (string.IsNullOrWhiteSpace(teacher.PhotoUrl))
-                return ErrorResponse("This teacher has no photo to delete.", 400);
+                await _imageUpload.DeleteImageAsync(teacher.PhotoUrl);
 
-            await _imageUpload.DeleteImageAsync(teacher.PhotoUrl);
+                var updateRequest = MapExistingTeacherToUpdateRequest(teacher, null);
 
-            teacher.PhotoUrl = null;
-            _repositories.Teacher.Update(teacher);
-            await _repositories.SaveAsync();
+                await _teacherService.UpdateTeacherAsync(id, updateRequest, userSchoolId, IsSuperAdmin);
 
-            await LogUserActivityAsync(
-                "teacher.photo.delete",
-                $"Deleted photo for teacher {teacher.TeacherNumber} - {teacher.FullName}");
+                await LogUserActivityAsync("teacher.photo.delete", $"Deleted photo for teacher {teacher.TeacherNumber} - {teacher.FullName}");
 
-            return SuccessResponse<object?>(null, "Photo deleted successfully");
+                return SuccessResponse<object?>(null, "Photo deleted successfully");
+            }
+            catch (NotFoundException ex) { return NotFoundResponse(ex.Message); }
+            catch (UnauthorizedAccessException ex) { return UnauthorizedResponse(ex.Message); }
+            catch (UnauthorizedException ex) { return ForbiddenResponse(ex.Message); }
+            catch (Exception ex) { return InternalServerErrorResponse(GetFullExceptionMessage(ex)); }
         }
 
-        // ── Mapper ────────────────────────────────────────────────────────────
-        private static TeacherDto ToDto(Teacher t) => new()
+        #endregion
+
+        #region DELETE & TOGGLE STATUS
+
+        [HttpDelete("{id:guid}")]
+        public async Task<IActionResult> Delete(Guid id)
         {
-            Id = t.Id,
-            SchoolId = t.TenantId,
-            FirstName = t.FirstName,
-            MiddleName = t.MiddleName ?? string.Empty,
-            LastName = t.LastName,
-            FullName = t.FullName,
-            DisplayName = t.DisplayName,
-            TeacherNumber = t.TeacherNumber,
-            DateOfBirth = t.DateOfBirth,
-            Age = t.Age,
-            Gender = t.Gender.ToString(),
-            TscNumber = t.TscNumber ?? string.Empty,
-            Nationality = t.Nationality ?? "Kenyan",
-            IdNumber = t.IdNumber ?? string.Empty,
-            PhoneNumber = t.PhoneNumber ?? string.Empty,
-            Email = t.Email ?? string.Empty,
-            Address = t.Address ?? string.Empty,
-            EmploymentType = t.EmploymentType.ToString(),
-            Designation = t.Designation.ToString(),
-            Qualification = t.Qualification ?? string.Empty,
-            Specialization = t.Specialization ?? string.Empty,
-            DateOfEmployment = t.DateOfEmployment,
-            IsClassTeacher = t.IsClassTeacher,
-            CurrentClassId = t.CurrentClassId,
-            CurrentClassName = t.CurrentClass?.Name ?? string.Empty,
-            PhotoUrl = t.PhotoUrl ?? string.Empty,
-            IsActive = t.IsActive,
-            Notes = t.Notes ?? string.Empty
-        };
+            if (!HasPermission("Teacher.Delete"))
+                return ForbiddenResponse("You do not have permission to delete teachers.");
+
+            try
+            {
+                // ✅ Using new helper method
+                var userSchoolId = GetUserSchoolIdOrNullWithValidation();
+
+                await _teacherService.DeleteTeacherAsync(id, userSchoolId, IsSuperAdmin);
+
+                await LogUserActivityAsync("teacher.delete", $"Deleted teacher with ID: {id}");
+
+                return SuccessResponse("Teacher deleted successfully");
+            }
+            catch (NotFoundException ex) { return NotFoundResponse(ex.Message); }
+            catch (UnauthorizedAccessException ex) { return UnauthorizedResponse(ex.Message); }
+            catch (UnauthorizedException ex) { return ForbiddenResponse(ex.Message); }
+            catch (Exception ex) { return InternalServerErrorResponse(GetFullExceptionMessage(ex)); }
+        }
+
+        [HttpPatch("{id:guid}/toggle-status")]
+        public async Task<IActionResult> ToggleStatus(Guid id, [FromBody] bool isActive)
+        {
+            if (!HasPermission("Teacher.Write"))
+                return ForbiddenResponse("You do not have permission to update teacher status.");
+
+            try
+            {
+                // ✅ Using new helper method
+                var userSchoolId = GetUserSchoolIdOrNullWithValidation();
+
+                var result = await _teacherService.ToggleTeacherStatusAsync(id, isActive, userSchoolId, IsSuperAdmin);
+
+                var action = isActive ? "activated" : "deactivated";
+                await LogUserActivityAsync("teacher.toggle-status", $"{action} teacher {result.TeacherNumber} - {result.FullName}");
+
+                return SuccessResponse(result, $"Teacher {action} successfully");
+            }
+            catch (NotFoundException ex) { return NotFoundResponse(ex.Message); }
+            catch (UnauthorizedAccessException ex) { return UnauthorizedResponse(ex.Message); }
+            catch (UnauthorizedException ex) { return ForbiddenResponse(ex.Message); }
+            catch (Exception ex) { return InternalServerErrorResponse(GetFullExceptionMessage(ex)); }
+        }
+
+        #endregion
     }
 }

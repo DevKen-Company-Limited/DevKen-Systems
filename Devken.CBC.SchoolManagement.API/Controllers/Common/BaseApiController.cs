@@ -1,10 +1,12 @@
 ﻿using Devken.CBC.SchoolManagement.Application.Service.Activities;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
@@ -60,7 +62,8 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
                 if (IsSuperAdmin) return null;
 
                 var tenantIdClaim = User.FindFirst("tenant_id")?.Value
-                                 ?? User.FindFirst("school_id")?.Value;
+                                 ?? User.FindFirst("school_id")?.Value
+                                 ?? User.FindFirst("http://schemas.microsoft.com/ws/2008/06/identity/claims/tenantid")?.Value;
 
                 if (Guid.TryParse(tenantIdClaim, out var tenantId))
                     return tenantId;
@@ -79,11 +82,23 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         /// Checks if the current user is a SuperAdmin.
         /// SuperAdmin has unrestricted access to all resources across all tenants.
         /// </summary>
-        protected bool IsSuperAdmin =>
-            string.Equals(User.FindFirst("is_super_admin")?.Value, "true", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(User.FindFirst("is_superadmin")?.Value, "true", StringComparison.OrdinalIgnoreCase)
-            || User.FindAll(ClaimTypes.Role)
-                   .Any(r => string.Equals(r.Value, "SuperAdmin", StringComparison.OrdinalIgnoreCase));
+        protected bool IsSuperAdmin
+        {
+            get
+            {
+                // Check is_super_admin claim
+                var isSuperAdminClaim = User.FindFirst("is_super_admin")?.Value
+                                     ?? User.FindFirst("is_superadmin")?.Value
+                                     ?? User.FindFirst("http://schemas.microsoft.com/ws/2008/06/identity/claims/is_super_admin")?.Value;
+
+                if (bool.TryParse(isSuperAdminClaim, out var isSuperAdmin) && isSuperAdmin)
+                    return true;
+
+                // Check roles
+                return User.FindAll(ClaimTypes.Role)
+                       .Any(r => string.Equals(r.Value, "SuperAdmin", StringComparison.OrdinalIgnoreCase));
+            }
+        }
 
         /// <summary>
         /// Gets the current user's email address
@@ -152,7 +167,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
                 {
                     try
                     {
-                        var permArray = System.Text.Json.JsonSerializer.Deserialize<string[]>(permissionsClaim);
+                        var permArray = JsonSerializer.Deserialize<string[]>(permissionsClaim);
                         if (permArray != null)
                         {
                             foreach (var perm in permArray)
@@ -164,13 +179,19 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
                     }
                     catch
                     {
-                        // If not JSON, treat as single permission
-                        permissions.Add(permissionsClaim);
+                        // If not JSON, treat as comma-separated list
+                        var permList = permissionsClaim.Split(',', StringSplitOptions.RemoveEmptyEntries);
+                        foreach (var perm in permList)
+                        {
+                            if (!string.IsNullOrWhiteSpace(perm))
+                                permissions.Add(perm.Trim());
+                        }
                     }
                 }
 
                 // Also check for individual permission claims
                 var individualPermissions = User.FindAll("permission")
+                    .Concat(User.FindAll("http://schemas.microsoft.com/ws/2008/06/identity/claims/permission"))
                     .Select(c => c.Value)
                     .Where(v => !string.IsNullOrWhiteSpace(v));
 
@@ -346,6 +367,8 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         /// <summary>
         /// Gets the current user's school ID or throws an exception if not found.
         /// Use this when a school context is absolutely required.
+        /// WARNING: This will throw for SuperAdmin users. Use GetUserSchoolIdOrNull() instead
+        /// when you need to support SuperAdmin access.
         /// </summary>
         /// <returns>The school ID</returns>
         /// <exception cref="UnauthorizedAccessException">Thrown when school ID is not found</exception>
@@ -360,6 +383,8 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         /// <summary>
         /// Gets the current user's school ID or throws an exception if not found.
         /// Alias for GetCurrentUserSchoolId for consistency.
+        /// WARNING: This will throw for SuperAdmin users. Use GetUserSchoolIdOrNull() instead
+        /// when you need to support SuperAdmin access.
         /// </summary>
         /// <returns>The school ID</returns>
         /// <exception cref="UnauthorizedAccessException">Thrown when school ID is not found</exception>
@@ -371,6 +396,8 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         /// <summary>
         /// Gets the current user's tenant ID or throws an exception if not found.
         /// Use this when a tenant context is absolutely required.
+        /// WARNING: This will throw for SuperAdmin users. Use GetUserSchoolIdOrNull() instead
+        /// when you need to support SuperAdmin access.
         /// </summary>
         /// <returns>The tenant ID</returns>
         /// <exception cref="UnauthorizedAccessException">Thrown when tenant ID is not found</exception>
@@ -385,12 +412,46 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         /// <summary>
         /// Gets the current user's tenant ID or throws an exception if not found.
         /// Alias for GetCurrentUserTenantId for consistency.
+        /// WARNING: This will throw for SuperAdmin users. Use GetUserSchoolIdOrNull() instead
+        /// when you need to support SuperAdmin access.
         /// </summary>
         /// <returns>The tenant ID</returns>
         /// <exception cref="UnauthorizedAccessException">Thrown when tenant ID is not found</exception>
         protected Guid GetRequiredTenantId()
         {
             return GetCurrentUserTenantId();
+        }
+
+        /// <summary>
+        /// Gets the current user's school ID for non-SuperAdmins, or null for SuperAdmins.
+        /// This is the RECOMMENDED method to use when passing userSchoolId to service layers
+        /// that need to support both SuperAdmin and regular user access.
+        /// Does NOT validate that non-SuperAdmin users have a school - returns null if missing.
+        /// </summary>
+        /// <returns>School ID for regular users, null for SuperAdmin or users without school context</returns>
+        protected Guid? GetUserSchoolIdOrNull()
+        {
+            return IsSuperAdmin ? null : CurrentSchoolId;
+        }
+
+        /// <summary>
+        /// Gets the current user's school ID for non-SuperAdmins, or null for SuperAdmins.
+        /// This is the RECOMMENDED method to use when passing userSchoolId to service layers.
+        /// VALIDATES that non-SuperAdmin users have a valid school context.
+        /// Use this in most controller methods to ensure proper access control.
+        /// </summary>
+        /// <returns>School ID for regular users (validated), null for SuperAdmin</returns>
+        /// <exception cref="UnauthorizedAccessException">Thrown when non-SuperAdmin has no school</exception>
+        protected Guid? GetUserSchoolIdOrNullWithValidation()
+        {
+            if (IsSuperAdmin)
+                return null;
+
+            var schoolId = CurrentSchoolId;
+            if (!schoolId.HasValue || schoolId.Value == Guid.Empty)
+                throw new UnauthorizedAccessException("User is not associated with any school.");
+
+            return schoolId.Value;
         }
 
         /// <summary>
@@ -560,11 +621,12 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         /// <returns>200 OK response with data</returns>
         protected IActionResult SuccessResponse<T>(T data, string message = "Success")
         {
-            return Ok(new
+            return Ok(new ApiResponse<T>
             {
-                success = true,
-                message,
-                data
+                Success = true,
+                Message = message,
+                Data = data,
+                StatusCode = 200
             });
         }
 
@@ -575,117 +637,30 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         /// <returns>200 OK response</returns>
         protected IActionResult SuccessResponse(string message = "Success")
         {
-            return Ok(new
+            return Ok(new ApiResponse<object>
             {
-                success = true,
-                message,
-                data = (object?)null
+                Success = true,
+                Message = message,
+                Data = null,
+                StatusCode = 200
             });
         }
 
         /// <summary>
-        /// Returns an error response with custom status code
+        /// Returns a 201 Created response
         /// </summary>
-        /// <param name="message">Error message</param>
-        /// <param name="statusCode">HTTP status code (default: 400)</param>
-        /// <returns>Error response with specified status code</returns>
-        protected IActionResult ErrorResponse(string message, int statusCode = 400)
+        /// <typeparam name="T">Type of created resource</typeparam>
+        /// <param name="data">The created resource data</param>
+        /// <param name="message">Success message</param>
+        /// <returns>201 Created response</returns>
+        protected IActionResult CreatedResponse<T>(T data, string message = "Resource created successfully")
         {
-            return StatusCode(statusCode, new
+            return StatusCode(201, new ApiResponse<T>
             {
-                success = false,
-                message,
-                data = (object?)null
-            });
-        }
-
-        /// <summary>
-        /// Returns a validation error response with field-specific errors
-        /// </summary>
-        /// <param name="errors">Dictionary of field names to error messages</param>
-        /// <returns>400 Bad Request with validation errors</returns>
-        protected IActionResult ValidationErrorResponse(IDictionary<string, string[]> errors)
-        {
-            return BadRequest(new
-            {
-                success = false,
-                message = "Validation failed",
-                errors
-            });
-        }
-
-        /// <summary>
-        /// Returns a validation error response with a single error message
-        /// </summary>
-        /// <param name="message">Validation error message</param>
-        /// <returns>400 Bad Request with validation error</returns>
-        protected IActionResult ValidationErrorResponse(string message)
-        {
-            return BadRequest(new
-            {
-                success = false,
-                message,
-                errors = new Dictionary<string, string[]>()
-            });
-        }
-
-        /// <summary>
-        /// Returns a 404 Not Found response
-        /// </summary>
-        /// <param name="message">Error message</param>
-        /// <returns>404 Not Found response</returns>
-        protected IActionResult NotFoundResponse(string message = "Resource not found")
-        {
-            return NotFound(new
-            {
-                success = false,
-                message,
-                data = (object?)null
-            });
-        }
-
-        /// <summary>
-        /// Returns a 403 Forbidden response
-        /// </summary>
-        /// <param name="message">Error message</param>
-        /// <returns>403 Forbidden response</returns>
-        protected IActionResult ForbiddenResponse(string message = "Access forbidden")
-        {
-            return StatusCode(403, new
-            {
-                success = false,
-                message,
-                data = (object?)null
-            });
-        }
-
-        /// <summary>
-        /// Returns a 401 Unauthorized response
-        /// </summary>
-        /// <param name="message">Error message</param>
-        /// <returns>401 Unauthorized response</returns>
-        protected IActionResult UnauthorizedResponse(string message = "Unauthorized access")
-        {
-            return Unauthorized(new
-            {
-                success = false,
-                message,
-                data = (object?)null
-            });
-        }
-
-        /// <summary>
-        /// Returns a 409 Conflict response
-        /// </summary>
-        /// <param name="message">Error message</param>
-        /// <returns>409 Conflict response</returns>
-        protected IActionResult ConflictResponse(string message = "Resource conflict")
-        {
-            return StatusCode(409, new
-            {
-                success = false,
-                message,
-                data = (object?)null
+                Success = true,
+                Message = message,
+                Data = data,
+                StatusCode = 201
             });
         }
 
@@ -699,11 +674,149 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         /// <returns>201 Created response</returns>
         protected IActionResult CreatedResponse<T>(string location, T data, string message = "Resource created successfully")
         {
-            return Created(location, new
+            Response.Headers.Add("Location", location);
+            return StatusCode(201, new ApiResponse<T>
             {
-                success = true,
-                message,
-                data
+                Success = true,
+                Message = message,
+                Data = data,
+                StatusCode = 201
+            });
+        }
+
+        /// <summary>
+        /// Returns an error response with custom status code
+        /// </summary>
+        /// <param name="message">Error message</param>
+        /// <param name="statusCode">HTTP status code (default: 400)</param>
+        /// <returns>Error response with specified status code</returns>
+        protected IActionResult ErrorResponse(string message, int statusCode = 400)
+        {
+            return StatusCode(statusCode, new ApiResponse<object>
+            {
+                Success = false,
+                Message = message,
+                Data = null,
+                StatusCode = statusCode
+            });
+        }
+
+        /// <summary>
+        /// Returns a validation error response with ModelState errors
+        /// </summary>
+        /// <param name="modelState">ModelState dictionary containing validation errors</param>
+        /// <returns>400 Bad Request with validation errors</returns>
+        protected IActionResult ValidationErrorResponse(ModelStateDictionary modelState)
+        {
+            var errors = modelState
+                .Where(x => x.Value?.Errors.Count > 0)
+                .ToDictionary(
+                    kvp => kvp.Key,
+                    kvp => kvp.Value?.Errors.Select(e => e.ErrorMessage).ToArray() ?? Array.Empty<string>()
+                );
+
+            return BadRequest(new ApiValidationResponse
+            {
+                Success = false,
+                Message = "Validation failed",
+                Errors = errors,
+                StatusCode = 400
+            });
+        }
+
+        /// <summary>
+        /// Returns a validation error response with field-specific errors
+        /// </summary>
+        /// <param name="errors">Dictionary of field names to error messages</param>
+        /// <returns>400 Bad Request with validation errors</returns>
+        protected IActionResult ValidationErrorResponse(IDictionary<string, string[]> errors)
+        {
+            return BadRequest(new ApiValidationResponse
+            {
+                Success = false,
+                Message = "Validation failed",
+                Errors = errors,
+                StatusCode = 400
+            });
+        }
+
+        /// <summary>
+        /// Returns a validation error response with a single error message
+        /// </summary>
+        /// <param name="message">Validation error message</param>
+        /// <returns>400 Bad Request with validation error</returns>
+        protected IActionResult ValidationErrorResponse(string message)
+        {
+            return BadRequest(new ApiResponse<object>
+            {
+                Success = false,
+                Message = message,
+                Data = null,
+                StatusCode = 400
+            });
+        }
+
+        /// <summary>
+        /// Returns a 404 Not Found response
+        /// </summary>
+        /// <param name="message">Error message</param>
+        /// <returns>404 Not Found response</returns>
+        protected IActionResult NotFoundResponse(string message = "Resource not found")
+        {
+            return NotFound(new ApiResponse<object>
+            {
+                Success = false,
+                Message = message,
+                Data = null,
+                StatusCode = 404
+            });
+        }
+
+        /// <summary>
+        /// Returns a 403 Forbidden response
+        /// </summary>
+        /// <param name="message">Error message</param>
+        /// <returns>403 Forbidden response</returns>
+        protected IActionResult ForbiddenResponse(string message = "Access forbidden")
+        {
+            return StatusCode(403, new ApiResponse<object>
+            {
+                Success = false,
+                Message = message,
+                Data = null,
+                StatusCode = 403
+            });
+        }
+
+        /// <summary>
+        /// Returns a 401 Unauthorized response
+        /// </summary>
+        /// <param name="message">Error message</param>
+        /// <returns>401 Unauthorized response</returns>
+        protected IActionResult UnauthorizedResponse(string message = "Unauthorized access")
+        {
+            return Unauthorized(new ApiResponse<object>
+            {
+                Success = false,
+                Message = message,
+                Data = null,
+                StatusCode = 401
+            });
+        }
+
+        /// <summary>
+        /// Returns a 409 Conflict response
+        /// </summary>
+        /// <param name="message">Error message</param>
+        /// <returns>409 Conflict response</returns>
+        protected IActionResult ConflictResponse(string message = "Resource conflict")
+        {
+            return StatusCode(409, new ApiResponse<object>
+            {
+                Success = false,
+                Message = message,
+                Data = null,
+                StatusCode = 409
             });
         }
 
@@ -723,14 +836,39 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Common
         /// <returns>500 Internal Server Error response</returns>
         protected IActionResult InternalServerErrorResponse(string message = "An internal server error occurred")
         {
-            return StatusCode(500, new
+            return StatusCode(500, new ApiResponse<object>
             {
-                success = false,
-                message,
-                data = (object?)null
+                Success = false,
+                Message = message,
+                Data = null,
+                StatusCode = 500
             });
         }
 
         #endregion
     }
+
+    #region API Response Models
+
+    /// <summary>
+    /// Standard API response wrapper
+    /// </summary>
+    /// <typeparam name="T">Type of data being returned</typeparam>
+    public class ApiResponse<T>
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public T? Data { get; set; }
+        public int StatusCode { get; set; }
+    }
+
+    /// <summary>
+    /// Validation error response with field-specific errors
+    /// </summary>
+    public class ApiValidationResponse : ApiResponse<object>
+    {
+        public IDictionary<string, string[]> Errors { get; set; } = new Dictionary<string, string[]>();
+    }
+
+    #endregion
 }

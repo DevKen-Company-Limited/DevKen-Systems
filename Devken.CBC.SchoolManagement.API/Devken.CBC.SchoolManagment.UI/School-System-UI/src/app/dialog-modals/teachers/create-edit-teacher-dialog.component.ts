@@ -124,26 +124,26 @@ export class CreateEditTeacherDialogComponent implements OnInit, AfterViewInit, 
   }>();
 
   // ── Tab Configuration ────────────────────────────────────────────────────────
-  readonly tabs: TabConfig[] = [
-    {
-      id: 'personal',
-      label: 'Personal',
-      icon: 'person',
-      fields: ['firstName', 'lastName', 'teacherNumber', 'gender', 'schoolId'] // Add schoolId to validation
-    },
-    {
-      id: 'contact',
-      label: 'Contact',
-      icon: 'contact_phone',
-      fields: ['email', 'phoneNumber']
-    },
-    {
-      id: 'professional',
-      label: 'Professional',
-      icon: 'work',
-      fields: ['employmentType', 'designation']
-    }
-  ];
+  // readonly tabs: TabConfig[] = [
+  //   {
+  //     id: 'personal',
+  //     label: 'Personal',
+  //     icon: 'person',
+  //     fields: ['firstName', 'lastName', 'teacherNumber', 'gender', 'schoolId'] // Add schoolId to validation
+  //   },
+  //   {
+  //     id: 'contact',
+  //     label: 'Contact',
+  //     icon: 'contact_phone',
+  //     fields: ['email', 'phoneNumber']
+  //   },
+  //   {
+  //     id: 'professional',
+  //     label: 'Professional',
+  //     icon: 'work',
+  //     fields: ['employmentType', 'designation']
+  //   }
+  // ];
 
   // ── Getters ──────────────────────────────────────────────────────────────────
   get isEditMode(): boolean { return this.data.mode === 'edit'; }
@@ -196,31 +196,57 @@ export class CreateEditTeacherDialogComponent implements OnInit, AfterViewInit, 
   }
 
   // ── Form Setup ───────────────────────────────────────────────────────────────
-  private _buildForm(): void {
-    this.form = this._fb.group({
-      schoolId:         [null, this.isSuperAdmin ? [Validators.required] : []], // Add this
-      firstName:        ['', [Validators.required, Validators.maxLength(100)]],
-      middleName:       ['', [Validators.maxLength(100)]],
-      lastName:         ['', [Validators.required, Validators.maxLength(100)]],
-      teacherNumber:    ['', [Validators.required, Validators.maxLength(50)]],
-      gender:           [null, [Validators.required]],
-      dateOfBirth:      [null],
-      idNumber:         ['', [Validators.maxLength(100)]],
-      nationality:      ['Kenyan', [Validators.maxLength(100)]],
-      phoneNumber:      ['', [Validators.pattern('^[+0-9\\s\\-]{7,20}$')]],
-      email:            ['', [Validators.email, Validators.maxLength(100)]],
-      address:          ['', [Validators.maxLength(500)]],
-      tscNumber:        ['', [Validators.maxLength(50)]],
-      employmentType:   [null],
-      designation:      [null],
-      qualification:    ['', [Validators.maxLength(100)]],
-      specialization:   ['', [Validators.maxLength(100)]],
-      dateOfEmployment: [null],
-      isClassTeacher:   [false],
-      isActive:         [true],
-      notes:            ['', [Validators.maxLength(2000)]],
-    });
+private _buildForm(): void {
+  this.form = this._fb.group({
+    schoolId:         [null, this.isSuperAdmin ? [Validators.required] : []],
+    firstName:        ['', [Validators.required, Validators.maxLength(100)]],
+    middleName:       ['', [Validators.maxLength(100)]],
+    lastName:         ['', [Validators.required, Validators.maxLength(100)]],
+  teacherNumber: [{
+    value: '',
+    disabled: true
+  }],
+
+    gender:           [null, [Validators.required]],
+    dateOfBirth:      [null],
+    idNumber:         ['', [Validators.maxLength(100)]],
+    nationality:      ['Kenyan', [Validators.maxLength(100)]],
+    phoneNumber:      ['', [Validators.pattern('^[+0-9\\s\\-]{7,20}$')]],
+    email:            ['', [Validators.email, Validators.maxLength(100)]],
+    address:          ['', [Validators.maxLength(500)]],
+    tscNumber:        ['', [Validators.maxLength(50)]],
+    employmentType:   [null],
+    designation:      [null],
+    qualification:    ['', [Validators.maxLength(100)]],
+    specialization:   ['', [Validators.maxLength(100)]],
+    dateOfEmployment: [null],
+    isClassTeacher:   [false],
+    isActive:         [true],
+    notes:            ['', [Validators.maxLength(2000)]],
+  });
+}
+
+// Remove teacherNumber from required fields validation in tabs
+readonly tabs: TabConfig[] = [
+  {
+    id: 'personal',
+    label: 'Personal',
+    icon: 'person',
+    fields: ['firstName', 'lastName', 'gender', 'schoolId'] // Remove teacherNumber from here
+  },
+  {
+    id: 'contact',
+    label: 'Contact',
+    icon: 'contact_phone',
+    fields: ['email', 'phoneNumber']
+  },
+  {
+    id: 'professional',
+    label: 'Professional',
+    icon: 'work',
+    fields: ['employmentType', 'designation']
   }
+];
 
   // ── Enum Loading ─────────────────────────────────────────────────────────────
   private _loadEnums(): void {
@@ -324,48 +350,48 @@ export class CreateEditTeacherDialogComponent implements OnInit, AfterViewInit, 
   }
 
   // ── Form Population ──────────────────────────────────────────────────────────
-  private _patchFormWithTeacher(teacher: TeacherDto): void {
-    const genderVal     = this._getEnumValue('gender', teacher.gender);
-    const empVal        = this._getEnumValue('employmentType', teacher.employmentType);
-    const designVal     = this._getEnumValue('designation', teacher.designation);
+private _patchFormWithTeacher(teacher: TeacherDto): void {
+  const genderVal     = this._getEnumValue('gender', teacher.gender);
+  const empVal        = this._getEnumValue('employmentType', teacher.employmentType);
+  const designVal     = this._getEnumValue('designation', teacher.designation);
 
-    // Store existing photo URL separately (don't put in form)
-    if (teacher.photoUrl) {
-      this.existingPhotoUrl = teacher.photoUrl.startsWith('http')
-        ? teacher.photoUrl
-        : `${this._apiBaseUrl}${teacher.photoUrl}`;
-    }
-
-    this.form.patchValue({
-      schoolId:         teacher.schoolId         || null, // Add this
-      firstName:        teacher.firstName        || '',
-      middleName:       teacher.middleName       || '',
-      lastName:         teacher.lastName         || '',
-      teacherNumber:    teacher.teacherNumber    || '',
-      gender:           genderVal,
-      dateOfBirth:      teacher.dateOfBirth      ? new Date(teacher.dateOfBirth) : null,
-      idNumber:         teacher.idNumber         || '',
-      nationality:      teacher.nationality      || 'Kenyan',
-      phoneNumber:      teacher.phoneNumber      || '',
-      email:            teacher.email            || '',
-      address:          teacher.address          || '',
-      tscNumber:        teacher.tscNumber        || '',
-      employmentType:   empVal,
-      designation:      designVal,
-      qualification:    teacher.qualification    || '',
-      specialization:   teacher.specialization   || '',
-      dateOfEmployment: teacher.dateOfEmployment ? new Date(teacher.dateOfEmployment) : null,
-      isClassTeacher:   teacher.isClassTeacher   || false,
-      isActive:         teacher.isActive !== undefined ? teacher.isActive : true,
-      notes:            teacher.notes            || '',
-    });
-
-    this._cdr.detectChanges();
-
-    if (this.existingPhotoUrl) {
-      this._loadTeacherPhoto(this.existingPhotoUrl);
-    }
+  // Store existing photo URL separately (don't put in form)
+  if (teacher.photoUrl) {
+    this.existingPhotoUrl = teacher.photoUrl.startsWith('http')
+      ? teacher.photoUrl
+      : `${this._apiBaseUrl}${teacher.photoUrl}`;
   }
+
+  this.form.patchValue({
+    schoolId:         teacher.schoolId         || null,
+    firstName:        teacher.firstName        || '',
+    middleName:       teacher.middleName       || '',
+    lastName:         teacher.lastName         || '',
+    teacherNumber:    teacher.teacherNumber    || '', // Will be included since form is enabled in edit mode
+    gender:           genderVal,
+    dateOfBirth:      teacher.dateOfBirth      ? new Date(teacher.dateOfBirth) : null,
+    idNumber:         teacher.idNumber         || '',
+    nationality:      teacher.nationality      || 'Kenyan',
+    phoneNumber:      teacher.phoneNumber      || '',
+    email:            teacher.email            || '',
+    address:          teacher.address          || '',
+    tscNumber:        teacher.tscNumber        || '',
+    employmentType:   empVal,
+    designation:      designVal,
+    qualification:    teacher.qualification    || '',
+    specialization:   teacher.specialization   || '',
+    dateOfEmployment: teacher.dateOfEmployment ? new Date(teacher.dateOfEmployment) : null,
+    isClassTeacher:   teacher.isClassTeacher   || false,
+    isActive:         teacher.isActive !== undefined ? teacher.isActive : true,
+    notes:            teacher.notes            || '',
+  });
+
+  this._cdr.detectChanges();
+
+  if (this.existingPhotoUrl) {
+    this._loadTeacherPhoto(this.existingPhotoUrl);
+  }
+}
 
   private _loadTeacherPhoto(photoUrl: string): void {
     this.isLoadingPhoto = true;
@@ -494,58 +520,61 @@ export class CreateEditTeacherDialogComponent implements OnInit, AfterViewInit, 
   }
 
   // ── Payload Builder ──────────────────────────────────────────────────────────
-  private _buildPayload(): any {
-    const v = this.form.value;
+private _buildPayload(): any {
+  const v = this.form.getRawValue(); // Use getRawValue() to include disabled fields
 
-    const toIso = (val: any): string | null => {
-      if (!val) return null;
-      const d = val instanceof Date ? val : new Date(val);
-      return isNaN(d.getTime()) ? null : d.toISOString();
-    };
+  const toIso = (val: any): string | null => {
+    if (!val) return null;
+    const d = val instanceof Date ? val : new Date(val);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  };
 
-    // Only include existing photoUrl if we're editing and haven't selected a new photo
-    let photoUrl = null;
-    if (this.isEditMode && !this.selectedPhotoFile && this.existingPhotoUrl) {
-      // Extract the relative path from the full URL
-      const url = this.existingPhotoUrl;
-      if (url.includes('/uploads/')) {
-        photoUrl = url.substring(url.indexOf('/uploads/'));
-      } else if (url.startsWith('/')) {
-        photoUrl = url;
-      }
+  // Only include existing photoUrl if we're editing and haven't selected a new photo
+  let photoUrl = null;
+  if (this.isEditMode && !this.selectedPhotoFile && this.existingPhotoUrl) {
+    const url = this.existingPhotoUrl;
+    if (url.includes('/uploads/')) {
+      photoUrl = url.substring(url.indexOf('/uploads/'));
+    } else if (url.startsWith('/')) {
+      photoUrl = url;
     }
-
-    const payload: any = {
-      firstName:        v.firstName?.trim()     || null,
-      middleName:       v.middleName?.trim()     || null,
-      lastName:         v.lastName?.trim()       || null,
-      teacherNumber:    v.teacherNumber?.trim()  || null,
-      gender:           v.gender,
-      dateOfBirth:      toIso(v.dateOfBirth),
-      idNumber:         v.idNumber?.trim()       || null,
-      nationality:      v.nationality?.trim()    || 'Kenyan',
-      photoUrl:         photoUrl,
-      phoneNumber:      v.phoneNumber?.trim()    || null,
-      email:            v.email?.trim()          || null,
-      address:          v.address?.trim()        || null,
-      tscNumber:        v.tscNumber?.trim()      || null,
-      employmentType:   v.employmentType,
-      designation:      v.designation,
-      qualification:    v.qualification?.trim()  || null,
-      specialization:   v.specialization?.trim() || null,
-      dateOfEmployment: toIso(v.dateOfEmployment),
-      isClassTeacher:   v.isClassTeacher         ?? false,
-      isActive:         v.isActive               ?? true,
-      notes:            v.notes?.trim()          || null,
-    };
-
-    // Add schoolId for SuperAdmins
-    if (this.isSuperAdmin && v.schoolId) {
-      payload.schoolId = v.schoolId;
-    }
-
-    return payload;
   }
+
+  const payload: any = {
+    firstName:        v.firstName?.trim()     || null,
+    middleName:       v.middleName?.trim()    || null,
+    lastName:         v.lastName?.trim()      || null,
+    gender:           v.gender,
+    dateOfBirth:      toIso(v.dateOfBirth),
+    idNumber:         v.idNumber?.trim()      || null,
+    nationality:      v.nationality?.trim()   || 'Kenyan',
+    photoUrl:         photoUrl,
+    phoneNumber:      v.phoneNumber?.trim()   || null,
+    email:            v.email?.trim()         || null,
+    address:          v.address?.trim()       || null,
+    tscNumber:        v.tscNumber?.trim()     || null,
+    employmentType:   v.employmentType,
+    designation:      v.designation,
+    qualification:    v.qualification?.trim() || null,
+    specialization:   v.specialization?.trim()|| null,
+    dateOfEmployment: toIso(v.dateOfEmployment),
+    isClassTeacher:   v.isClassTeacher        ?? false,
+    isActive:         v.isActive              ?? true,
+    notes:            v.notes?.trim()         || null,
+  };
+
+  // Only include teacherNumber in edit mode
+  if (this.isEditMode && v.teacherNumber) {
+    payload.teacherNumber = v.teacherNumber?.trim() || null;
+  }
+
+  // Add schoolId for SuperAdmins
+  if (this.isSuperAdmin && v.schoolId) {
+    payload.schoolId = v.schoolId;
+  }
+
+  return payload;
+}
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
   hasError(field: string, error: string): boolean {

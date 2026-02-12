@@ -22,5 +22,31 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
         /// Get all series for a tenant (optional helper for UI).
         /// </summary>
         Task<IEnumerable<DocumentNumberSeries>> GetByTenantAsync(Guid tenantId);
+
+        /// <summary>
+        /// Generates the next document number for a given entity
+        /// Increments the stored last number and saves changes
+        /// </summary>
+        Task<string> GenerateAsync(string entityName);
+
+        /// <summary>
+        /// Previews the next number without incrementing
+        /// </summary>
+        Task<string> PreviewAsync(string entityName);
+
+        /// <summary>
+        /// Creates a new number series configuration
+        /// </summary>
+        Task<DocumentNumberSeries> CreateSeriesAsync(string entityName, string prefix, int padding = 5, bool resetEveryYear = false, string? description = null);
+
+        /// <summary>
+        /// Resets a series counter (Admin only)
+        /// </summary>
+        Task ResetSeriesAsync(string entityName, int? startFrom = null);
+
+        /// <summary>
+        /// Checks if a series exists for an entity
+        /// </summary>
+        Task<bool> SeriesExistsAsync(string entityName);
     }
 }

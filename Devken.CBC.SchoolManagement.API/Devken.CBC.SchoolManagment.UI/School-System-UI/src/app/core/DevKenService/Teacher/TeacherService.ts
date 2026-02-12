@@ -26,14 +26,13 @@ export class TeacherService {
     return this.http.get<ApiResponse<TeacherDto>>(`${this.baseUrl}/${id}`);
   }
 
-create(request: CreateTeacherRequest): Observable<ApiResponse<TeacherDto>> {
-  return this.http.post<ApiResponse<TeacherDto>>(this.baseUrl, request);
-}
+  create(request: CreateTeacherRequest): Observable<ApiResponse<TeacherDto>> {
+    return this.http.post<ApiResponse<TeacherDto>>(this.baseUrl, request);
+  }
 
-update(id: string, request: UpdateTeacherRequest): Observable<ApiResponse<TeacherDto>> {
-  return this.http.put<ApiResponse<TeacherDto>>(`${this.baseUrl}/${id}`, request);
-}
-
+  update(id: string, request: UpdateTeacherRequest): Observable<ApiResponse<TeacherDto>> {
+    return this.http.put<ApiResponse<TeacherDto>>(`${this.baseUrl}/${id}`, request);
+  }
 
   delete(id: string): Observable<ApiResponse<null>> {
     return this.http.delete<ApiResponse<null>>(`${this.baseUrl}/${id}`);
@@ -47,5 +46,10 @@ update(id: string, request: UpdateTeacherRequest): Observable<ApiResponse<Teache
 
   deletePhoto(id: string): Observable<ApiResponse<null>> {
     return this.http.delete<ApiResponse<null>>(`${this.baseUrl}/${id}/photo`);
+  }
+
+  // ✅ Add this method to match the controller's ToggleStatus endpoint
+  toggleStatus(id: string, isActive: boolean): Observable<ApiResponse<TeacherDto>> {
+    return this.http.patch<ApiResponse<TeacherDto>>(`${this.baseUrl}/${id}/toggle-status`, isActive);
   }
 }

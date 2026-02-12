@@ -248,7 +248,6 @@ export class DocumentNumberSeriesComponent implements OnInit, AfterViewInit, OnD
   openCreate(): void {
     const dialogRef = this._dialog.open(CreateEditDocumentNumberSeriesDialogComponent, {
       panelClass: ['number-series-dialog', 'no-padding-dialog'],
-      width: '700px',
       maxWidth: '95vw',
       maxHeight: '95vh',
       disableClose: true,
@@ -261,7 +260,6 @@ export class DocumentNumberSeriesComponent implements OnInit, AfterViewInit, OnD
   openEdit(series: DocumentNumberSeriesDto): void {
     const dialogRef = this._dialog.open(CreateEditDocumentNumberSeriesDialogComponent, {
       panelClass: ['number-series-dialog', 'no-padding-dialog'],
-      width: '700px',
       maxWidth: '95vw',
       maxHeight: '95vh',
       disableClose: true,
