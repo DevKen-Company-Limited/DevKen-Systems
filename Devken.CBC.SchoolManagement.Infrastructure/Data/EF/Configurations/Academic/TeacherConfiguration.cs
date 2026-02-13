@@ -39,6 +39,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Acad
                    .WithOne(c => c.ClassTeacher)
                    .HasForeignKey(c => c.TeacherId)
                    .OnDelete(DeleteBehavior.SetNull);
+            builder.HasOne(t => t.School)
+                   .WithMany(s => s.Teachers)
+                   .HasForeignKey(t => t.TenantId)
+                   .OnDelete(DeleteBehavior.Restrict);
+
 
             // CBC Levels
             builder.HasMany(t => t.CBCLevels)

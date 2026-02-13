@@ -90,7 +90,6 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Teachers
 
             try
             {
-                // ✅ Using new helper method - clean and concise!
                 var userSchoolId = GetUserSchoolIdOrNullWithValidation();
                 var targetSchoolId = IsSuperAdmin ? schoolId : userSchoolId;
 
@@ -117,7 +116,6 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Teachers
 
             try
             {
-                // ✅ Using new helper method
                 var userSchoolId = GetUserSchoolIdOrNullWithValidation();
 
                 var teacher = await _teacherService.GetTeacherByIdAsync(
@@ -147,15 +145,17 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Teachers
 
             try
             {
-                // ✅ Using new helper method
                 var userSchoolId = GetUserSchoolIdOrNullWithValidation();
 
+                // Enforce schoolId handling based on user role
                 if (!IsSuperAdmin)
                 {
+                    // Non-SuperAdmin: Force their own school
                     request.SchoolId = userSchoolId!.Value;
                 }
                 else if (request.SchoolId == null || request.SchoolId == Guid.Empty)
                 {
+                    // SuperAdmin: Require schoolId in request
                     return ValidationErrorResponse("SchoolId is required for SuperAdmin.");
                 }
 
@@ -189,8 +189,17 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Teachers
 
             try
             {
-                // ✅ Using new helper method
                 var userSchoolId = GetUserSchoolIdOrNullWithValidation();
+
+                // ✅ ADDED: Enforce schoolId handling based on user role (same as Create)
+                if (!IsSuperAdmin)
+                {
+                    // Non-SuperAdmin: Force their own school (security measure)
+                    // This prevents them from trying to transfer teachers to other schools
+                    request.SchoolId = userSchoolId!.Value;
+                }
+                // SuperAdmin: Allow the provided schoolId if present
+                // They can optionally update the school or just update other fields
 
                 var result = await _teacherService.UpdateTeacherAsync(id, request, userSchoolId, IsSuperAdmin);
 
@@ -227,7 +236,6 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Teachers
 
             try
             {
-                // ✅ Using new helper method
                 var userSchoolId = GetUserSchoolIdOrNullWithValidation();
 
                 var teacher = await _teacherService.GetTeacherByIdAsync(id, userSchoolId, IsSuperAdmin);
@@ -258,7 +266,6 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Teachers
 
             try
             {
-                // ✅ Using new helper method
                 var userSchoolId = GetUserSchoolIdOrNullWithValidation();
 
                 var teacher = await _teacherService.GetTeacherByIdAsync(id, userSchoolId, IsSuperAdmin);
@@ -293,7 +300,6 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Teachers
 
             try
             {
-                // ✅ Using new helper method
                 var userSchoolId = GetUserSchoolIdOrNullWithValidation();
 
                 await _teacherService.DeleteTeacherAsync(id, userSchoolId, IsSuperAdmin);
@@ -316,7 +322,6 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Teachers
 
             try
             {
-                // ✅ Using new helper method
                 var userSchoolId = GetUserSchoolIdOrNullWithValidation();
 
                 var result = await _teacherService.ToggleTeacherStatusAsync(id, isActive, userSchoolId, IsSuperAdmin);

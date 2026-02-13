@@ -14,9 +14,15 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
         : IRepositoryBase<DocumentNumberSeries, Guid>
     {
         /// <summary>
-        /// Get a series by entity name for a specific tenant.
+        /// Get a series by entity name for the current tenant (from TenantContext).
         /// </summary>
         Task<DocumentNumberSeries?> GetByEntityAsync(string entityName, bool trackChanges);
+
+        /// <summary>
+        /// Get a series by entity name for a specific tenant (explicit tenantId).
+        /// Use this when SuperAdmin needs to work with a specific school's series.
+        /// </summary>
+        Task<DocumentNumberSeries?> GetByEntityAsync(string entityName, Guid tenantId, bool trackChanges);
 
         /// <summary>
         /// Get all series for a tenant (optional helper for UI).
@@ -24,20 +30,37 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
         Task<IEnumerable<DocumentNumberSeries>> GetByTenantAsync(Guid tenantId);
 
         /// <summary>
-        /// Generates the next document number for a given entity
-        /// Increments the stored last number and saves changes
+        /// Generates the next document number for a given entity using current tenant context.
+        /// Increments the stored last number and saves changes.
         /// </summary>
         Task<string> GenerateAsync(string entityName);
 
         /// <summary>
-        /// Previews the next number without incrementing
+        /// Generates the next document number for a given entity using explicit tenantId.
+        /// Use this when SuperAdmin creates resources for a specific school.
+        /// Increments the stored last number and saves changes.
+        /// </summary>
+        Task<string> GenerateAsync(string entityName, Guid tenantId);
+
+        /// <summary>
+        /// Previews the next number without incrementing (uses current tenant context).
         /// </summary>
         Task<string> PreviewAsync(string entityName);
 
         /// <summary>
+        /// Previews the next number without incrementing (uses explicit tenantId).
+        /// </summary>
+        Task<string> PreviewAsync(string entityName, Guid tenantId);
+
+        /// <summary>
         /// Creates a new number series configuration
         /// </summary>
-        Task<DocumentNumberSeries> CreateSeriesAsync(string entityName, string prefix, int padding = 5, bool resetEveryYear = false, string? description = null);
+        Task<DocumentNumberSeries> CreateSeriesAsync(
+            string entityName,
+            string prefix,
+            int padding = 5,
+            bool resetEveryYear = false,
+            string? description = null);
 
         /// <summary>
         /// Resets a series counter (Admin only)
@@ -45,8 +68,13 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
         Task ResetSeriesAsync(string entityName, int? startFrom = null);
 
         /// <summary>
-        /// Checks if a series exists for an entity
+        /// Checks if a series exists for an entity (uses current tenant context)
         /// </summary>
         Task<bool> SeriesExistsAsync(string entityName);
+
+        /// <summary>
+        /// Checks if a series exists for an entity (uses explicit tenantId)
+        /// </summary>
+        Task<bool> SeriesExistsAsync(string entityName, Guid tenantId);
     }
 }

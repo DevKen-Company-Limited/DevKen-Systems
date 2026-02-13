@@ -18,12 +18,14 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academic
 
         public async Task<IEnumerable<Teacher>> GetAllAsync(bool trackChanges) =>
             await FindAll(trackChanges)
+                .Include(t => t.School)
                 .Include(t => t.CurrentClass)
                 .ToListAsync();
 
         public async Task<IEnumerable<Teacher>> GetBySchoolIdAsync(Guid schoolId, bool trackChanges) =>
             await FindByCondition(t => t.TenantId == schoolId, trackChanges)
                 .Include(t => t.CurrentClass)
+                .Include(t => t.School)
                 .ToListAsync();
 
         public async Task<Teacher?> GetByTeacherNumberAsync(string teacherNumber, Guid schoolId) =>
@@ -32,9 +34,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academic
                     trackChanges: false)
                 .FirstOrDefaultAsync();
 
+
         public async Task<Teacher?> GetByIdWithDetailsAsync(Guid id, bool trackChanges) =>
             await FindByCondition(t => t.Id == id, trackChanges)
                 .Include(t => t.CurrentClass)
+                .Include(t => t.School)
                 .Include(t => t.Subjects)
                 .Include(t => t.CBCLevels)
                 .FirstOrDefaultAsync();

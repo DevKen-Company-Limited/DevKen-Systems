@@ -37,15 +37,32 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSer
         #region IDocumentNumberSeriesRepository Implementation
 
         /// <summary>
-        /// Gets a series for the current tenant by entity name
+        /// Gets a series for the current tenant by entity name (uses TenantContext)
         /// </summary>
         public async Task<DocumentNumberSeries?> GetByEntityAsync(string entityName, bool trackChanges)
         {
             if (string.IsNullOrWhiteSpace(entityName))
                 throw new ArgumentException("Entity name cannot be empty", nameof(entityName));
 
-            // FIXED: Use _tenantContext.TenantId which is Guid, not Guid?
             var tenantId = _tenantContext.TenantId;
+
+            return await FindByCondition(
+                    x => x.EntityName == entityName && x.TenantId == tenantId,
+                    trackChanges)
+                .FirstOrDefaultAsync();
+        }
+
+        /// <summary>
+        /// Gets a series for a specific tenant by entity name (explicit tenantId)
+        /// Use this when SuperAdmin needs to work with a specific school's series
+        /// </summary>
+        public async Task<DocumentNumberSeries?> GetByEntityAsync(string entityName, Guid tenantId, bool trackChanges)
+        {
+            if (string.IsNullOrWhiteSpace(entityName))
+                throw new ArgumentException("Entity name cannot be empty", nameof(entityName));
+
+            if (tenantId == Guid.Empty)
+                throw new ArgumentException("Tenant ID cannot be empty", nameof(tenantId));
 
             return await FindByCondition(
                     x => x.EntityName == entityName && x.TenantId == tenantId,
@@ -67,14 +84,28 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSer
         }
 
         /// <summary>
-        /// Generates the next document number for a given entity
+        /// Generates the next document number for a given entity (uses TenantContext)
         /// Increments the stored last number and saves changes
         /// </summary>
         public async Task<string> GenerateAsync(string entityName)
         {
-            var series = await GetByEntityAsync(entityName, true)
+            var tenantId = _tenantContext.TenantId;
+            return await GenerateAsync(entityName, (Guid)tenantId);
+        }
+
+        /// <summary>
+        /// Generates the next document number for a given entity (explicit tenantId)
+        /// Use this when SuperAdmin creates resources for a specific school
+        /// Increments the stored last number and saves changes
+        /// </summary>
+        public async Task<string> GenerateAsync(string entityName, Guid tenantId)
+        {
+            if (tenantId == Guid.Empty)
+                throw new ArgumentException("Tenant ID cannot be empty", nameof(tenantId));
+
+            var series = await GetByEntityAsync(entityName, tenantId, true)
                 ?? throw new InvalidOperationException(
-                    $"Number series not configured for '{entityName}'.");
+                    $"Number series not configured for '{entityName}' in tenant '{tenantId}'.");
 
             if (series.ResetEveryYear && series.LastGeneratedYear != DateTime.UtcNow.Year)
             {
@@ -90,20 +121,31 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSer
             return Format(series);
         }
 
-
         /// <summary>
-        /// Previews the next number without incrementing
+        /// Previews the next number without incrementing (uses TenantContext)
         /// </summary>
         public async Task<string> PreviewAsync(string entityName)
+        {
+            var tenantId = _tenantContext.TenantId;
+            return await PreviewAsync(entityName, (Guid)tenantId);
+        }
+
+        /// <summary>
+        /// Previews the next number without incrementing (explicit tenantId)
+        /// </summary>
+        public async Task<string> PreviewAsync(string entityName, Guid tenantId)
         {
             if (string.IsNullOrWhiteSpace(entityName))
                 throw new ArgumentException("Entity name cannot be empty", nameof(entityName));
 
-            var series = await GetByEntityAsync(entityName, false);
+            if (tenantId == Guid.Empty)
+                throw new ArgumentException("Tenant ID cannot be empty", nameof(tenantId));
+
+            var series = await GetByEntityAsync(entityName, tenantId, false);
 
             if (series == null)
                 throw new InvalidOperationException(
-                    $"Number series not configured for '{entityName}'. Please contact system administrator.");
+                    $"Number series not configured for '{entityName}' in tenant '{tenantId}'. Please contact system administrator.");
 
             var nextNumber = series.LastNumber + 1;
             if (series.ResetEveryYear && series.LastGeneratedYear != DateTime.UtcNow.Year)
@@ -138,23 +180,22 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSer
                 if (existing != null)
                     throw new InvalidOperationException($"Number series for '{entityName}' already exists.");
 
-                // FIXED: Use _tenantContext.TenantId which is Guid, not Guid?
                 var tenantId = _tenantContext.TenantId;
 
                 var series = new DocumentNumberSeries
                 {
                     Id = Guid.NewGuid(),
-                    TenantId = (Guid)tenantId, // Now this is Guid, not Guid?
+                    TenantId = (Guid)tenantId,
                     EntityName = entityName,
                     Prefix = prefix.ToUpperInvariant(),
                     LastNumber = 0,
                     LastGeneratedYear = DateTime.UtcNow.Year,
                     Padding = padding,
                     ResetEveryYear = resetEveryYear,
-                    Description = description, // This will work if property exists
+                    Description = description,
                     CreatedOn = DateTime.UtcNow,
                     UpdatedOn = DateTime.UtcNow,
-                    Status = EntityStatus.Active // This requires EntityStatus enum
+                    Status = EntityStatus.Active
                 };
 
                 Create(series);
@@ -202,7 +243,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSer
         }
 
         /// <summary>
-        /// Checks if a series exists for an entity
+        /// Checks if a series exists for an entity (uses TenantContext)
         /// </summary>
         public async Task<bool> SeriesExistsAsync(string entityName)
         {
@@ -210,6 +251,21 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSer
                 throw new ArgumentException("Entity name cannot be empty", nameof(entityName));
 
             var series = await GetByEntityAsync(entityName, false);
+            return series != null;
+        }
+
+        /// <summary>
+        /// Checks if a series exists for an entity (explicit tenantId)
+        /// </summary>
+        public async Task<bool> SeriesExistsAsync(string entityName, Guid tenantId)
+        {
+            if (string.IsNullOrWhiteSpace(entityName))
+                throw new ArgumentException("Entity name cannot be empty", nameof(entityName));
+
+            if (tenantId == Guid.Empty)
+                throw new ArgumentException("Tenant ID cannot be empty", nameof(tenantId));
+
+            var series = await GetByEntityAsync(entityName, tenantId, false);
             return series != null;
         }
 

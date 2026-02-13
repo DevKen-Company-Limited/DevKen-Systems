@@ -280,8 +280,8 @@ namespace Devken.CBC.SchoolManagement.Application.Services.Implementations.Acade
         {
             if (string.IsNullOrWhiteSpace(requestTeacherNumber))
             {
-                // Auto-generate teacher number using document number series
-                return await _documentNumberService.GenerateAsync(TEACHER_NUMBER_SERIES);
+                // ✅ FIX: Pass the target schoolId explicitly
+                return await _documentNumberService.GenerateAsync(TEACHER_NUMBER_SERIES, schoolId);
             }
 
             var teacherNumber = requestTeacherNumber.Trim();
@@ -374,14 +374,15 @@ namespace Devken.CBC.SchoolManagement.Application.Services.Implementations.Acade
             {
                 Id = teacher.Id,
                 SchoolId = teacher.TenantId,
-                FirstName = teacher.FirstName,
+                SchoolName = teacher.School?.Name ?? string.Empty, // ✅ ADDED: Map school name
+                FirstName = teacher.FirstName ?? string.Empty,
                 MiddleName = teacher.MiddleName ?? string.Empty,
-                LastName = teacher.LastName,
-                FullName = teacher.FullName,
-                DisplayName = teacher.DisplayName,
-                TeacherNumber = teacher.TeacherNumber,
+                LastName = teacher.LastName ?? string.Empty,
+                FullName = teacher.FullName ?? string.Empty,
+                DisplayName = teacher.DisplayName ?? string.Empty,
+                TeacherNumber = teacher.TeacherNumber ?? string.Empty,
                 DateOfBirth = teacher.DateOfBirth,
-                Age = teacher.Age,
+                Age = teacher.Age ?? 0,
                 Gender = teacher.Gender.ToString(),
                 TscNumber = teacher.TscNumber ?? string.Empty,
                 Nationality = teacher.Nationality ?? DEFAULT_NATIONALITY,
@@ -403,4 +404,4 @@ namespace Devken.CBC.SchoolManagement.Application.Services.Implementations.Acade
             };
         }
     }
-}
+    }

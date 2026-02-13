@@ -23,5 +23,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Administration
         public ICollection<User> Users { get; set; } = new List<User>();
         public ICollection<Role> Roles { get; set; } = new List<Role>();
         public ICollection<AcademicYear> AcademicYears { get; set; } = new List<AcademicYear>();
+        public ICollection<Teacher> Teachers { get; set; } = new List<Teacher>();
+
     }
 }

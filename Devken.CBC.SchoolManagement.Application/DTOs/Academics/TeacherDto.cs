@@ -41,6 +41,7 @@ namespace Devken.CBC.SchoolManagement.Application.DTOs.Academic
         public string PhotoUrl { get; set; } = string.Empty;
         public bool IsActive { get; set; }
         public string Notes { get; set; } = string.Empty;
+        public string? SchoolName { get; set; }
     }
 
     // ── Create DTO ────────────────────────────────────────────────────────────
@@ -157,5 +158,6 @@ namespace Devken.CBC.SchoolManagement.Application.DTOs.Academic
 
         [MaxLength(2000)]
         public string? Notes { get; set; }
+        public Guid SchoolId { get; set; }
     }
 }

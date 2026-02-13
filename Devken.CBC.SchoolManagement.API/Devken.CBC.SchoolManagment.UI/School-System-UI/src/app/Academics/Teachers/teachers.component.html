@@ -138,6 +138,15 @@
     {{ getEmploymentTypeName(row.employmentType) }}
   </span>
 </ng-template>
+<!-- School Cell Template (SuperAdmin only) -->
+<ng-template #schoolCell let-row>
+  <div class="flex items-center gap-2">
+    <mat-icon class="icon-size-5 text-blue-600 dark:text-blue-400">school</mat-icon>
+    <span class="text-sm text-gray-700 dark:text-gray-300">
+      {{ row.schoolName || '—' }}
+    </span>
+  </div>
+</ng-template>
 
 <!-- Status Cell Template -->
 <ng-template #statusCell let-row>

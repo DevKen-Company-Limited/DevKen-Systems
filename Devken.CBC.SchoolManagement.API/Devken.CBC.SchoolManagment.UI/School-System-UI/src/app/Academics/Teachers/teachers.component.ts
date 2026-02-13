@@ -19,6 +19,8 @@ import { CreateEditTeacherDialogComponent, CreateEditTeacherDialogResult } from 
 import { API_BASE_URL } from 'app/app.config';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from 'app/core/auth/auth.service';
+import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService'; // ✅ Add this
+import { SchoolDto } from 'app/Tenant/types/school'; // ✅ Add this
 
 // Import reusable components
 import { PageHeaderComponent, Breadcrumb } from 'app/shared/Page-Header/page-header.component';
@@ -77,12 +79,14 @@ export class TeachersComponent implements OnInit, OnDestroy {
   @ViewChild('designationCell') designationCellTemplate!: TemplateRef<any>;
   @ViewChild('employmentCell') employmentCellTemplate!: TemplateRef<any>;
   @ViewChild('statusCell') statusCellTemplate!: TemplateRef<any>;
+  @ViewChild('schoolCell') schoolCellTemplate!: TemplateRef<any>; // ✅ Add this for school column
 
   private _unsubscribe = new Subject<void>();
   private _apiBaseUrl = inject(API_BASE_URL);
   private _http = inject(HttpClient);
   private _sanitizer = inject(DomSanitizer);
   private _authService = inject(AuthService);
+  private _schoolService = inject(SchoolService); // ✅ Add this
 
   // ── Breadcrumbs ──────────────────────────────────────────────────────────────
   breadcrumbs: Breadcrumb[] = [
@@ -91,9 +95,23 @@ export class TeachersComponent implements OnInit, OnDestroy {
     { label: 'Teachers' }
   ];
 
+  // ── SuperAdmin State ──────────────────────────────────────────────────────────
+  get isSuperAdmin(): boolean {
+    return this._authService.authUser?.isSuperAdmin ?? false;
+  }
+
+  schools: SchoolDto[] = []; // ✅ Add this
+  
+  // ✅ Add schools count
+  get schoolsCount(): number {
+    // Get unique school IDs from teachers
+    const uniqueSchools = new Set(this.allData.map(t => t.schoolId));
+    return uniqueSchools.size;
+  }
+
   // ── Stats Cards Configuration ────────────────────────────────────────────────
   get statsCards(): StatCard[] {
-    return [
+    const baseCards: StatCard[] = [
       {
         label: 'Total Teachers',
         value: this.total,
@@ -119,46 +137,76 @@ export class TeachersComponent implements OnInit, OnDestroy {
         iconColor: 'amber',
       },
     ];
+
+    // ✅ Add Schools card for SuperAdmin
+    if (this.isSuperAdmin) {
+      baseCards.push({
+        label: 'Schools',
+        value: this.schoolsCount,
+        icon: 'school',
+        iconColor: 'blue',
+      });
+    }
+
+    return baseCards;
   }
 
   // ── Table Configuration ──────────────────────────────────────────────────────
-  tableColumns: TableColumn<TeacherDto>[] = [
-    {
-      id: 'teacher',
-      label: 'Teacher',
-      align: 'left',
-      sortable: true,
-    },
-    {
-      id: 'number',
-      label: 'Number',
-      align: 'left',
-      hideOnMobile: true,
-    },
-    {
-      id: 'contact',
-      label: 'Contact',
-      align: 'left',
-      hideOnMobile: true,
-    },
-    {
-      id: 'designation',
-      label: 'Designation',
-      align: 'left',
-      hideOnTablet: true,
-    },
-    {
-      id: 'employment',
-      label: 'Employment',
-      align: 'left',
-      hideOnTablet: true,
-    },
-    {
-      id: 'status',
-      label: 'Status',
-      align: 'center',
-    },
-  ];
+  get tableColumns(): TableColumn<TeacherDto>[] {
+    const baseColumns: TableColumn<TeacherDto>[] = [
+      {
+        id: 'teacher',
+        label: 'Teacher',
+        align: 'left',
+        sortable: true,
+      },
+      {
+        id: 'number',
+        label: 'Number',
+        align: 'left',
+        hideOnMobile: true,
+      },
+    ];
+
+    // ✅ Add School column for SuperAdmin
+    if (this.isSuperAdmin) {
+      baseColumns.push({
+        id: 'school',
+        label: 'School',
+        align: 'left',
+        hideOnMobile: true,
+      });
+    }
+
+    // Add remaining columns
+    baseColumns.push(
+      {
+        id: 'contact',
+        label: 'Contact',
+        align: 'left',
+        hideOnMobile: true,
+      },
+      {
+        id: 'designation',
+        label: 'Designation',
+        align: 'left',
+        hideOnTablet: true,
+      },
+      {
+        id: 'employment',
+        label: 'Employment',
+        align: 'left',
+        hideOnTablet: true,
+      },
+      {
+        id: 'status',
+        label: 'Status',
+        align: 'center',
+      }
+    );
+
+    return baseColumns;
+  }
 
   tableActions: TableAction<TeacherDto>[] = [
     {
@@ -239,6 +287,7 @@ export class TeachersComponent implements OnInit, OnDestroy {
     status: 'all',
     employmentType: 'all',
     role: 'all',
+    schoolId: 'all', // ✅ Add this
   };
 
   // ── Pagination ───────────────────────────────────────────────────────────────
@@ -270,10 +319,8 @@ export class TeachersComponent implements OnInit, OnDestroy {
   }
   
   get permanentCount(): number { 
-    // Get the numeric value for 'Permanent'
     const permanentValue = this.enumMaps.employmentTypeNameToValue.get('Permanent');
     return this.allData.filter(t => {
-      // Handle both string and number comparisons
       if (permanentValue !== undefined) {
         return Number(t.employmentType) === permanentValue;
       }
@@ -288,7 +335,6 @@ export class TeachersComponent implements OnInit, OnDestroy {
       
       // Get employment type name for filtering
       let employmentTypeName = t.employmentType;
-      // If employmentType is a number, convert to name
       if (t.employmentType && !isNaN(Number(t.employmentType))) {
         const value = Number(t.employmentType);
         employmentTypeName = this.enumMaps.employmentTypeValueToName.get(value) || t.employmentType;
@@ -302,7 +348,9 @@ export class TeachersComponent implements OnInit, OnDestroy {
         (this._filterValues.employmentType === 'all' ||
           employmentTypeName === this._filterValues.employmentType) &&
         (this._filterValues.role === 'all' ||
-          (this._filterValues.role === 'classTeacher' && t.isClassTeacher))
+          (this._filterValues.role === 'classTeacher' && t.isClassTeacher)) &&
+        // ✅ Add school filter
+        (this._filterValues.schoolId === 'all' || t.schoolId === this._filterValues.schoolId)
       );
     });
   }
@@ -329,6 +377,7 @@ export class TeachersComponent implements OnInit, OnDestroy {
     this.cellTemplates = {
       teacher: this.teacherCellTemplate,
       number: this.numberCellTemplate,
+      school: this.schoolCellTemplate, // ✅ Add this
       contact: this.contactCellTemplate,
       designation: this.designationCellTemplate,
       employment: this.employmentCellTemplate,
@@ -355,7 +404,6 @@ export class TeachersComponent implements OnInit, OnDestroy {
     // Load employment types
     this.employmentTypes$ = this._enumService.getTeacherEmploymentTypes().pipe(
       map(types => {
-        // Build value -> name and name -> value maps
         types.forEach(item => {
           if (item.value !== undefined && item.name) {
             this.enumMaps.employmentTypeValueToName.set(item.value, item.name);
@@ -371,7 +419,6 @@ export class TeachersComponent implements OnInit, OnDestroy {
     // Load designations
     this.designations$ = this._enumService.getTeacherDesignations().pipe(
       map(designations => {
-        // Build value -> name and name -> value maps
         designations.forEach(item => {
           if (item.value !== undefined && item.name) {
             this.enumMaps.designationValueToName.set(item.value, item.name);
@@ -384,25 +431,43 @@ export class TeachersComponent implements OnInit, OnDestroy {
       takeUntil(this._unsubscribe)
     );
 
-    // Wait for both enums to load
-    forkJoin({
+    // ✅ Build requests object
+    const requests: any = {
       employmentTypes: this.employmentTypes$,
       designations: this.designations$
-    }).pipe(
+    };
+
+    // ✅ Add schools request only for SuperAdmin
+    if (this.isSuperAdmin) {
+      requests.schools = this._schoolService.getAll().pipe(
+        catchError(err => {
+          console.error('Failed to load schools:', err);
+          return of({ success: false, message: '', data: [] });
+        })
+      );
+    }
+
+    // Wait for all requests to complete
+    forkJoin(requests).pipe(
       takeUntil(this._unsubscribe),
       finalize(() => {
         this.isEnumLoading = false;
       })
     ).subscribe({
-      next: ({ employmentTypes }) => {
-        this.initializeFilterFields(employmentTypes);
+      next: (results: any) => {
+        // ✅ Store schools for SuperAdmin
+        if (results.schools) {
+          this.schools = results.schools.data || [];
+        }
+        
+        this.initializeFilterFields(results.employmentTypes);
         this.loadAll();
       },
       error: (error) => {
         console.error('Failed to load enums:', error);
         this._showError('Failed to load configuration data');
         this.isEnumLoading = false;
-        this.loadAll(); // Still try to load teachers
+        this.loadAll();
       }
     });
   }
@@ -417,6 +482,27 @@ export class TeachersComponent implements OnInit, OnDestroy {
         placeholder: 'Name or teacher number...',
         value: this._filterValues.search,
       },
+    ];
+
+    // ✅ Add school filter for SuperAdmin
+    if (this.isSuperAdmin) {
+      this.filterFields.push({
+        id: 'schoolId',
+        label: 'School',
+        type: 'select',
+        value: this._filterValues.schoolId,
+        options: [
+          { label: 'All Schools', value: 'all' },
+          ...this.schools.map(s => ({ 
+            label: `${s.name}${s.slug ? ' (' + s.phone + ')' : ''}`, 
+            value: s.id 
+          })),
+        ],
+      });
+    }
+
+    // Add remaining filters
+    this.filterFields.push(
       {
         id: 'status',
         label: 'Status',
@@ -448,47 +534,34 @@ export class TeachersComponent implements OnInit, OnDestroy {
           { label: 'Class Teachers', value: 'classTeacher' },
           { label: 'Subject Teachers', value: 'subject' },
         ],
-      },
-    ];
+      }
+    );
   }
 
   // ── Helper Methods for Display ───────────────────────────────────────────────
   
-  /**
-   * Get display name for employment type from value
-   */
   getEmploymentTypeName(value: string | number | undefined): string {
     if (value === undefined || value === null) return '—';
     
-    // If it's already a string name, return it
     if (typeof value === 'string' && isNaN(Number(value))) {
       return value;
     }
     
-    // Convert to number and lookup
     const numValue = typeof value === 'string' ? parseInt(value, 10) : value;
     return this.enumMaps.employmentTypeValueToName.get(numValue) || value.toString();
   }
 
-  /**
-   * Get display name for designation from value
-   */
   getDesignationName(value: string | number | undefined): string {
     if (value === undefined || value === null) return '—';
     
-    // If it's already a string name, return it
     if (typeof value === 'string' && isNaN(Number(value))) {
       return value;
     }
     
-    // Convert to number and lookup
     const numValue = typeof value === 'string' ? parseInt(value, 10) : value;
     return this.enumMaps.designationValueToName.get(numValue) || value.toString();
   }
 
-  /**
-   * Get employment type value from name (for filtering)
-   */
   getEmploymentTypeValue(name: string | undefined): number | null {
     if (!name) return null;
     return this.enumMaps.employmentTypeNameToValue.get(name) || 
@@ -504,6 +577,12 @@ export class TeachersComponent implements OnInit, OnDestroy {
     (this._filterValues as any)[event.filterId] = event.value;
     this.currentPage = 1;
     this.tableHeader.subtitle = `${this.filteredData.length} teachers found`;
+    
+    // ✅ If school filter changed and SuperAdmin, reload from API
+    if (event.filterId === 'schoolId' && this.isSuperAdmin) {
+      const schoolId = event.value === 'all' ? null : event.value;
+      this.loadAll(schoolId);
+    }
   }
 
   onClearFilters(): void {
@@ -512,6 +591,7 @@ export class TeachersComponent implements OnInit, OnDestroy {
       status: 'all',
       employmentType: 'all',
       role: 'all',
+      schoolId: 'all', // ✅ Add this
     };
     
     this.filterFields.forEach(field => {
@@ -520,6 +600,9 @@ export class TeachersComponent implements OnInit, OnDestroy {
     
     this.currentPage = 1;
     this.tableHeader.subtitle = `${this.filteredData.length} teachers found`;
+    
+    // ✅ Reload all teachers
+    this.loadAll();
   }
 
   // ── Pagination Handlers ──────────────────────────────────────────────────────
@@ -534,7 +617,6 @@ export class TeachersComponent implements OnInit, OnDestroy {
 
   // ── Image Loading ────────────────────────────────────────────────────────────
   private loadTeacherPhoto(teacherId: string, photoUrl: string): void {
-    // Initialize cache entry
     if (!this.photoCache[teacherId]) {
       this.photoCache[teacherId] = {
         url: null!,
@@ -571,7 +653,6 @@ export class TeachersComponent implements OnInit, OnDestroy {
       })
     ).subscribe(blob => {
       if (blob) {
-        // Revoke previous blob URL if exists
         if (this.photoCache[teacherId]?.blobUrl) {
           URL.revokeObjectURL(this.photoCache[teacherId].blobUrl);
         }
@@ -589,7 +670,6 @@ export class TeachersComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ── Preload Images for Visible Data ─────────────────────────────────────────
   private preloadVisibleImages(): void {
     this.paginatedData.forEach(teacher => {
       if (teacher.photoUrl && !this.photoCache[teacher.id]?.url) {
@@ -598,7 +678,6 @@ export class TeachersComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ── Clear and Reload Single Image ────────────────────────────────────────────
   private clearAndReloadImage(teacherId: string, photoUrl: string | null): void {
     if (this.photoCache[teacherId]?.blobUrl) {
       URL.revokeObjectURL(this.photoCache[teacherId].blobUrl);
@@ -612,9 +691,10 @@ export class TeachersComponent implements OnInit, OnDestroy {
   }
 
   // ── Data Loading ──────────────────────────────────────────────────────────────
-  loadAll(): void {
+  // ✅ Updated to accept optional schoolId parameter
+  loadAll(schoolId?: string | null): void {
     this.isLoading = true;
-    this._service.getAll()
+    this._service.getAll(schoolId || undefined)
       .pipe(takeUntil(this._unsubscribe))
       .subscribe({
         next: res => {
@@ -633,121 +713,115 @@ export class TeachersComponent implements OnInit, OnDestroy {
       });
   }
 
-// ── Create Teacher ────────────────────────────────────────────────────────────
-openCreate(): void {
-  const dialogRef = this._dialog.open(CreateEditTeacherDialogComponent, {
-    panelClass: ['teacher-dialog', 'no-padding-dialog'],
-    width: '900px',
-    maxWidth: '95vw',
-    maxHeight: '95vh',
-    disableClose: true,
-    autoFocus: 'input',
-    data: { mode: 'create' },
-  });
-
-  dialogRef.afterClosed()
-    .pipe(takeUntil(this._unsubscribe))
-    .subscribe((result: CreateEditTeacherDialogResult | null) => {
-      if (!result) return;
-
-      const request: CreateTeacherRequest = result.formData;
-      const photoFile = result.photoFile ?? null;
-
-      // Step 1: Create the teacher (without photo in the payload)
-      this._service.create(request)
-        .pipe(takeUntil(this._unsubscribe))
-        .subscribe({
-          next: (res) => {
-            if (res.success) {
-              const teacherId = res.data.id;
-
-              // Step 2: Upload photo separately if provided
-              if (photoFile && teacherId) {
-                this._service.uploadPhoto(teacherId, photoFile)
-                  .pipe(takeUntil(this._unsubscribe))
-                  .subscribe({
-                    next: () => {
-                      this._showSuccess('Teacher created with photo successfully');
-                      this.loadAll();
-                    },
-                    error: (photoErr) => {
-                      console.error('Photo upload failed:', photoErr);
-                      this._showSuccess('Teacher created, but photo upload failed. You can upload it later.');
-                      this.loadAll();
-                    }
-                  });
-              } else {
-                this._showSuccess('Teacher created successfully');
-                this.loadAll();
-              }
-            }
-          },
-          error: (err) => {
-            console.error('Failed to create teacher:', err);
-            this._showError(err.error?.message || 'Failed to create teacher');
-          }
-        });
+  // ... (rest of the methods remain the same: openCreate, openEdit, toggleActive, etc.)
+  
+  openCreate(): void {
+    const dialogRef = this._dialog.open(CreateEditTeacherDialogComponent, {
+      panelClass: ['teacher-dialog', 'no-padding-dialog'],
+      width: '900px',
+      maxWidth: '95vw',
+      maxHeight: '95vh',
+      disableClose: true,
+      autoFocus: 'input',
+      data: { mode: 'create' },
     });
-}
 
-// ── Edit Teacher ──────────────────────────────────────────────────────────────
-openEdit(teacher: TeacherDto): void {
-  const dialogRef = this._dialog.open(CreateEditTeacherDialogComponent, {
-    panelClass: ['teacher-dialog', 'no-padding-dialog'],
-    width: '900px',
-    maxWidth: '95vw',
-    maxHeight: '95vh',
-    disableClose: true,
-    autoFocus: 'input',
-    data: { mode: 'edit', teacher },
-  });
+    dialogRef.afterClosed()
+      .pipe(takeUntil(this._unsubscribe))
+      .subscribe((result: CreateEditTeacherDialogResult | null) => {
+        if (!result) return;
 
-  dialogRef.afterClosed()
-    .pipe(takeUntil(this._unsubscribe))
-    .subscribe((result: CreateEditTeacherDialogResult | null) => {
-      if (!result) return;
+        const request: CreateTeacherRequest = result.formData;
+        const photoFile = result.photoFile ?? null;
 
-      const request: UpdateTeacherRequest = result.formData;
-      const photoFile = result.photoFile ?? null;
+        this._service.create(request)
+          .pipe(takeUntil(this._unsubscribe))
+          .subscribe({
+            next: (res) => {
+              if (res.success) {
+                const teacherId = res.data.id;
 
-      // Step 1: Update the teacher (without photo in the payload)
-      this._service.update(teacher.id, request)
-        .pipe(takeUntil(this._unsubscribe))
-        .subscribe({
-          next: (res) => {
-            if (res.success) {
-
-              // Step 2: Upload photo separately if a new photo was provided
-              if (photoFile) {
-                this._service.uploadPhoto(teacher.id, photoFile)
-                  .pipe(takeUntil(this._unsubscribe))
-                  .subscribe({
-                    next: () => {
-                      this._showSuccess('Teacher updated with photo successfully');
-                      this.clearAndReloadImage(teacher.id, null);
-                      this.loadAll();
-                    },
-                    error: (photoErr) => {
-                      console.error('Photo upload failed:', photoErr);
-                      this._showSuccess('Teacher updated, but photo upload failed. You can upload it later.');
-                      this.loadAll();
-                    }
-                  });
-              } else {
-                this._showSuccess('Teacher updated successfully');
-                this.loadAll();
+                if (photoFile && teacherId) {
+                  this._service.uploadPhoto(teacherId, photoFile)
+                    .pipe(takeUntil(this._unsubscribe))
+                    .subscribe({
+                      next: () => {
+                        this._showSuccess('Teacher created with photo successfully');
+                        this.loadAll();
+                      },
+                      error: (photoErr) => {
+                        console.error('Photo upload failed:', photoErr);
+                        this._showSuccess('Teacher created, but photo upload failed. You can upload it later.');
+                        this.loadAll();
+                      }
+                    });
+                } else {
+                  this._showSuccess('Teacher created successfully');
+                  this.loadAll();
+                }
               }
+            },
+            error: (err) => {
+              console.error('Failed to create teacher:', err);
+              this._showError(err.error?.message || 'Failed to create teacher');
             }
-          },
-          error: (err) => {
-            console.error('Failed to update teacher:', err);
-            this._showError(err.error?.message || 'Failed to update teacher');
-          }
-        });
-    });
-}
+          });
+      });
+  }
 
-  // ── Toggle Active Status ──────────────────────────────────────────────────────
+  openEdit(teacher: TeacherDto): void {
+    const dialogRef = this._dialog.open(CreateEditTeacherDialogComponent, {
+      panelClass: ['teacher-dialog', 'no-padding-dialog'],
+      width: '900px',
+      maxWidth: '95vw',
+      maxHeight: '95vh',
+      disableClose: true,
+      autoFocus: 'input',
+      data: { mode: 'edit', teacher },
+    });
+
+    dialogRef.afterClosed()
+      .pipe(takeUntil(this._unsubscribe))
+      .subscribe((result: CreateEditTeacherDialogResult | null) => {
+        if (!result) return;
+
+        const request: UpdateTeacherRequest = result.formData;
+        const photoFile = result.photoFile ?? null;
+
+        this._service.update(teacher.id, request)
+          .pipe(takeUntil(this._unsubscribe))
+          .subscribe({
+            next: (res) => {
+              if (res.success) {
+                if (photoFile) {
+                  this._service.uploadPhoto(teacher.id, photoFile)
+                    .pipe(takeUntil(this._unsubscribe))
+                    .subscribe({
+                      next: () => {
+                        this._showSuccess('Teacher updated with photo successfully');
+                        this.clearAndReloadImage(teacher.id, null);
+                        this.loadAll();
+                      },
+                      error: (photoErr) => {
+                        console.error('Photo upload failed:', photoErr);
+                        this._showSuccess('Teacher updated, but photo upload failed. You can upload it later.');
+                        this.loadAll();
+                      }
+                    });
+                } else {
+                  this._showSuccess('Teacher updated successfully');
+                  this.loadAll();
+                }
+              }
+            },
+            error: (err) => {
+              console.error('Failed to update teacher:', err);
+              this._showError(err.error?.message || 'Failed to update teacher');
+            }
+          });
+      });
+  }
+
   toggleActive(teacher: TeacherDto): void {
     const newStatus = !teacher.isActive;
     const action = newStatus ? 'activate' : 'deactivate';
@@ -772,7 +846,6 @@ openEdit(teacher: TeacherDto): void {
 
     confirmation.afterClosed().pipe(takeUntil(this._unsubscribe)).subscribe(result => {
       if (result === 'confirmed') {
-        // Create partial update request with only status change
         const request: Partial<UpdateTeacherRequest> = {
           isActive: newStatus
         };
@@ -795,7 +868,6 @@ openEdit(teacher: TeacherDto): void {
     });
   }
 
-  // ── Delete Teacher ────────────────────────────────────────────────────────────
   removeTeacher(teacher: TeacherDto): void {
     const confirmation = this._confirmation.open({
       title: 'Delete Teacher',
@@ -824,13 +896,11 @@ openEdit(teacher: TeacherDto): void {
               if (res.success) {
                 this._showSuccess('Teacher deleted successfully');
                 
-                // Clean up cache
                 if (this.photoCache[teacher.id]?.blobUrl) {
                   URL.revokeObjectURL(this.photoCache[teacher.id].blobUrl);
                 }
                 delete this.photoCache[teacher.id];
                 
-                // Adjust current page if needed
                 if (this.paginatedData.length === 0 && this.currentPage > 1) {
                   this.currentPage--;
                 }
@@ -847,7 +917,6 @@ openEdit(teacher: TeacherDto): void {
     });
   }
 
-  // ── Photo Upload ──────────────────────────────────────────────────────────────
   uploadPhoto(teacher: TeacherDto): void {
     this._photoTargetTeacher = teacher;
     this.photoInputRef.nativeElement.value = '';
@@ -860,13 +929,11 @@ openEdit(teacher: TeacherDto): void {
     
     const file = input.files[0];
     
-    // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
       this._showError('File size must be less than 5MB');
       return;
     }
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       this._showError('File must be an image');
       return;
@@ -885,7 +952,6 @@ openEdit(teacher: TeacherDto): void {
       .subscribe({
         next: res => {
           if (res.success) {
-            // Clear cache for this teacher
             if (this.photoCache[teacherId]?.blobUrl) {
               URL.revokeObjectURL(this.photoCache[teacherId].blobUrl);
             }
@@ -901,7 +967,6 @@ openEdit(teacher: TeacherDto): void {
       });
   }
 
-  // ── Notifications ─────────────────────────────────────────────────────────────
   private _showSuccess(message: string): void {
     this._snackBar.open(message, 'Close', { 
       duration: 3000, 

@@ -1,5 +1,6 @@
 ﻿using Devken.CBC.SchoolManagement.Domain.Common;
 using Devken.CBC.SchoolManagement.Domain.Entities.Academic;
+using Devken.CBC.SchoolManagement.Domain.Entities.Administration;
 using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
 using Devken.CBC.SchoolManagement.Domain.Entities.Helpers;
 using Devken.CBC.SchoolManagement.Domain.Entities.Reports;
@@ -82,6 +83,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
 
         [MaxLength(2000)]
         public string? Notes { get; set; }
+        public School School { get; set; } = null!;
         #endregion
 
         #region Computed Properties
