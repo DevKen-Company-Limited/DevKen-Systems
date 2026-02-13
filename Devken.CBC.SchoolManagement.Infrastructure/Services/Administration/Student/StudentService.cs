@@ -198,6 +198,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Administration.Stu
                 IsActive = request.IsActive
             };
 
+            // Save to database (implicit transaction via SaveAsync)
             _repositories.Student.Create(student);
             await _repositories.SaveAsync();
 
@@ -300,14 +301,17 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Administration.Stu
             if (!isSuperAdmin && student.TenantId != userSchoolId)
                 throw new UnauthorizedException("You do not have access to delete this student.");
 
-            // Delete photo if exists
-            if (!string.IsNullOrWhiteSpace(student.PhotoUrl))
-            {
-                await _imageUpload.DeleteImageAsync(student.PhotoUrl);
-            }
+            // Store photo URL before deletion
+            var photoUrl = student.PhotoUrl;
 
+            // Delete student from database FIRST
             _repositories.Student.Delete(student);
             await _repositories.SaveAsync();
+
+            // Delete photo AFTER successful database deletion
+            // If this fails, we have an orphaned file, but the database is consistent
+            // Orphaned files can be cleaned up separately
+            await DeletePhotoIfExistsAsync(photoUrl);
         }
 
         #endregion
@@ -379,11 +383,27 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Administration.Stu
             if (string.IsNullOrWhiteSpace(student.PhotoUrl))
                 throw new ValidationException("This student has no photo to delete.");
 
-            await _imageUpload.DeleteImageAsync(student.PhotoUrl);
+            // Store photo URL for cleanup
+            var photoUrl = student.PhotoUrl;
 
+            // Update database FIRST
             student.PhotoUrl = null;
             _repositories.Student.Update(student);
             await _repositories.SaveAsync();
+
+            // Delete physical file AFTER successful database update
+            // If this fails, we have an orphaned file, but the database is consistent
+            try
+            {
+                await _imageUpload.DeleteImageAsync(photoUrl);
+            }
+            catch (Exception ex)
+            {
+                // Log the error but don't fail the operation
+                // The database record is already updated
+                // Orphaned files can be cleaned up separately
+                System.Diagnostics.Debug.WriteLine($"Failed to delete photo file: {ex.Message}");
+            }
         }
 
         #endregion
@@ -438,6 +458,26 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Administration.Stu
         {
             var students = await _repositories.Student.GetBySchoolIdAsync(schoolId, trackChanges: false);
             return students.Count();
+        }
+
+        /// <summary>
+        /// Helper method to delete photo file with error handling
+        /// </summary>
+        private async Task DeletePhotoIfExistsAsync(string? photoUrl)
+        {
+            if (string.IsNullOrWhiteSpace(photoUrl))
+                return;
+
+            try
+            {
+                await _imageUpload.DeleteImageAsync(photoUrl);
+            }
+            catch (Exception ex)
+            {
+                // Log the error but don't throw
+                // Orphaned files can be cleaned up separately
+                System.Diagnostics.Debug.WriteLine($"Failed to delete photo file: {ex.Message}");
+            }
         }
 
         #endregion
