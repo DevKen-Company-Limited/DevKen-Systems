@@ -1,25 +1,32 @@
-import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, TemplateRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MatTableModule, MatTableDataSource } from '@angular/material/table';
-import { MatPaginator, MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatCardModule } from '@angular/material/card';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { FuseAlertComponent } from '@fuse/components/alert';
+import { MatDividerModule } from '@angular/material/divider';
+import { FuseConfirmationService } from '@fuse/services/confirmation';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
-import { FuseConfirmationService } from '@fuse/services/confirmation';
-import { CreateEditAcademicYearDialogComponent } from 'app/dialog-modals/Academic Year/create-edit-academic-year-dialog.component';
 import { AcademicYearService } from 'app/core/DevKenService/AcademicYearService/AcademicYearService';
+import { CreateEditAcademicYearDialogComponent } from 'app/dialog-modals/Academic Year/create-edit-academic-year-dialog.component';
 import { AcademicYearDto } from './Types/AcademicYear';
+
+// Import reusable components
+import { PageHeaderComponent, Breadcrumb } from 'app/shared/Page-Header/page-header.component';
+import { FilterPanelComponent, FilterField, FilterChangeEvent } from 'app/shared/Filter/filter-panel.component';
+import { PaginationComponent } from 'app/shared/pagination/pagination.component';
+import { StatsCardsComponent, StatCard } from 'app/shared/stats-cards/stats-cards.component';
+import { 
+  DataTableComponent, 
+  TableColumn, 
+  TableAction, 
+  TableHeader, 
+  TableEmptyState 
+} from 'app/shared/data-table/data-table.component';
 
 @Component({
   selector: 'app-academic-years',
@@ -27,50 +34,174 @@ import { AcademicYearDto } from './Types/AcademicYear';
   imports: [
     CommonModule,
     FormsModule,
-    MatTableModule,
-    MatPaginatorModule,
-    MatSortModule,
     MatIconModule,
     MatButtonModule,
     MatDialogModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatCardModule,
     MatSnackBarModule,
     MatMenuModule,
     MatProgressSpinnerModule,
-    //FuseAlertComponent
+    MatDividerModule,
+    // Reusable components
+    PageHeaderComponent,
+    FilterPanelComponent,
+    PaginationComponent,
+    StatsCardsComponent,
+    DataTableComponent,
   ],
   templateUrl: './academic-years.component.html',
 })
-export class AcademicYearsComponent implements OnInit, OnDestroy {
-  @ViewChild(MatPaginator) paginator!: MatPaginator;
-  @ViewChild(MatSort) sort!: MatSort;
+export class AcademicYearsComponent implements OnInit, OnDestroy, AfterViewInit {
+  @ViewChild('codeCell') codeCellTemplate!: TemplateRef<any>;
+  @ViewChild('nameCell') nameCellTemplate!: TemplateRef<any>;
+  @ViewChild('startDateCell') startDateCellTemplate!: TemplateRef<any>;
+  @ViewChild('endDateCell') endDateCellTemplate!: TemplateRef<any>;
+  @ViewChild('statusCell') statusCellTemplate!: TemplateRef<any>;
 
   private _unsubscribe = new Subject<void>();
 
-  // All data
-  allData: AcademicYearDto[] = [];
-  
-  // Filter properties
-  searchQuery: string = '';
-  selectedStatus: string = 'all';
-  selectedYear: string = 'all';
-  showFilterPanel: boolean = false;
+  // ── Breadcrumbs ──────────────────────────────────────────────────────────────
+  breadcrumbs: Breadcrumb[] = [
+    { label: 'Dashboard', url: '/dashboard' },
+    { label: 'Settings', url: '/settings' },
+    { label: 'Academic Years' }
+  ];
 
-  // Available filter options
+  // ── Stats Cards Configuration ────────────────────────────────────────────────
+  get statsCards(): StatCard[] {
+    return [
+      {
+        label: 'Total Years',
+        value: this.total,
+        icon: 'calendar_today',
+        iconColor: 'pink',
+      },
+      {
+        label: 'Current Year',
+        value: this.currentYearName,
+        icon: 'today',
+        iconColor: 'green',
+        //isString: true,
+      },
+      {
+        label: 'Open Years',
+        value: this.openYearsCount,
+        icon: 'lock_open',
+        iconColor: 'blue',
+      },
+    ];
+  }
+
+  // ── Table Configuration ──────────────────────────────────────────────────────
+  get tableColumns(): TableColumn<AcademicYearDto>[] {
+    return [
+      {
+        id: 'code',
+        label: 'Code',
+        align: 'left',
+        sortable: true,
+      },
+      {
+        id: 'name',
+        label: 'Name',
+        align: 'left',
+        sortable: true,
+      },
+      {
+        id: 'startDate',
+        label: 'Start Date',
+        align: 'left',
+        hideOnMobile: true,
+      },
+      {
+        id: 'endDate',
+        label: 'End Date',
+        align: 'left',
+        hideOnMobile: true,
+      },
+      {
+        id: 'status',
+        label: 'Status',
+        align: 'center',
+      },
+    ];
+  }
+
+  tableActions: TableAction<AcademicYearDto>[] = [
+    {
+      id: 'edit',
+      label: 'Edit',
+      icon: 'edit',
+      color: 'blue',
+      handler: (year) => this.openEdit(year),
+      disabled: (year) => year.isClosed,
+    },
+    {
+      id: 'setCurrent',
+      label: 'Set as Current',
+      icon: 'check_circle',
+      color: 'green',
+      handler: (year) => this.setAsCurrent(year),
+      visible: (year) => !year.isCurrent && !year.isClosed,
+    },
+    {
+      id: 'closeYear',
+      label: 'Close Year',
+      icon: 'lock',
+      color: 'amber',
+      handler: (year) => this.closeYear(year),
+      visible: (year) => !year.isClosed,
+      divider: true,
+    },
+    {
+      id: 'delete',
+      label: 'Delete',
+      icon: 'delete',
+      color: 'red',
+      handler: (year) => this.removeAcademicYear(year),
+    },
+  ];
+
+  tableHeader: TableHeader = {
+    title: 'Academic Years List',
+    subtitle: '',
+    icon: 'table_chart',
+    iconGradient: 'bg-gradient-to-br from-blue-500 via-cyan-600 to-teal-700',
+  };
+
+  tableEmptyState: TableEmptyState = {
+    icon: 'search_off',
+    message: 'No academic years found',
+    description: 'Try adjusting your filters or create a new academic year',
+    action: {
+      label: 'Create Academic Year',
+      icon: 'add',
+      handler: () => this.openCreate(),
+    },
+  };
+
+  cellTemplates: { [key: string]: TemplateRef<any> } = {};
+
+  // ── Filter Fields Configuration ──────────────────────────────────────────────
+  filterFields: FilterField[] = [];
+  showFilterPanel = false;
+
+  // ── State ────────────────────────────────────────────────────────────────────
+  allData: AcademicYearDto[] = [];
+  isLoading = false;
   availableYears: string[] = [];
 
-  isLoading = false;
-  
-  // Pagination
-  currentPage: number = 1;
-  itemsPerPage: number = 10;
+  // ── Filter Values ────────────────────────────────────────────────────────────
+  private _filterValues = {
+    search: '',
+    status: 'all',
+    year: 'all',
+  };
 
-  showAlert = false;
-  alert = { type: 'success' as 'success' | 'error', message: '' };
+  // ── Pagination ───────────────────────────────────────────────────────────────
+  currentPage = 1;
+  itemsPerPage = 10;
 
-  // Computed properties for stats
+  // ── Computed Stats ───────────────────────────────────────────────────────────
   get total(): number {
     return this.allData.length;
   }
@@ -84,60 +215,57 @@ export class AcademicYearsComponent implements OnInit, OnDestroy {
     return this.allData.filter(ay => !ay.isClosed).length;
   }
 
-  // Filtered data based on search and filters
+  // ── Filtered Data ─────────────────────────────────────────────────────────────
   get filteredData(): AcademicYearDto[] {
     return this.allData.filter(ay => {
-      const matchesSearch = this.searchQuery === '' ||
-        ay.name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        ay.code.toLowerCase().includes(this.searchQuery.toLowerCase());
+      const q = this._filterValues.search.toLowerCase();
 
-      const matchesStatus = this.selectedStatus === 'all' ||
-        (this.selectedStatus === 'current' && ay.isCurrent) ||
-        (this.selectedStatus === 'closed' && ay.isClosed) ||
-        (this.selectedStatus === 'open' && !ay.isClosed && !ay.isCurrent);
+      const matchesSearch = !q ||
+        ay.name.toLowerCase().includes(q) ||
+        ay.code.toLowerCase().includes(q);
+
+      const matchesStatus =
+        this._filterValues.status === 'all' ||
+        (this._filterValues.status === 'current' && ay.isCurrent) ||
+        (this._filterValues.status === 'closed' && ay.isClosed) ||
+        (this._filterValues.status === 'open' && !ay.isClosed && !ay.isCurrent);
 
       let matchesYear = true;
-      if (this.selectedYear !== 'all') {
+      if (this._filterValues.year !== 'all') {
         const startYear = new Date(ay.startDate).getFullYear().toString();
-        matchesYear = startYear === this.selectedYear;
+        matchesYear = startYear === this._filterValues.year;
       }
 
       return matchesSearch && matchesStatus && matchesYear;
     });
   }
 
-  // Paginated data
+  // ── Pagination Helpers ────────────────────────────────────────────────────────
   get paginatedData(): AcademicYearDto[] {
-    if (this.currentPage > this.totalPages) {
-      this.currentPage = Math.max(1, this.totalPages);
-    }
-    const startIndex = (this.currentPage - 1) * this.itemsPerPage;
-    const endIndex = startIndex + this.itemsPerPage;
-    return this.filteredData.slice(startIndex, endIndex);
-  }
-
-  get totalPages(): number {
-    return Math.ceil(this.filteredData.length / this.itemsPerPage);
-  }
-
-  get showingFrom(): number {
-    return this.filteredData.length === 0 ? 0 : (this.currentPage - 1) * this.itemsPerPage + 1;
-  }
-
-  get showingTo(): number {
-    const to = this.currentPage * this.itemsPerPage;
-    return to > this.filteredData.length ? this.filteredData.length : to;
+    const start = (this.currentPage - 1) * this.itemsPerPage;
+    return this.filteredData.slice(start, start + this.itemsPerPage);
   }
 
   constructor(
     private _service: AcademicYearService,
     private _dialog: MatDialog,
     private _snackBar: MatSnackBar,
-    private _confirmationService: FuseConfirmationService
+    private _confirmation: FuseConfirmationService,
   ) {}
 
   ngOnInit(): void {
+    this.initializeFilterFields();
     this.loadAll();
+  }
+
+  ngAfterViewInit(): void {
+    this.cellTemplates = {
+      code: this.codeCellTemplate,
+      name: this.nameCellTemplate,
+      startDate: this.startDateCellTemplate,
+      endDate: this.endDateCellTemplate,
+      status: this.statusCellTemplate,
+    };
   }
 
   ngOnDestroy(): void {
@@ -145,6 +273,78 @@ export class AcademicYearsComponent implements OnInit, OnDestroy {
     this._unsubscribe.complete();
   }
 
+  // ── Initialize Filter Fields ─────────────────────────────────────────────────
+  private initializeFilterFields(): void {
+    this.filterFields = [
+      {
+        id: 'search',
+        label: 'Search',
+        type: 'text',
+        placeholder: 'Code or name...',
+        value: this._filterValues.search,
+      },
+      {
+        id: 'status',
+        label: 'Status',
+        type: 'select',
+        value: this._filterValues.status,
+        options: [
+          { label: 'All Statuses', value: 'all' },
+          { label: 'Current', value: 'current' },
+          { label: 'Open', value: 'open' },
+          { label: 'Closed', value: 'closed' },
+        ],
+      },
+      {
+        id: 'year',
+        label: 'Year',
+        type: 'select',
+        value: this._filterValues.year,
+        options: [
+          { label: 'All Years', value: 'all' },
+          ...this.availableYears.map(y => ({ label: y, value: y })),
+        ],
+      },
+    ];
+  }
+
+  // ── Filter Handlers ──────────────────────────────────────────────────────────
+  toggleFilterPanel(): void {
+    this.showFilterPanel = !this.showFilterPanel;
+  }
+
+  onFilterChange(event: FilterChangeEvent): void {
+    (this._filterValues as any)[event.filterId] = event.value;
+    this.currentPage = 1;
+    this.tableHeader.subtitle = `${this.filteredData.length} years found`;
+  }
+
+  onClearFilters(): void {
+    this._filterValues = {
+      search: '',
+      status: 'all',
+      year: 'all',
+    };
+
+    this.filterFields.forEach(field => {
+      field.value = (this._filterValues as any)[field.id];
+    });
+
+    this.currentPage = 1;
+    this.tableHeader.subtitle = `${this.filteredData.length} years found`;
+  }
+
+  // ── Pagination Handlers ──────────────────────────────────────────────────────
+  onPageChange(page: number): void {
+    this.currentPage = page;
+  }
+
+  onItemsPerPageChange(itemsPerPage: number): void {
+    this.itemsPerPage = itemsPerPage;
+    this.currentPage = 1;
+  }
+
+  // ── Data Loading ──────────────────────────────────────────────────────────────
   loadAll(): void {
     this.isLoading = true;
     this._service.getAll()
@@ -154,18 +354,20 @@ export class AcademicYearsComponent implements OnInit, OnDestroy {
           if (response.success) {
             this.allData = response.data;
             this.extractAvailableYears();
+            this.updateYearFilterOptions();
+            this.tableHeader.subtitle = `${this.filteredData.length} years found`;
           }
           this.isLoading = false;
         },
         error: (error) => {
           console.error('Failed to load academic years', error);
-          this.showErrorAlert('Failed to load academic years');
+          this._showError('Failed to load academic years');
           this.isLoading = false;
         }
       });
   }
 
-  extractAvailableYears(): void {
+  private extractAvailableYears(): void {
     const years = new Set<string>();
     this.allData.forEach(ay => {
       const year = new Date(ay.startDate).getFullYear().toString();
@@ -174,33 +376,17 @@ export class AcademicYearsComponent implements OnInit, OnDestroy {
     this.availableYears = Array.from(years).sort((a, b) => b.localeCompare(a));
   }
 
-  toggleFilterPanel(): void {
-    this.showFilterPanel = !this.showFilterPanel;
-  }
-
-  applyFilters(): void {
-    this.currentPage = 1; // Reset to first page when filters change
-  }
-
-  clearFilters(): void {
-    this.searchQuery = '';
-    this.selectedStatus = 'all';
-    this.selectedYear = 'all';
-    this.currentPage = 1;
-  }
-
-  previousPage(): void {
-    if (this.currentPage > 1) {
-      this.currentPage--;
+  private updateYearFilterOptions(): void {
+    const yearField = this.filterFields.find(f => f.id === 'year');
+    if (yearField) {
+      yearField.options = [
+        { label: 'All Years', value: 'all' },
+        ...this.availableYears.map(y => ({ label: y, value: y })),
+      ];
     }
   }
 
-  nextPage(): void {
-    if (this.currentPage < this.totalPages) {
-      this.currentPage++;
-    }
-  }
-
+  // ── CRUD Operations ──────────────────────────────────────────────────────────
   openCreate(): void {
     const dialogRef = this._dialog.open(CreateEditAcademicYearDialogComponent, {
       width: '600px',
@@ -216,13 +402,13 @@ export class AcademicYearsComponent implements OnInit, OnDestroy {
             .subscribe({
               next: (response) => {
                 if (response.success) {
-                  this.showSuccessAlert('Academic year created successfully');
+                  this._showSuccess('Academic year created successfully');
                   this.loadAll();
                 }
               },
               error: (error) => {
                 console.error('Failed to create academic year', error);
-                this.showErrorAlert(error.error?.message || 'Failed to create academic year');
+                this._showError(error.error?.message || 'Failed to create academic year');
               }
             });
         }
@@ -231,7 +417,7 @@ export class AcademicYearsComponent implements OnInit, OnDestroy {
 
   openEdit(academicYear: AcademicYearDto): void {
     if (academicYear.isClosed) {
-      this.showErrorAlert('Cannot edit a closed academic year');
+      this._showError('Cannot edit a closed academic year');
       return;
     }
 
@@ -249,13 +435,13 @@ export class AcademicYearsComponent implements OnInit, OnDestroy {
             .subscribe({
               next: (response) => {
                 if (response.success) {
-                  this.showSuccessAlert('Academic year updated successfully');
+                  this._showSuccess('Academic year updated successfully');
                   this.loadAll();
                 }
               },
               error: (error) => {
                 console.error('Failed to update academic year', error);
-                this.showErrorAlert(error.error?.message || 'Failed to update academic year');
+                this._showError(error.error?.message || 'Failed to update academic year');
               }
             });
         }
@@ -263,14 +449,22 @@ export class AcademicYearsComponent implements OnInit, OnDestroy {
   }
 
   setAsCurrent(academicYear: AcademicYearDto): void {
-    const confirmation = this._confirmationService.open({
+    const confirmation = this._confirmation.open({
       title: 'Set as Current',
       message: `Are you sure you want to set "${academicYear.name}" as the current academic year? This will unset any other current academic year.`,
+      icon: {
+        name: 'check_circle',
+        color: 'success',
+      },
       actions: {
         confirm: {
-          label: 'Set as Current'
-        }
-      }
+          label: 'Set as Current',
+          color: 'primary',
+        },
+        cancel: {
+          label: 'Cancel',
+        },
+      },
     });
 
     confirmation.afterClosed()
@@ -282,13 +476,13 @@ export class AcademicYearsComponent implements OnInit, OnDestroy {
             .subscribe({
               next: (response) => {
                 if (response.success) {
-                  this.showSuccessAlert('Academic year set as current');
+                  this._showSuccess('Academic year set as current');
                   this.loadAll();
                 }
               },
               error: (error) => {
                 console.error('Failed to set academic year as current', error);
-                this.showErrorAlert(error.error?.message || 'Failed to set as current');
+                this._showError(error.error?.message || 'Failed to set as current');
               }
             });
         }
@@ -296,15 +490,22 @@ export class AcademicYearsComponent implements OnInit, OnDestroy {
   }
 
   closeYear(academicYear: AcademicYearDto): void {
-    const confirmation = this._confirmationService.open({
+    const confirmation = this._confirmation.open({
       title: 'Close Academic Year',
       message: `Are you sure you want to close "${academicYear.name}"? This action cannot be undone and the year will no longer be editable.`,
+      icon: {
+        name: 'lock',
+        color: 'warn',
+      },
       actions: {
         confirm: {
           label: 'Close Year',
-          color: 'warn'
-        }
-      }
+          color: 'warn',
+        },
+        cancel: {
+          label: 'Cancel',
+        },
+      },
     });
 
     confirmation.afterClosed()
@@ -316,13 +517,13 @@ export class AcademicYearsComponent implements OnInit, OnDestroy {
             .subscribe({
               next: (response) => {
                 if (response.success) {
-                  this.showSuccessAlert('Academic year closed successfully');
+                  this._showSuccess('Academic year closed successfully');
                   this.loadAll();
                 }
               },
               error: (error) => {
                 console.error('Failed to close academic year', error);
-                this.showErrorAlert(error.error?.message || 'Failed to close academic year');
+                this._showError(error.error?.message || 'Failed to close academic year');
               }
             });
         }
@@ -330,15 +531,22 @@ export class AcademicYearsComponent implements OnInit, OnDestroy {
   }
 
   removeAcademicYear(academicYear: AcademicYearDto): void {
-    const confirmation = this._confirmationService.open({
+    const confirmation = this._confirmation.open({
       title: 'Delete Academic Year',
       message: `Are you sure you want to delete "${academicYear.name}"? This action cannot be undone.`,
+      icon: {
+        name: 'delete',
+        color: 'warn',
+      },
       actions: {
         confirm: {
           label: 'Delete',
-          color: 'warn'
-        }
-      }
+          color: 'warn',
+        },
+        cancel: {
+          label: 'Cancel',
+        },
+      },
     });
 
     confirmation.afterClosed()
@@ -350,30 +558,36 @@ export class AcademicYearsComponent implements OnInit, OnDestroy {
             .subscribe({
               next: (response) => {
                 if (response.success) {
-                  this.showSuccessAlert('Academic year deleted successfully');
+                  this._showSuccess('Academic year deleted successfully');
+                  
+                  if (this.paginatedData.length === 0 && this.currentPage > 1) {
+                    this.currentPage--;
+                  }
+                  
                   this.loadAll();
                 }
               },
               error: (error) => {
                 console.error('Failed to delete academic year', error);
-                this.showErrorAlert(error.error?.message || 'Failed to delete academic year');
+                this._showError(error.error?.message || 'Failed to delete academic year');
               }
             });
         }
       });
   }
 
-  private showSuccessAlert(message: string): void {
-    this.alert = { type: 'success', message };
-    this.showAlert = true;
-    setTimeout(() => this.showAlert = false, 5000);
-    this._snackBar.open(message, 'Close', { duration: 3000 });
+  // ── Notifications ────────────────────────────────────────────────────────────
+  private _showSuccess(message: string): void {
+    this._snackBar.open(message, 'Close', {
+      duration: 3000,
+      panelClass: ['bg-green-600', 'text-white']
+    });
   }
 
-  private showErrorAlert(message: string): void {
-    this.alert = { type: 'error', message };
-    this.showAlert = true;
-    setTimeout(() => this.showAlert = false, 5000);
-    this._snackBar.open(message, 'Close', { duration: 5000 });
+  private _showError(message: string): void {
+    this._snackBar.open(message, 'Close', {
+      duration: 5000,
+      panelClass: ['bg-red-600', 'text-white']
+    });
   }
 }

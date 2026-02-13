@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Application.DTOs.Academics
 {
@@ -15,9 +11,9 @@ namespace Devken.CBC.SchoolManagement.Application.DTOs.Academics
         [MaxLength(50)]
         public string? Name { get; set; }
 
-        [Required]
-        [MaxLength(9)]
-        public string? Code { get; set; } // Format: "2024-2025"
+        // Code is now optional - will be auto-generated if not provided
+        [MaxLength(20)]
+        public string? Code { get; set; }
 
         [Required]
         public DateTime StartDate { get; set; }
@@ -36,7 +32,7 @@ namespace Devken.CBC.SchoolManagement.Application.DTOs.Academics
         [MaxLength(50)]
         public string? Name { get; set; }
 
-        [MaxLength(9)]
+        [MaxLength(20)]
         public string? Code { get; set; }
 
         public DateTime? StartDate { get; set; }

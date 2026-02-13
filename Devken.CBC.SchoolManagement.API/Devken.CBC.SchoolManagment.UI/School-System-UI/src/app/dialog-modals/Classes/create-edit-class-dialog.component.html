@@ -7,19 +7,16 @@
   
   <div class="relative z-10 flex items-center gap-3">
     <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-      <mat-icon class="text-white icon-size-6">{{ data.mode === 'create' ? 'add_circle' : 'edit' }}</mat-icon>
+      <mat-icon class="text-white icon-size-6">{{ isEditMode ? 'edit' : 'add_circle' }}</mat-icon>
     </div>
     <div>
-      <h2 class="text-2xl font-bold text-white m-0">
-        {{ data.mode === 'create' ? 'Create New Class' : 'Edit Class' }}
-      </h2>
-      <p class="text-white/80 text-sm mt-1">
-        {{ data.mode === 'create' ? 'Add a new class to your school system' : 'Update class information and assignments' }}
-      </p>
+      <h2 class="text-2xl font-bold text-white m-0">{{ dialogTitle }}</h2>
+      <p class="text-white/80 text-sm mt-1">{{ dialogSubtitle }}</p>
     </div>
   </div>
 </div>
 
+<!-- Main form -->
 <form [formGroup]="form" (ngSubmit)="submit()" mat-dialog-content class="p-4">
   
   <!-- Validation Errors -->
@@ -31,14 +28,59 @@
       <span class="font-medium">Please fix the following errors:</span>
     </div>
     <ul class="mt-1 ml-6 text-sm text-red-700 dark:text-red-300 list-disc">
+      <li *ngIf="form.get('schoolId')?.hasError('required')">School is required</li>
       <li *ngIf="form.get('name')?.hasError('required')">Class name is required</li>
-      <li *ngIf="form.get('code')?.hasError('required')">Class code is required</li>
-      <li *ngIf="form.get('code')?.hasError('pattern')">Code must be uppercase letters, numbers, and hyphens only</li>
       <li *ngIf="form.get('level')?.hasError('required')">CBC Level is required</li>
       <li *ngIf="form.get('academicYearId')?.hasError('required')">Academic Year is required</li>
       <li *ngIf="form.get('capacity')?.hasError('min')">Capacity must be at least 1</li>
       <li *ngIf="form.get('capacity')?.hasError('max')">Capacity cannot exceed 100</li>
     </ul>
+  </div>
+
+  <!-- School Selection - Full Width at Top -->
+  <div class="mb-4">
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>School</mat-label>
+      <mat-select formControlName="schoolId" placeholder="Select school">
+        <!-- Loading indicator -->
+        <mat-option *ngIf="isLoadingSchools" [value]="" disabled>
+          <div class="flex items-center gap-2">
+            <mat-spinner diameter="16"></mat-spinner>
+            <span>Loading schools...</span>
+          </div>
+        </mat-option>
+        <!-- Empty message -->
+        <mat-option *ngIf="!isLoadingSchools && schools.length === 0" [value]="" disabled>
+          <div class="flex items-center gap-2 text-orange-600">
+            <mat-icon class="icon-size-4">warning</mat-icon>
+            <span>No schools found</span>
+          </div>
+        </mat-option>
+        <!-- School options -->
+        <mat-option *ngFor="let school of schools" [value]="school.id">
+          {{ school.name }} ({{ school.code }})
+        </mat-option>
+      </mat-select>
+      <mat-icon matPrefix>business</mat-icon>
+      <mat-hint>
+        <span *ngIf="isLoadingSchools" class="flex items-center gap-1">
+          <mat-spinner diameter="12"></mat-spinner>
+          Loading schools...
+        </span>
+        <span *ngIf="!isLoadingSchools && schools.length === 0" class="text-orange-600">
+          No schools available. Please create a school first.
+        </span>
+        <span *ngIf="!isLoadingSchools && schools.length > 0 && isEditMode" class="text-gray-500">
+          School cannot be changed in edit mode
+        </span>
+        <span *ngIf="!isLoadingSchools && schools.length > 0 && !isEditMode">
+          Select the school for this class
+        </span>
+      </mat-hint>
+      <mat-error *ngIf="form.get('schoolId')?.hasError('required')">
+        School is required
+      </mat-error>
+    </mat-form-field>
   </div>
 
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -61,31 +103,51 @@
         </mat-error>
       </mat-form-field>
 
-      <!-- Class Code -->
+      <!-- Class Code with Number Series Integration -->
       <mat-form-field appearance="outline" class="w-full">
         <mat-label>Class Code</mat-label>
         <input 
           matInput 
           formControlName="code" 
-          placeholder="e.g., G1-BLUE"
+          placeholder="Auto-generated if empty"
           autocomplete="off"
           style="text-transform: uppercase;">
         <mat-icon matPrefix>tag</mat-icon>
+        
+        <!-- Show preview or use generated code button -->
         <button 
+          *ngIf="showCodePreview"
           mat-icon-button 
           matSuffix 
-          (click)="generateCode()"
           type="button"
-          matTooltip="Generate code from level and name">
+          (click)="useGeneratedCode()"
+          matTooltip="Use auto-generated code: {{ codePreview }}">
           <mat-icon>auto_fix_high</mat-icon>
         </button>
-        <mat-hint>Unique class identifier (uppercase)</mat-hint>
-        <mat-error *ngIf="form.get('code')?.hasError('required')">
-          Class code is required
-        </mat-error>
-        <mat-error *ngIf="form.get('code')?.hasError('pattern')">
-          Code must be uppercase letters, numbers, and hyphens
-        </mat-error>
+        
+        <!-- Fallback manual generation -->
+        <button 
+          *ngIf="!isEditMode && !showCodePreview"
+          mat-icon-button 
+          matSuffix 
+          type="button"
+          (click)="generateCode()"
+          matTooltip="Generate code from level and name">
+          <mat-icon>refresh</mat-icon>
+        </button>
+
+        <mat-hint *ngIf="!isEditMode && !form.get('code')?.value">
+          <span *ngIf="isLoadingPreview">Loading preview...</span>
+          <span *ngIf="!isLoadingPreview && codePreview">
+            Auto-generated: <strong>{{ codePreview }}</strong>
+          </span>
+          <span *ngIf="!isLoadingPreview && !codePreview">
+            Will be auto-generated if left empty
+          </span>
+        </mat-hint>
+        <mat-hint *ngIf="form.get('code')?.value" align="end">
+          {{ form.get('code')?.value?.length || 0 }}/20
+        </mat-hint>
       </mat-form-field>
 
       <!-- CBC Level -->
@@ -129,63 +191,96 @@
     <!-- Right Column -->
     <div class="space-y-4">
       <!-- Academic Year -->
-<mat-form-field appearance="outline" class="w-full">
-  <mat-label>Academic Year</mat-label>
-  <mat-select formControlName="academicYearId" placeholder="Select academic year">
-    <!-- Show loading indicator -->
-    <mat-option *ngIf="isLoadingAcademicYears" [value]="" disabled>
-      Loading...
-    </mat-option>
-    <!-- Show empty message when no data -->
-    <mat-option *ngIf="!isLoadingAcademicYears && academicYears.length === 0" [value]="" disabled>
-      No academic years found
-    </mat-option>
-    <!-- Real options -->
-    <mat-option *ngFor="let year of academicYears" [value]="year.id">
-      {{ year.name }} ({{ year.code }})
-    </mat-option>
-  </mat-select>
-  <mat-icon matPrefix>calendar_today</mat-icon>
-  <mat-hint>
-    <span *ngIf="isLoadingAcademicYears">Loading academic years...</span>
-    <span *ngIf="!isLoadingAcademicYears && academicYears.length === 0" class="text-orange-600">
-      No academic years available. Please create one first.
-    </span>
-    <span *ngIf="!isLoadingAcademicYears && academicYears.length > 0">
-      Select the academic year
-    </span>
-  </mat-hint>
-  <mat-error *ngIf="form.get('academicYearId')?.hasError('required')">
-    Academic Year is required
-  </mat-error>
-</mat-form-field>
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Academic Year</mat-label>
+        <mat-select formControlName="academicYearId" placeholder="Select academic year">
+          <!-- Loading indicator -->
+          <mat-option *ngIf="isLoadingAcademicYears" [value]="" disabled>
+            <div class="flex items-center gap-2">
+              <mat-spinner diameter="16"></mat-spinner>
+              <span>Loading academic years...</span>
+            </div>
+          </mat-option>
+          <!-- Empty message -->
+          <mat-option *ngIf="!isLoadingAcademicYears && academicYears.length === 0" [value]="" disabled>
+            <div class="flex items-center gap-2 text-orange-600">
+              <mat-icon class="icon-size-4">warning</mat-icon>
+              <span>No academic years found</span>
+            </div>
+          </mat-option>
+          <!-- Academic year options -->
+          <mat-option *ngFor="let year of academicYears" [value]="year.id">
+            {{ year.name }} ({{ year.code }})
+          </mat-option>
+        </mat-select>
+        <mat-icon matPrefix>calendar_today</mat-icon>
+        <mat-hint>
+          <span *ngIf="isLoadingAcademicYears" class="flex items-center gap-1">
+            <mat-spinner diameter="12"></mat-spinner>
+            Loading academic years...
+          </span>
+          <span *ngIf="!isLoadingAcademicYears && academicYears.length === 0 && !form.get('schoolId')?.value" class="text-gray-500">
+            Please select a school first
+          </span>
+          <span *ngIf="!isLoadingAcademicYears && academicYears.length === 0 && form.get('schoolId')?.value" class="text-orange-600">
+            No academic years available for this school
+          </span>
+          <span *ngIf="!isLoadingAcademicYears && academicYears.length > 0">
+            Select the academic year
+          </span>
+        </mat-hint>
+        <mat-error *ngIf="form.get('academicYearId')?.hasError('required')">
+          Academic Year is required
+        </mat-error>
+      </mat-form-field>
 
-<!-- Class Teacher -->
-<mat-form-field appearance="outline" class="w-full">
-  <mat-label>Class Teacher (Optional)</mat-label>
-  <mat-select formControlName="teacherId">
-    <mat-option [value]="''">-- No Teacher Assigned --</mat-option>
-    <mat-option *ngIf="isLoadingTeachers" [value]="" disabled>
-      Loading teachers...
-    </mat-option>
-    <mat-option *ngIf="!isLoadingTeachers && teachers.length === 0" [value]="" disabled>
-      No teachers found
-    </mat-option>
-    <mat-option *ngFor="let teacher of teachers" [value]="teacher.id">
-      {{ teacher.name }} ({{ teacher.teacherNumber }})
-    </mat-option>
-  </mat-select>
-  <mat-icon matPrefix>person</mat-icon>
-  <mat-hint>
-    <span *ngIf="isLoadingTeachers">Loading teachers...</span>
-    <span *ngIf="!isLoadingTeachers && teachers.length === 0" class="text-orange-600">
-      No teachers available. Please add teachers first.
-    </span>
-    <span *ngIf="!isLoadingTeachers && teachers.length > 0">
-      Assign a class teacher
-    </span>
-  </mat-hint>
-</mat-form-field>
+      <!-- Class Teacher -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Class Teacher (Optional)</mat-label>
+        <mat-select formControlName="teacherId">
+          <mat-option [value]="''">-- No Teacher Assigned --</mat-option>
+          <mat-option *ngIf="isLoadingTeachers" [value]="" disabled>
+            <div class="flex items-center gap-2">
+              <mat-spinner diameter="16"></mat-spinner>
+              <span>Loading teachers...</span>
+            </div>
+          </mat-option>
+          <mat-option *ngIf="!isLoadingTeachers && teachers.length === 0 && teacherServiceAvailable" [value]="" disabled>
+            <div class="flex items-center gap-2 text-gray-500">
+              <mat-icon class="icon-size-4">info</mat-icon>
+              <span>No teachers found</span>
+            </div>
+          </mat-option>
+          <mat-option *ngIf="!isLoadingTeachers && teachers.length === 0 && !teacherServiceAvailable" [value]="" disabled>
+            <div class="flex items-center gap-2 text-gray-500">
+              <mat-icon class="icon-size-4">info</mat-icon>
+              <span>Teacher service not available</span>
+            </div>
+          </mat-option>
+          <mat-option *ngFor="let teacher of teachers" [value]="teacher.id">
+            {{ teacher.name }} ({{ teacher.teacherNumber }})
+          </mat-option>
+        </mat-select>
+        <mat-icon matPrefix>person</mat-icon>
+        <mat-hint>
+          <span *ngIf="isLoadingTeachers" class="flex items-center gap-1">
+            <mat-spinner diameter="12"></mat-spinner>
+            Loading teachers...
+          </span>
+          <span *ngIf="!isLoadingTeachers && teachers.length === 0 && !form.get('schoolId')?.value" class="text-gray-500">
+            Please select a school first
+          </span>
+          <span *ngIf="!isLoadingTeachers && teachers.length === 0 && teacherServiceAvailable && form.get('schoolId')?.value" class="text-orange-600">
+            No teachers available for this school
+          </span>
+          <span *ngIf="!isLoadingTeachers && teachers.length === 0 && !teacherServiceAvailable" class="text-gray-500">
+            Teacher assignment can be done later
+          </span>
+          <span *ngIf="!isLoadingTeachers && teachers.length > 0">
+            Assign a class teacher (optional)
+          </span>
+        </mat-hint>
+      </mat-form-field>
 
       <!-- Description -->
       <mat-form-field appearance="outline" class="w-full">
@@ -225,11 +320,12 @@
   </div>
 </form>
 
+<!-- Dialog Actions -->
 <div mat-dialog-actions class="dialog-actions p-4">
   <button mat-button type="button" (click)="cancel()" [disabled]="isSaving">Cancel</button>
   <button mat-flat-button color="primary" type="button" (click)="submit()" [disabled]="form.invalid || isSaving">
     <mat-icon *ngIf="isSaving" class="icon-size-5 mr-2">hourglass_empty</mat-icon>
-    <mat-icon *ngIf="!isSaving" class="icon-size-5 mr-2">{{ data.mode === 'create' ? 'add' : 'save' }}</mat-icon>
-    {{ isSaving ? 'Saving...' : (data.mode === 'create' ? 'Create' : 'Save') }}
+    <mat-icon *ngIf="!isSaving" class="icon-size-5 mr-2">{{ isEditMode ? 'save' : 'add' }}</mat-icon>
+    {{ isSaving ? 'Saving...' : (isEditMode ? 'Save' : 'Create') }}
   </button>
 </div>

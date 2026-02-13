@@ -1,64 +1,102 @@
-import { Injectable, inject } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { API_BASE_URL } from 'app/app.config';
 import { Observable } from 'rxjs';
+import { API_BASE_URL } from 'app/app.config';
+import { 
+  AcademicYearDto, 
+  CreateAcademicYearRequest, 
+  UpdateAcademicYearRequest,
+  ApiResponse 
+} from 'app/Academics/AcademicYear/Types/AcademicYear';
 
-import { ApiResponse } from '../Types/roles';
-import { AcademicYearDto, CreateAcademicYearRequest, UpdateAcademicYearRequest } from 'app/Academics/AcademicYear/Types/AcademicYear';
-
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class AcademicYearService {
-  private _http = inject(HttpClient);
-  private _apiBase = inject(API_BASE_URL);
-  private _url = `${this._apiBase}/api/academic/academicyear`;
+  private baseUrl = `${inject(API_BASE_URL)}/api/academic/academicyear`;
+  private http = inject(HttpClient);
 
+  /**
+   * Get all academic years with optional school filter
+   */
   getAll(schoolId?: string): Observable<ApiResponse<AcademicYearDto[]>> {
     let params = new HttpParams();
     if (schoolId) {
       params = params.set('schoolId', schoolId);
     }
-    return this._http.get<ApiResponse<AcademicYearDto[]>>(this._url, { params });
+    return this.http.get<ApiResponse<AcademicYearDto[]>>(this.baseUrl, { params });
   }
 
+  /**
+   * Get academic year by ID
+   */
   getById(id: string): Observable<ApiResponse<AcademicYearDto>> {
-    return this._http.get<ApiResponse<AcademicYearDto>>(`${this._url}/${id}`);
+    return this.http.get<ApiResponse<AcademicYearDto>>(`${this.baseUrl}/${id}`);
   }
 
+  /**
+   * Get current academic year for school
+   */
   getCurrent(schoolId?: string): Observable<ApiResponse<AcademicYearDto>> {
     let params = new HttpParams();
     if (schoolId) {
       params = params.set('schoolId', schoolId);
     }
-    return this._http.get<ApiResponse<AcademicYearDto>>(`${this._url}/current`, { params });
+    return this.http.get<ApiResponse<AcademicYearDto>>(`${this.baseUrl}/current`, { params });
   }
 
+  /**
+   * Get open academic years for school
+   */
   getOpen(schoolId?: string): Observable<ApiResponse<AcademicYearDto[]>> {
     let params = new HttpParams();
     if (schoolId) {
       params = params.set('schoolId', schoolId);
     }
-    return this._http.get<ApiResponse<AcademicYearDto[]>>(`${this._url}/open`, { params });
+    return this.http.get<ApiResponse<AcademicYearDto[]>>(`${this.baseUrl}/open`, { params });
   }
 
-  create(payload: CreateAcademicYearRequest): Observable<ApiResponse<AcademicYearDto>> {
-    return this._http.post<ApiResponse<AcademicYearDto>>(this._url, payload);
+  /**
+   * Create new academic year
+   */
+  create(request: CreateAcademicYearRequest): Observable<ApiResponse<AcademicYearDto>> {
+    return this.http.post<ApiResponse<AcademicYearDto>>(this.baseUrl, request);
   }
 
-  update(id: string, payload: UpdateAcademicYearRequest): Observable<ApiResponse<AcademicYearDto>> {
-    return this._http.put<ApiResponse<AcademicYearDto>>(`${this._url}/${id}`, payload);
+  /**
+   * Update academic year
+   */
+  update(id: string, request: UpdateAcademicYearRequest): Observable<ApiResponse<AcademicYearDto>> {
+    return this.http.put<ApiResponse<AcademicYearDto>>(`${this.baseUrl}/${id}`, request);
   }
 
+  /**
+   * Set academic year as current
+   */
   setAsCurrent(id: string): Observable<ApiResponse<string>> {
-    return this._http.put<ApiResponse<string>>(`${this._url}/${id}/set-current`, {});
+    return this.http.put<ApiResponse<string>>(`${this.baseUrl}/${id}/set-current`, {});
   }
 
+  /**
+   * Close academic year
+   */
   close(id: string): Observable<ApiResponse<string>> {
-    return this._http.put<ApiResponse<string>>(`${this._url}/${id}/close`, {});
+    return this.http.put<ApiResponse<string>>(`${this.baseUrl}/${id}/close`, {});
   }
 
+  /**
+   * Delete academic year
+   */
   delete(id: string): Observable<ApiResponse<null>> {
-    return this._http.delete<ApiResponse<null>>(`${this._url}/${id}`);
+    return this.http.delete<ApiResponse<null>>(`${this.baseUrl}/${id}`);
+  }
+
+  /**
+   * Preview next code that will be generated
+   */
+  previewNextCode(schoolId?: string): Observable<ApiResponse<{ nextCode: string }>> {
+    let params = new HttpParams();
+    if (schoolId) {
+      params = params.set('schoolId', schoolId);
+    }
+    return this.http.get<ApiResponse<{ nextCode: string }>>(`${this.baseUrl}/preview-next-code`, { params });
   }
 }

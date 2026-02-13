@@ -1,22 +1,22 @@
-import { Injectable, inject } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable } from 'rxjs';
 import { API_BASE_URL } from 'app/app.config';
-import { Observable, of } from 'rxjs';
-import { map, catchError, tap } from 'rxjs/operators';
-import { ClassDto, ClassDetailDto, CreateClassRequest, UpdateClassRequest, getCBCLevelDisplay, CBCLevel } from 'app/Classes/Types/Class';
-import { ApiResponse } from './Types/role-permissions';
+import {
+  ClassDto,
+  ClassDetailDto,
+  CreateClassRequest,
+  UpdateClassRequest,
+  ApiResponse,
+  CBCLevel,
+  getAllCBCLevels,
+  getCBCLevelDisplay
+} from 'app/Classes/Types/Class';
 
-
-
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class ClassService {
-  private readonly _http = inject(HttpClient);
-  private readonly _apiBase = inject(API_BASE_URL);
-  private readonly _url = `${this._apiBase}/api/academic/Class`;
-
-  // ==================== Class CRUD ====================
+  private baseUrl = `${inject(API_BASE_URL)}/api/academic/class`;
+  private http = inject(HttpClient);
 
   /**
    * Get all classes with optional filters
@@ -28,28 +28,23 @@ export class ClassService {
     activeOnly?: boolean
   ): Observable<ApiResponse<ClassDto[]>> {
     let params = new HttpParams();
-    
     if (schoolId) params = params.set('schoolId', schoolId);
     if (academicYearId) params = params.set('academicYearId', academicYearId);
     if (level !== undefined) params = params.set('level', level.toString());
     if (activeOnly !== undefined) params = params.set('activeOnly', activeOnly.toString());
 
-    return this._http.get<ApiResponse<ClassDto[]>>(this._url, { params }).pipe(
-      tap(response => console.log('Classes API response:', response)),
-      catchError(this.handleError<ClassDto[]>('getAll'))
-    );
+    return this.http.get<ApiResponse<ClassDto[]>>(this.baseUrl, { params });
   }
 
   /**
-   * Get class by ID
+   * Get class by ID with optional details
    */
   getById(id: string, includeDetails: boolean = false): Observable<ApiResponse<ClassDto | ClassDetailDto>> {
     let params = new HttpParams();
-    if (includeDetails) params = params.set('includeDetails', 'true');
-
-    return this._http.get<ApiResponse<ClassDto | ClassDetailDto>>(`${this._url}/${id}`, { params }).pipe(
-      catchError(this.handleError<ClassDto | ClassDetailDto>('getById'))
-    );
+    if (includeDetails) {
+      params = params.set('includeDetails', 'true');
+    }
+    return this.http.get<ApiResponse<ClassDto | ClassDetailDto>>(`${this.baseUrl}/${id}`, { params });
   }
 
   /**
@@ -57,11 +52,10 @@ export class ClassService {
    */
   getByAcademicYear(academicYearId: string, schoolId?: string): Observable<ApiResponse<ClassDto[]>> {
     let params = new HttpParams();
-    if (schoolId) params = params.set('schoolId', schoolId);
-
-    return this._http.get<ApiResponse<ClassDto[]>>(`${this._url}/by-academic-year/${academicYearId}`, { params }).pipe(
-      catchError(this.handleError<ClassDto[]>('getByAcademicYear'))
-    );
+    if (schoolId) {
+      params = params.set('schoolId', schoolId);
+    }
+    return this.http.get<ApiResponse<ClassDto[]>>(`${this.baseUrl}/by-academic-year/${academicYearId}`, { params });
   }
 
   /**
@@ -69,11 +63,10 @@ export class ClassService {
    */
   getByLevel(level: number, schoolId?: string): Observable<ApiResponse<ClassDto[]>> {
     let params = new HttpParams();
-    if (schoolId) params = params.set('schoolId', schoolId);
-
-    return this._http.get<ApiResponse<ClassDto[]>>(`${this._url}/by-level/${level}`, { params }).pipe(
-      catchError(this.handleError<ClassDto[]>('getByLevel'))
-    );
+    if (schoolId) {
+      params = params.set('schoolId', schoolId);
+    }
+    return this.http.get<ApiResponse<ClassDto[]>>(`${this.baseUrl}/by-level/${level}`, { params });
   }
 
   /**
@@ -81,41 +74,52 @@ export class ClassService {
    */
   getByTeacher(teacherId: string, schoolId?: string): Observable<ApiResponse<ClassDto[]>> {
     let params = new HttpParams();
-    if (schoolId) params = params.set('schoolId', schoolId);
-
-    return this._http.get<ApiResponse<ClassDto[]>>(`${this._url}/by-teacher/${teacherId}`, { params }).pipe(
-      catchError(this.handleError<ClassDto[]>('getByTeacher'))
-    );
+    if (schoolId) {
+      params = params.set('schoolId', schoolId);
+    }
+    return this.http.get<ApiResponse<ClassDto[]>>(`${this.baseUrl}/by-teacher/${teacherId}`, { params });
   }
 
   /**
    * Create new class
    */
-  create(payload: CreateClassRequest): Observable<ApiResponse<ClassDto>> {
-    return this._http.post<ApiResponse<ClassDto>>(this._url, payload).pipe(
-      catchError(this.handleError<ClassDto>('create'))
-    );
+  create(request: CreateClassRequest): Observable<ApiResponse<ClassDto>> {
+    return this.http.post<ApiResponse<ClassDto>>(this.baseUrl, request);
   }
 
   /**
-   * Update existing class
+   * Update class
    */
-  update(id: string, payload: UpdateClassRequest): Observable<ApiResponse<ClassDto>> {
-    return this._http.put<ApiResponse<ClassDto>>(`${this._url}/${id}`, payload).pipe(
-      catchError(this.handleError<ClassDto>('update'))
-    );
+  update(id: string, request: UpdateClassRequest): Observable<ApiResponse<ClassDto>> {
+    return this.http.put<ApiResponse<ClassDto>>(`${this.baseUrl}/${id}`, request);
   }
 
   /**
    * Delete class
    */
   delete(id: string): Observable<ApiResponse<null>> {
-    return this._http.delete<ApiResponse<null>>(`${this._url}/${id}`).pipe(
-      catchError(this.handleError<null>('delete'))
-    );
+    return this.http.delete<ApiResponse<null>>(`${this.baseUrl}/${id}`);
   }
 
-  // ==================== Utility Methods ====================
+  /**
+   * Preview next code that will be generated from number series
+   */
+  previewNextCode(schoolId?: string): Observable<ApiResponse<{ nextCode: string }>> {
+    let params = new HttpParams();
+    if (schoolId) {
+      params = params.set('schoolId', schoolId);
+    }
+    return this.http.get<ApiResponse<{ nextCode: string }>>(`${this.baseUrl}/preview-next-code`, { params });
+  }
+
+  // ==================== Helper Methods ====================
+
+  /**
+   * Get all CBC levels
+   */
+  getAllCBCLevels(): { value: number; label: string }[] {
+    return getAllCBCLevels();
+  }
 
   /**
    * Get CBC level display name
@@ -125,51 +129,20 @@ export class ClassService {
   }
 
   /**
-   * Get all CBC levels for dropdown
-   */
-  getAllCBCLevels(): { value: number; label: string }[] {
-    return Object.entries(CBCLevel).map(([key, value]) => ({
-      value,
-      label: this.getCBCLevelDisplay(value)
-    }));
-  }
-
-  /**
-   * Generate class code from level and name
+   * Generate class code from level and name (fallback for manual generation)
    */
   generateClassCode(level: number, name: string): string {
     const levelPrefix = this.getLevelPrefix(level);
-    const cleanName = name
-      .replace(/[^\w\s]/g, '')
+    const namePart = name
       .trim()
-      .split(' ')
-      .map(word => word[0])
-      .join('')
-      .toUpperCase();
-    
-    return `${levelPrefix}-${cleanName}`;
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '')
+      .substring(0, 4);
+    return `${levelPrefix}-${namePart}`;
   }
 
   /**
-   * Get level prefix for code generation
-   */
-  private getLevelPrefix(level: number): string {
-    if (level === CBCLevel.PrePrimary1) return 'PP1';
-    if (level === CBCLevel.PrePrimary2) return 'PP2';
-    if (level >= CBCLevel.Grade1 && level <= CBCLevel.Grade6) {
-      return `G${level - CBCLevel.Grade1 + 1}`;
-    }
-    if (level >= CBCLevel.JuniorSecondary1 && level <= CBCLevel.JuniorSecondary3) {
-      return `JS${level - CBCLevel.JuniorSecondary1 + 1}`;
-    }
-    if (level >= CBCLevel.SeniorSecondary1 && level <= CBCLevel.SeniorSecondary3) {
-      return `SS${level - CBCLevel.SeniorSecondary1 + 1}`;
-    }
-    return 'CLS';
-  }
-
-  /**
-   * Calculate capacity utilization percentage
+   * Get capacity utilization percentage
    */
   getCapacityUtilization(currentEnrollment: number, capacity: number): number {
     if (capacity === 0) return 0;
@@ -181,41 +154,31 @@ export class ClassService {
    */
   getCapacityStatusColor(currentEnrollment: number, capacity: number): string {
     const utilization = this.getCapacityUtilization(currentEnrollment, capacity);
-    
-    if (utilization >= 100) return 'warn';
-    if (utilization >= 90) return 'accent';
-    return 'primary';
+    if (utilization >= 90) return 'red';
+    if (utilization >= 70) return 'amber';
+    return 'green';
   }
 
-  // ==================== Error Handling ====================
-
-  private handleError<T>(operation = 'operation') {
-    return (error: any): Observable<ApiResponse<T>> => {
-      console.error(`${operation} failed:`, error);
-
-      let errorMessage = 'An error occurred';
-      if (error.error?.message) {
-        errorMessage = error.error.message;
-      } else if (error.message) {
-        errorMessage = error.message;
-      } else if (error.status === 0) {
-        errorMessage = 'Unable to connect to server';
-      } else if (error.status === 401) {
-        errorMessage = 'Unauthorized access';
-      } else if (error.status === 403) {
-        errorMessage = 'Forbidden - insufficient permissions';
-      } else if (error.status === 404) {
-        errorMessage = 'Resource not found';
-      } else if (error.status >= 500) {
-        errorMessage = 'Server error occurred';
-      }
-
-       return of({
-        success: false,
-        message: errorMessage,
-        data: null as unknown as T,
-        errors: error.error?.errors || [errorMessage]
-      } as ApiResponse<T>);
+  /**
+   * Get level prefix for code generation
+   */
+  private getLevelPrefix(level: number): string {
+    const prefixMap: { [key: number]: string } = {
+      [CBCLevel.PrePrimary1]: 'PP1',
+      [CBCLevel.PrePrimary2]: 'PP2',
+      [CBCLevel.Grade1]: 'G1',
+      [CBCLevel.Grade2]: 'G2',
+      [CBCLevel.Grade3]: 'G3',
+      [CBCLevel.Grade4]: 'G4',
+      [CBCLevel.Grade5]: 'G5',
+      [CBCLevel.Grade6]: 'G6',
+      [CBCLevel.JuniorSecondary1]: 'JS1',
+      [CBCLevel.JuniorSecondary2]: 'JS2',
+      [CBCLevel.JuniorSecondary3]: 'JS3',
+      [CBCLevel.SeniorSecondary1]: 'SS1',
+      [CBCLevel.SeniorSecondary2]: 'SS2',
+      [CBCLevel.SeniorSecondary3]: 'SS3'
     };
+    return prefixMap[level] || `L${level}`;
   }
 }
