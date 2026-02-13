@@ -91,6 +91,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
             PaymentRead, PaymentWrite,
             InvoiceRead, InvoiceWrite,
             CurriculumRead, CurriculumWrite,
+            AcademicYearRead, AcademicYearWrite, AcademicYearDelete, AcademicYearClose,
             LessonPlanRead, LessonPlanWrite,
             MpesaInitiate, MpesaViewTransactions, MpesaRefund, MpesaReconcile,
             DocumentNumberSeriesRead, DocumentNumberSeriesWrite, DocumentNumberSeriesDelete  // ✅ Added

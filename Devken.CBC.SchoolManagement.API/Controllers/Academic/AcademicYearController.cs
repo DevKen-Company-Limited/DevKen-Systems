@@ -3,6 +3,7 @@ using Devken.CBC.SchoolManagement.Application.DTOs.Academics;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
 using Devken.CBC.SchoolManagement.Application.Service.Activities;
 using Devken.CBC.SchoolManagement.Domain.Entities.Academic;
+using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
@@ -28,12 +29,9 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
         /// Get all academic years - SuperAdmin can see all, others see only their school's academic years
         /// </summary>
         [HttpGet]
-        //[Authorize(Roles = "SuperAdmin,SchoolAdmin,Teacher")]
+        [Authorize(Policy = PermissionKeys.AcademicYearRead)]
         public async Task<IActionResult> GetAll([FromQuery] Guid? schoolId = null)
         {
-            if (!HasPermission("AcademicYear.Read"))
-                return ForbiddenResponse("You do not have permission to view academic years.");
-
             // SuperAdmin can view all academic years or filter by school
             if (HasRole("SuperAdmin"))
             {
@@ -57,12 +55,9 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
         /// Get academic year by ID - SuperAdmin or users from the same school
         /// </summary>
         [HttpGet("{id:guid}")]
-        //[Authorize(Roles = "SuperAdmin,SchoolAdmin,Teacher")]
+        [Authorize(Policy = PermissionKeys.AcademicYearRead)]
         public async Task<IActionResult> GetById(Guid id)
         {
-            if (!HasPermission("AcademicYear.Read"))
-                return ForbiddenResponse("You do not have permission to view this academic year.");
-
             var academicYear = await _repositories.AcademicYear.GetByIdAsync(id, trackChanges: false);
             if (academicYear == null)
                 return NotFoundResponse("Academic year not found");
@@ -82,12 +77,9 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
         /// Get current academic year for the school
         /// </summary>
         [HttpGet("current")]
-        //[Authorize(Roles = "SuperAdmin,SchoolAdmin,Teacher")]
+        [Authorize(Policy = PermissionKeys.AcademicYearRead)]
         public async Task<IActionResult> GetCurrent([FromQuery] Guid? schoolId = null)
         {
-            if (!HasPermission("AcademicYear.Read"))
-                return ForbiddenResponse("You do not have permission to view academic years.");
-
             Guid targetSchoolId;
             if (HasRole("SuperAdmin") && schoolId.HasValue)
             {
@@ -109,12 +101,9 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
         /// Get all open academic years for the school
         /// </summary>
         [HttpGet("open")]
-        //[Authorize(Roles = "SuperAdmin,SchoolAdmin,Teacher")]
+        [Authorize(Policy = PermissionKeys.AcademicYearRead)]
         public async Task<IActionResult> GetOpen([FromQuery] Guid? schoolId = null)
         {
-            if (!HasPermission("AcademicYear.Read"))
-                return ForbiddenResponse("You do not have permission to view academic years.");
-
             Guid targetSchoolId;
             if (HasRole("SuperAdmin") && schoolId.HasValue)
             {
@@ -134,12 +123,9 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
         /// Create academic year - SuperAdmin or SchoolAdmin
         /// </summary>
         [HttpPost]
-        //[Authorize(Roles = "SuperAdmin,SchoolAdmin")]
+        [Authorize(Policy = PermissionKeys.AcademicYearWrite)]
         public async Task<IActionResult> Create([FromBody] CreateAcademicYearRequest request)
         {
-            if (!HasPermission("AcademicYear.Write"))
-                return ForbiddenResponse("You do not have permission to create academic years.");
-
             if (!ModelState.IsValid)
                 return ValidationErrorResponse(ModelState.ToDictionary(
                     kvp => kvp.Key,
@@ -208,12 +194,9 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
         /// Update academic year - SuperAdmin or SchoolAdmin (own school only)
         /// </summary>
         [HttpPut("{id:guid}")]
-        //[Authorize(Roles = "SuperAdmin,SchoolAdmin")]
+        [Authorize(Policy = PermissionKeys.AcademicYearWrite)]
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateAcademicYearRequest request)
         {
-            if (!HasPermission("AcademicYear.Write"))
-                return ForbiddenResponse("You do not have permission to update academic years.");
-
             if (!ModelState.IsValid)
                 return ValidationErrorResponse(ModelState.ToDictionary(
                     kvp => kvp.Key,
@@ -282,12 +265,9 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
         /// Set academic year as current - SuperAdmin or SchoolAdmin (own school only)
         /// </summary>
         [HttpPut("{id:guid}/set-current")]
-        //[Authorize(Roles = "SuperAdmin,SchoolAdmin")]
+        [Authorize(Policy = PermissionKeys.AcademicYearWrite)]
         public async Task<IActionResult> SetAsCurrent(Guid id)
         {
-            if (!HasPermission("AcademicYear.Write"))
-                return ForbiddenResponse("You do not have permission to modify academic years.");
-
             var academicYear = await _repositories.AcademicYear.GetByIdAsync(id, trackChanges: false);
             if (academicYear == null)
                 return NotFoundResponse("Academic year not found");
@@ -315,12 +295,9 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
         /// Close academic year - SuperAdmin or SchoolAdmin (own school only)
         /// </summary>
         [HttpPut("{id:guid}/close")]
-        //[Authorize(Roles = "SuperAdmin,SchoolAdmin")]
+        [Authorize(Policy = PermissionKeys.AcademicYearClose)]
         public async Task<IActionResult> Close(Guid id)
         {
-            if (!HasPermission("AcademicYear.Close"))
-                return ForbiddenResponse("You do not have permission to close academic years.");
-
             var academicYear = await _repositories.AcademicYear.GetByIdAsync(id, trackChanges: true);
             if (academicYear == null)
                 return NotFoundResponse("Academic year not found");
@@ -348,12 +325,9 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
         /// Delete academic year - SuperAdmin or SchoolAdmin (own school only)
         /// </summary>
         [HttpDelete("{id:guid}")]
-        //[Authorize(Roles = "SuperAdmin,SchoolAdmin")]
+        [Authorize(Policy = PermissionKeys.AcademicYearDelete)]
         public async Task<IActionResult> Delete(Guid id)
         {
-            if (!HasPermission("AcademicYear.Delete"))
-                return ForbiddenResponse("You do not have permission to delete academic years.");
-
             var academicYear = await _repositories.AcademicYear.GetByIdAsync(id, trackChanges: true);
             if (academicYear == null)
                 return NotFoundResponse("Academic year not found");

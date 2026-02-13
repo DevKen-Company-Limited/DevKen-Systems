@@ -21,6 +21,12 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
             (PermissionKeys.RoleWrite,    "Create / Edit Roles",    "Administration", "Add or modify roles"),
             (PermissionKeys.RoleDelete,   "Delete Roles",           "Administration", "Remove a role from the system"),
 
+                // Academic Year
+            (PermissionKeys.AcademicYearRead, "View Academic Years", "Academic Year", "Access academic year records and schedules"),
+            (PermissionKeys.AcademicYearWrite, "Manage Academic Years", "Academic Year", "Create or update academic year periods"),
+            (PermissionKeys.AcademicYearDelete, "Delete Academic Years", "Academic Year", "Remove academic year records"),
+            (PermissionKeys.AcademicYearClose, "Close Academic Years", "Academic Year", "Finalize and close academic year for archival"),
+
             // Academic
             (PermissionKeys.StudentRead,  "View Students",          "Academic", "Access student records"),
             (PermissionKeys.StudentWrite, "Manage Students",        "Academic", "Add or update student data"),
