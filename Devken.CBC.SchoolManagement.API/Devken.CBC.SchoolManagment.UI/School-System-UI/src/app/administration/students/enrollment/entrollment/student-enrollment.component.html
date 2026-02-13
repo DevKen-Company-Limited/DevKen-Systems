@@ -271,7 +271,7 @@
           color="primary"
           (click)="nextStep()"
           [disabled]="!canProceed()">
-          <span class="mr-2 hidden sm:inline">Save & Continue</span>
+          <span class="mr-2 hidden sm:inline">Next</span>
           <span class="mr-2 sm:hidden">Next</span>
           <mat-icon svgIcon="heroicons_outline:chevron-right"></mat-icon>
         </button>
@@ -279,11 +279,11 @@
         <button
           *ngIf="currentStep === steps.length - 1"
           mat-flat-button
-          color="accent"
+          color="primary"
           (click)="submitForm()"
           [disabled]="!allStepsCompleted() || isSubmitting">
           <mat-icon svgIcon="heroicons_outline:check-circle"></mat-icon>
-          <span class="ml-2">{{ isSubmitting ? 'Submitting…' : (isEditMode ? 'Update Student' : 'Enroll Student') }}</span>
+          <span class="ml-2">{{ isSubmitting ? 'Submitting…' : (isEditMode ? 'Update' : 'Enroll') }}</span>
         </button>
       </footer>
 
