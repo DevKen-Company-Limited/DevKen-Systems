@@ -538,6 +538,51 @@ export class TeachersComponent implements OnInit, OnDestroy {
     );
   }
 
+
+  // In teachers.component.ts
+
+toggleActive(teacher: TeacherDto): void {
+  const newStatus = !teacher.isActive;
+  const action = newStatus ? 'activate' : 'deactivate';
+  
+  const confirmation = this._confirmation.open({
+    title: `${newStatus ? 'Activate' : 'Deactivate'} Teacher`,
+    message: `Are you sure you want to ${action} ${teacher.fullName}?`,
+    icon: {
+      name: newStatus ? 'check_circle' : 'block',
+      color: newStatus ? 'success' : 'warn',
+    },
+    actions: {
+      confirm: {
+        label: newStatus ? 'Activate' : 'Deactivate',
+        color: newStatus ? 'primary' : 'warn',
+      },
+      cancel: {
+        label: 'Cancel',
+      },
+    },
+  });
+
+  confirmation.afterClosed().pipe(takeUntil(this._unsubscribe)).subscribe(result => {
+    if (result === 'confirmed') {
+      // ✅ UPDATED: Use dedicated toggleStatus endpoint instead of update
+      this._service.toggleStatus(teacher.id, newStatus)
+        .pipe(takeUntil(this._unsubscribe))
+        .subscribe({
+          next: (res) => {
+            if (res.success) {
+              this._showSuccess(`Teacher ${action}d successfully`);
+              this.loadAll();
+            }
+          },
+          error: (err) => {
+            console.error('Failed to update teacher status:', err);
+            this._showError(err.error?.message || `Failed to ${action} teacher`);
+          }
+        });
+    }
+  });
+}
   // ── Helper Methods for Display ───────────────────────────────────────────────
   
   getEmploymentTypeName(value: string | number | undefined): string {
@@ -822,51 +867,6 @@ export class TeachersComponent implements OnInit, OnDestroy {
       });
   }
 
-  toggleActive(teacher: TeacherDto): void {
-    const newStatus = !teacher.isActive;
-    const action = newStatus ? 'activate' : 'deactivate';
-    
-    const confirmation = this._confirmation.open({
-      title: `${newStatus ? 'Activate' : 'Deactivate'} Teacher`,
-      message: `Are you sure you want to ${action} ${teacher.fullName}?`,
-      icon: {
-        name: newStatus ? 'check_circle' : 'block',
-        color: newStatus ? 'success' : 'warn',
-      },
-      actions: {
-        confirm: {
-          label: newStatus ? 'Activate' : 'Deactivate',
-          color: newStatus ? 'primary' : 'warn',
-        },
-        cancel: {
-          label: 'Cancel',
-        },
-      },
-    });
-
-    confirmation.afterClosed().pipe(takeUntil(this._unsubscribe)).subscribe(result => {
-      if (result === 'confirmed') {
-        const request: Partial<UpdateTeacherRequest> = {
-          isActive: newStatus
-        };
-        
-        this._service.update(teacher.id, request as UpdateTeacherRequest)
-          .pipe(takeUntil(this._unsubscribe))
-          .subscribe({
-            next: (res) => {
-              if (res.success) {
-                this._showSuccess(`Teacher ${action}d successfully`);
-                this.loadAll();
-              }
-            },
-            error: (err) => {
-              console.error('Failed to update teacher status:', err);
-              this._showError(err.error?.message || `Failed to ${action} teacher`);
-            }
-          });
-      }
-    });
-  }
 
   removeTeacher(teacher: TeacherDto): void {
     const confirmation = this._confirmation.open({
