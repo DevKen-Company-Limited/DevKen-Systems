@@ -18,7 +18,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Seed
     public static class SeedExtensions
     {
         /// <summary>
-        /// Seeds all default data including SuperAdmin, schools, permissions, and roles
+        /// Seeds all default data including SuperAdmin, schools, permissions, roles, and academic data
         /// </summary>
         public static async Task SeedDefaultDataAsync(this IServiceProvider services)
         {
@@ -51,6 +51,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Seed
 
                 // ── 4. ASSIGN SCHOOLADMIN ROLE TO DEFAULT ADMIN ───
                 await AssignSchoolAdminRoleAsync(dbContext, defaultSchool.Id, logger);
+
+                // ── 5. SEED ACADEMIC DATA (ACADEMIC YEAR & CLASSES) ───
+                logger?.LogInformation("Seeding academic data for school: {SchoolId}", defaultSchool.Id);
+                var academicSeeder = new AcademicSeeder(dbContext, logger);
+                await academicSeeder.SeedAcademicDataAsync(defaultSchool.Id);
 
                 logger?.LogInformation("=== Database seeding completed successfully ===");
             }
@@ -122,7 +127,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Seed
         }
 
         /// <summary>
-        /// Seeds a new school with complete setup (school, admin, roles, permissions)
+        /// Seeds a new school with complete setup (school, admin, roles, permissions, and academic data)
         /// </summary>
         public static async Task SeedNewSchoolWithSetupAsync(
             this IServiceProvider services,
@@ -198,6 +203,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Seed
                         }
                     }
                 }
+
+                // 4. Seed academic data (academic year and classes)
+                logger?.LogInformation("Seeding academic data for school: {SchoolId}", school.Id);
+                var academicSeeder = new AcademicSeeder(dbContext, logger);
+                await academicSeeder.SeedAcademicDataAsync(school.Id);
 
                 logger?.LogInformation(
                     "=== School setup completed successfully: {SchoolName} ===",
