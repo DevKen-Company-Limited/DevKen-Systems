@@ -6,7 +6,9 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
+import { FuseAlertComponent } from '@fuse/components/alert';
 import { AuthService } from 'app/core/auth/auth.service';
+import { CBCLevelOptions, normalizeCBCLevel, toNumber } from '../../types/Enums';
 
 @Component({
   selector: 'app-student-academic',
@@ -19,6 +21,7 @@ import { AuthService } from 'app/core/auth/auth.service';
     MatSelectModule,
     MatIconModule,
     MatCardModule,
+    FuseAlertComponent,
   ],
   templateUrl: './student-academic.component.html',
 })
@@ -27,6 +30,7 @@ export class StudentAcademicComponent implements OnInit, OnChanges {
   @Input() schools: any[] = [];
   @Input() classes: any[] = [];
   @Input() academicYears: any[] = [];
+  @Input() isEditMode = false;
   @Output() formChanged = new EventEmitter<any>();
   @Output() formValid = new EventEmitter<boolean>();
 
@@ -34,6 +38,9 @@ export class StudentAcademicComponent implements OnInit, OnChanges {
   private authService = inject(AuthService);
 
   form!: FormGroup;
+
+  // Use centralized CBC Levels
+  cbcLevels = CBCLevelOptions;
 
   get isSuperAdmin(): boolean {
     return this.authService.authUser?.isSuperAdmin ?? false;
@@ -47,30 +54,106 @@ export class StudentAcademicComponent implements OnInit, OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['formData'] && this.form) {
-      this.form.patchValue(this.formData, { emitEvent: false });
+      console.log('[Academic] Raw formData:', this.formData);
+      
+      // Normalize the incoming data
+      const patchData = this.normalizeFormData(this.formData);
+      
+      console.log('[Academic] Normalized patch data:', patchData);
+      this.form.patchValue(patchData, { emitEvent: false });
     }
   }
 
   private buildForm(): void {
+    console.log('[Academic] Building form with data:', this.formData);
+    
+    // Normalize data for initial form build
+    const normalizedData = this.normalizeFormData(this.formData);
+    
+    console.log('[Academic] Normalized initial data:', normalizedData);
+    
     const formConfig: any = {
-      currentLevel: [this.formData?.currentLevel ?? '', Validators.required],
-      currentClassId: [this.formData?.currentClassId ?? ''],
-      currentAcademicYearId: [this.formData?.currentAcademicYearId ?? ''],
-      previousSchool: [this.formData?.previousSchool ?? ''],
-      status: [this.formData?.status ?? ''],
+      currentLevel: [
+        normalizedData.currentLevel ?? '', 
+        Validators.required
+      ],
+      currentClassId: [normalizedData.currentClassId ?? ''],
+      currentAcademicYearId: [normalizedData.currentAcademicYearId ?? ''],
+      previousSchool: [normalizedData.previousSchool ?? ''],
+      status: [normalizedData.status ?? ''],
     };
 
     // Add schoolId field for SuperAdmin
     if (this.isSuperAdmin) {
-      formConfig.schoolId = [this.formData?.schoolId ?? '', Validators.required];
+      formConfig.schoolId = [normalizedData.schoolId ?? '', Validators.required];
     }
 
     this.form = this.fb.group(formConfig);
   }
 
+  /**
+   * Normalize form data from API
+   * - Converts currentLevel string to number
+   * - Normalizes status field (Active -> Regular)
+   */
+  private normalizeFormData(data: any): any {
+    if (!data) return {};
+    
+    // Convert currentLevel to number (handles "1" -> 1)
+    const currentLevel = normalizeCBCLevel(data.currentLevel);
+    
+    // Normalize academic status (Active -> Regular, etc.)
+    const status = this.normalizeAcademicStatus(data.status);
+    
+    const normalized = {
+      ...data,
+      currentLevel,
+      status,
+    };
+    
+    console.log('[Academic] Normalization:', {
+      input: { currentLevel: data.currentLevel, status: data.status },
+      output: { currentLevel, status }
+    });
+    
+    return normalized;
+  }
+
+  /**
+   * Normalize academic status string
+   * API might return "Active" but form uses "Regular"
+   */
+  private normalizeAcademicStatus(val: any): string {
+    if (!val) return '';
+    
+    const str = String(val).toLowerCase().trim();
+    
+    // Map API values to form values
+    const statusMap: { [key: string]: string } = {
+      'active': 'Regular',
+      'regular': 'Regular',
+      'onprobation': 'OnProbation',
+      'on probation': 'OnProbation',
+      'suspended': 'Suspended',
+      'transferred': 'Transferred',
+      'graduated': 'Graduated',
+    };
+    
+    return statusMap[str] || val; // Return mapped value or original
+  }
+
   private setupFormListeners(): void {
     this.form.valueChanges.subscribe(value => {
-      this.formChanged.emit(value);
+      // Ensure currentLevel is emitted as a number
+      const emitValue = {
+        ...value,
+        currentLevel: value.currentLevel !== null && value.currentLevel !== '' 
+          ? Number(value.currentLevel) 
+          : null
+      };
+      
+      console.log('[Academic] Form changed, emitting:', emitValue);
+      this.formChanged.emit(emitValue);
       this.formValid.emit(this.form.valid);
     });
   }

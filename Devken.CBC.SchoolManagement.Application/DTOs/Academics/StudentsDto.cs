@@ -219,6 +219,7 @@ namespace Devken.CBC.SchoolManagement.Application.DTOs.Academic
 
         [MaxLength(100)]
         public string? MiddleName { get; set; }
+        public DateTime? DateOfAdmission { get; set; }
 
         // Note: AdmissionNumber is immutable after creation
 
