@@ -249,9 +249,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academic
         public async Task<Dictionary<Guid, int>> GetStudentCountByClassAsync(Guid tenantId)
         {
             return await FindByCondition(
-                s => s.TenantId == tenantId && s.IsActive,
-                trackChanges: false)
-                .GroupBy(s => s.CurrentClassId)
+                    s => s.TenantId == tenantId
+                         && s.IsActive
+                         && s.CurrentClassId != null,   // 👈 filter nulls
+                    trackChanges: false)
+                .GroupBy(s => s.CurrentClassId!.Value)  // 👈 safe because filtered
                 .Select(g => new { ClassId = g.Key, Count = g.Count() })
                 .ToDictionaryAsync(x => x.ClassId, x => x.Count);
         }

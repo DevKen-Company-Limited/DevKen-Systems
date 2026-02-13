@@ -13,6 +13,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
 {
     /// <summary>
     /// Represents a student in the CBC school system
+    /// Includes personal, academic, medical, and guardian information
     /// </summary>
     public class Student : TenantBaseEntity<Guid>
     {
@@ -29,30 +30,39 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
         [MaxLength(100)]
         public string LastName { get; set; } = null!;
 
+        /// <summary>
+        /// Unique admission number - auto-generated if not provided
+        /// Format: ADM-YYYY-XXXXX (e.g., ADM-2026-00001)
+        /// </summary>
         [Required]
         [MaxLength(50)]
         public string AdmissionNumber { get; set; } = null!;
 
+        /// <summary>
+        /// National Education Management Information System number
+        /// </summary>
         [MaxLength(50)]
         public string? NemisNumber { get; set; }
 
         [MaxLength(50)]
         public string? BirthCertificateNumber { get; set; }
 
+        [Required]
         public DateTime DateOfBirth { get; set; }
 
+        [Required]
         public Gender Gender { get; set; }
 
-        [MaxLength(500)]
+        [MaxLength(100)]
         public string? PlaceOfBirth { get; set; }
 
-        [MaxLength(100)]
+        [MaxLength(50)]
         public string? Nationality { get; set; } = "Kenyan";
 
-        [MaxLength(100)]
+        [MaxLength(50)]
         public string? County { get; set; }
 
-        [MaxLength(100)]
+        [MaxLength(50)]
         public string? SubCounty { get; set; }
 
         [MaxLength(500)]
@@ -65,67 +75,93 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
 
         #region Academic Information
 
+        [Required]
         public DateTime DateOfAdmission { get; set; }
 
+        /// <summary>
+        /// Student's enrollment status (New, Continuing, Transferred, etc.)
+        /// </summary>
+        [Required]
+        public StudentStatus StudentStatus { get; set; }
+
+        /// <summary>
+        /// Student's current CBC level (Grade 1-9, PP1, PP2, etc.)
+        /// </summary>
+        [Required]
+        public CBCLevel CBCLevel { get; set; }
+
+        /// <summary>
+        /// Current level - mirrors CBCLevel for backward compatibility
+        /// </summary>
+        [Required]
         public CBCLevel CurrentLevel { get; set; }
 
-        public Guid CurrentClassId { get; set; }
+        public Guid? CurrentClassId { get; set; }
 
         public Guid? CurrentAcademicYearId { get; set; }
 
+        /// <summary>
+        /// Overall student status (Active, Suspended, Graduated, etc.)
+        /// </summary>
+        [Required]
         public StudentStatus Status { get; set; } = StudentStatus.Active;
 
-        [MaxLength(500)]
+        [MaxLength(200)]
         public string? PreviousSchool { get; set; }
 
         public DateTime? DateOfLeaving { get; set; }
 
         [MaxLength(500)]
         public string? LeavingReason { get; set; }
-        public StudentStatus StudentStatus { get; set; }
 
         #endregion
 
-        #region Health Information
+        #region Medical & Health Information
 
-        [MaxLength(100)]
+        [MaxLength(10)]
         public string? BloodGroup { get; set; }
 
-        [MaxLength(1000)]
         public string? MedicalConditions { get; set; }
 
-        [MaxLength(1000)]
         public string? Allergies { get; set; }
 
-        [MaxLength(500)]
         public string? SpecialNeeds { get; set; }
 
         public bool RequiresSpecialSupport { get; set; } = false;
 
         #endregion
 
-        #region Parent/Guardian Information
+        #region Guardian Information
 
-        // Primary Guardian
+        // ═══════════════════════════════════════════════════════════════
+        // Primary Guardian (Required)
+        // ═══════════════════════════════════════════════════════════════
+
+        [Required]
         [MaxLength(200)]
-        public string? PrimaryGuardianName { get; set; }
+        public string PrimaryGuardianName { get; set; } = null!;
 
+        [Required]
         [MaxLength(50)]
-        public string? PrimaryGuardianRelationship { get; set; }
+        public string PrimaryGuardianRelationship { get; set; } = null!;
 
+        [Required]
         [MaxLength(20)]
-        public string? PrimaryGuardianPhone { get; set; }
+        public string PrimaryGuardianPhone { get; set; } = null!;
 
         [MaxLength(100)]
         public string? PrimaryGuardianEmail { get; set; }
 
-        [MaxLength(200)]
+        [MaxLength(100)]
         public string? PrimaryGuardianOccupation { get; set; }
 
         [MaxLength(500)]
         public string? PrimaryGuardianAddress { get; set; }
 
-        // Secondary Guardian
+        // ═══════════════════════════════════════════════════════════════
+        // Secondary Guardian (Optional)
+        // ═══════════════════════════════════════════════════════════════
+
         [MaxLength(200)]
         public string? SecondaryGuardianName { get; set; }
 
@@ -138,10 +174,13 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
         [MaxLength(100)]
         public string? SecondaryGuardianEmail { get; set; }
 
-        [MaxLength(200)]
+        [MaxLength(100)]
         public string? SecondaryGuardianOccupation { get; set; }
 
-        // Emergency Contact
+        // ═══════════════════════════════════════════════════════════════
+        // Emergency Contact (Optional)
+        // ═══════════════════════════════════════════════════════════════
+
         [MaxLength(200)]
         public string? EmergencyContactName { get; set; }
 
@@ -155,10 +194,13 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
 
         #region Additional Information
 
+        /// <summary>
+        /// Photo URL - stored in /uploads/students/
+        /// Managed by ImageUploadService
+        /// </summary>
         [MaxLength(500)]
         public string? PhotoUrl { get; set; }
 
-        [MaxLength(2000)]
         public string? Notes { get; set; }
 
         public bool IsActive { get; set; } = true;
@@ -197,8 +239,14 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
 
         #region Computed Properties
 
+        /// <summary>
+        /// Full name: FirstName MiddleName LastName
+        /// </summary>
         public string FullName => $"{FirstName} {MiddleName} {LastName}".Replace("  ", " ").Trim();
 
+        /// <summary>
+        /// Calculates current age based on date of birth
+        /// </summary>
         public int Age
         {
             get
@@ -210,6 +258,10 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
             }
         }
 
+        /// <summary>
+        /// Display name with admission number
+        /// Format: ADM-2026-00001 - John Doe
+        /// </summary>
         public string DisplayName => $"{AdmissionNumber} - {FullName}";
 
         #endregion
@@ -227,6 +279,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
                 StudentName = FullName,
                 AdmissionNumber = AdmissionNumber,
                 CurrentLevel = CurrentLevel,
+                CBCLevel = CBCLevel,
                 ClassName = CurrentClass?.Name ?? "Not Assigned"
             };
         }
@@ -250,11 +303,43 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
             {
                 PrimaryGuardian = PrimaryGuardianName,
                 PrimaryGuardianPhone = PrimaryGuardianPhone,
+                PrimaryGuardianEmail = PrimaryGuardianEmail,
                 PrimaryGuardianRelationship = PrimaryGuardianRelationship,
                 SecondaryGuardian = SecondaryGuardianName,
                 SecondaryGuardianPhone = SecondaryGuardianPhone,
+                SecondaryGuardianEmail = SecondaryGuardianEmail,
                 EmergencyContact = EmergencyContactName,
-                EmergencyContactPhone = EmergencyContactPhone
+                EmergencyContactPhone = EmergencyContactPhone,
+                EmergencyContactRelationship = EmergencyContactRelationship
+            };
+        }
+
+        /// <summary>
+        /// Validates if student is eligible for promotion to next level
+        /// </summary>
+        public bool IsEligibleForPromotion()
+        {
+            // Business logic for promotion eligibility
+            // - Must be active
+            // - No pending fees
+            // - Meets academic requirements
+            return IsActive && !HasPendingFees();
+        }
+
+        /// <summary>
+        /// Gets student's medical summary for quick reference
+        /// </summary>
+        public MedicalSummary GetMedicalSummary()
+        {
+            return new MedicalSummary
+            {
+                StudentId = Id,
+                StudentName = FullName,
+                BloodGroup = BloodGroup,
+                HasMedicalConditions = !string.IsNullOrWhiteSpace(MedicalConditions),
+                HasAllergies = !string.IsNullOrWhiteSpace(Allergies),
+                HasSpecialNeeds = !string.IsNullOrWhiteSpace(SpecialNeeds),
+                RequiresSpecialSupport = RequiresSpecialSupport
             };
         }
 
@@ -272,6 +357,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
         public string StudentName { get; set; } = null!;
         public string AdmissionNumber { get; set; } = null!;
         public CBCLevel CurrentLevel { get; set; }
+        public CBCLevel CBCLevel { get; set; }
         public string ClassName { get; set; } = null!;
         public decimal? AverageScore { get; set; }
         public string? OverallGrade { get; set; }
@@ -284,13 +370,36 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
     /// </summary>
     public class GuardianInfo
     {
-        public string? PrimaryGuardian { get; set; }
-        public string? PrimaryGuardianPhone { get; set; }
-        public string? PrimaryGuardianRelationship { get; set; }
+        public string PrimaryGuardian { get; set; } = null!;
+        public string PrimaryGuardianPhone { get; set; } = null!;
+        public string? PrimaryGuardianEmail { get; set; }
+        public string PrimaryGuardianRelationship { get; set; } = null!;
         public string? SecondaryGuardian { get; set; }
         public string? SecondaryGuardianPhone { get; set; }
+        public string? SecondaryGuardianEmail { get; set; }
         public string? EmergencyContact { get; set; }
         public string? EmergencyContactPhone { get; set; }
+        public string? EmergencyContactRelationship { get; set; }
+    }
+
+    /// <summary>
+    /// Represents student's medical summary for quick reference
+    /// </summary>
+    public class MedicalSummary
+    {
+        public Guid StudentId { get; set; }
+        public string StudentName { get; set; } = null!;
+        public string? BloodGroup { get; set; }
+        public bool HasMedicalConditions { get; set; }
+        public bool HasAllergies { get; set; }
+        public bool HasSpecialNeeds { get; set; }
+        public bool RequiresSpecialSupport { get; set; }
+
+        /// <summary>
+        /// Returns true if student has any medical concerns
+        /// </summary>
+        public bool HasMedicalConcerns =>
+            HasMedicalConditions || HasAllergies || HasSpecialNeeds || RequiresSpecialSupport;
     }
 
     #endregion

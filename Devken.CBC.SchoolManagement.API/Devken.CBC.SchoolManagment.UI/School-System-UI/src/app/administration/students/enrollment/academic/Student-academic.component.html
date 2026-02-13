@@ -1,0 +1,131 @@
+<!-- Student Academic Component - Fuse/Material + Tailwind -->
+<div class="max-w-6xl">
+
+  <!-- Section Header -->
+  <div class="flex items-start gap-4 mb-8">
+    <div class="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 shadow-lg">
+      <mat-icon class="text-white !w-7 !h-7" svgIcon="heroicons_outline:academic-cap"></mat-icon>
+    </div>
+    <div class="flex-1">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Academic Details</h2>
+      <p class="text-gray-600 dark:text-gray-400">School enrollment, class placement and academic records. Fields marked * are required.</p>
+    </div>
+  </div>
+
+  <form [formGroup]="form" novalidate class="space-y-6">
+
+    <!-- School Selection (SuperAdmin Only) -->
+    <mat-card *ngIf="isSuperAdmin" class="shadow-md">
+      <mat-card-header class="!pb-2">
+        <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+          <mat-icon svgIcon="heroicons_outline:building-office-2" class="text-orange-600"></mat-icon>
+          School Assignment
+          <span class="ml-auto text-xs font-medium px-2 py-1 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded">Required</span>
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>School *</mat-label>
+          <mat-select formControlName="schoolId">
+            <mat-option value="">Select school</mat-option>
+            <mat-option *ngFor="let school of schools" [value]="school.id">
+              {{ school.name }}{{ school.phone ? ' (' + school.phone + ')' : '' }}
+            </mat-option>
+          </mat-select>
+          <mat-icon matPrefix svgIcon="heroicons_outline:school" class="text-gray-400"></mat-icon>
+          <mat-error>School is required</mat-error>
+        </mat-form-field>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Current Enrollment -->
+    <mat-card class="shadow-md">
+      <mat-card-header class="!pb-2">
+        <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+          <mat-icon svgIcon="heroicons_outline:clipboard-document-check" class="text-orange-600"></mat-icon>
+          Current Enrollment
+          <span class="ml-auto text-xs font-medium px-2 py-1 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded">Required</span>
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Current Level *</mat-label>
+            <input matInput formControlName="currentLevel" placeholder="e.g. Grade 4">
+            <mat-icon matPrefix svgIcon="heroicons_outline:chart-bar" class="text-gray-400"></mat-icon>
+            <mat-error>Current level is required</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Class</mat-label>
+            <mat-select formControlName="currentClassId">
+              <mat-option value="">Select class</mat-option>
+              <mat-option *ngFor="let class of classes" [value]="class.id">
+                {{ class.name }}
+              </mat-option>
+            </mat-select>
+            <mat-icon matPrefix svgIcon="heroicons_outline:users" class="text-gray-400"></mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Academic Year</mat-label>
+            <mat-select formControlName="currentAcademicYearId">
+              <mat-option value="">Select year</mat-option>
+              <mat-option *ngFor="let year of academicYears" [value]="year.id">
+                {{ year.name }}
+              </mat-option>
+            </mat-select>
+            <mat-icon matPrefix svgIcon="heroicons_outline:calendar" class="text-gray-400"></mat-icon>
+          </mat-form-field>
+
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Previous Education -->
+    <mat-card class="shadow-md">
+      <mat-card-header class="!pb-2">
+        <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+          <mat-icon svgIcon="heroicons_outline:arrow-uturn-left" class="text-orange-600"></mat-icon>
+          Previous Education
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>Previous School</mat-label>
+          <input matInput formControlName="previousSchool" placeholder="Name of previous school (if any)">
+          <mat-icon matPrefix svgIcon="heroicons_outline:building-library" class="text-gray-400"></mat-icon>
+          <mat-hint>Leave blank if this is the student's first school</mat-hint>
+        </mat-form-field>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Academic Status -->
+    <mat-card class="shadow-md">
+      <mat-card-header class="!pb-2">
+        <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+          <mat-icon svgIcon="heroicons_outline:signal" class="text-orange-600"></mat-icon>
+          Academic Status
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>Status</mat-label>
+          <mat-select formControlName="status">
+            <mat-option value="">Select status</mat-option>
+            <mat-option value="Regular">Regular</mat-option>
+            <mat-option value="OnProbation">On Probation</mat-option>
+            <mat-option value="Suspended">Suspended</mat-option>
+            <mat-option value="Transferred">Transferred</mat-option>
+            <mat-option value="Graduated">Graduated</mat-option>
+          </mat-select>
+          <mat-icon matPrefix svgIcon="heroicons_outline:flag" class="text-gray-400"></mat-icon>
+          <mat-hint>Current academic standing</mat-hint>
+        </mat-form-field>
+      </mat-card-content>
+    </mat-card>
+
+  </form>
+
+</div>

@@ -1,0 +1,164 @@
+<!-- Student List Shell - Responsive Container -->
+<div class="absolute inset-0 flex min-w-0 flex-col overflow-y-auto" cdkScrollable>
+
+  <!-- ── Reusable Page Header ────────────────────────────────────────────── -->
+  <app-page-header
+    title="Students Management"
+    description="Manage all student enrollments across the school"
+    icon="school"
+    [breadcrumbs]="breadcrumbs"
+    [actionTemplate]="headerActions">
+  </app-page-header>
+
+  <!-- Header Actions Template -->
+  <ng-template #headerActions>
+    <button mat-flat-button 
+      class="bg-white text-indigo-700 hover:bg-yellow-200 hover:text-indigo-900 shadow-lg transition-all hover:shadow-xl font-bold" 
+      (click)="enrollStudent()">
+      <mat-icon class="icon-size-5">person_add</mat-icon>
+      <span class="ml-2">Enroll Student</span>
+    </button>
+  </ng-template>
+
+  <!-- ── Main Content ───────────────────────────────────────────────────── -->
+  <div class="bg-card -mt-10 flex-auto rounded-t-2xl p-6 shadow sm:p-10">
+
+    <!-- Stats Cards (Reusable Component) -->
+    <app-stats-cards [cards]="statsCards" [columns]="isSuperAdmin ? 5 : 4"></app-stats-cards>
+
+    <!-- Filter Panel Section -->
+    <div class="mb-6">
+      <app-filter-panel
+        [fields]="filterFields"
+        [showPanel]="showFilterPanel"
+        [columns]="4"
+        (filterChange)="onFilterChange($event)"
+        (clearAll)="onClearFilters()"
+        (togglePanel)="toggleFilterPanel()">
+      </app-filter-panel>
+    </div>
+
+    <!-- ── Reusable Data Table ───────────────────────────────────────────── -->
+    <app-data-table
+      [columns]="tableColumns"
+      [data]="paginatedData"
+      [actions]="tableActions"
+      [loading]="isLoading"
+      [header]="tableHeader"
+      [emptyState]="tableEmptyState"
+      [cellTemplates]="cellTemplates">
+    </app-data-table>
+
+    <!-- Pagination (Reusable Component) -->
+    <app-pagination
+      *ngIf="!isLoading"
+      [currentPage]="currentPage"
+      [totalItems]="filteredData.length"
+      [itemsPerPage]="itemsPerPage"
+      [itemLabel]="'students'"
+      [showItemsPerPageSelector]="true"
+      [showPageNumbers]="true"
+      (pageChange)="onPageChange($event)"
+      (itemsPerPageChange)="onItemsPerPageChange($event)">
+    </app-pagination>
+  </div>
+</div>
+
+<!-- Hidden file input for photo upload -->
+<input #photoInput type="file" class="hidden" accept="image/*" (change)="onPhotoFileSelected($event)" />
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- Cell Templates for Data Table -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+
+<!-- Student Cell Template -->
+<ng-template #studentCell let-row>
+  <div class="flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center border border-indigo-200 dark:border-indigo-800">
+      <!-- Loading Spinner -->
+      <div *ngIf="photoCache[row.id]?.isLoading" class="w-full h-full flex items-center justify-center">
+        <mat-spinner diameter="20"></mat-spinner>
+      </div>
+      
+      <!-- Error State -->
+      <div *ngIf="photoCache[row.id]?.error" class="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800">
+        <mat-icon class="text-gray-400 icon-size-5">error_outline</mat-icon>
+      </div>
+      
+      <!-- Image -->
+      <img *ngIf="photoCache[row.id]?.url"
+          [src]="photoCache[row.id]?.url"
+          [alt]="row.fullName"
+          class="w-full h-full object-cover" />
+      
+      <!-- Initials Fallback -->
+      <span *ngIf="!photoCache[row.id]?.url && !photoCache[row.id]?.isLoading && !photoCache[row.id]?.error"
+              class="text-sm font-bold text-indigo-600 dark:text-indigo-400">
+          {{ row.firstName?.[0] || '' }}{{ row.lastName?.[0] || '' }}
+      </span>
+    </div>
+    <div>
+      <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ row.fullName }}</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">{{ getGenderName(row.gender) }} • {{ getCBCLevelName(row.cbcLevel) }}</p>
+    </div>
+  </div>
+</ng-template>
+
+<!-- Number Cell Template -->
+<ng-template #numberCell let-row>
+  <div>
+    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+      {{ row.admissionNumber }}
+    </span>
+    <p *ngIf="row.nemisNumber" class="text-xs text-gray-500 dark:text-gray-400 mt-1">NEMIS: {{ row.nemisNumber }}</p>
+  </div>
+</ng-template>
+
+<!-- School Cell Template (SuperAdmin only) -->
+<ng-template #schoolCell let-row>
+  <div class="flex items-center gap-2">
+    <mat-icon class="icon-size-5 text-blue-600 dark:text-blue-400">school</mat-icon>
+    <span class="text-sm text-gray-700 dark:text-gray-300">
+      {{ row.schoolName || '—' }}
+    </span>
+  </div>
+</ng-template>
+
+<!-- Contact Cell Template -->
+<ng-template #contactCell let-row>
+  <div>
+    <p class="text-sm text-gray-700 dark:text-gray-300">{{ row.primaryGuardianPhone || '—' }}</p>
+    <p class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-40">{{ row.primaryGuardianEmail || '—' }}</p>
+  </div>
+</ng-template>
+
+<!-- Academic Cell Template -->
+<ng-template #academicCell let-row>
+  <div>
+    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+      {{ row.currentLevel || '—' }}
+    </span>
+    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+      Status: {{ getStudentStatusName(row.studentStatus) }}
+    </p>
+  </div>
+</ng-template>
+
+<!-- Guardian Cell Template -->
+<ng-template #guardianCell let-row>
+  <div>
+    <p class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ row.primaryGuardianName || '—' }}</p>
+    <p class="text-xs text-gray-500 dark:text-gray-400">{{ row.primaryGuardianRelationship || '—' }}</p>
+  </div>
+</ng-template>
+
+<!-- Status Cell Template -->
+<ng-template #statusCell let-row>
+  <span class="px-3 py-1 rounded-full text-xs font-semibold"
+    [ngClass]="{
+      'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400': row.isActive,
+      'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400': !row.isActive
+    }">
+    {{ row.isActive ? 'Active' : 'Inactive' }}
+  </span>
+</ng-template>

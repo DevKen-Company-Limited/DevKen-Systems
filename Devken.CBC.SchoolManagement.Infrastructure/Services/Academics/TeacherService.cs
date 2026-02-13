@@ -280,8 +280,8 @@ namespace Devken.CBC.SchoolManagement.Application.Services.Implementations.Acade
         {
             if (string.IsNullOrWhiteSpace(requestTeacherNumber))
             {
-                // ✅ FIX: Pass the target schoolId explicitly
-                return await _documentNumberService.GenerateAsync(TEACHER_NUMBER_SERIES, schoolId);
+                // Generate teacher number - ensure series exists first
+                return await GenerateTeacherNumberAsync(schoolId);
             }
 
             var teacherNumber = requestTeacherNumber.Trim();
@@ -292,6 +292,23 @@ namespace Devken.CBC.SchoolManagement.Application.Services.Implementations.Acade
                 throw new ConflictException($"Teacher with number '{teacherNumber}' already exists in this school.");
 
             return teacherNumber;
+        }
+
+        private async Task<string> GenerateTeacherNumberAsync(Guid schoolId)
+        {
+            // Ensure number series exists for this school
+            var seriesExists = await _documentNumberService.SeriesExistsAsync(TEACHER_NUMBER_SERIES, schoolId);
+            if (!seriesExists)
+            {
+                await _documentNumberService.CreateSeriesAsync(
+                    entityName: TEACHER_NUMBER_SERIES,
+                    prefix: "TCH",
+                    padding: 5,
+                    resetEveryYear: true,
+                    description: "Teacher employment numbers");
+            }
+
+            return await _documentNumberService.GenerateAsync(TEACHER_NUMBER_SERIES, schoolId);
         }
 
         private Teacher CreateTeacherEntity(CreateTeacherRequest request, Guid schoolId, string teacherNumber)
@@ -374,7 +391,7 @@ namespace Devken.CBC.SchoolManagement.Application.Services.Implementations.Acade
             {
                 Id = teacher.Id,
                 SchoolId = teacher.TenantId,
-                SchoolName = teacher.School?.Name ?? string.Empty, // ✅ ADDED: Map school name
+                SchoolName = teacher.School?.Name ?? string.Empty,
                 FirstName = teacher.FirstName ?? string.Empty,
                 MiddleName = teacher.MiddleName ?? string.Empty,
                 LastName = teacher.LastName ?? string.Empty,
@@ -404,4 +421,4 @@ namespace Devken.CBC.SchoolManagement.Application.Services.Implementations.Acade
             };
         }
     }
-    }
+}

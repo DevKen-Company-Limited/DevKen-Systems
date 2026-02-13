@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { FuseAlertComponent } from '@fuse/components/alert';
-import { EnrollmentStep } from '../types/EnrollmentStep';
+import { EnrollmentStep } from '../../types/EnrollmentStep';
+
 
 @Component({
   selector: 'app-student-review',

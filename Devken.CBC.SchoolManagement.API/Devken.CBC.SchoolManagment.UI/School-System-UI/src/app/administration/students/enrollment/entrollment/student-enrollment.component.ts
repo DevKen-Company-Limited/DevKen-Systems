@@ -8,13 +8,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { FuseAlertComponent } from '@fuse/components/alert';
 
 import { StudentService } from 'app/core/DevKenService/administration/students/StudentService';
-import { EnrollmentStep } from '../types/EnrollmentStep';
 import { StudentPersonalInfoComponent } from '../personal-information/student-personal-info.component';
 import { StudentLocationComponent } from '../location/student-location.component';
 import { StudentAcademicComponent } from '../academic/Student-academic.component';
 import { StudentGuardiansComponent } from '../guardians/Student-guardians.component';
 import { StudentMedicalComponent } from '../medical/Student-medical.component';
 import { StudentReviewComponent } from '../review/Student-review.component';
+import { EnrollmentStep } from '../../types/EnrollmentStep';
 
 @Component({
   selector: 'app-student-enrollment',

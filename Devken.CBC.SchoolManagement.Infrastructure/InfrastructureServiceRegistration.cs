@@ -9,6 +9,7 @@ using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Paym
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Tenant;
 using Devken.CBC.SchoolManagement.Application.Service;
 using Devken.CBC.SchoolManagement.Application.Service.Activities;
+using Devken.CBC.SchoolManagement.Application.Service.Administration.Student;
 using Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment;
 using Devken.CBC.SchoolManagement.Application.Service.Isubscription;
 using Devken.CBC.SchoolManagement.Application.Service.ISubscription;
@@ -28,6 +29,7 @@ using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Tenant;
 using Devken.CBC.SchoolManagement.Infrastructure.Security;
 using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Activities;
+using Devken.CBC.SchoolManagement.Infrastructure.Services.Administration.Students;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Images;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.RoleAssignment;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement;
@@ -240,6 +242,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IAuthorizationHandler, RoleHandler>();
             services.AddScoped<IAuthorizationHandler, TenantAccessHandler>();
             services.AddScoped<IPasswordHashingService, BCryptPasswordHashingService>();
+            services.AddScoped<IStudentService, StudentService>();
+            
             // Repositories
             services.AddScoped<IStudentRepository, StudentRepository>();
             services.AddScoped<ISchoolRepository, SchoolRepository>();
