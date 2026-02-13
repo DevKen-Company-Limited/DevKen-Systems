@@ -519,9 +519,8 @@ private _patchFormWithTeacher(teacher: TeacherDto): void {
     this._dialogRef.close(null);
   }
 
-  // ── Payload Builder ──────────────────────────────────────────────────────────
 private _buildPayload(): any {
-  const v = this.form.getRawValue(); // Use getRawValue() to include disabled fields
+  const v = this.form.getRawValue();
 
   const toIso = (val: any): string | null => {
     if (!val) return null;
@@ -568,14 +567,14 @@ private _buildPayload(): any {
     payload.teacherNumber = v.teacherNumber?.trim() || null;
   }
 
-  // Add schoolId for SuperAdmins
-  if (this.isSuperAdmin && v.schoolId) {
-    payload.schoolId = v.schoolId;
+  // Add schoolId ONLY for SuperAdmins (explicitly exclude for non-SuperAdmins)
+  if (this.isSuperAdmin) {
+    payload.schoolId = v.schoolId ?? null;
   }
+  // Note: For non-SuperAdmins, schoolId is intentionally omitted from payload
 
   return payload;
 }
-
   // ── Helpers ──────────────────────────────────────────────────────────────────
   hasError(field: string, error: string): boolean {
     const c = this.form.get(field);
