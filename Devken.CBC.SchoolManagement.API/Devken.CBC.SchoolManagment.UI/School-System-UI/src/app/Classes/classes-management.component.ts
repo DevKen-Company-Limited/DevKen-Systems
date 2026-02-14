@@ -1,28 +1,36 @@
-import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
-import { CommonModule, DatePipe } from '@angular/common';
-import { MatTableModule, MatTableDataSource } from '@angular/material/table';
-import { MatPaginator, MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-import { MatSort, MatSortModule } from '@angular/material/sort';
+import { Component, OnInit, OnDestroy, ViewChild, TemplateRef, inject, AfterViewInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatCardModule } from '@angular/material/card';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatSelectModule } from '@angular/material/select';
 import { MatMenuModule } from '@angular/material/menu';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatBadgeModule } from '@angular/material/badge';
 import { MatDividerModule } from '@angular/material/divider';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { FormsModule } from '@angular/forms';
-import { Subject, takeUntil, take } from 'rxjs';
-import { FuseAlertComponent } from '@fuse/components/alert';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { FuseConfirmationService } from '@fuse/services/confirmation';
+import { Subject, forkJoin, of } from 'rxjs';
+import { catchError, takeUntil, finalize } from 'rxjs/operators';
 import { ClassService } from 'app/core/DevKenService/ClassService';
+import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
 import { CreateEditClassDialogComponent } from 'app/dialog-modals/Classes/create-edit-class-dialog.component';
 import { ClassDto } from './Types/Class';
+import { SchoolDto } from 'app/Tenant/types/school';
+import { AuthService } from 'app/core/auth/auth.service';
+
+// Import reusable components
+import { PageHeaderComponent, Breadcrumb } from 'app/shared/Page-Header/page-header.component';
+import { FilterPanelComponent, FilterField, FilterChangeEvent } from 'app/shared/Filter/filter-panel.component';
+import { PaginationComponent } from 'app/shared/pagination/pagination.component';
+import { StatsCardsComponent, StatCard } from 'app/shared/stats-cards/stats-cards.component';
+import { 
+  DataTableComponent, 
+  TableColumn, 
+  TableAction, 
+  TableHeader, 
+  TableEmptyState 
+} from 'app/shared/data-table/data-table.component';
 
 @Component({
   selector: 'app-classes-management',
@@ -30,83 +38,286 @@ import { ClassDto } from './Types/Class';
   imports: [
     CommonModule,
     FormsModule,
-    MatTableModule,
-    MatPaginatorModule,
-    MatSortModule,
     MatIconModule,
     MatButtonModule,
     MatDialogModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatCardModule,
     MatSnackBarModule,
-    MatProgressSpinnerModule,
-    MatSelectModule,
     MatMenuModule,
-    MatTooltipModule,
-    MatBadgeModule,
+    MatProgressSpinnerModule,
     MatDividerModule,
-    MatProgressBarModule,
-    FuseAlertComponent
+    MatTooltipModule,
+    // Reusable components
+    PageHeaderComponent,
+    FilterPanelComponent,
+    PaginationComponent,
+    StatsCardsComponent,
+    DataTableComponent,
   ],
   templateUrl: './classes-management.component.html',
-  providers: [DatePipe]
 })
-export class ClassesManagementComponent implements OnInit, OnDestroy {
-  @ViewChild(MatPaginator) paginator!: MatPaginator;
-  @ViewChild(MatSort) sort!: MatSort;
+export class ClassesManagementComponent implements OnInit, OnDestroy, AfterViewInit {
+  @ViewChild('classCell') classCellTemplate!: TemplateRef<any>;
+  @ViewChild('schoolCell') schoolCellTemplate!: TemplateRef<any>;
+  @ViewChild('levelCell') levelCellTemplate!: TemplateRef<any>;
+  @ViewChild('capacityCell') capacityCellTemplate!: TemplateRef<any>;
+  @ViewChild('teacherCell') teacherCellTemplate!: TemplateRef<any>;
+  @ViewChild('academicYearCell') academicYearCellTemplate!: TemplateRef<any>;
+  @ViewChild('statusCell') statusCellTemplate!: TemplateRef<any>;
 
   private _unsubscribe = new Subject<void>();
+  private _authService = inject(AuthService);
+  private _schoolService = inject(SchoolService);
 
-  // All data
-  allData: ClassDto[] = [];
-  
-  // Filter state
-  filterValue = '';
-  levelFilter: number | 'all' = 'all';
-  statusFilter: 'all' | 'active' | 'inactive' | 'full' = 'all';
-  showFilterPanel = false;
-  
-  // Paging state
-  pageSize = 20;
-  currentPage = 0;
-  
-  // Stats
-  stats = {
-    totalClasses: 0,
-    activeClasses: 0,
-    inactiveClasses: 0,
-    fullClasses: 0,
-    totalCapacity: 0,
-    totalEnrollment: 0
+  // ── Breadcrumbs ──────────────────────────────────────────────────────────────
+  breadcrumbs: Breadcrumb[] = [
+    { label: 'Dashboard', url: '/dashboard' },
+    { label: 'Settings', url: '/settings' },
+    { label: 'Classes' }
+  ];
+
+  // ── SuperAdmin State ──────────────────────────────────────────────────────────
+  get isSuperAdmin(): boolean {
+    return this._authService.authUser?.isSuperAdmin ?? false;
+  }
+
+  schools: SchoolDto[] = [];
+
+  get schoolsCount(): number {
+    const uniqueSchools = new Set(this.allData.map(c => c.schoolId));
+    return uniqueSchools.size;
+  }
+
+  // ── Stats Cards Configuration ────────────────────────────────────────────────
+  get statsCards(): StatCard[] {
+    const baseCards: StatCard[] = [
+      {
+        label: 'Total Classes',
+        value: this.total,
+        icon: 'school',
+        iconColor: 'indigo',
+      },
+      {
+        label: 'Active',
+        value: this.activeCount,
+        icon: 'check_circle',
+        iconColor: 'green',
+      },
+      {
+        label: 'Total Capacity',
+        value: this.totalCapacity,
+        icon: 'groups',
+        iconColor: 'pink',
+      },
+      {
+        label: 'Enrollment',
+        value: this.totalEnrollment,
+        icon: 'person',
+        iconColor: 'violet',
+      },
+    ];
+
+    if (this.isSuperAdmin) {
+      baseCards.push({
+        label: 'Schools',
+        value: this.schoolsCount,
+        icon: 'business',
+        iconColor: 'blue',
+      });
+    }
+
+    return baseCards;
+  }
+
+  // ── Table Configuration ──────────────────────────────────────────────────────
+  get tableColumns(): TableColumn<ClassDto>[] {
+    const baseColumns: TableColumn<ClassDto>[] = [
+      {
+        id: 'class',
+        label: 'Class',
+        align: 'left',
+        sortable: true,
+      },
+    ];
+
+    if (this.isSuperAdmin) {
+      baseColumns.push({
+        id: 'school',
+        label: 'School',
+        align: 'left',
+        hideOnMobile: true,
+      });
+    }
+
+    baseColumns.push(
+      {
+        id: 'level',
+        label: 'Level',
+        align: 'left',
+        hideOnMobile: true,
+      },
+      {
+        id: 'capacity',
+        label: 'Capacity',
+        align: 'left',
+        hideOnTablet: true,
+      },
+      {
+        id: 'teacher',
+        label: 'Teacher',
+        align: 'left',
+        hideOnTablet: true,
+      },
+      {
+        id: 'academicYear',
+        label: 'Academic Year',
+        align: 'left',
+        hideOnTablet: true,
+      },
+      {
+        id: 'status',
+        label: 'Status',
+        align: 'center',
+      }
+    );
+
+    return baseColumns;
+  }
+
+  tableActions: TableAction<ClassDto>[] = [
+    {
+      id: 'edit',
+      label: 'Edit',
+      icon: 'edit',
+      color: 'blue',
+      handler: (classItem) => this.openEdit(classItem),
+    },
+    {
+      id: 'viewDetails',
+      label: 'View Details',
+      icon: 'info',
+      color: 'purple',
+      handler: (classItem) => this.viewClassDetails(classItem),
+      divider: true,
+    },
+    {
+      id: 'delete',
+      label: 'Delete',
+      icon: 'delete',
+      color: 'red',
+      handler: (classItem) => this.removeClass(classItem),
+      disabled: (classItem) => classItem.currentEnrollment > 0,
+    },
+  ];
+
+  tableHeader: TableHeader = {
+    title: 'Classes List',
+    subtitle: '',
+    icon: 'table_chart',
+    iconGradient: 'bg-gradient-to-br from-blue-500 via-cyan-600 to-teal-700',
   };
 
-  // Alerts
-  showAlert = false;
-  alert = { type: 'success' as 'success' | 'error', message: '' };
+  tableEmptyState: TableEmptyState = {
+    icon: 'search_off',
+    message: 'No classes found',
+    description: 'Try adjusting your filters or create a new class',
+    action: {
+      label: 'Create Class',
+      icon: 'add',
+      handler: () => this.openCreate(),
+    },
+  };
 
-  // Data source
-  dataSource = new MatTableDataSource<ClassDto>([]);
-  isLoading = false;
+  cellTemplates: { [key: string]: TemplateRef<any> } = {};
 
-  // CBC Levels for filter
+  // ── Filter Fields Configuration ──────────────────────────────────────────────
+  filterFields: FilterField[] = [];
+  showFilterPanel = false;
+
+  // ── CBC Levels ──────────────────────────────────────────────────────────────
   cbcLevels: { value: number; label: string }[] = [];
 
-  // Computed property for total
+  // ── State ────────────────────────────────────────────────────────────────────
+  allData: ClassDto[] = [];
+  isLoading = false;
+
+  // ── Filter Values ────────────────────────────────────────────────────────────
+  private _filterValues = {
+    search: '',
+    schoolId: 'all',
+    level: 'all',
+    status: 'all',
+  };
+
+  // ── Pagination ───────────────────────────────────────────────────────────────
+  currentPage = 1;
+  itemsPerPage = 20;
+
+  // ── Computed Stats ───────────────────────────────────────────────────────────
   get total(): number {
-    return this.dataSource.filteredData.length;
+    return this.allData.length;
+  }
+
+  get activeCount(): number {
+    return this.allData.filter(c => c.isActive).length;
+  }
+
+  get totalCapacity(): number {
+    return this.allData.reduce((sum, c) => sum + c.capacity, 0);
+  }
+
+  get totalEnrollment(): number {
+    return this.allData.reduce((sum, c) => sum + c.currentEnrollment, 0);
+  }
+
+  // ── Filtered Data ─────────────────────────────────────────────────────────────
+  get filteredData(): ClassDto[] {
+    return this.allData.filter(c => {
+      const q = this._filterValues.search.toLowerCase();
+
+      return (
+        (!q || 
+          c.name?.toLowerCase().includes(q) || 
+          c.code?.toLowerCase().includes(q) ||
+          c.levelName?.toLowerCase().includes(q) ||
+          c.teacherName?.toLowerCase().includes(q)) &&
+        (this._filterValues.schoolId === 'all' || c.schoolId === this._filterValues.schoolId) &&
+        (this._filterValues.level === 'all' || c.level.toString() === this._filterValues.level) &&
+        (this._filterValues.status === 'all' ||
+          (this._filterValues.status === 'active' && c.isActive) ||
+          (this._filterValues.status === 'inactive' && !c.isActive) ||
+          (this._filterValues.status === 'full' && c.isFull))
+      );
+    });
+  }
+
+  // ── Pagination Helpers ────────────────────────────────────────────────────────
+  get paginatedData(): ClassDto[] {
+    const start = (this.currentPage - 1) * this.itemsPerPage;
+    return this.filteredData.slice(start, start + this.itemsPerPage);
   }
 
   constructor(
-    private service: ClassService,
-    private dialog: MatDialog,
-    private snackBar: MatSnackBar,
-    private datePipe: DatePipe
+    private _service: ClassService,
+    private _dialog: MatDialog,
+    private _snackBar: MatSnackBar,
+    private _confirmation: FuseConfirmationService,
   ) {}
 
   ngOnInit(): void {
-    this.cbcLevels = this.service.getAllCBCLevels();
-    this.loadAll();
+    this.cbcLevels = this._service.getAllCBCLevels();
+    this.loadSchoolsAndInit();
+  }
+
+  ngAfterViewInit(): void {
+    this.cellTemplates = {
+      class: this.classCellTemplate,
+      school: this.schoolCellTemplate,
+      level: this.levelCellTemplate,
+      capacity: this.capacityCellTemplate,
+      teacher: this.teacherCellTemplate,
+      academicYear: this.academicYearCellTemplate,
+      status: this.statusCellTemplate,
+    };
   }
 
   ngOnDestroy(): void {
@@ -114,254 +325,290 @@ export class ClassesManagementComponent implements OnInit, OnDestroy {
     this._unsubscribe.complete();
   }
 
-  loadAll(): void {
+  // ── Load Schools and Initialize ──────────────────────────────────────────────
+  private loadSchoolsAndInit(): void {
+    const requests: any = {};
+
+    if (this.isSuperAdmin) {
+      requests.schools = this._schoolService.getAll().pipe(
+        catchError(err => {
+          console.error('Failed to load schools:', err);
+          return of({ success: false, message: '', data: [] });
+        })
+      );
+    }
+
+    if (Object.keys(requests).length > 0) {
+      forkJoin(requests).pipe(
+        takeUntil(this._unsubscribe),
+        finalize(() => {
+          this.initializeFilterFields();
+          this.loadAll();
+        })
+      ).subscribe({
+        next: (results: any) => {
+          if (results.schools) {
+            this.schools = results.schools.data || [];
+          }
+        },
+        error: (error) => {
+          console.error('Failed to load configuration:', error);
+          this._showError('Failed to load configuration data');
+        }
+      });
+    } else {
+      this.initializeFilterFields();
+      this.loadAll();
+    }
+  }
+
+  // ── Initialize Filter Fields ─────────────────────────────────────────────────
+  private initializeFilterFields(): void {
+    this.filterFields = [
+      {
+        id: 'search',
+        label: 'Search',
+        type: 'text',
+        placeholder: 'Name, code, or teacher...',
+        value: this._filterValues.search,
+      },
+    ];
+
+    if (this.isSuperAdmin) {
+      this.filterFields.push({
+        id: 'schoolId',
+        label: 'School',
+        type: 'select',
+        value: this._filterValues.schoolId,
+        options: [
+          { label: 'All Schools', value: 'all' },
+          ...this.schools.map(s => ({ 
+            label: `${s.name}${s.slug ? ' (' + s.slug + ')' : ''}`, 
+            value: s.id 
+          })),
+        ],
+      });
+    }
+
+    this.filterFields.push(
+      {
+        id: 'level',
+        label: 'Level',
+        type: 'select',
+        value: this._filterValues.level,
+        options: [
+          { label: 'All Levels', value: 'all' },
+          ...this.cbcLevels.map(l => ({ label: l.label, value: l.value.toString() })),
+        ],
+      },
+      {
+        id: 'status',
+        label: 'Status',
+        type: 'select',
+        value: this._filterValues.status,
+        options: [
+          { label: 'All Classes', value: 'all' },
+          { label: 'Active Only', value: 'active' },
+          { label: 'Inactive Only', value: 'inactive' },
+          { label: 'Full Classes', value: 'full' },
+        ],
+      }
+    );
+  }
+
+  // ── Filter Handlers ──────────────────────────────────────────────────────────
+  toggleFilterPanel(): void {
+    this.showFilterPanel = !this.showFilterPanel;
+  }
+
+  onFilterChange(event: FilterChangeEvent): void {
+    (this._filterValues as any)[event.filterId] = event.value;
+    this.currentPage = 1;
+    this.tableHeader.subtitle = `${this.filteredData.length} classes found`;
+
+    if (event.filterId === 'schoolId' && this.isSuperAdmin) {
+      const schoolId = event.value === 'all' ? undefined : event.value;
+      this.loadAll(schoolId);
+    }
+  }
+
+  onClearFilters(): void {
+    this._filterValues = {
+      search: '',
+      schoolId: 'all',
+      level: 'all',
+      status: 'all',
+    };
+
+    this.filterFields.forEach(field => {
+      field.value = (this._filterValues as any)[field.id];
+    });
+
+    this.currentPage = 1;
+    this.tableHeader.subtitle = `${this.filteredData.length} classes found`;
+    this.loadAll();
+  }
+
+  // ── Pagination Handlers ──────────────────────────────────────────────────────
+  onPageChange(page: number): void {
+    this.currentPage = page;
+  }
+
+  onItemsPerPageChange(itemsPerPage: number): void {
+    this.itemsPerPage = itemsPerPage;
+    this.currentPage = 1;
+  }
+
+  // ── Data Loading ──────────────────────────────────────────────────────────────
+  loadAll(schoolId?: string): void {
     this.isLoading = true;
-    this.service.getAll()
+    this._service.getAll(schoolId)
       .pipe(takeUntil(this._unsubscribe))
       .subscribe({
-        next: (response) => {
-          if (response?.success && response.data) {
-            this.allData = response.data;
-            this.dataSource.data = response.data;
-            this.calculateStats();
-            
-            // Set up sorting and pagination
-            this.dataSource.sort = this.sort;
-            this.dataSource.paginator = this.paginator;
-            
-            // Set up custom sorting
-            this.setupSorting();
-            
-            // Apply current filters
-            this.applyFilters();
-          } else {
-            this.showErrorAlert(response?.message || 'Failed to load classes');
+        next: res => {
+          if (res?.success) {
+            this.allData = res.data;
+            this.tableHeader.subtitle = `${this.filteredData.length} classes found`;
           }
           this.isLoading = false;
         },
-        error: (error) => {
-          console.error('Error loading classes:', error);
-          this.showErrorAlert('Failed to load classes');
+        error: (err) => {
+          console.error('Failed to load classes:', err);
           this.isLoading = false;
+          this._showError(err.error?.message || 'Failed to load classes');
         }
       });
   }
 
-  applyFilter(value: string): void {
-    this.filterValue = value;
-    this.applyFilters();
-  }
-
-  clearFilter(): void {
-    this.filterValue = '';
-    this.levelFilter = 'all';
-    this.statusFilter = 'all';
-    this.applyFilters();
-  }
-
-  applyFilters(): void {
-    this.dataSource.filterPredicate = (data: ClassDto, filter: string) => {
-      // Level filter
-      let levelMatch = true;
-      if (this.levelFilter !== 'all') {
-        levelMatch = data.level === this.levelFilter;
-      }
-      
-      // Status filter
-      let statusMatch = true;
-      if (this.statusFilter === 'active') {
-        statusMatch = data.isActive;
-      } else if (this.statusFilter === 'inactive') {
-        statusMatch = !data.isActive;
-      } else if (this.statusFilter === 'full') {
-        statusMatch = data.isFull;
-      }
-      
-      // Search filter
-      const searchMatch = !this.filterValue || 
-                         data.name.toLowerCase().includes(this.filterValue.toLowerCase()) ||
-                         data.code.toLowerCase().includes(this.filterValue.toLowerCase()) ||
-                         data.levelName?.toLowerCase().includes(this.filterValue.toLowerCase()) ||
-                         data.teacherName?.toLowerCase().includes(this.filterValue.toLowerCase());
-      
-      return levelMatch && statusMatch && searchMatch;
-    };
-    
-    this.dataSource.filter = 'trigger';
-    
-    if (this.paginator) {
-      this.paginator.firstPage();
-    }
-  }
-
+  // ── CRUD Operations ──────────────────────────────────────────────────────────
   openCreate(): void {
-    const dialogRef = this.dialog.open(CreateEditClassDialogComponent, { 
-      width: '800px', 
-      data: { mode: 'create' } 
+    const schoolId = this._filterValues.schoolId !== 'all' ? this._filterValues.schoolId : undefined;
+
+    const dialogRef = this._dialog.open(CreateEditClassDialogComponent, {
+      width: '800px',
+      data: { mode: 'create', schoolId }
     });
 
-    dialogRef.afterClosed().pipe(take(1)).subscribe((result) => {
-      if (result?.success) {
-        this.loadAll();
-        this.showSuccessAlert(result.message || 'Class created successfully');
-      }
-    });
+    dialogRef.afterClosed()
+      .pipe(takeUntil(this._unsubscribe))
+      .subscribe((result) => {
+        if (result?.success) {
+          this._showSuccess(result.message || 'Class created successfully');
+          this.loadAll();
+        }
+      });
   }
 
   openEdit(classItem: ClassDto): void {
-    const dialogRef = this.dialog.open(CreateEditClassDialogComponent, { 
-      width: '800px', 
-      data: { mode: 'edit', class: classItem } 
+    const dialogRef = this._dialog.open(CreateEditClassDialogComponent, {
+      width: '800px',
+      data: { mode: 'edit', class: classItem }
     });
 
-    dialogRef.afterClosed().pipe(take(1)).subscribe((result) => {
-      if (result?.success) {
-        this.loadAll();
-        this.showSuccessAlert(result.message || 'Class updated successfully');
-      }
-    });
+    dialogRef.afterClosed()
+      .pipe(takeUntil(this._unsubscribe))
+      .subscribe((result) => {
+        if (result?.success) {
+          this._showSuccess(result.message || 'Class updated successfully');
+          this.loadAll();
+        }
+      });
   }
 
   removeClass(classItem: ClassDto): void {
     if (classItem.currentEnrollment > 0) {
-      this.snackBar.open(
-        `Cannot delete "${classItem.name}" - it has ${classItem.currentEnrollment} enrolled students. Please reassign students first.`,
-        'Close',
-        {
-          duration: 5000,
-          horizontalPosition: 'end',
-          verticalPosition: 'top',
-          panelClass: ['warn-snackbar']
-        }
+      this._showError(
+        `Cannot delete "${classItem.name}" - it has ${classItem.currentEnrollment} enrolled students. Please reassign students first.`
       );
       return;
     }
 
-    if (confirm(`Are you sure you want to delete "${classItem.name}"?`)) {
-      this.isLoading = true;
-      this.service.delete(classItem.id)
-        .pipe(takeUntil(this._unsubscribe))
-        .subscribe({
-          next: (response) => {
-            if (response?.success) {
-              this.loadAll();
-              this.showSuccessAlert('Class deleted successfully');
-            } else {
-              this.showErrorAlert(response?.message || 'Failed to delete class');
+    const confirmation = this._confirmation.open({
+      title: 'Delete Class',
+      message: `Are you sure you want to delete "${classItem.name}"? This action cannot be undone.`,
+      icon: {
+        name: 'delete',
+        color: 'warn',
+      },
+      actions: {
+        confirm: {
+          label: 'Delete',
+          color: 'warn',
+        },
+        cancel: {
+          label: 'Cancel',
+        },
+      },
+    });
+
+    confirmation.afterClosed().pipe(takeUntil(this._unsubscribe)).subscribe(result => {
+      if (result === 'confirmed') {
+        this._service.delete(classItem.id)
+          .pipe(takeUntil(this._unsubscribe))
+          .subscribe({
+            next: (res) => {
+              if (res?.success) {
+                this._showSuccess('Class deleted successfully');
+                
+                if (this.paginatedData.length === 0 && this.currentPage > 1) {
+                  this.currentPage--;
+                }
+                
+                this.loadAll();
+              }
+            },
+            error: (err) => {
+              console.error('Failed to delete class:', err);
+              this._showError(err.error?.message || 'Failed to delete class');
             }
-            this.isLoading = false;
-          },
-          error: (error) => {
-            console.error('Error deleting class:', error);
-            this.showErrorAlert('Failed to delete class');
-            this.isLoading = false;
-          }
-        });
-    }
+          });
+      }
+    });
   }
 
   viewClassDetails(classItem: ClassDto): void {
-    this.service.getById(classItem.id, true)
-      .pipe(take(1))
+    this._service.getById(classItem.id, true)
+      .pipe(takeUntil(this._unsubscribe))
       .subscribe({
         next: (response) => {
           if (response?.success && response.data) {
-            this.snackBar.open(`Viewing details for ${classItem.name}`, 'Close', {
-              duration: 3000,
-              horizontalPosition: 'end',
-              verticalPosition: 'top'
-            });
+            this._showSuccess(`Viewing details for ${classItem.name}`);
           }
         },
         error: (error) => {
           console.error('Error loading class details:', error);
+          this._showError('Failed to load class details');
         }
       });
   }
 
-  private calculateStats(): void {
-    const classes = this.allData;
-    this.stats.totalClasses = classes.length;
-    this.stats.activeClasses = classes.filter(c => c.isActive).length;
-    this.stats.inactiveClasses = classes.filter(c => !c.isActive).length;
-    this.stats.fullClasses = classes.filter(c => c.isFull).length;
-    this.stats.totalCapacity = classes.reduce((sum, c) => sum + c.capacity, 0);
-    this.stats.totalEnrollment = classes.reduce((sum, c) => sum + c.currentEnrollment, 0);
+  // ── Helper Methods ───────────────────────────────────────────────────────────
+  getSchoolName(schoolId: string): string {
+    const school = this.schools.find(s => s.id === schoolId);
+    return school ? school.name : 'Unknown School';
   }
 
-  private setupSorting(): void {
-    this.dataSource.sortingDataAccessor = (item: ClassDto, property: string) => {
-      switch (property) {
-        case 'class':
-          return item.name.toLowerCase();
-        case 'level':
-          return item.level;
-        case 'capacity':
-          return item.currentEnrollment;
-        case 'teacher':
-          return item.teacherName?.toLowerCase() || '';
-        case 'academicYear':
-          return item.academicYearName?.toLowerCase() || '';
-        case 'status':
-          return item.isActive ? 1 : 0;
-        default:
-          return '';
-      }
-    };
-  }
-
-  formatDate(dateString: Date): string {
-    if (!dateString) return '—';
-    return this.datePipe.transform(dateString, 'MMM d, y') || '—';
+  getSchoolSlug(schoolId: string): string {
+    const school = this.schools.find(s => s.id === schoolId);
+    return school ? school.slug : '';
   }
 
   getCapacityUtilization(classItem: ClassDto): number {
-    return this.service.getCapacityUtilization(classItem.currentEnrollment, classItem.capacity);
+    return this._service.getCapacityUtilization(classItem.currentEnrollment, classItem.capacity);
   }
 
-  getCapacityColor(classItem: ClassDto): string {
-    return this.service.getCapacityStatusColor(classItem.currentEnrollment, classItem.capacity);
-  }
-
-  getLevelDisplay(level: number): string {
-    return this.service.getCBCLevelDisplay(level);
-  }
-
-  dismissAlert(): void {
-    this.showAlert = false;
-  }
-
-  private showSuccessAlert(message: string): void {
-    this.alert = { type: 'success', message };
-    this.showAlert = true;
-    setTimeout(() => this.showAlert = false, 5000);
-    
-    this.snackBar.open(message, 'Close', {
+  // ── Notifications ────────────────────────────────────────────────────────────
+  private _showSuccess(message: string): void {
+    this._snackBar.open(message, 'Close', {
       duration: 3000,
-      horizontalPosition: 'end',
-      verticalPosition: 'top',
-      panelClass: ['success-snackbar']
+      panelClass: ['bg-green-600', 'text-white']
     });
   }
 
-  private showErrorAlert(message: string): void {
-    this.alert = { type: 'error', message };
-    this.showAlert = true;
-    
-    this.snackBar.open(message, 'Close', {
+  private _showError(message: string): void {
+    this._snackBar.open(message, 'Close', {
       duration: 5000,
-      horizontalPosition: 'end',
-      verticalPosition: 'top',
-      panelClass: ['error-snackbar']
+      panelClass: ['bg-red-600', 'text-white']
     });
-  }
-
-  onPageChange(event: PageEvent): void {
-    this.currentPage = event.pageIndex;
-    this.pageSize = event.pageSize;
-  }
-
-  refreshData(): void {
-    this.loadAll();
   }
 }

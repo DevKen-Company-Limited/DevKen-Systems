@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Devken.CBC.SchoolManagement.Domain.Enums;
 
 namespace Devken.CBC.SchoolManagement.Application.DTOs.Academics
@@ -16,8 +12,8 @@ namespace Devken.CBC.SchoolManagement.Application.DTOs.Academics
         [MaxLength(100)]
         public string? Name { get; set; }
 
-        [Required]
-        [MaxLength(10)]
+        // Code is now optional - will be auto-generated if not provided
+        [MaxLength(20)]
         public string? Code { get; set; }
 
         [Required]
@@ -42,7 +38,7 @@ namespace Devken.CBC.SchoolManagement.Application.DTOs.Academics
         [MaxLength(100)]
         public string? Name { get; set; }
 
-        [MaxLength(10)]
+        [MaxLength(20)]
         public string? Code { get; set; }
 
         public CBCLevel? Level { get; set; }

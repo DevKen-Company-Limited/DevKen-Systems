@@ -17,7 +17,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Acad
         public void Configure(EntityTypeBuilder<Class> builder)
         {
             builder.ToTable("Classes");
-
             builder.HasKey(c => c.Id);
 
             builder.HasQueryFilter(c =>
@@ -34,9 +33,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Acad
                 .IsRequired()
                 .HasMaxLength(100);
 
+            // Increased Code length to support number series format (e.g., "CLS-2025-00001")
             builder.Property(c => c.Code)
                 .IsRequired()
-                .HasMaxLength(10);
+                .HasMaxLength(20);
 
             builder.Property(c => c.Capacity)
                 .HasDefaultValue(40);

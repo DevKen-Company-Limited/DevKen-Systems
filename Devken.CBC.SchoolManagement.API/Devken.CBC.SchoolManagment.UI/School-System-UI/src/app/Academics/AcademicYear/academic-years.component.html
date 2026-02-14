@@ -1,276 +1,118 @@
 <div class="absolute inset-0 flex min-w-0 flex-col overflow-y-auto" cdkScrollable>
-  <!-- Header with vibrant gradient -->
-  <div class="bg-gradient-to-br from-cyan-800 via-blue-700 to-teal-600 flex flex-0 flex-col p-6 pb-22 sm:flex-row sm:items-center sm:justify-between sm:px-10 sm:pb-28 sm:pt-12 relative overflow-hidden">
-    <!-- Decorative Pattern -->
-    <div class="absolute inset-0 opacity-10">
-      <div class="absolute top-0 left-0 w-64 h-64 bg-yellow-200 rounded-full blur-3xl"></div>
-      <div class="absolute bottom-0 right-0 w-96 h-96 bg-pink-300 rounded-full blur-3xl"></div>
-      <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-white rounded-full blur-3xl"></div>
+
+  <!-- ── Reusable Page Header ────────────────────────────────────────────── -->
+  <app-page-header
+    title="Academic Years Management"
+    description="Manage your school's academic year calendar"
+    icon="calendar_today"
+    [breadcrumbs]="breadcrumbs"
+    [actionTemplate]="headerActions">
+  </app-page-header>
+
+  <!-- Header Actions Template -->
+  <ng-template #headerActions>
+    <button mat-flat-button 
+      class="bg-white text-cyan-700 hover:bg-yellow-200 hover:text-cyan-900 shadow-lg transition-all hover:shadow-xl font-bold" 
+      (click)="openCreate()">
+      <mat-icon class="icon-size-5">add</mat-icon>
+      <span class="ml-2">Add</span>
+    </button>
+  </ng-template>
+
+  <!-- ── Main Content ───────────────────────────────────────────────────── -->
+  <div class="bg-card -mt-10 flex-auto rounded-t-2xl p-6 shadow sm:p-10">
+
+    <!-- Stats Cards (Reusable Component) -->
+    <app-stats-cards [cards]="statsCards" [columns]="3"></app-stats-cards>
+
+    <!-- Filter Panel Section -->
+    <div class="mb-6">
+      <app-filter-panel
+        [fields]="filterFields"
+        [showPanel]="showFilterPanel"
+        [columns]="3"
+        (filterChange)="onFilterChange($event)"
+        (clearAll)="onClearFilters()"
+        (togglePanel)="toggleFilterPanel()">
+      </app-filter-panel>
     </div>
 
-    <div class="min-w-0 flex-1 relative z-10">
-      <!-- Breadcrumbs -->
-      <div>
-        <div class="hidden flex-wrap items-center font-medium sm:flex">
-          <div>
-            <a class="whitespace-nowrap text-white/90 hover:text-white transition-colors cursor-pointer">Dashboard</a>
-          </div>
-          <div class="ml-1 flex items-center whitespace-nowrap">
-            <mat-icon class="text-white/70 icon-size-5" svgIcon="heroicons_mini:chevron-right"></mat-icon>
-            <a class="ml-1 text-white/90 hover:text-white transition-colors cursor-pointer">Settings</a>
-          </div>
-          <div class="ml-1 flex items-center whitespace-nowrap">
-            <mat-icon class="text-white/70 icon-size-5" svgIcon="heroicons_mini:chevron-right"></mat-icon>
-            <span class="text-white ml-1">Academic Years</span>
-          </div>
-        </div>
-      </div>
-      <!-- Title -->
-      <div class="mt-2">
-        <h2 class="truncate text-3xl font-extrabold leading-7 tracking-tight sm:leading-10 md:text-4xl text-white">
-          Academic Years Management
-        </h2>
-        <p class="mt-2 text-white/80 text-lg">Manage your school's academic year calendar</p>
-      </div>
-    </div>
-    
-    <!-- Header Actions -->
-    <div class="mt-6 flex shrink-0 items-center gap-3 sm:ml-4 sm:mt-0 relative z-10">
-      <button mat-flat-button class="bg-white text-cyan-700 hover:bg-yellow-200 hover:text-cyan-800 shadow-lg transition-all hover:shadow-xl font-bold" (click)="openCreate()">
-        <mat-icon class="icon-size-5">add</mat-icon>
-        <span class="ml-2">New Academic Year</span>
-      </button>
-    </div>
-  </div>
+    <!-- ── Reusable Data Table ───────────────────────────────────────────── -->
+    <app-data-table
+      [columns]="tableColumns"
+      [data]="paginatedData"
+      [actions]="tableActions"
+      [loading]="isLoading"
+      [header]="tableHeader"
+      [emptyState]="tableEmptyState"
+      [cellTemplates]="cellTemplates">
+    </app-data-table>
 
-  <!-- Main Content -->
-  <div class="bg-card -mt-16 flex-auto rounded-t-2xl p-6 shadow sm:p-10">
-    
-    <!-- Alert -->
-    <!-- <fuse-alert *ngIf="showAlert" [type]="alert.type" [showIcon]="true" class="mb-6">{{ alert.message }}</fuse-alert> -->
-
-
-    <!-- Table Section -->
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-      <div class="p-6 border-b border-gray-200 dark:border-gray-700">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-gradient-to-br from-blue-500 via-cyan-600 to-teal-700 rounded-lg flex items-center justify-center shadow-lg">
-              <mat-icon class="text-white icon-size-5">table_chart</mat-icon>
-            </div>
-            <div>
-              <h3 class="text-xl font-bold text-gray-900 dark:text-white">Academic Years List</h3>
-              <p class="text-sm text-gray-500 dark:text-gray-400">{{ filteredData.length }} years found</p>
-            </div>
-          </div>
-
-          <div class="flex items-center gap-3">
-            <button mat-stroked-button [color]="'primary'" (click)="toggleFilterPanel()">
-              <mat-icon class="icon-size-5">filter_list</mat-icon>
-              <span class="ml-2">{{ showFilterPanel ? 'Hide' : 'Show' }} Filters</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Filter Panel -->
-        <div *ngIf="showFilterPanel" class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <!-- Search Filter -->
-            <div>
-              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Search</label>
-              <div class="relative">
-                <input
-                  type="text"
-                  [(ngModel)]="searchQuery"
-                  (input)="applyFilters()"
-                  placeholder="Code or name..."
-                  class="w-full px-4 py-2 pl-10 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-teal-500 focus:ring-2 focus:ring-teal-200 focus:outline-none transition-all">
-                <mat-icon class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 icon-size-5">search</mat-icon>
-              </div>
-            </div>
-
-            <!-- Status Filter -->
-            <div>
-              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by Status</label>
-              <select [(ngModel)]="selectedStatus"
-                      (change)="applyFilters()"
-                      class="w-full px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all">
-                <option value="all">All Statuses</option>
-                <option value="current">Current</option>
-                <option value="open">Open</option>
-                <option value="closed">Closed</option>
-              </select>
-            </div>
-
-            <!-- Date Range Filter -->
-            <div>
-              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by Year</label>
-              <select [(ngModel)]="selectedYear"
-                      (change)="applyFilters()"
-                      class="w-full px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-all">
-                <option value="all">All Years</option>
-                <option *ngFor="let year of availableYears" [value]="year">{{ year }}</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="mt-4 flex items-center justify-end">
-            <button (click)="clearFilters()"
-                    class="px-4 py-2 text-sm font-semibold text-teal-600 hover:text-teal-700 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded-lg transition-all shadow-sm hover:shadow-md">
-              Clear All Filters
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Loading Spinner -->
-      <div *ngIf="isLoading" class="flex items-center justify-center p-12">
-        <mat-spinner diameter="36"></mat-spinner>
-      </div>
-
-      <!-- Table -->
-      <div *ngIf="!isLoading" class="overflow-x-auto">
-        <table class="w-full">
-          <thead class="bg-gray-50 dark:bg-gray-700/50">
-            <tr>
-              <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Code</th>
-              <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Name</th>
-              <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Start Date</th>
-              <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">End Date</th>
-              <th class="px-6 py-4 text-center text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Status</th>
-              <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-
-          <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-            <tr *ngFor="let ay of paginatedData" class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ ay.code }}</span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span class="text-sm text-gray-900 dark:text-white">{{ ay.name }}</span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span class="text-sm text-gray-700 dark:text-gray-300">{{ ay.startDate | date:'mediumDate' }}</span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span class="text-sm text-gray-700 dark:text-gray-300">{{ ay.endDate | date:'mediumDate' }}</span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-center">
-                <span 
-                  class="px-3 py-1 rounded-full text-xs font-semibold"
-                  [ngClass]="{
-                    'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400': ay.isCurrent,
-                    'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400': ay.isClosed,
-                    'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400': !ay.isCurrent && !ay.isClosed
-                  }">
-                  {{ ay.isCurrent ? 'Current' : (ay.isClosed ? 'Closed' : 'Open') }}
-                </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right">
-                <button 
-                  mat-icon-button 
-                  [matMenuTriggerFor]="menu" 
-                  aria-label="Actions">
-                  <mat-icon>more_vert</mat-icon>
-                </button>
-                <mat-menu #menu="matMenu">
-                  <button mat-menu-item (click)="openEdit(ay)" 
-                    class="text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20">
-                    <mat-icon class="text-blue-600 dark:text-blue-400">edit</mat-icon>
-                    <span>Edit</span>
-                  </button>
-                  <!-- <button mat-menu-item (click)="openEdit(ay)">
-                    <mat-icon>edit</mat-icon>
-                    <span>Edit</span>
-                  </button> -->
-                  <button mat-menu-item 
-                        (click)="setAsCurrent(ay)" 
-                        *ngIf="!ay.isCurrent && !ay.isClosed"
-                        class="text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20">
-                      <mat-icon class="text-green-600 dark:text-green-400">check_circle</mat-icon>
-                      <span>Set as Current</span>
-                  </button>
-                  <!-- <button 
-                    mat-menu-item 
-                    (click)="setAsCurrent(ay)" 
-                    *ngIf="!ay.isCurrent && !ay.isClosed">
-                    <mat-icon>check_circle</mat-icon>
-                    <span>Set as Current</span>
-                  </button> -->
-                   <button mat-menu-item 
-                            (click)="closeYear(ay)" 
-                            *ngIf="!ay.isClosed"
-                            class="text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20">
-                      <mat-icon class="text-amber-600 dark:text-amber-400">lock</mat-icon>
-                      <span>Close Year</span>
-                    </button>
-                  <!-- <button 
-                    mat-menu-item 
-                    (click)="closeYear(ay)" 
-                    *ngIf="!ay.isClosed">
-                    <mat-icon>lock</mat-icon>
-                    <span>Close Year</span>
-                  </button> -->
-                  <mat-divider></mat-divider>
-                  <button mat-menu-item 
-                          (click)="removeAcademicYear(ay)" 
-                          class="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">
-                    <mat-icon class="text-red-600 dark:text-red-400">delete</mat-icon>
-                    <span>Delete</span>
-                  </button>
-                  <!-- <button mat-menu-item (click)="removeAcademicYear(ay)" class="text-red-600">
-                    <mat-icon class="text-red-600">delete</mat-icon>
-                    <span>Delete</span>
-                  </button> -->
-                </mat-menu>
-              </td>
-            </tr>
-
-            <!-- No Results Message -->
-            <tr *ngIf="filteredData.length === 0">
-              <td colspan="6" class="px-6 py-12 text-center">
-                <div class="flex flex-col items-center justify-center gap-3">
-                  <mat-icon class="text-gray-400 icon-size-16">search_off</mat-icon>
-                  <p class="text-gray-500 dark:text-gray-400 font-semibold">No academic years found</p>
-                  <p class="text-sm text-gray-400">Try adjusting your filters or create a new academic year</p>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Table Footer with Pagination -->
-      <div class="px-6 py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700">
-        <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p class="text-sm text-gray-700 dark:text-gray-300">
-            Showing <span class="font-semibold">{{ showingFrom }}-{{ showingTo }}</span> of <span class="font-semibold">{{ filteredData.length }}</span> years
-          </p>
-          <div class="flex gap-2">
-            <button
-              (click)="previousPage()"
-              [disabled]="currentPage === 1"
-              [class.opacity-50]="currentPage === 1"
-              [class.cursor-not-allowed]="currentPage === 1"
-              mat-stroked-button
-              [color]="'primary'"
-              class="shadow-sm hover:shadow-md">
-              Previous
-            </button>
-            <button
-              (click)="nextPage()"
-              [disabled]="currentPage >= totalPages"
-              [class.opacity-50]="currentPage >= totalPages"
-              [class.cursor-not-allowed]="currentPage >= totalPages"
-              mat-flat-button
-              [color]="'primary'"
-              class="shadow-md hover:shadow-lg">
-              Next
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- Pagination (Reusable Component) -->
+    <app-pagination
+      *ngIf="!isLoading"
+      [currentPage]="currentPage"
+      [totalItems]="filteredData.length"
+      [itemsPerPage]="itemsPerPage"
+      [itemLabel]="'academic years'"
+      [showItemsPerPageSelector]="true"
+      [showPageNumbers]="true"
+      (pageChange)="onPageChange($event)"
+      (itemsPerPageChange)="onItemsPerPageChange($event)">
+    </app-pagination>
   </div>
 </div>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- Cell Templates for Data Table -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+
+<!-- Code Cell Template -->
+<ng-template #codeCell let-row>
+  <div class="flex items-center gap-3">
+    <div class="w-10 h-10 rounded-lg flex items-center justify-center shadow-sm bg-gradient-to-br from-cyan-400 to-blue-600">
+      <mat-icon class="text-white icon-size-5">badge</mat-icon>
+    </div>
+    <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ row.code }}</span>
+  </div>
+</ng-template>
+
+<!-- Name Cell Template -->
+<ng-template #nameCell let-row>
+  <div>
+    <p class="text-sm font-medium text-gray-900 dark:text-white">{{ row.name }}</p>
+    <p class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5">
+      <mat-icon class="icon-size-3">event</mat-icon>
+      {{ row.startDate | date:'MMM d, y' }} - {{ row.endDate | date:'MMM d, y' }}
+    </p>
+  </div>
+</ng-template>
+
+<!-- Start Date Cell Template -->
+<ng-template #startDateCell let-row>
+  <div class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+    <mat-icon class="icon-size-4 text-gray-500">event</mat-icon>
+    <span>{{ row.startDate | date:'mediumDate' }}</span>
+  </div>
+</ng-template>
+
+<!-- End Date Cell Template -->
+<ng-template #endDateCell let-row>
+  <div class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+    <mat-icon class="icon-size-4 text-gray-500">event</mat-icon>
+    <span>{{ row.endDate | date:'mediumDate' }}</span>
+  </div>
+</ng-template>
+
+<!-- Status Cell Template -->
+<ng-template #statusCell let-row>
+  <span 
+    class="px-3 py-1 rounded-full text-xs font-semibold"
+    [ngClass]="{
+      'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400': row.isCurrent,
+      'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400': row.isClosed,
+      'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400': !row.isCurrent && !row.isClosed
+    }">
+    {{ row.isCurrent ? 'Current' : (row.isClosed ? 'Closed' : 'Open') }}
+  </span>
+</ng-template>

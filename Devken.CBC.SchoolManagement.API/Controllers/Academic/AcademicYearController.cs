@@ -32,6 +32,9 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
         [Authorize(Policy = PermissionKeys.AcademicYearRead)]
         public async Task<IActionResult> GetAll([FromQuery] Guid? schoolId = null)
         {
+            if (!HasPermission(PermissionKeys.AcademicYearRead))
+                return ForbiddenResponse("You do not have permission to view academic years.");
+
             // SuperAdmin can view all academic years or filter by school
             if (HasRole("SuperAdmin"))
             {
@@ -58,6 +61,9 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
         [Authorize(Policy = PermissionKeys.AcademicYearRead)]
         public async Task<IActionResult> GetById(Guid id)
         {
+            if (!HasPermission(PermissionKeys.AcademicYearRead))
+                return ForbiddenResponse("You do not have permission to view this academic year.");
+
             var academicYear = await _repositories.AcademicYear.GetByIdAsync(id, trackChanges: false);
             if (academicYear == null)
                 return NotFoundResponse("Academic year not found");
@@ -80,6 +86,9 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
         [Authorize(Policy = PermissionKeys.AcademicYearRead)]
         public async Task<IActionResult> GetCurrent([FromQuery] Guid? schoolId = null)
         {
+            if (!HasPermission(PermissionKeys.AcademicYearRead))
+                return ForbiddenResponse("You do not have permission to view academic years.");
+
             Guid targetSchoolId;
             if (HasRole("SuperAdmin") && schoolId.HasValue)
             {
@@ -104,6 +113,9 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
         [Authorize(Policy = PermissionKeys.AcademicYearRead)]
         public async Task<IActionResult> GetOpen([FromQuery] Guid? schoolId = null)
         {
+            if (!HasPermission(PermissionKeys.AcademicYearRead))
+                return ForbiddenResponse("You do not have permission to view academic years.");
+
             Guid targetSchoolId;
             if (HasRole("SuperAdmin") && schoolId.HasValue)
             {
@@ -126,6 +138,9 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
         [Authorize(Policy = PermissionKeys.AcademicYearWrite)]
         public async Task<IActionResult> Create([FromBody] CreateAcademicYearRequest request)
         {
+            if (!HasPermission(PermissionKeys.AcademicYearWrite))
+                return ForbiddenResponse("You do not have permission to create academic years.");
+
             if (!ModelState.IsValid)
                 return ValidationErrorResponse(ModelState.ToDictionary(
                     kvp => kvp.Key,
@@ -151,9 +166,27 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
             if (request.StartDate >= request.EndDate)
                 return ErrorResponse("End date must be after start date.", 400);
 
-            // Check if code already exists
-            if (await _repositories.AcademicYear.CodeExistsAsync(targetSchoolId, request.Code ?? string.Empty))
-                return ErrorResponse($"Academic year with code '{request.Code}' already exists.", 409);
+            // Generate or validate code
+            string code;
+            if (string.IsNullOrWhiteSpace(request.Code))
+            {
+                // Auto-generate code using number series
+                try
+                {
+                    code = await _repositories.DocumentNumberSeries.GenerateAsync("AcademicYear", targetSchoolId);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return ErrorResponse($"Number series not configured for Academic Years. {ex.Message}", 500);
+                }
+            }
+            else
+            {
+                // User provided code - validate uniqueness
+                code = request.Code.Trim();
+                if (await _repositories.AcademicYear.CodeExistsAsync(targetSchoolId, code))
+                    return ErrorResponse($"Academic year with code '{code}' already exists.", 409);
+            }
 
             // Check for overlapping years (optional - log warning instead of blocking)
             if (await _repositories.AcademicYear.HasOverlappingYearsAsync(targetSchoolId, request.StartDate, request.EndDate))
@@ -167,7 +200,7 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
                 Id = Guid.NewGuid(),
                 TenantId = targetSchoolId,
                 Name = (request.Name ?? string.Empty).Trim(),
-                Code = (request.Code ?? string.Empty).Trim(),
+                Code = code,
                 StartDate = request.StartDate,
                 EndDate = request.EndDate,
                 IsCurrent = request.IsCurrent,
@@ -197,6 +230,9 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
         [Authorize(Policy = PermissionKeys.AcademicYearWrite)]
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateAcademicYearRequest request)
         {
+            if (!HasPermission(PermissionKeys.AcademicYearWrite))
+                return ForbiddenResponse("You do not have permission to update academic years.");
+
             if (!ModelState.IsValid)
                 return ValidationErrorResponse(ModelState.ToDictionary(
                     kvp => kvp.Key,
@@ -268,6 +304,9 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
         [Authorize(Policy = PermissionKeys.AcademicYearWrite)]
         public async Task<IActionResult> SetAsCurrent(Guid id)
         {
+            if (!HasPermission(PermissionKeys.AcademicYearWrite))
+                return ForbiddenResponse("You do not have permission to modify academic years.");
+
             var academicYear = await _repositories.AcademicYear.GetByIdAsync(id, trackChanges: false);
             if (academicYear == null)
                 return NotFoundResponse("Academic year not found");
@@ -298,6 +337,9 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
         [Authorize(Policy = PermissionKeys.AcademicYearClose)]
         public async Task<IActionResult> Close(Guid id)
         {
+            if (!HasPermission(PermissionKeys.AcademicYearClose))
+                return ForbiddenResponse("You do not have permission to close academic years.");
+
             var academicYear = await _repositories.AcademicYear.GetByIdAsync(id, trackChanges: true);
             if (academicYear == null)
                 return NotFoundResponse("Academic year not found");
@@ -328,6 +370,9 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
         [Authorize(Policy = PermissionKeys.AcademicYearDelete)]
         public async Task<IActionResult> Delete(Guid id)
         {
+            if (!HasPermission(PermissionKeys.AcademicYearDelete))
+                return ForbiddenResponse("You do not have permission to delete academic years.");
+
             var academicYear = await _repositories.AcademicYear.GetByIdAsync(id, trackChanges: true);
             if (academicYear == null)
                 return NotFoundResponse("Academic year not found");
@@ -349,6 +394,36 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
             await LogUserActivityAsync("academic_year.delete", $"Deleted academic year {code} - {name}");
 
             return SuccessResponse<object?>(null, "Academic year deleted successfully");
+        }
+
+        /// <summary>
+        /// Preview next academic year code
+        /// </summary>
+        [HttpGet("preview-next-code")]
+        public async Task<IActionResult> PreviewNextCode([FromQuery] Guid? schoolId = null)
+        {
+            if (!HasPermission(PermissionKeys.AcademicYearRead))
+                return ForbiddenResponse("You do not have permission to view academic years.");
+
+            Guid targetSchoolId;
+            if (HasRole("SuperAdmin") && schoolId.HasValue)
+            {
+                targetSchoolId = schoolId.Value;
+            }
+            else
+            {
+                targetSchoolId = GetCurrentUserSchoolId();
+            }
+
+            try
+            {
+                var nextCode = await _repositories.DocumentNumberSeries.PreviewAsync("AcademicYear", targetSchoolId);
+                return SuccessResponse(new { nextCode });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return ErrorResponse($"Number series not configured. {ex.Message}", 500);
+            }
         }
 
         private static AcademicYearDto ToDto(AcademicYear ay) => new()

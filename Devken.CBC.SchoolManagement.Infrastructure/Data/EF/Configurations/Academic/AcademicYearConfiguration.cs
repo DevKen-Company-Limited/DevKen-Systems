@@ -20,7 +20,6 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
         public void Configure(EntityTypeBuilder<AcademicYear> builder)
         {
             builder.ToTable("AcademicYears");
-
             builder.HasKey(ay => ay.Id);
 
             builder.HasQueryFilter(ay =>
@@ -36,9 +35,10 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
                 .IsRequired()
                 .HasMaxLength(50);
 
+            // Increased Code length to support number series format (e.g., "AY-2025-00001")
             builder.Property(ay => ay.Code)
                 .IsRequired()
-                .HasMaxLength(9);
+                .HasMaxLength(20);
 
             builder.Property(ay => ay.StartDate)
                 .IsRequired();
@@ -52,6 +52,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
                 .WithMany(s => s.AcademicYears)
                 .HasForeignKey(ay => ay.TenantId)
                 .OnDelete(DeleteBehavior.Restrict);
+
             builder.HasMany(ay => ay.Classes)
                 .WithOne(c => c.AcademicYear)
                 .HasForeignKey(c => c.AcademicYearId)
