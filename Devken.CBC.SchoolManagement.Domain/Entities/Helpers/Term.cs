@@ -6,6 +6,9 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Devken.CBC.SchoolManagement.Domain.Entities.Helpers
 {
+
+
+
     public class Term : TenantBaseEntity<Guid>
     {
         [Required]
