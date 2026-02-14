@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { trigger, transition, style, animate, query, group } from '@angular/animations';
 import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { FuseAlertComponent } from '@fuse/components/alert';
@@ -15,6 +16,10 @@ import { StudentGuardiansComponent } from '../guardians/Student-guardians.compon
 import { StudentMedicalComponent } from '../medical/Student-medical.component';
 import { StudentReviewComponent } from '../review/Student-review.component';
 import { EnrollmentStep } from '../../types/EnrollmentStep';
+import { normalizeStudentEnums } from '../../types/Enums';
+
+// Import centralized enum utilities
+
 
 @Component({
   selector: 'app-student-enrollment',
@@ -57,6 +62,7 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
   currentStep    = 0;
   completedSteps = new Set<number>();
   studentId: string | null = null;
+  isEditMode = false;
   isSaving     = false;
   isSubmitting = false;
   lastSaved: Date | null = null;
@@ -82,14 +88,12 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
 
   private checkViewport(): void {
     const width = window.innerWidth;
-    this.isMobileView = width < 1024; // lg breakpoint
+    this.isMobileView = width < 1024;
     
-    // Auto-collapse sidebar on tablet
-    if (width < 1280 && width >= 1024) { // xl breakpoint
+    if (width < 1280 && width >= 1024) {
       this.isSidebarCollapsed = true;
     }
     
-    // Close mobile sidebar when resizing to desktop
     if (!this.isMobileView) {
       this.showMobileSidebar = false;
     }
@@ -116,7 +120,7 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
   // ─── Section validity ─────────────────────────────────────────────
   sectionValid: Record<string, boolean> = {
     personal:  false,
-    location:  true,   // optional sections start valid
+    location:  true,
     academic:  false,
     medical:   true,
     guardians: false,
@@ -140,9 +144,15 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.studentId = this.route.snapshot.paramMap.get('id');
-    if (this.studentId) this.loadExistingStudent(this.studentId);
+    this.isEditMode = !!this.studentId;
+    
+    if (this.studentId) {
+      this.loadExistingStudent(this.studentId);
+    } else {
+      this.loadDraft();
+    }
+    
     this.loadLookups();
-    this.loadDraft();
     this.checkViewport();
   }
 
@@ -153,61 +163,137 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
 
   // ─── Lookup loading ───────────────────────────────────────────────
   private loadLookups(): void {
-    this.studentService.getSchools().pipe().subscribe(s => this.schools = s);
-    this.studentService.getClasses().pipe().subscribe(c => this.classes = c);
-    this.studentService.getAcademicYears().pipe().subscribe(y => this.academicYears = y);
+    this.studentService.getSchools().pipe(takeUntil(this.destroy$)).subscribe(s => this.schools = s);
+    this.studentService.getClasses().pipe(takeUntil(this.destroy$)).subscribe(c => this.classes = c);
+    this.studentService.getAcademicYears().pipe(takeUntil(this.destroy$)).subscribe(y => this.academicYears = y);
   }
 
   private loadExistingStudent(id: string): void {
-    this.studentService.getById(id).pipe().subscribe({
-      next: (student) => {
-        this.hydrateFromStudent(student);
-        this.steps.slice(0, 5).forEach((_, i) => this.completedSteps.add(i));
-      },
-      error: () => this.showAlert('error', 'Could not load student data.'),
-    });
+    this.studentService.getById(id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (student) => {
+
+          console.log('[Enrollment] Raw student data:', student);
+
+          this.hydrateFromStudent(student);
+
+          this.steps.slice(0, 5).forEach((_, i) => this.completedSteps.add(i));
+          this.showAlert('info', 'Editing existing student record');
+        },
+        error: (err) => {
+          console.error('[Enrollment] Failed to load student:', err);
+          this.showAlert('error', 'Could not load student data.');
+        },
+      });
+  }
+
+  /**
+   * Safely convert API values to numbers
+   * API returns enum values as strings ("2", "5") but forms need numbers
+   */
+  private toNumber(val: any): number | null {
+    if (val === null || val === undefined || val === '') return null;
+    const num = typeof val === 'string' ? parseInt(val, 10) : val;
+    return isNaN(num) ? null : num;
+  }
+
+  /**
+   * Normalize academic status string
+   * API might return "Active" but form uses "Regular"
+   */
+  private normalizeAcademicStatus(val: any): string {
+    if (!val) return '';
+    const str = String(val).toLowerCase();
+    // Map API values to form values
+    if (str === 'active') return 'Regular';
+    if (str === 'regular') return 'Regular';
+    return val; // Return as-is if no mapping needed
   }
 
   private hydrateFromStudent(s: any): void {
+    console.log('[Enrollment] Hydrating form sections...');
+    
+    // CRITICAL: Use centralized normalization utility
+    const normalized = normalizeStudentEnums(s);
+    
+    console.log('[Enrollment] Normalized student data:', normalized);
+    
+    // Helper to safely convert to number (API returns strings like "2", "5")
+    const toNum = this.toNumber.bind(this);
+    
     this.formSections.personal = {
-      firstName: s.firstName, lastName: s.lastName, middleName: s.middleName,
-      admissionNumber: s.admissionNumber, nemisNumber: s.nemisNumber,
-      birthCertificateNumber: s.birthCertificateNumber, dateOfBirth: s.dateOfBirth,
-      gender: s.gender, religion: s.religion, nationality: s.nationality,
-      photoUrl: s.photoUrl, dateOfAdmission: s.dateOfAdmission,
-      studentStatus: s.studentStatus, cbcLevel: s.cbcLevel,
+      firstName: s.firstName,
+      lastName: s.lastName,
+      middleName: s.middleName,
+      admissionNumber: s.admissionNumber,
+      nemisNumber: s.nemisNumber,
+      birthCertificateNumber: s.birthCertificateNumber,
+      dateOfBirth: s.dateOfBirth,
+      gender: toNum(normalized.gender ?? s.gender), // Convert string "2" -> number 2
+      religion: s.religion,
+      nationality: s.nationality,
+      photoUrl: s.photoUrl,
+      dateOfAdmission: s.dateOfAdmission,
+      studentStatus: toNum(normalized.studentStatus ?? s.studentStatus), // Convert string "5" -> number 5
+      cbcLevel: toNum(normalized.cbcLevel ?? s.cbcLevel), // Convert string "2" -> number 2
     };
+    
     this.formSections.location = {
-      placeOfBirth: s.placeOfBirth, county: s.county,
-      subCounty: s.subCounty, homeAddress: s.homeAddress,
+      placeOfBirth: s.placeOfBirth,
+      county: s.county,
+      subCounty: s.subCounty,
+      homeAddress: s.homeAddress,
     };
+    
     this.formSections.academic = {
-      schoolId: s.schoolId, currentLevel: s.currentLevel,
-      currentClassId: s.currentClassId, currentAcademicYearId: s.currentAcademicYearId,
-      previousSchool: s.previousSchool, status: s.status,
+      schoolId: s.schoolId,
+      currentLevel: toNum(normalized.currentLevel ?? s.currentLevel), // Convert string "1" -> number 1
+      currentClassId: s.currentClassId,
+      currentAcademicYearId: s.currentAcademicYearId,
+      previousSchool: s.previousSchool,
+      status: this.normalizeAcademicStatus(s.status), // Normalize "Active" -> "Regular"
     };
+    
     this.formSections.medical = {
-      bloodGroup: s.bloodGroup, medicalConditions: s.medicalConditions,
-      allergies: s.allergies, specialNeeds: s.specialNeeds,
+      bloodGroup: s.bloodGroup,
+      medicalConditions: s.medicalConditions,
+      allergies: s.allergies,
+      specialNeeds: s.specialNeeds,
       requiresSpecialSupport: s.requiresSpecialSupport,
     };
+    
     this.formSections.guardians = {
-      primaryGuardianName: s.primaryGuardianName, primaryGuardianRelationship: s.primaryGuardianRelationship,
-      primaryGuardianPhone: s.primaryGuardianPhone, primaryGuardianEmail: s.primaryGuardianEmail,
-      primaryGuardianOccupation: s.primaryGuardianOccupation, primaryGuardianAddress: s.primaryGuardianAddress,
-      secondaryGuardianName: s.secondaryGuardianName, secondaryGuardianRelationship: s.secondaryGuardianRelationship,
-      secondaryGuardianPhone: s.secondaryGuardianPhone, secondaryGuardianEmail: s.secondaryGuardianEmail,
+      primaryGuardianName: s.primaryGuardianName,
+      primaryGuardianRelationship: s.primaryGuardianRelationship,
+      primaryGuardianPhone: s.primaryGuardianPhone,
+      primaryGuardianEmail: s.primaryGuardianEmail,
+      primaryGuardianOccupation: s.primaryGuardianOccupation,
+      primaryGuardianAddress: s.primaryGuardianAddress,
+      secondaryGuardianName: s.secondaryGuardianName,
+      secondaryGuardianRelationship: s.secondaryGuardianRelationship,
+      secondaryGuardianPhone: s.secondaryGuardianPhone,
+      secondaryGuardianEmail: s.secondaryGuardianEmail,
       secondaryGuardianOccupation: s.secondaryGuardianOccupation,
-      emergencyContactName: s.emergencyContactName, emergencyContactPhone: s.emergencyContactPhone,
+      emergencyContactName: s.emergencyContactName,
+      emergencyContactPhone: s.emergencyContactPhone,
       emergencyContactRelationship: s.emergencyContactRelationship,
     };
+    
+    console.log('[Enrollment] Form sections hydrated:', this.formSections);
+    console.log('[Enrollment] Enum values converted to numbers:', {
+      gender: this.formSections.personal.gender,
+      studentStatus: this.formSections.personal.studentStatus,
+      cbcLevel: this.formSections.personal.cbcLevel,
+      currentLevel: this.formSections.academic.currentLevel
+    });
   }
 
   // ─── Draft persistence (localStorage) ────────────────────────────
   private readonly DRAFT_KEY = 'student_enrollment_draft';
 
   private loadDraft(): void {
-    if (this.studentId) return; // editing existing — skip draft
+    if (this.studentId) return;
     const raw = localStorage.getItem(this.DRAFT_KEY);
     if (!raw) return;
     try {
@@ -216,6 +302,7 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
       this.completedSteps = new Set(draft.completedSteps ?? []);
       this.currentStep   = draft.currentStep ?? 0;
       this.lastSaved     = draft.savedAt ? new Date(draft.savedAt) : null;
+      this.showAlert('info', 'Draft loaded. You can continue where you left off.');
     } catch { /* malformed draft */ }
   }
 
@@ -236,6 +323,7 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
 
   // ─── Section events ───────────────────────────────────────────────
   onSectionChanged(section: string, data: any): void {
+    console.log(`[Enrollment] Section ${section} changed:`, data);
     this.formSections[section] = { ...this.formSections[section], ...data };
   }
 
@@ -247,7 +335,6 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
   navigateToStep(index: number): void {
     if (this.canNavigateTo(index)) {
       this.currentStep = index;
-      // Close mobile sidebar after navigation
       if (this.isMobileView) {
         this.showMobileSidebar = false;
       }
@@ -268,8 +355,12 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
   }
 
   saveDraft(): void {
+    this.isSaving = true;
     this.persistDraft();
-    this.showAlert('success', 'Draft saved locally. You can continue later.');
+    setTimeout(() => {
+      this.isSaving = false;
+      this.showAlert('success', 'Draft saved locally. You can continue later.');
+    }, 500);
   }
 
   // ─── Final submission ────────────────────────────────────────────
@@ -278,24 +369,32 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
 
     this.isSubmitting = true;
     try {
-      const payload = this.buildPayload(); // combine all sections
+      const payload = this.buildPayload();
+      console.log('[Enrollment] Submitting payload:', payload);
+      
       if (this.studentId) {
+        // Update existing student
         await this.studentService.update(this.studentId, payload).toPromise();
+        this.showAlert('success', 'Student updated successfully!');
       } else {
+        // Create new student
         const created: any = await this.studentService.create(payload).toPromise();
         this.studentId = created?.data?.id ?? created?.id;
+        this.showAlert('success', 'Student enrolled successfully!');
       }
+      
       this.clearDraft();
-      this.showAlert('success', 'Student enrolled successfully!');
       setTimeout(() => this.router.navigate(['/academic/students']), 1500);
-    } catch {
-      this.showAlert('error', 'Submission failed. Please review and try again.');
+    } catch (err: any) {
+      console.error('[Enrollment] Submission error:', err);
+      this.showAlert('error', err?.error?.message || 'Submission failed. Please review and try again.');
     } finally {
       this.isSubmitting = false;
     }
   }
 
   private buildPayload(): any {
+    // All enum values should already be numbers from form emissions
     return {
       ...this.formSections.personal,
       ...this.formSections.location,
@@ -314,6 +413,7 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
   canNavigateTo(index: number): boolean {
     if (index === 0) return true;
     if (index <= this.currentStep) return true;
+    if (this.isEditMode) return true;
     return this.completedSteps.has(index - 1);
   }
 
@@ -331,7 +431,7 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
   }
 
   getRingOffset(): number {
-    const circumference = 2 * Math.PI * 56; // r=56
+    const circumference = 2 * Math.PI * 56;
     const pct = this.completedSteps.size / (this.steps.length - 1);
     return circumference * (1 - pct);
   }
@@ -341,10 +441,12 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
     this.router.navigate(['/academic/students']);
   }
 
-  private showAlert(type: 'success' | 'error', message: string): void {
-    this.alert = { type, message };
-    if (type === 'success') {
-      setTimeout(() => { if (this.alert?.type === 'success') this.alert = null; }, 3500);
+  private showAlert(type: 'success' | 'error' | 'info', message: string): void {
+    this.alert = { type: type as 'success' | 'error', message };
+    if (type === 'success' || type === 'info') {
+      setTimeout(() => { 
+        if (this.alert?.type === type) this.alert = null; 
+      }, 3500);
     }
   }
 }

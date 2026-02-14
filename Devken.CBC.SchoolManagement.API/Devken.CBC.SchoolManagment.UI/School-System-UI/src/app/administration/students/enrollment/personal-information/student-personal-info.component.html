@@ -1,4 +1,4 @@
-<!-- Student Personal Information - Fuse/Material + Tailwind -->
+<!-- Student Personal Information Component -->
 <div class="max-w-6xl">
 
   <!-- Section Header -->
@@ -8,288 +8,216 @@
     </div>
     <div class="flex-1">
       <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Personal Information</h2>
-      <p class="text-gray-600 dark:text-gray-400">Enter the student's core personal details. Fields marked * are required.</p>
+      <p class="text-gray-600 dark:text-gray-400">
+        {{ isEditMode ? 'Update student personal details and identification' : 'Enter basic student details and identification. Fields marked * are required.' }}
+      </p>
     </div>
   </div>
 
-  <form [formGroup]="form" novalidate class="space-y-8">
+  <!-- Helpful Tips Alert -->
+  <fuse-alert 
+    *ngIf="!isEditMode"
+    type="info" 
+    appearance="soft"
+    [showIcon]="true"
+    class="mb-6">
+    <strong>Getting Started:</strong> Begin with the student's legal names as they appear on official documents. 
+    The admission number will be auto-generated if left empty. You can complete optional fields now or return later.
+  </fuse-alert>
 
-    <!-- ──────────────────────────────────────────────────────────────── -->
-    <!-- Photo + Name Row -->
-    <!-- ──────────────────────────────────────────────────────────────── -->
-    <mat-card class="shadow-md">
-      <mat-card-content class="!p-6">
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          
-          <!-- Avatar uploader -->
-          <div class="flex flex-col items-center">
-            <div 
-              class="relative w-32 h-32 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 border-4 border-white dark:border-gray-800 shadow-lg mb-4"
-              [class.ring-4]="photoPreview"
-              [class.ring-indigo-200]="photoPreview"
-              [class.dark:ring-indigo-800]="photoPreview">
-              
-              <img 
-                *ngIf="photoPreview" 
-                [src]="photoPreview" 
-                alt="Student photo"
-                class="w-full h-full object-cover">
-              
-              <div *ngIf="!photoPreview" class="flex flex-col items-center justify-center h-full text-gray-400">
-                <mat-icon class="!w-12 !h-12 !text-5xl mb-2" svgIcon="heroicons_outline:user"></mat-icon>
-                <span class="text-xs">No photo</span>
-              </div>
-            </div>
-            
-            <label class="cursor-pointer">
-              <input 
-                type="file" 
-                accept="image/jpeg,image/png,image/webp" 
-                hidden 
-                (change)="onPhotoSelected($event)">
-              <button 
-                mat-stroked-button 
-                color="primary"
-                type="button"
-                class="!text-sm"
-                (click)="$event.preventDefault(); $event.target.previousElementSibling.click()">
-                <mat-icon svgIcon="heroicons_outline:camera" class="mr-2"></mat-icon>
-                Upload Photo
-              </button>
-            </label>
-            
-            <button 
-              *ngIf="photoPreview" 
-              mat-button 
-              color="warn"
-              type="button" 
-              class="!text-xs !mt-2"
-              (click)="removePhoto()">
-              Remove
-            </button>
-            
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">JPG, PNG, WebP · Max 2 MB</p>
-          </div>
+  <form [formGroup]="form" novalidate class="space-y-6">
 
-          <!-- Name fields -->
-          <div class="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <mat-form-field appearance="outline" class="w-full">
-              <mat-label>First Name *</mat-label>
-              <input matInput formControlName="firstName" placeholder="e.g. Amara">
-              <mat-icon matPrefix svgIcon="heroicons_outline:user" class="text-gray-400"></mat-icon>
-              <mat-error *ngIf="form.get('firstName')?.hasError('required')">First name is required</mat-error>
-              <mat-error *ngIf="form.get('firstName')?.hasError('minlength')">Minimum 2 characters required</mat-error>
-            </mat-form-field>
-
-            <mat-form-field appearance="outline" class="w-full">
-              <mat-label>Last Name *</mat-label>
-              <input matInput formControlName="lastName" placeholder="e.g. Wanjiku">
-              <mat-icon matPrefix svgIcon="heroicons_outline:user" class="text-gray-400"></mat-icon>
-              <mat-error *ngIf="form.get('lastName')?.hasError('required')">Last name is required</mat-error>
-              <mat-error *ngIf="form.get('lastName')?.hasError('minlength')">Minimum 2 characters required</mat-error>
-            </mat-form-field>
-
-            <mat-form-field appearance="outline" class="w-full">
-              <mat-label>Middle Name</mat-label>
-              <input matInput formControlName="middleName" placeholder="Optional">
-              <mat-icon matPrefix svgIcon="heroicons_outline:user" class="text-gray-400"></mat-icon>
-            </mat-form-field>
-
-            <mat-form-field appearance="outline" class="w-full">
-              <mat-label>Gender *</mat-label>
-              <mat-select formControlName="gender">
-                <mat-option value="">Select gender</mat-option>
-                <mat-option *ngFor="let gender of genders$ | async" [value]="gender.value">
-                  {{ gender.name }}
-                </mat-option>
-              </mat-select>
-              <mat-icon matPrefix svgIcon="heroicons_outline:user-circle" class="text-gray-400"></mat-icon>
-              <mat-error>Gender is required</mat-error>
-            </mat-form-field>
-          </div>
-
-        </div>
-      </mat-card-content>
-    </mat-card>
-
-    <!-- ──────────────────────────────────────────────────────────────── -->
-    <!-- ID Numbers -->
-    <!-- ──────────────────────────────────────────────────────────────── -->
+    <!-- Name Details -->
     <mat-card class="shadow-md">
       <mat-card-header class="!pb-2">
         <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
-          <mat-icon svgIcon="heroicons_outline:identification" class="text-indigo-600"></mat-icon>
-          Identification Numbers
+          <mat-icon svgIcon="heroicons_outline:identification" class="text-blue-600"></mat-icon>
+          Full Name
+          <span class="ml-auto text-xs font-medium px-2 py-1 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded">Required</span>
         </mat-card-title>
       </mat-card-header>
       <mat-card-content class="!pt-4">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           
           <mat-form-field appearance="outline" class="w-full">
-            <mat-label>Admission Number *</mat-label>
-            <input matInput formControlName="admissionNumber" placeholder="e.g. ADM/2024/001">
-            <mat-icon matPrefix svgIcon="heroicons_outline:hashtag" class="text-gray-400"></mat-icon>
-            <mat-error>Admission number is required</mat-error>
-            <mat-hint>Must be unique within the school</mat-hint>
+            <mat-label>First Name *</mat-label>
+            <input matInput formControlName="firstName" placeholder="e.g. John">
+            <mat-icon matPrefix svgIcon="heroicons_outline:user" class="text-gray-400"></mat-icon>
+            <mat-hint>As per birth certificate</mat-hint>
+            <mat-error>{{ getErrorMessage('firstName') }}</mat-error>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="w-full">
-            <mat-label>NEMIS Number</mat-label>
-            <input matInput type="number" formControlName="nemisNumber" placeholder="e.g. 12345678">
-            <mat-icon matPrefix svgIcon="heroicons_outline:document-text" class="text-gray-400"></mat-icon>
-            <mat-hint>National Education Management Information System</mat-hint>
+            <mat-label>Middle Name</mat-label>
+            <input matInput formControlName="middleName" placeholder="e.g. William">
+            <mat-icon matPrefix svgIcon="heroicons_outline:user" class="text-gray-400"></mat-icon>
+            <mat-hint>Optional</mat-hint>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="w-full">
-            <mat-label>Birth Certificate No.</mat-label>
-            <input matInput formControlName="birthCertificateNumber" placeholder="e.g. BC/NBI/0000001">
-            <mat-icon matPrefix svgIcon="heroicons_outline:document" class="text-gray-400"></mat-icon>
+            <mat-label>Last Name *</mat-label>
+            <input matInput formControlName="lastName" placeholder="e.g. Doe">
+            <mat-icon matPrefix svgIcon="heroicons_outline:user" class="text-gray-400"></mat-icon>
+            <mat-hint>Surname or family name</mat-hint>
+            <mat-error>{{ getErrorMessage('lastName') }}</mat-error>
           </mat-form-field>
 
         </div>
       </mat-card-content>
     </mat-card>
 
-    <!-- ──────────────────────────────────────────────────────────────── -->
-    <!-- Personal Details -->
-    <!-- ──────────────────────────────────────────────────────────────── -->
+    <!-- Birth Details -->
     <mat-card class="shadow-md">
       <mat-card-header class="!pb-2">
         <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
-          <mat-icon svgIcon="heroicons_outline:calendar" class="text-indigo-600"></mat-icon>
-          Personal Details
+          <mat-icon svgIcon="heroicons_outline:cake" class="text-blue-600"></mat-icon>
+          Birth Information
+          <span class="ml-auto text-xs font-medium px-2 py-1 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded">Required</span>
         </mat-card-title>
       </mat-card-header>
       <mat-card-content class="!pt-4">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           
+          <!-- Date of Birth with validation -->
           <mat-form-field appearance="outline" class="w-full">
             <mat-label>Date of Birth *</mat-label>
-            <input matInput type="date" formControlName="dateOfBirth">
-            <mat-icon matPrefix svgIcon="heroicons_outline:cake" class="text-gray-400"></mat-icon>
-            <mat-error>Date of birth is required</mat-error>
-            <mat-hint *ngIf="form.get('dateOfBirth')?.value && !isInvalid('dateOfBirth')">
-              Age: {{ calculateAge(form.get('dateOfBirth')?.value) }}
-            </mat-hint>
+            <input matInput [matDatepicker]="dobPicker" formControlName="dateOfBirth"
+                   [min]="minDateOfBirth" [max]="maxDateOfBirth">
+            <mat-datepicker-toggle matSuffix [for]="dobPicker"></mat-datepicker-toggle>
+            <mat-datepicker #dobPicker></mat-datepicker>
+            <mat-icon matPrefix svgIcon="heroicons_outline:calendar" class="text-gray-400"></mat-icon>
+            <mat-hint>Student must be 2-25 years old</mat-hint>
+            <mat-error>{{ getErrorMessage('dateOfBirth') }}</mat-error>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="w-full">
-            <mat-label>Religion</mat-label>
-            <mat-select formControlName="religion">
-              <mat-option value="">Select religion</mat-option>
-              <mat-option value="Christianity">Christianity</mat-option>
-              <mat-option value="Islam">Islam</mat-option>
-              <mat-option value="Hinduism">Hinduism</mat-option>
-              <mat-option value="Other">Other</mat-option>
-              <mat-option value="None">None / Not specified</mat-option>
-            </mat-select>
-            <mat-icon matPrefix svgIcon="heroicons_outline:book-open" class="text-gray-400"></mat-icon>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="w-full">
-            <mat-label>Nationality</mat-label>
-            <input matInput formControlName="nationality" placeholder="Kenyan">
-            <mat-icon matPrefix svgIcon="heroicons_outline:flag" class="text-gray-400"></mat-icon>
+            <mat-label>Birth Certificate Number</mat-label>
+            <input matInput formControlName="birthCertificateNumber" placeholder="e.g. 123456789">
+            <mat-icon matPrefix svgIcon="heroicons_outline:document-text" class="text-gray-400"></mat-icon>
+            <mat-hint>Optional - can be added later</mat-hint>
           </mat-form-field>
 
         </div>
       </mat-card-content>
     </mat-card>
 
-    <!-- ──────────────────────────────────────────────────────────────── -->
-    <!-- Academic Classification -->
-    <!-- ──────────────────────────────────────────────────────────────── -->
+    <!-- Basic Details -->
     <mat-card class="shadow-md">
       <mat-card-header class="!pb-2">
         <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
-          <mat-icon svgIcon="heroicons_outline:academic-cap" class="text-indigo-600"></mat-icon>
-          Academic Classification
+          <mat-icon svgIcon="heroicons_outline:information-circle" class="text-blue-600"></mat-icon>
+          Basic Details
+          <span class="ml-auto text-xs font-medium px-2 py-1 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded">Required</span>
         </mat-card-title>
       </mat-card-header>
       <mat-card-content class="!pt-4">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           
           <mat-form-field appearance="outline" class="w-full">
-            <mat-label>Student Status *</mat-label>
-            <mat-select formControlName="studentStatus">
-              <mat-option value="">Select status</mat-option>
-              <mat-option *ngFor="let status of studentStatuses$ | async" [value]="status.value">
-                {{ status.name }}
+            <mat-label>Gender *</mat-label>
+            <mat-select formControlName="gender">
+              <mat-option value="">Select gender</mat-option>
+              <mat-option *ngFor="let g of genders" [value]="g.value">
+                {{ g.label }}
               </mat-option>
             </mat-select>
-            <mat-icon matPrefix svgIcon="heroicons_outline:clipboard-check" class="text-gray-400"></mat-icon>
-            <mat-error>Student status is required</mat-error>
+            <mat-icon matPrefix svgIcon="heroicons_outline:user-circle" class="text-gray-400"></mat-icon>
+            <mat-error>Gender is required</mat-error>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="w-full">
-            <mat-label>CBC Level *</mat-label>
-            <mat-select formControlName="cbcLevel">
-              <mat-option value="">Select level</mat-option>
-              <mat-option *ngFor="let level of cbcLevels$ | async" [value]="level.value">
-                {{ level.name }}
-              </mat-option>
-            </mat-select>
-            <mat-icon matPrefix svgIcon="heroicons_outline:chart-bar" class="text-gray-400"></mat-icon>
-            <mat-error>CBC level is required</mat-error>
+            <mat-label>Nationality</mat-label>
+            <input matInput formControlName="nationality" placeholder="e.g. Kenyan">
+            <mat-icon matPrefix svgIcon="heroicons_outline:globe-alt" class="text-gray-400"></mat-icon>
+            <mat-hint>Defaults to Kenyan</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Religion</mat-label>
+            <input matInput formControlName="religion" placeholder="e.g. Christian, Muslim, Hindu">
+            <mat-icon matPrefix svgIcon="heroicons_outline:book-open" class="text-gray-400"></mat-icon>
+            <mat-hint>Optional - for records only</mat-hint>
           </mat-form-field>
 
         </div>
       </mat-card-content>
     </mat-card>
 
-    <!-- ──────────────────────────────────────────────────────────────── -->
     <!-- Admission Details -->
-    <!-- ──────────────────────────────────────────────────────────────── -->
     <mat-card class="shadow-md">
       <mat-card-header class="!pb-2">
         <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
-          <mat-icon svgIcon="heroicons_outline:document-plus" class="text-indigo-600"></mat-icon>
+          <mat-icon svgIcon="heroicons_outline:clipboard-document-check" class="text-blue-600"></mat-icon>
           Admission Details
         </mat-card-title>
       </mat-card-header>
       <mat-card-content class="!pt-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           
           <mat-form-field appearance="outline" class="w-full">
-            <mat-label>Date of Admission *</mat-label>
-            <input matInput type="date" formControlName="dateOfAdmission">
-            <mat-icon matPrefix svgIcon="heroicons_outline:calendar-days" class="text-gray-400"></mat-icon>
-            <mat-error>Date of admission is required</mat-error>
+            <mat-label>Admission Number</mat-label>
+            <input matInput formControlName="admissionNumber" placeholder="Auto-generated if empty">
+            <mat-icon matPrefix svgIcon="heroicons_outline:hashtag" class="text-gray-400"></mat-icon>
+            <mat-hint>{{ isEditMode ? 'Cannot be changed' : 'Leave blank to auto-generate' }}</mat-hint>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="w-full">
-            <mat-label>Photo URL</mat-label>
-            <input matInput type="url" formControlName="photoUrl" placeholder="https://...">
-            <mat-icon matPrefix svgIcon="heroicons_outline:link" class="text-gray-400"></mat-icon>
-            <mat-hint>Or use the photo uploader above</mat-hint>
+            <mat-label>Date of Admission</mat-label>
+            <input matInput [matDatepicker]="admissionPicker" formControlName="dateOfAdmission"
+                   [min]="minDateOfAdmission" [max]="maxDateOfAdmission">
+            <mat-datepicker-toggle matSuffix [for]="admissionPicker"></mat-datepicker-toggle>
+            <mat-datepicker #admissionPicker></mat-datepicker>
+            <mat-icon matPrefix svgIcon="heroicons_outline:calendar" class="text-gray-400"></mat-icon>
+            <mat-hint>Defaults to today</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>NEMIS Number</mat-label>
+            <input matInput formControlName="nemisNumber" placeholder="National student ID">
+            <mat-icon matPrefix svgIcon="heroicons_outline:identification" class="text-gray-400"></mat-icon>
+            <mat-hint>Can be added later</mat-hint>
           </mat-form-field>
 
         </div>
-
-        <mat-form-field appearance="outline" class="w-full">
-          <mat-label>Notes</mat-label>
-          <textarea matInput formControlName="notes" rows="3" placeholder="Any additional notes about this student…"></textarea>
-          <mat-hint>Optional additional information</mat-hint>
-        </mat-form-field>
       </mat-card-content>
     </mat-card>
 
-    <!-- ──────────────────────────────────────────────────────────────── -->
-    <!-- Active Status -->
-    <!-- ──────────────────────────────────────────────────────────────── -->
+    <!-- CBC Level & Status -->
     <mat-card class="shadow-md">
-      <mat-card-content class="!p-6">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-4">
-            <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/20">
-              <mat-icon class="text-green-600" svgIcon="heroicons_outline:check-circle"></mat-icon>
-            </div>
-            <div>
-              <div class="font-semibold text-gray-900 dark:text-white">Student is Active</div>
-              <div class="text-sm text-gray-600 dark:text-gray-400">Inactive students are hidden from most views</div>
-            </div>
-          </div>
-          <mat-slide-toggle formControlName="isActive" color="primary"></mat-slide-toggle>
+      <mat-card-header class="!pb-2">
+        <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+          <mat-icon svgIcon="heroicons_outline:academic-cap" class="text-blue-600"></mat-icon>
+          CBC Level & Status
+          <span class="ml-auto text-xs font-medium px-2 py-1 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded">Required</span>
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>CBC Level *</mat-label>
+            <mat-select formControlName="cbcLevel">
+              <mat-option value="">Select level</mat-option>
+              <mat-option *ngFor="let level of cbcLevels" [value]="level.value">
+                {{ level.label }}
+              </mat-option>
+            </mat-select>
+            <mat-icon matPrefix svgIcon="heroicons_outline:chart-bar" class="text-gray-400"></mat-icon>
+            <mat-hint>Current competency-based curriculum level</mat-hint>
+            <mat-error>CBC Level is required</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Student Status</mat-label>
+            <mat-select formControlName="studentStatus">
+              <mat-option *ngFor="let status of studentStatuses" [value]="status.value">
+                {{ status.label }}
+              </mat-option>
+            </mat-select>
+            <mat-icon matPrefix svgIcon="heroicons_outline:flag" class="text-gray-400"></mat-icon>
+            <mat-hint>Defaults to "Continuing"</mat-hint>
+          </mat-form-field>
+
         </div>
       </mat-card-content>
     </mat-card>

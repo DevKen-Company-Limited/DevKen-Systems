@@ -107,6 +107,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academic
 
             return await query
                 .Include(s => s.CurrentClass)
+                     .Include(t => t.School)
                 .Include(s => s.CurrentAcademicYear)
                 .ToListAsync();
         }

@@ -8,9 +8,22 @@
     </div>
     <div class="flex-1">
       <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Academic Details</h2>
-      <p class="text-gray-600 dark:text-gray-400">School enrollment, class placement and academic records. Fields marked * are required.</p>
+      <p class="text-gray-600 dark:text-gray-400">
+        {{ isEditMode ? 'Update school enrollment and class placement' : 'School enrollment, class placement and academic records. Fields marked * are required.' }}
+      </p>
     </div>
   </div>
+
+  <!-- Helpful Tips Alert -->
+  <fuse-alert 
+    *ngIf="!isEditMode"
+    type="info" 
+    appearance="soft"
+    [showIcon]="true"
+    class="mb-6">
+    <strong>Academic Placement:</strong> Select the current CBC level that matches the student's age and learning stage. 
+    Class and academic year assignments are optional and can be configured later by administrators.
+  </fuse-alert>
 
   <form [formGroup]="form" novalidate class="space-y-6">
 
@@ -32,7 +45,8 @@
               {{ school.name }}{{ school.phone ? ' (' + school.phone + ')' : '' }}
             </mat-option>
           </mat-select>
-          <mat-icon matPrefix svgIcon="heroicons_outline:school" class="text-gray-400"></mat-icon>
+          <mat-icon matPrefix svgIcon="heroicons_outline:building-library" class="text-gray-400"></mat-icon>
+          <mat-hint>Select the school this student will be enrolled in</mat-hint>
           <mat-error>School is required</mat-error>
         </mat-form-field>
       </mat-card-content>
@@ -50,10 +64,17 @@
       <mat-card-content class="!pt-4">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
+          <!-- Current Level - Updated to use dropdown -->
           <mat-form-field appearance="outline" class="w-full">
             <mat-label>Current Level *</mat-label>
-            <input matInput formControlName="currentLevel" placeholder="e.g. Grade 4">
+            <mat-select formControlName="currentLevel">
+              <mat-option value="">Select level</mat-option>
+              <mat-option *ngFor="let level of cbcLevels" [value]="level.value">
+                {{ level.label }}
+              </mat-option>
+            </mat-select>
             <mat-icon matPrefix svgIcon="heroicons_outline:chart-bar" class="text-gray-400"></mat-icon>
+            <mat-hint>CBC competency level</mat-hint>
             <mat-error>Current level is required</mat-error>
           </mat-form-field>
 
@@ -66,6 +87,7 @@
               </mat-option>
             </mat-select>
             <mat-icon matPrefix svgIcon="heroicons_outline:users" class="text-gray-400"></mat-icon>
+            <mat-hint>Optional - can assign later</mat-hint>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="w-full">
@@ -77,6 +99,7 @@
               </mat-option>
             </mat-select>
             <mat-icon matPrefix svgIcon="heroicons_outline:calendar" class="text-gray-400"></mat-icon>
+            <mat-hint>Optional - can assign later</mat-hint>
           </mat-form-field>
 
         </div>
@@ -121,7 +144,7 @@
             <mat-option value="Graduated">Graduated</mat-option>
           </mat-select>
           <mat-icon matPrefix svgIcon="heroicons_outline:flag" class="text-gray-400"></mat-icon>
-          <mat-hint>Current academic standing</mat-hint>
+          <mat-hint>Current academic standing - typically "Regular" for new students</mat-hint>
         </mat-form-field>
       </mat-card-content>
     </mat-card>

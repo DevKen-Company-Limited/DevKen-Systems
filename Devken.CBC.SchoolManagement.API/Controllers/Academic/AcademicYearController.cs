@@ -29,7 +29,7 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
         /// Get all academic years - SuperAdmin can see all, others see only their school's academic years
         /// </summary>
         [HttpGet]
-        //[Authorize(Roles = "SuperAdmin,SchoolAdmin,Teacher")]
+        [Authorize(Policy = PermissionKeys.AcademicYearRead)]
         public async Task<IActionResult> GetAll([FromQuery] Guid? schoolId = null)
         {
             if (!HasPermission(PermissionKeys.AcademicYearRead))
@@ -58,7 +58,7 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
         /// Get academic year by ID - SuperAdmin or users from the same school
         /// </summary>
         [HttpGet("{id:guid}")]
-        //[Authorize(Roles = "SuperAdmin,SchoolAdmin,Teacher")]
+        [Authorize(Policy = PermissionKeys.AcademicYearRead)]
         public async Task<IActionResult> GetById(Guid id)
         {
             if (!HasPermission(PermissionKeys.AcademicYearRead))
@@ -83,7 +83,7 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
         /// Get current academic year for the school
         /// </summary>
         [HttpGet("current")]
-        //[Authorize(Roles = "SuperAdmin,SchoolAdmin,Teacher")]
+        [Authorize(Policy = PermissionKeys.AcademicYearRead)]
         public async Task<IActionResult> GetCurrent([FromQuery] Guid? schoolId = null)
         {
             if (!HasPermission(PermissionKeys.AcademicYearRead))
@@ -110,7 +110,7 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
         /// Get all open academic years for the school
         /// </summary>
         [HttpGet("open")]
-        //[Authorize(Roles = "SuperAdmin,SchoolAdmin,Teacher")]
+        [Authorize(Policy = PermissionKeys.AcademicYearRead)]
         public async Task<IActionResult> GetOpen([FromQuery] Guid? schoolId = null)
         {
             if (!HasPermission(PermissionKeys.AcademicYearRead))
@@ -135,7 +135,7 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
         /// Create academic year - SuperAdmin or SchoolAdmin
         /// </summary>
         [HttpPost]
-        //[Authorize(Roles = "SuperAdmin,SchoolAdmin")]
+        [Authorize(Policy = PermissionKeys.AcademicYearWrite)]
         public async Task<IActionResult> Create([FromBody] CreateAcademicYearRequest request)
         {
             if (!HasPermission(PermissionKeys.AcademicYearWrite))
@@ -227,7 +227,7 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
         /// Update academic year - SuperAdmin or SchoolAdmin (own school only)
         /// </summary>
         [HttpPut("{id:guid}")]
-        //[Authorize(Roles = "SuperAdmin,SchoolAdmin")]
+        [Authorize(Policy = PermissionKeys.AcademicYearWrite)]
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateAcademicYearRequest request)
         {
             if (!HasPermission(PermissionKeys.AcademicYearWrite))
@@ -301,7 +301,7 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
         /// Set academic year as current - SuperAdmin or SchoolAdmin (own school only)
         /// </summary>
         [HttpPut("{id:guid}/set-current")]
-        //[Authorize(Roles = "SuperAdmin,SchoolAdmin")]
+        [Authorize(Policy = PermissionKeys.AcademicYearWrite)]
         public async Task<IActionResult> SetAsCurrent(Guid id)
         {
             if (!HasPermission(PermissionKeys.AcademicYearWrite))
@@ -334,7 +334,7 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
         /// Close academic year - SuperAdmin or SchoolAdmin (own school only)
         /// </summary>
         [HttpPut("{id:guid}/close")]
-        //[Authorize(Roles = "SuperAdmin,SchoolAdmin")]
+        [Authorize(Policy = PermissionKeys.AcademicYearClose)]
         public async Task<IActionResult> Close(Guid id)
         {
             if (!HasPermission(PermissionKeys.AcademicYearClose))
@@ -367,7 +367,7 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
         /// Delete academic year - SuperAdmin or SchoolAdmin (own school only)
         /// </summary>
         [HttpDelete("{id:guid}")]
-        //[Authorize(Roles = "SuperAdmin,SchoolAdmin")]
+        [Authorize(Policy = PermissionKeys.AcademicYearDelete)]
         public async Task<IActionResult> Delete(Guid id)
         {
             if (!HasPermission(PermissionKeys.AcademicYearDelete))

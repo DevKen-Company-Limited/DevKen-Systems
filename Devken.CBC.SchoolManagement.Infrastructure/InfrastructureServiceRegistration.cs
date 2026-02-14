@@ -180,6 +180,12 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                 RegisterPermissionPolicy(options, PermissionKeys.AssessmentDelete);
                 RegisterPermissionPolicy(options, PermissionKeys.ReportRead);
                 RegisterPermissionPolicy(options, PermissionKeys.ReportWrite);
+                // Academic Year Permissions
+                RegisterPermissionPolicy(options, PermissionKeys.AcademicYearRead);
+                RegisterPermissionPolicy(options, PermissionKeys.AcademicYearWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.AcademicYearDelete);
+                RegisterPermissionPolicy(options, PermissionKeys.AcademicYearClose);
+
 
                 // Finance Permissions
                 RegisterPermissionPolicy(options, PermissionKeys.FeeRead);
@@ -188,6 +194,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                 RegisterPermissionPolicy(options, PermissionKeys.PaymentWrite);
                 RegisterPermissionPolicy(options, PermissionKeys.InvoiceRead);
                 RegisterPermissionPolicy(options, PermissionKeys.InvoiceWrite);
+
+
 
                 // Curriculum Permissions
                 RegisterPermissionPolicy(options, PermissionKeys.CurriculumRead);

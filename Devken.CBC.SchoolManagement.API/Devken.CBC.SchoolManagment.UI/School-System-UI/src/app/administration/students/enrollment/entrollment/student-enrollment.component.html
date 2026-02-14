@@ -45,7 +45,9 @@
             <mat-icon class="text-white" svgIcon="heroicons_outline:academic-cap"></mat-icon>
           </div>
           <div *ngIf="!isSidebarCollapsed || isMobileView" class="flex flex-col">
-            <span class="text-lg font-bold text-gray-900 dark:text-white">Student Enrolment</span>
+            <span class="text-lg font-bold text-gray-900 dark:text-white">
+              {{ isEditMode ? 'Edit Student' : 'Student Enrolment' }}
+            </span>
             <span class="text-xs text-gray-500 dark:text-gray-400">CBC School Management</span>
           </div>
         </div>
@@ -146,7 +148,6 @@
           </button>
 
           <button 
-            *ngIf="studentId && !isMobileView" 
             mat-button 
             class="!-ml-2"
             (click)="goBack()">
@@ -177,7 +178,7 @@
       <fuse-alert
         *ngIf="alert"
         class="mx-4 sm:mx-6 lg:mx-8 mt-4 sm:mt-6"
-        [type]="alert.type === 'success' ? 'success' : 'error'"
+        [type]="alert.type === 'success' ? 'success' : (alert.type === 'error' ? 'error' : 'info')"
         [appearance]="'soft'"
         [showIcon]="true"
         [dismissible]="true"
@@ -188,10 +189,11 @@
       <!-- Step Content -->
       <div class="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8" [@stepTransition]="currentStep">
 
-        <!-- STEP COMPONENTS -->
+        <!-- STEP COMPONENTS with isEditMode -->
         <app-student-personal-info
           *ngIf="currentStep === 0"
           [formData]="formSections.personal"
+          [isEditMode]="isEditMode"
           (formChanged)="onSectionChanged('personal', $event)"
           (formValid)="onSectionValidChanged('personal', $event)">
         </app-student-personal-info>
@@ -199,6 +201,7 @@
         <app-student-location
           *ngIf="currentStep === 1"
           [formData]="formSections.location"
+          [isEditMode]="isEditMode"
           (formChanged)="onSectionChanged('location', $event)"
           (formValid)="onSectionValidChanged('location', $event)">
         </app-student-location>
@@ -209,6 +212,7 @@
           [schools]="schools"
           [classes]="classes"
           [academicYears]="academicYears"
+          [isEditMode]="isEditMode"
           (formChanged)="onSectionChanged('academic', $event)"
           (formValid)="onSectionValidChanged('academic', $event)">
         </app-student-academic>
@@ -216,6 +220,7 @@
         <app-student-medical
           *ngIf="currentStep === 3"
           [formData]="formSections.medical"
+          [isEditMode]="isEditMode"
           (formChanged)="onSectionChanged('medical', $event)"
           (formValid)="onSectionValidChanged('medical', $event)">
         </app-student-medical>
@@ -223,6 +228,7 @@
         <app-student-guardians
           *ngIf="currentStep === 4"
           [formData]="formSections.guardians"
+          [isEditMode]="isEditMode"
           (formChanged)="onSectionChanged('guardians', $event)"
           (formValid)="onSectionValidChanged('guardians', $event)">
         </app-student-guardians>
@@ -265,7 +271,7 @@
           color="primary"
           (click)="nextStep()"
           [disabled]="!canProceed()">
-          <span class="mr-2 hidden sm:inline">Save & Continue</span>
+          <span class="mr-2 hidden sm:inline">Next</span>
           <span class="mr-2 sm:hidden">Next</span>
           <mat-icon svgIcon="heroicons_outline:chevron-right"></mat-icon>
         </button>
@@ -273,11 +279,11 @@
         <button
           *ngIf="currentStep === steps.length - 1"
           mat-flat-button
-          color="accent"
+          color="primary"
           (click)="submitForm()"
           [disabled]="!allStepsCompleted() || isSubmitting">
           <mat-icon svgIcon="heroicons_outline:check-circle"></mat-icon>
-          <span class="ml-2">{{ isSubmitting ? 'Submitting…' : 'Submit' }}</span>
+          <span class="ml-2">{{ isSubmitting ? 'Submitting…' : (isEditMode ? 'Update' : 'Enroll') }}</span>
         </button>
       </footer>
 

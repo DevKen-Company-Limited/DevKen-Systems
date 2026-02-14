@@ -7,6 +7,7 @@ using Devken.CBC.SchoolManagement.Application.Services.Interfaces.Academic;
 using Devken.CBC.SchoolManagement.Application.Services.Interfaces.Images;
 using Devken.CBC.SchoolManagement.Domain.Entities.Academic;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -65,28 +66,37 @@ namespace Devken.CBC.SchoolManagement.Application.Services.Implementations.Acade
         }
 
         // ─────────────────────────────────────────────────────────────────────
-        // CREATE TEACHER - WITH AUTO-GENERATED TEACHER NUMBER!
+        // CREATE TEACHER - WITH EXECUTION STRATEGY FOR RETRY COMPATIBILITY
         // ─────────────────────────────────────────────────────────────────────
         public async Task<TeacherDto> CreateTeacherAsync(
             CreateTeacherRequest request,
             Guid? userSchoolId,
             bool isSuperAdmin)
         {
-            // 1. Resolve and validate school
-            var targetSchoolId = ResolveSchoolId(request.SchoolId, userSchoolId, isSuperAdmin);
-            await ValidateSchoolExistsAsync(targetSchoolId);
+            // FIXED: Wrap entire operation in execution strategy to handle retry conflicts
+            var strategy = _repositories.Context.Database.CreateExecutionStrategy();
 
-            // 2. Generate or validate teacher number
-            var teacherNumber = await ResolveTeacherNumberAsync(request.TeacherNumber, targetSchoolId);
+            return await strategy.ExecuteAsync(async () =>
+            {
+                // 1. Resolve and validate school
+                var targetSchoolId = ResolveSchoolId(request.SchoolId, userSchoolId, isSuperAdmin);
+                await ValidateSchoolExistsAsync(targetSchoolId);
 
-            // 3. Create teacher entity
-            var teacher = CreateTeacherEntity(request, targetSchoolId, teacherNumber);
+                // 2. Generate or validate teacher number
+                var teacherNumber = await ResolveTeacherNumberAsync(request.TeacherNumber, targetSchoolId);
 
-            // 4. Save to database
-            _repositories.Teacher.Create(teacher);
-            await _repositories.SaveAsync();
+                // 3. Create teacher entity
+                var teacher = CreateTeacherEntity(request, targetSchoolId, teacherNumber);
 
-            return MapToDto(teacher);
+                // 4. Save to database (EF Core handles the transaction)
+                _repositories.Teacher.Create(teacher);
+                await _repositories.SaveAsync();
+
+                // 5. Reload with navigation properties for DTO mapping
+                var createdTeacher = await _repositories.Teacher.GetByIdWithDetailsAsync(teacher.Id, false);
+
+                return MapToDto(createdTeacher ?? teacher);
+            });
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -108,7 +118,10 @@ namespace Devken.CBC.SchoolManagement.Application.Services.Implementations.Acade
             _repositories.Teacher.Update(teacher);
             await _repositories.SaveAsync();
 
-            return MapToDto(teacher);
+            // Reload with navigation properties
+            var updatedTeacher = await _repositories.Teacher.GetByIdWithDetailsAsync(id, false);
+
+            return MapToDto(updatedTeacher ?? teacher);
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -124,10 +137,17 @@ namespace Devken.CBC.SchoolManagement.Application.Services.Implementations.Acade
 
             ValidateSchoolAccess(teacher.TenantId, userSchoolId, isSuperAdmin);
 
-            await DeleteTeacherPhotoIfExistsAsync(teacher.PhotoUrl);
+            // Store photo URL before deletion
+            var photoUrl = teacher.PhotoUrl;
 
+            // Delete teacher record first
             _repositories.Teacher.Delete(teacher);
             await _repositories.SaveAsync();
+
+            // Delete photo after successful database deletion
+            // If this fails, the teacher record is already deleted, which is acceptable
+            // since orphaned files can be cleaned up separately
+            await DeleteTeacherPhotoIfExistsAsync(photoUrl);
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -144,17 +164,22 @@ namespace Devken.CBC.SchoolManagement.Application.Services.Implementations.Acade
 
             ValidateSchoolAccess(teacher.TenantId, userSchoolId, isSuperAdmin);
 
-            // Delete old photo if exists
-            await DeleteTeacherPhotoIfExistsAsync(teacher.PhotoUrl);
+            // Store old photo URL for cleanup
+            var oldPhotoUrl = teacher.PhotoUrl;
 
-            // Upload new photo
-            var photoUrl = await UploadPhotoWithValidationAsync(file);
+            // Upload new photo first (if this fails, nothing is changed)
+            var newPhotoUrl = await UploadPhotoWithValidationAsync(file);
 
-            teacher.PhotoUrl = photoUrl;
+            // Update database with new photo URL
+            teacher.PhotoUrl = newPhotoUrl;
             _repositories.Teacher.Update(teacher);
             await _repositories.SaveAsync();
 
-            return photoUrl;
+            // Delete old photo after successful database update
+            // If this fails, we have an orphaned file, but the new photo is set correctly
+            await DeleteTeacherPhotoIfExistsAsync(oldPhotoUrl);
+
+            return newPhotoUrl;
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -173,11 +198,27 @@ namespace Devken.CBC.SchoolManagement.Application.Services.Implementations.Acade
             if (string.IsNullOrWhiteSpace(teacher.PhotoUrl))
                 throw new ValidationException("This teacher has no photo to delete.");
 
-            await _imageUpload.DeleteImageAsync(teacher.PhotoUrl);
+            // Store photo URL for cleanup
+            var photoUrl = teacher.PhotoUrl;
 
+            // Update database first
             teacher.PhotoUrl = null;
             _repositories.Teacher.Update(teacher);
             await _repositories.SaveAsync();
+
+            // Delete physical file after successful database update
+            // If this fails, we have an orphaned file, but the database is consistent
+            try
+            {
+                await _imageUpload.DeleteImageAsync(photoUrl);
+            }
+            catch (Exception ex)
+            {
+                // Log the error but don't fail the operation
+                // The database record is already updated
+                // Orphaned files can be cleaned up separately
+                System.Diagnostics.Debug.WriteLine($"Failed to delete photo file: {ex.Message}");
+            }
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -198,7 +239,10 @@ namespace Devken.CBC.SchoolManagement.Application.Services.Implementations.Acade
             _repositories.Teacher.Update(teacher);
             await _repositories.SaveAsync();
 
-            return MapToDto(teacher);
+            // Reload with navigation properties
+            var updatedTeacher = await _repositories.Teacher.GetByIdWithDetailsAsync(id, false);
+
+            return MapToDto(updatedTeacher ?? teacher);
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -300,14 +344,17 @@ namespace Devken.CBC.SchoolManagement.Application.Services.Implementations.Acade
             var seriesExists = await _documentNumberService.SeriesExistsAsync(TEACHER_NUMBER_SERIES, schoolId);
             if (!seriesExists)
             {
+                // Use the overloaded method that accepts tenantId explicitly
                 await _documentNumberService.CreateSeriesAsync(
                     entityName: TEACHER_NUMBER_SERIES,
+                    tenantId: schoolId,
                     prefix: "TCH",
                     padding: 5,
                     resetEveryYear: true,
                     description: "Teacher employment numbers");
             }
 
+            // Generate the number (wrapped by execution strategy in CreateTeacherAsync)
             return await _documentNumberService.GenerateAsync(TEACHER_NUMBER_SERIES, schoolId);
         }
 
@@ -369,8 +416,19 @@ namespace Devken.CBC.SchoolManagement.Application.Services.Implementations.Acade
 
         private async Task DeleteTeacherPhotoIfExistsAsync(string? photoUrl)
         {
-            if (!string.IsNullOrWhiteSpace(photoUrl))
+            if (string.IsNullOrWhiteSpace(photoUrl))
+                return;
+
+            try
+            {
                 await _imageUpload.DeleteImageAsync(photoUrl);
+            }
+            catch (Exception ex)
+            {
+                // Log the error but don't throw
+                // Orphaned files can be cleaned up separately
+                System.Diagnostics.Debug.WriteLine($"Failed to delete photo file: {ex.Message}");
+            }
         }
 
         private async Task<string> UploadPhotoWithValidationAsync(IFormFile file)

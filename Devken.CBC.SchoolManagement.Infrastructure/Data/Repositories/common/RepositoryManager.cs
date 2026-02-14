@@ -16,6 +16,7 @@ using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSeries;
 using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore.Storage;
 using System;
+using Microsoft.EntityFrameworkCore;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
 {
@@ -90,6 +91,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
 
         // ── Properties ───────────────────────────────────────────────────────
         public IStudentRepository Student => _studentRepository.Value;
+        public DbContext Context => _context;
         public ITeacherRepository Teacher => _teacherRepository.Value;
         public ISchoolRepository School => _schoolRepository.Value;
         public IAcademicYearRepository AcademicYear => _academicYearRepository.Value;

@@ -17,7 +17,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSer
     /// <summary>
     /// Tenant-safe document number generator
     /// Inherits RepositoryBase for CRUD operations
-    /// Fully transaction protected
+    /// Uses EF Core's built-in transaction handling (compatible with retry strategy)
     /// Implements IDocumentNumberSeriesRepository
     /// </summary>
     public class DocumentNumberService
@@ -86,6 +86,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSer
         /// <summary>
         /// Generates the next document number for a given entity (uses TenantContext)
         /// Increments the stored last number and saves changes
+        /// EF Core handles the transaction automatically with SaveAsync
         /// </summary>
         public async Task<string> GenerateAsync(string entityName)
         {
@@ -97,6 +98,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSer
         /// Generates the next document number for a given entity (explicit tenantId)
         /// Use this when SuperAdmin creates resources for a specific school
         /// Increments the stored last number and saves changes
+        /// EF Core handles the transaction automatically with SaveAsync
         /// </summary>
         public async Task<string> GenerateAsync(string entityName, Guid tenantId)
         {
@@ -155,7 +157,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSer
         }
 
         /// <summary>
-        /// Creates a new number series configuration
+        /// Creates a new number series configuration (uses TenantContext)
+        /// EF Core handles the transaction automatically with SaveAsync
+        /// FIXED: Removed explicit transaction to work with retry strategy
         /// </summary>
         public async Task<DocumentNumberSeries> CreateSeriesAsync(
             string entityName,
@@ -171,75 +175,104 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSer
             if (padding < 1 || padding > 10)
                 throw new ArgumentException("Padding must be between 1 and 10", nameof(padding));
 
-            await using var transaction = await _repository.BeginTransactionAsync();
+            // Check if series already exists
+            var existing = await GetByEntityAsync(entityName, true);
+            if (existing != null)
+                throw new InvalidOperationException($"Number series for '{entityName}' already exists.");
 
-            try
+            var tenantId = _tenantContext.TenantId;
+
+            var series = new DocumentNumberSeries
             {
-                // Check if series already exists
-                var existing = await GetByEntityAsync(entityName, true);
-                if (existing != null)
-                    throw new InvalidOperationException($"Number series for '{entityName}' already exists.");
+                Id = Guid.NewGuid(),
+                TenantId = (Guid)tenantId,
+                EntityName = entityName,
+                Prefix = prefix.ToUpperInvariant(),
+                LastNumber = 0,
+                LastGeneratedYear = DateTime.UtcNow.Year,
+                Padding = padding,
+                ResetEveryYear = resetEveryYear,
+                Description = description,
+                CreatedOn = DateTime.UtcNow,
+                UpdatedOn = DateTime.UtcNow,
+                Status = EntityStatus.Active
+            };
 
-                var tenantId = _tenantContext.TenantId;
+            Create(series);
+            await _repository.SaveAsync();
 
-                var series = new DocumentNumberSeries
-                {
-                    Id = Guid.NewGuid(),
-                    TenantId = (Guid)tenantId,
-                    EntityName = entityName,
-                    Prefix = prefix.ToUpperInvariant(),
-                    LastNumber = 0,
-                    LastGeneratedYear = DateTime.UtcNow.Year,
-                    Padding = padding,
-                    ResetEveryYear = resetEveryYear,
-                    Description = description,
-                    CreatedOn = DateTime.UtcNow,
-                    UpdatedOn = DateTime.UtcNow,
-                    Status = EntityStatus.Active
-                };
+            return series;
+        }
 
-                Create(series);
-                await _repository.SaveAsync();
-                await transaction.CommitAsync();
+        /// <summary>
+        /// Creates a new number series configuration for a specific tenant (explicit tenantId)
+        /// Use this when SuperAdmin creates series for a specific school
+        /// EF Core handles the transaction automatically with SaveAsync
+        /// </summary>
+        public async Task<DocumentNumberSeries> CreateSeriesAsync(
+            string entityName,
+            Guid tenantId,
+            string prefix,
+            int padding = 5,
+            bool resetEveryYear = false,
+            string? description = null)
+        {
+            if (string.IsNullOrWhiteSpace(entityName))
+                throw new ArgumentException("Entity name cannot be empty", nameof(entityName));
+            if (tenantId == Guid.Empty)
+                throw new ArgumentException("Tenant ID cannot be empty", nameof(tenantId));
+            if (string.IsNullOrWhiteSpace(prefix))
+                throw new ArgumentException("Prefix cannot be empty", nameof(prefix));
+            if (padding < 1 || padding > 10)
+                throw new ArgumentException("Padding must be between 1 and 10", nameof(padding));
 
-                return series;
-            }
-            catch
+            // Check if series already exists for this tenant
+            var existing = await GetByEntityAsync(entityName, tenantId, true);
+            if (existing != null)
+                throw new InvalidOperationException($"Number series for '{entityName}' already exists in tenant '{tenantId}'.");
+
+            var series = new DocumentNumberSeries
             {
-                await transaction.RollbackAsync();
-                throw;
-            }
+                Id = Guid.NewGuid(),
+                TenantId = tenantId,
+                EntityName = entityName,
+                Prefix = prefix.ToUpperInvariant(),
+                LastNumber = 0,
+                LastGeneratedYear = DateTime.UtcNow.Year,
+                Padding = padding,
+                ResetEveryYear = resetEveryYear,
+                Description = description,
+                CreatedOn = DateTime.UtcNow,
+                UpdatedOn = DateTime.UtcNow,
+                Status = EntityStatus.Active
+            };
+
+            Create(series);
+            await _repository.SaveAsync();
+
+            return series;
         }
 
         /// <summary>
         /// Resets a series counter (Admin only)
+        /// EF Core handles the transaction automatically with SaveAsync
+        /// FIXED: Removed explicit transaction to work with retry strategy
         /// </summary>
         public async Task ResetSeriesAsync(string entityName, int? startFrom = null)
         {
             if (string.IsNullOrWhiteSpace(entityName))
                 throw new ArgumentException("Entity name cannot be empty", nameof(entityName));
 
-            await using var transaction = await _repository.BeginTransactionAsync();
+            var series = await GetByEntityAsync(entityName, true);
+            if (series == null)
+                throw new InvalidOperationException($"Number series for '{entityName}' not found.");
 
-            try
-            {
-                var series = await GetByEntityAsync(entityName, true);
-                if (series == null)
-                    throw new InvalidOperationException($"Number series for '{entityName}' not found.");
+            series.LastNumber = startFrom ?? 0;
+            series.LastGeneratedYear = DateTime.UtcNow.Year;
+            series.UpdatedOn = DateTime.UtcNow;
 
-                series.LastNumber = startFrom ?? 0;
-                series.LastGeneratedYear = DateTime.UtcNow.Year;
-                series.UpdatedOn = DateTime.UtcNow;
-
-                Update(series);
-                await _repository.SaveAsync();
-                await transaction.CommitAsync();
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+            Update(series);
+            await _repository.SaveAsync();
         }
 
         /// <summary>
@@ -275,6 +308,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSer
 
         /// <summary>
         /// Bulk generate multiple numbers (for imports)
+        /// Uses execution strategy to handle retries properly
         /// </summary>
         public async Task<List<string>> GenerateBulkAsync(string entityName, int count)
         {
@@ -283,23 +317,45 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSer
 
             var numbers = new List<string>();
 
-            await using var transaction = await _repository.BeginTransactionAsync();
+            // Use execution strategy for bulk operations
+            var strategy = _context.Database.CreateExecutionStrategy();
 
-            try
+            await strategy.ExecuteAsync(async () =>
             {
-                for (int i = 0; i < count; i++)
+                // Begin explicit transaction within execution strategy
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+
+                try
                 {
-                    numbers.Add(await GenerateAsync(entityName));
-                }
+                    for (int i = 0; i < count; i++)
+                    {
+                        var series = await GetByEntityAsync(entityName, true)
+                            ?? throw new InvalidOperationException(
+                                $"Number series not configured for '{entityName}'.");
 
-                await transaction.CommitAsync();
-                return numbers;
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+                        if (series.ResetEveryYear && series.LastGeneratedYear != DateTime.UtcNow.Year)
+                        {
+                            series.LastNumber = 0;
+                            series.LastGeneratedYear = DateTime.UtcNow.Year;
+                        }
+
+                        series.LastNumber++;
+                        Update(series);
+
+                        numbers.Add(Format(series));
+                    }
+
+                    await _repository.SaveAsync();
+                    await transaction.CommitAsync();
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
+
+            return numbers;
         }
 
         /// <summary>
