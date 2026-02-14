@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, Inject, Optional, Injector } from '@angular/core';
+import { Component, OnInit, OnDestroy, Inject, Optional, Injector, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, FormGroup } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
@@ -25,6 +25,7 @@ import {
   AcademicYearOption,
   TeacherOption
 } from 'app/Classes/Types/Class';
+import { AuthService } from 'app/core/auth/auth.service';
 
 interface SchoolOption {
   id: string;
@@ -59,6 +60,7 @@ interface SchoolOption {
 export class CreateEditClassDialogComponent implements OnInit, OnDestroy {
   private _unsubscribe = new Subject<void>();
   private _codeGenerated = false;
+  private readonly _authService = inject(AuthService);
 
   // Form
   form!: FormGroup;
@@ -83,6 +85,10 @@ export class CreateEditClassDialogComponent implements OnInit, OnDestroy {
   // Teacher service availability flag
   teacherServiceAvailable = false;
   private teacherService: any = null;
+
+   get isSuperAdmin(): boolean { 
+    return this._authService.authUser?.isSuperAdmin ?? false; 
+  }
 
   get isEditMode(): boolean {
     return this.data.mode === 'edit';
@@ -169,7 +175,7 @@ export class CreateEditClassDialogComponent implements OnInit, OnDestroy {
     });
     
     this.form = this.fb.group({
-      schoolId: [initialSchoolId, Validators.required],
+      schoolId:[null, this.isSuperAdmin ? [Validators.required] : []],
       name: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(100)]],
       code: ['', [Validators.maxLength(20)]],
       level: ['', Validators.required],
@@ -200,6 +206,7 @@ export class CreateEditClassDialogComponent implements OnInit, OnDestroy {
 
   /** Load all schools for the dropdown */
   private loadSchools(): void {
+     if (this.isSuperAdmin) {
     this.isLoadingSchools = true;
     this._schoolService.getAll()
       .pipe(
@@ -244,7 +251,7 @@ export class CreateEditClassDialogComponent implements OnInit, OnDestroy {
           );
         }
       });
-  }
+  }}
 
   /** Called when school selection changes */
   private onSchoolChange(schoolId: string): void {
@@ -481,7 +488,11 @@ export class CreateEditClassDialogComponent implements OnInit, OnDestroy {
         academicYearId: raw.academicYearId,
         teacherId: raw.teacherId || undefined,
         isActive: raw.isActive ?? true
-      };
+      };// Add schoolId ONLY for SuperAdmins (explicitly exclude for non-SuperAdmins)
+        if (this.isSuperAdmin) {
+          createRequest.schoolId = raw.schoolId ?? null;
+        }
+      // 
 
       this.service.create(createRequest)
         .pipe(
