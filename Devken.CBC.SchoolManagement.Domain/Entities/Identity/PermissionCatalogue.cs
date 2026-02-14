@@ -26,6 +26,10 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
             (PermissionKeys.AcademicYearWrite, "Manage Academic Years", "Academic Year", "Create or update academic year periods"),
             (PermissionKeys.AcademicYearDelete, "Delete Academic Years", "Academic Year", "Remove academic year records"),
             (PermissionKeys.AcademicYearClose, "Close Academic Years", "Academic Year", "Finalize and close academic year for archival"),
+            //  TERMS 
+            (PermissionKeys.TermRead, "View Terms", "Academic - Terms", "Access term records and schedules"),
+            (PermissionKeys.TermWrite, "Manage Terms", "Academic - Terms", "Create, update, close, or reopen terms"),
+            (PermissionKeys.TermDelete, "Delete Terms", "Academic - Terms", "Remove term records permanently"),
 
             // Academic
             (PermissionKeys.StudentRead,  "View Students",          "Academic", "Access student records"),

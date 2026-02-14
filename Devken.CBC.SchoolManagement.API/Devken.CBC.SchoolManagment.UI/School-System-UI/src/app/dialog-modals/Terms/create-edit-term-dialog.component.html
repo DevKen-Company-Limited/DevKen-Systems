@@ -1,0 +1,199 @@
+<!-- Dialog Header with Gradient -->
+<div class="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 -m-6 mb-0 p-6 relative overflow-hidden">
+  <div class="absolute inset-0 opacity-10">
+    <div class="absolute top-0 right-0 w-32 h-32 bg-yellow-200 rounded-full blur-2xl"></div>
+    <div class="absolute bottom-0 left-0 w-40 h-40 bg-cyan-300 rounded-full blur-2xl"></div>
+  </div>
+  
+  <div class="relative z-10 flex items-center gap-3">
+    <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+      <mat-icon class="text-white icon-size-6">{{ isEditMode ? 'edit' : 'event_note' }}</mat-icon>
+    </div>
+    <div>
+      <h2 class="text-2xl font-bold text-white m-0">{{ dialogTitle }}</h2>
+      <p class="text-white/80 text-sm mt-1">{{ dialogSubtitle }}</p>
+    </div>
+  </div>
+</div>
+
+<!-- Loading Overlay -->
+<div *ngIf="isLoading" class="absolute inset-0 bg-white/98 dark:bg-gray-900/98 z-50 flex items-center justify-center backdrop-blur-sm">
+  <div class="text-center p-8">
+    <div class="relative w-16 h-16 mx-auto mb-4">
+      <mat-spinner diameter="60"></mat-spinner>
+      <mat-icon class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-indigo-600">event</mat-icon>
+    </div>
+    <p class="text-lg font-semibold text-gray-800 dark:text-gray-200">Preparing Form...</p>
+    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Loading academic years and term data</p>
+  </div>
+</div>
+
+<!-- Main form -->
+<form [formGroup]="form" (ngSubmit)="onSubmit()" mat-dialog-content class="p-4">
+  
+  <!-- Validation Errors -->
+  <div 
+    *ngIf="formSubmitted && form.invalid" 
+    class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg">
+    <div class="flex items-center gap-2 text-red-800 dark:text-red-200">
+      <mat-icon class="icon-size-5">error_outline</mat-icon>
+      <span class="font-medium">Please fix the following errors:</span>
+    </div>
+    <ul class="mt-1 ml-6 text-sm text-red-700 dark:text-red-300 list-disc">
+      <li *ngIf="form.get('schoolId')?.hasError('required')">School is required</li>
+      <li *ngIf="form.get('name')?.hasError('required')">Term name is required</li>
+      <li *ngIf="form.get('termNumber')?.hasError('required')">Term number is required</li>
+      <li *ngIf="form.get('academicYearId')?.hasError('required')">Academic Year is required</li>
+      <li *ngIf="form.get('startDate')?.hasError('required')">Start date is required</li>
+      <li *ngIf="form.get('endDate')?.hasError('required')">End date is required</li>
+    </ul>
+  </div>
+
+  <!-- School Selection (SuperAdmin Only) - Full Width at Top -->
+  <div *ngIf="isSuperAdmin" class="mb-4">
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>School <span class="text-red-500">*</span></mat-label>
+      <mat-select formControlName="schoolId" placeholder="Select school">
+        <mat-option [value]="null">— Select School —</mat-option>
+        <mat-option *ngFor="let school of schools" [value]="school.id">
+          {{ school.name }}{{ school.code ? ' (' + school.code + ')' : '' }}
+        </mat-option>
+      </mat-select>
+      <mat-icon matPrefix>business</mat-icon>
+      <mat-hint>Assign this term to a specific school</mat-hint>
+      <mat-error>{{ getFieldError('schoolId') }}</mat-error>
+    </mat-form-field>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <!-- Left Column -->
+    <div class="space-y-4">
+      <!-- Term Name -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Term Name <span class="text-red-500">*</span></mat-label>
+        <input 
+          matInput 
+          formControlName="name" 
+          placeholder="e.g., Term 1"
+          autocomplete="off">
+        <mat-icon matPrefix>label</mat-icon>
+        <mat-error>{{ getFieldError('name') }}</mat-error>
+      </mat-form-field>
+
+      <!-- Term Number -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Term Number <span class="text-red-500">*</span></mat-label>
+        <mat-select formControlName="termNumber">
+          <mat-option [value]="null">— Select —</mat-option>
+          <mat-option *ngFor="let term of termNumbers" [value]="term.value">
+            {{ term.label }}
+          </mat-option>
+        </mat-select>
+        <mat-icon matPrefix>looks_one</mat-icon>
+        <mat-hint>Select term 1, 2, or 3</mat-hint>
+        <mat-error>{{ getFieldError('termNumber') }}</mat-error>
+      </mat-form-field>
+
+      <!-- Start Date -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Start Date <span class="text-red-500">*</span></mat-label>
+        <input matInput [matDatepicker]="startPicker" formControlName="startDate">
+        <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
+        <mat-datepicker #startPicker></mat-datepicker>
+        <mat-icon matPrefix>event</mat-icon>
+        <mat-hint>When the term begins</mat-hint>
+        <mat-error>{{ getFieldError('startDate') }}</mat-error>
+      </mat-form-field>
+
+      <!-- End Date -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>End Date <span class="text-red-500">*</span></mat-label>
+        <input matInput [matDatepicker]="endPicker" formControlName="endDate">
+        <mat-datepicker-toggle matIconSuffix [for]="endPicker"></mat-datepicker-toggle>
+        <mat-datepicker #endPicker></mat-datepicker>
+        <mat-icon matPrefix>event</mat-icon>
+        <mat-hint>When the term ends</mat-hint>
+        <mat-error>{{ getFieldError('endDate') }}</mat-error>
+      </mat-form-field>
+    </div>
+
+    <!-- Right Column -->
+    <div class="space-y-4">
+      <!-- Academic Year -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Academic Year <span class="text-red-500">*</span></mat-label>
+        <mat-select formControlName="academicYearId" placeholder="Select academic year">
+          <mat-option [value]="null">— Select Academic Year —</mat-option>
+          <mat-option *ngFor="let year of filteredAcademicYears" [value]="year.id">
+            {{ year.name }} ({{ year.code }})
+          </mat-option>
+        </mat-select>
+        <mat-icon matPrefix>calendar_today</mat-icon>
+        <mat-hint *ngIf="isSuperAdmin && !form.get('schoolId')?.value" class="text-gray-500">
+          Please select a school first
+        </mat-hint>
+        <mat-hint *ngIf="!isSuperAdmin || form.get('schoolId')?.value">
+          Select the academic year for this term
+        </mat-hint>
+        <mat-error>{{ getFieldError('academicYearId') }}</mat-error>
+      </mat-form-field>
+
+      <!-- Status Toggles -->
+      <div class="border-2 border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <mat-icon class="text-blue-600 icon-size-5">radio_button_checked</mat-icon>
+            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Current Term</span>
+          </div>
+          <mat-slide-toggle 
+            formControlName="isCurrent"
+            color="primary">
+          </mat-slide-toggle>
+        </div>
+        <p class="text-xs text-gray-500 dark:text-gray-400">
+          Mark this as the active term for the school
+        </p>
+      </div>
+
+      <div class="border-2 border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <mat-icon class="text-red-600 icon-size-5">lock</mat-icon>
+            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Closed Term</span>
+          </div>
+          <mat-slide-toggle 
+            formControlName="isClosed"
+            color="warn">
+          </mat-slide-toggle>
+        </div>
+        <p class="text-xs text-gray-500 dark:text-gray-400">
+          Term is closed and cannot be modified
+        </p>
+      </div>
+
+      <!-- Notes -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Notes (Optional)</mat-label>
+        <textarea 
+          matInput 
+          formControlName="notes" 
+          placeholder="Any additional notes about this term..."
+          rows="4"
+          maxlength="1000"></textarea>
+        <mat-icon matPrefix>description</mat-icon>
+        <mat-hint align="end">{{ notesLength }}/1000</mat-hint>
+        <mat-error>{{ getFieldError('notes') }}</mat-error>
+      </mat-form-field>
+    </div>
+  </div>
+</form>
+
+<!-- Dialog Actions -->
+<div mat-dialog-actions class="dialog-actions p-4">
+  <button mat-button type="button" (click)="onCancel()" [disabled]="isLoading">Cancel</button>
+  <button mat-flat-button color="primary" type="button" (click)="onSubmit()" [disabled]="form.invalid || isLoading">
+    <mat-icon *ngIf="isLoading" class="icon-size-5 mr-2">hourglass_empty</mat-icon>
+    <mat-icon *ngIf="!isLoading" class="icon-size-5 mr-2">{{ isEditMode ? 'save' : 'check_circle' }}</mat-icon>
+    {{ isLoading ? 'Saving...' : (isEditMode ? 'Update' : 'Create') }}
+  </button>
+</div>
