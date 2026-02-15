@@ -12,6 +12,12 @@
 
   <!-- Header Actions Template -->
   <ng-template #headerActions>
+    <button mat-stroked-button 
+      class="mr-3 border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-900/30" 
+      (click)="bulkUploadPhotos()">
+      <mat-icon class="icon-size-5">photo_library</mat-icon>
+      <span class="ml-2">Bulk Upload Photos</span>
+    </button>
     <button mat-flat-button 
       class="bg-white text-indigo-700 hover:bg-yellow-200 hover:text-indigo-900 shadow-lg transition-all hover:shadow-xl font-bold" 
       (click)="enrollStudent()">
@@ -74,7 +80,12 @@
 <!-- Student Cell Template -->
 <ng-template #studentCell let-row>
   <div class="flex items-center gap-3">
-    <div class="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center border border-indigo-200 dark:border-indigo-800">
+    <div 
+      class="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center border border-indigo-200 dark:border-indigo-800 transition-all hover:shadow-lg hover:scale-105"
+      [class.cursor-pointer]="photoCache[row.id]?.url || row.photoUrl"
+      (click)="photoCache[row.id]?.url || row.photoUrl ? viewStudentPhoto(row) : null"
+      [matTooltip]="photoCache[row.id]?.url || row.photoUrl ? 'Click to enlarge photo' : ''"
+      matTooltipPosition="above">
       <!-- Loading Spinner -->
       <div *ngIf="photoCache[row.id]?.isLoading" class="w-full h-full flex items-center justify-center">
         <mat-spinner diameter="20"></mat-spinner>
@@ -85,11 +96,19 @@
         <mat-icon class="text-gray-400 icon-size-5">error_outline</mat-icon>
       </div>
       
-      <!-- Image -->
-      <img *ngIf="photoCache[row.id]?.url"
+      <!-- Image with hover effect -->
+      <div *ngIf="photoCache[row.id]?.url" class="w-full h-full relative group">
+        <img
           [src]="photoCache[row.id]?.url"
           [alt]="row.fullName"
-          class="w-full h-full object-cover" />
+          class="w-full h-full object-cover transition-transform" />
+        <!-- Overlay on hover -->
+        <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
+          <mat-icon class="text-white opacity-0 group-hover:opacity-100 transition-opacity icon-size-5">
+            zoom_in
+          </mat-icon>
+        </div>
+      </div>
       
       <!-- Initials Fallback -->
       <span *ngIf="!photoCache[row.id]?.url && !photoCache[row.id]?.isLoading && !photoCache[row.id]?.error"

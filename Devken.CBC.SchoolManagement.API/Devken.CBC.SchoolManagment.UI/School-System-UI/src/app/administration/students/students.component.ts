@@ -8,6 +8,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 import { FuseConfirmationService } from '@fuse/services/confirmation';
@@ -35,6 +36,9 @@ import {
   TableEmptyState 
 } from 'app/shared/data-table/data-table.component';
 import { StudentDto } from './types/studentdto';
+import { BulkPhotoUploadDialogComponent } from 'app/dialog-modals/Student/bulk-photo-upload-dialog';
+import { PhotoViewerDialogComponent } from 'app/dialog-modals/Student/photo-viewer-dialog';
+
 
 interface PhotoCacheEntry {
   url: SafeUrl;
@@ -65,6 +69,7 @@ interface EnumMaps {
     MatMenuModule,
     MatProgressSpinnerModule,
     MatDividerModule,
+    MatTooltipModule,
     // Reusable components
     PageHeaderComponent,
     FilterPanelComponent,
@@ -665,6 +670,8 @@ export class StudentsComponent implements OnInit, OnDestroy {
 
   // ── Image Loading ────────────────────────────────────────────────────────────
   private loadStudentPhoto(studentId: string, photoUrl: string): void {
+    console.log(`Loading photo for student ${studentId}:`, photoUrl);
+    
     if (!this.photoCache[studentId]) {
       this.photoCache[studentId] = {
         url: null!,
@@ -681,6 +688,8 @@ export class StudentsComponent implements OnInit, OnDestroy {
       ? photoUrl
       : `${this._apiBaseUrl}${photoUrl}`;
 
+    console.log(`Fetching from: ${url}`);
+
     const token = this._authService.accessToken;
     const headers = token ? new HttpHeaders().set('Authorization', `Bearer ${token}`) : undefined;
     const authUrl = token ? `${url}?token=${token}` : url;
@@ -691,7 +700,7 @@ export class StudentsComponent implements OnInit, OnDestroy {
     }).pipe(
       takeUntil(this._unsubscribe),
       catchError((error) => {
-        console.error(`Failed to load photo for student ${studentId}:`, error);
+        console.error(`❌ Failed to load photo for student ${studentId}:`, error);
         this.photoCache[studentId] = {
           ...this.photoCache[studentId],
           isLoading: false,
@@ -701,6 +710,8 @@ export class StudentsComponent implements OnInit, OnDestroy {
       })
     ).subscribe(blob => {
       if (blob) {
+        console.log(`✅ Photo blob received for ${studentId}, size: ${blob.size} bytes, type: ${blob.type}`);
+        
         if (this.photoCache[studentId]?.blobUrl) {
           URL.revokeObjectURL(this.photoCache[studentId].blobUrl);
         }
@@ -708,12 +719,16 @@ export class StudentsComponent implements OnInit, OnDestroy {
         const blobUrl = URL.createObjectURL(blob);
         const safeUrl = this._sanitizer.bypassSecurityTrustUrl(blobUrl);
         
+        console.log(`✅ Created blob URL for ${studentId}:`, blobUrl);
+        
         this.photoCache[studentId] = {
           url: safeUrl,
           blobUrl: blobUrl,
           isLoading: false,
           error: false
         };
+      } else {
+        console.error(`❌ No blob received for student ${studentId}`);
       }
     });
   }
@@ -769,6 +784,124 @@ export class StudentsComponent implements OnInit, OnDestroy {
 
   editStudent(student: StudentDto): void {
     this._router.navigate(['/academic/students/edit', student.id]);
+  }
+
+  /**
+   * Open bulk photo upload dialog
+   */
+  bulkUploadPhotos(): void {
+    const dialogRef = this._dialog.open(BulkPhotoUploadDialogComponent, {
+      width: '900px',
+      maxWidth: '95vw',
+      maxHeight: '95vh',
+      disableClose: false,
+      panelClass: 'bulk-photo-upload-dialog',
+    });
+
+    dialogRef.afterClosed()
+      .pipe(takeUntil(this._unsubscribe))
+      .subscribe((uploaded: boolean) => {
+        if (uploaded) {
+          this._showSuccess('Photos uploaded successfully! Refreshing list...');
+          // Clear photo cache to reload updated photos
+          Object.keys(this.photoCache).forEach(key => {
+            if (this.photoCache[key].blobUrl) {
+              URL.revokeObjectURL(this.photoCache[key].blobUrl);
+            }
+          });
+          this.photoCache = {};
+          // Reload data
+          this.loadAll();
+        }
+      });
+  }
+
+  /**
+   * Open photo viewer to enlarge student photo
+   */
+  viewStudentPhoto(student: StudentDto): void {
+    console.log('=== Opening Photo Viewer ===');
+    console.log('Student:', student.fullName, '(', student.admissionNumber, ')');
+    console.log('Student photoUrl property:', student.photoUrl);
+    console.log('Cache entry exists:', !!this.photoCache[student.id]);
+    
+    if (this.photoCache[student.id]) {
+      console.log('Cache entry:', {
+        hasUrl: !!this.photoCache[student.id].url,
+        hasBlobUrl: !!this.photoCache[student.id].blobUrl,
+        blobUrl: this.photoCache[student.id].blobUrl,
+        isLoading: this.photoCache[student.id].isLoading,
+        error: this.photoCache[student.id].error
+      });
+    }
+    
+    // Check if photo is still loading
+    if (this.photoCache[student.id]?.isLoading) {
+      this._showError('Photo is still loading. Please wait a moment.');
+      return;
+    }
+    
+    // Check if photo had an error
+    if (this.photoCache[student.id]?.error) {
+      this._showError('Photo failed to load. Please try refreshing the page.');
+      return;
+    }
+    
+    // Check if we have any photo URL at all
+    if (!student.photoUrl && !this.photoCache[student.id]?.blobUrl) {
+      console.error('❌ No photo available');
+      this._showError('No photo available for this student');
+      return;
+    }
+
+    // Use the blob URL string instead of SafeUrl object
+    let photoUrl: string;
+    
+    if (this.photoCache[student.id]?.blobUrl) {
+      // Use the blob URL string from cache (preferred)
+      photoUrl = this.photoCache[student.id].blobUrl;
+      console.log('✅ Using cached blob URL:', photoUrl);
+      
+      // Verify blob URL is still valid
+      if (!photoUrl.startsWith('blob:')) {
+        console.error('❌ Invalid blob URL format');
+        this._showError('Photo URL is invalid. Please refresh the page.');
+        return;
+      }
+    } else if (student.photoUrl) {
+      // Use the server URL as fallback
+      photoUrl = student.photoUrl.startsWith('http')
+        ? student.photoUrl
+        : `${this._apiBaseUrl}${student.photoUrl}`;
+      console.log('✅ Using server URL:', photoUrl);
+      console.warn('⚠️ Using direct URL instead of cached blob - may have CORS issues');
+    } else {
+      console.error('❌ Could not determine photo URL');
+      this._showError('No photo available for this student');
+      return;
+    }
+    
+    console.log('Final photo URL:', photoUrl);
+    console.log('URL type:', typeof photoUrl);
+    console.log('URL length:', photoUrl.length);
+    console.log('===========================');
+    
+    const dialogRef = this._dialog.open(PhotoViewerDialogComponent, {
+      width: '90vw',
+      maxWidth: '1400px',
+      height: '90vh',
+      maxHeight: '900px',
+      panelClass: 'photo-viewer-dialog',
+      disableClose: false,
+      data: {
+        photoUrl: photoUrl,
+        studentName: student.fullName,
+        admissionNumber: student.admissionNumber,
+        additionalInfo: `${this.getGenderName(student.gender)} • ${this.getCBCLevelName(student.cbcLevel)} • ${student.currentLevel || 'N/A'}`
+      }
+    });
+    
+    console.log('Dialog opened');
   }
 
   toggleActive(student: StudentDto): void {
@@ -882,14 +1015,19 @@ export class StudentsComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // For students, we'd need a photo upload endpoint in the service
-    // this._uploadPhoto(this._photoTargetStudent.id, file, () => {
-    //   this._showSuccess('Photo uploaded successfully');
-    //   this.clearAndReloadImage(this._photoTargetStudent!.id, this._photoTargetStudent!.photoUrl || '');
-    //   this.loadAll();
-    // });
-    
-    this._showError('Photo upload not yet implemented for students');
+    this._service.uploadPhoto(this._photoTargetStudent.id, file)
+      .pipe(takeUntil(this._unsubscribe))
+      .subscribe({
+        next: () => {
+          this._showSuccess('Photo uploaded successfully');
+          this.clearAndReloadImage(this._photoTargetStudent!.id, this._photoTargetStudent!.photoUrl || '');
+          this.loadAll();
+        },
+        error: (err) => {
+          console.error('Failed to upload photo:', err);
+          this._showError(err.error?.message || 'Failed to upload photo');
+        }
+      });
   }
 
   private _showSuccess(message: string): void {

@@ -87,10 +87,11 @@ export class StudentService {
 
   /**
    * Upload student photo
+   * IMPORTANT: Backend expects form field name 'file', not 'photo'
    */
   uploadPhoto(id: string, file: File): Observable<ApiResponse<{ photoUrl: string }>> {
     const formData = new FormData();
-    formData.append('photo', file);
+    formData.append('file', file);  // Backend controller parameter name is 'file'
     return this.http.post<ApiResponse<{ photoUrl: string }>>(`${this.base}/${id}/photo`, formData);
   }
 
