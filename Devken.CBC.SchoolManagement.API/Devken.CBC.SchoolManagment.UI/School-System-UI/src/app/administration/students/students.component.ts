@@ -36,6 +36,8 @@ import { StudentDto } from './types/studentdto';
 import { BulkPhotoUploadDialogComponent } from 'app/dialog-modals/Student/bulk-photo-upload-dialog';
 import { PhotoViewerDialogComponent } from 'app/dialog-modals/Student/photo-viewer-dialog';
 import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
+import { ExportConfig, ExportStudentsDialogComponent } from 'app/dialog-modals/Student/export-students-dialog.component';
+import { SchoolHeaderInfo, StudentExportService } from 'app/core/DevKenService/administration/students/StudentExportService ';
 
 interface PhotoCacheEntry {
   url: SafeUrl;
@@ -92,6 +94,8 @@ export class StudentsComponent implements OnInit, OnDestroy {
   private _authService = inject(AuthService);
   private _schoolService = inject(SchoolService);
   private _router = inject(Router);
+  private _studentExportService = inject(StudentExportService);
+
   private _alertService = inject(AlertService);
 
   breadcrumbs: Breadcrumb[] = [
@@ -725,6 +729,69 @@ export class StudentsComponent implements OnInit, OnDestroy {
       }
     });
   }
+  openExportDialog(): void {
+  const dialogRef = this._dialog.open(ExportStudentsDialogComponent, {
+    width: '800px',
+    maxWidth: '95vw',
+    maxHeight: '90vh',
+    disableClose: false,
+    panelClass: 'export-students-dialog',
+  });
+
+  dialogRef.afterClosed()
+    .pipe(takeUntil(this._unsubscribe))
+    .subscribe((config: ExportConfig) => {
+      if (config) {
+        this.performExport(config);
+      }
+    });
+}
+
+private performExport(config: ExportConfig): void {
+  // Show loading indicator
+  this._alertService.info('Preparing export...');
+
+  // Get school information for header
+  const schoolInfo: SchoolHeaderInfo = {
+    schoolName: this.schools.length === 1
+      ? this.schools[0].name
+      : (this.isSuperAdmin && this._filterValues.schoolId !== 'all'
+          ? this.schools.find(s => s.id === this._filterValues.schoolId)?.name || 'Multiple Schools'
+          : 'School Management System'),
+    schoolAddress: this.schools.length === 1 ? this.schools[0].address : undefined,
+    schoolPhone: this.schools.length === 1 ? this.schools[0].phone : undefined,
+    schoolEmail: this.schools.length === 1 ? this.schools[0].email : undefined,
+    schoolMotto: this.schools.length === 1 ? this.schools[0].motto : undefined,
+    schoolLogo: this.schools.length === 1 ? this.schools[0].logoUrl : undefined,
+  };
+
+  // Use filtered data for export
+  const dataToExport = this.filteredData;
+
+  if (!dataToExport || dataToExport.length === 0) {
+    this._alertService.warning('No students to export with current filters');
+    return;
+  }
+
+  this._studentExportService
+    .exportStudents(dataToExport, config, schoolInfo, this.enumMaps)
+    .pipe(takeUntil(this._unsubscribe))
+    .subscribe({
+      next: (result) => {
+        if (result.success) {
+          this._alertService.success(
+            `Successfully exported ${dataToExport.length} students to ${config.format.toUpperCase()}`
+          );
+        }
+      },
+      error: (err) => {
+        this._alertService.error(
+          err?.message || 'Failed to export students'
+        );
+      }
+    });
+}
+
 
   private clearAndReloadImage(studentId: string, photoUrl: string | null): void {
     if (this.photoCache[studentId]?.blobUrl) {
