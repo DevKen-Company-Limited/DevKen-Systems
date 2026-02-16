@@ -62,7 +62,7 @@ interface UploadStats {
 
       <!-- Content -->
       <div class="flex-1 overflow-y-auto p-6">
-        <!-- Step 1: Instructions & Template -->
+        <!-- Step 1: Instructions & Upload Zone -->
         <div *ngIf="currentStep === 'instructions'" class="space-y-6">
           <!-- Instructions Card -->
           <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6">
@@ -87,7 +87,7 @@ interface UploadStats {
                   </li>
                   <li class="flex items-start gap-2">
                     <span class="font-bold">4.</span>
-                    <span>Select all photos from your folder at once</span>
+                    <span>Drag & drop your photos or folder below</span>
                   </li>
                 </ol>
               </div>
@@ -125,26 +125,62 @@ interface UploadStats {
             </div>
           </div>
 
-          <!-- File Selection -->
-          <div class="text-center">
+          <!-- Drag & Drop Zone -->
+          <div
+            class="relative border-2 border-dashed rounded-xl transition-all"
+            [ngClass]="{
+              'border-indigo-400 bg-indigo-50 dark:bg-indigo-900/20': isDragging,
+              'border-gray-300 dark:border-gray-600 hover:border-indigo-300 hover:bg-gray-50 dark:hover:bg-gray-800': !isDragging
+            }"
+            (dragover)="onDragOver($event)"
+            (dragleave)="onDragLeave($event)"
+            (drop)="onDrop($event)"
+            (click)="fileInput.click()">
+            
             <input
               #fileInput
               type="file"
               multiple
               accept="image/*"
               class="hidden"
+              webkitdirectory
               (change)="onFilesSelected($event)"
             />
-            <button
-              mat-flat-button
-              class="bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:from-indigo-700 hover:to-violet-700 px-8 py-6 text-lg"
-              (click)="fileInput.click()">
-              <mat-icon class="icon-size-6 mr-2">upload_file</mat-icon>
-              Select Photos from Folder
-            </button>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-3">
-              You can select multiple files at once
-            </p>
+
+            <div class="p-12 text-center cursor-pointer">
+              <div class="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center"
+                   [ngClass]="{
+                     'bg-indigo-100 dark:bg-indigo-900/30': isDragging,
+                     'bg-gray-100 dark:bg-gray-800': !isDragging
+                   }">
+                <mat-icon class="icon-size-10"
+                          [ngClass]="{
+                            'text-indigo-600 dark:text-indigo-400': isDragging,
+                            'text-gray-400': !isDragging
+                          }">
+                  {{ isDragging ? 'cloud_upload' : 'add_photo_alternate' }}
+                </mat-icon>
+              </div>
+              
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                {{ isDragging ? 'Drop your photos here' : 'Drag & drop photos or folder' }}
+              </h3>
+              
+              <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                or click to browse your computer
+              </p>
+
+              <div class="flex items-center justify-center gap-4 text-xs text-gray-400">
+                <span class="flex items-center gap-1">
+                  <mat-icon class="icon-size-4">image</mat-icon>
+                  JPG, PNG, GIF, WEBP
+                </span>
+                <span class="flex items-center gap-1">
+                  <mat-icon class="icon-size-4">storage</mat-icon>
+                  Max 5MB each
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -197,12 +233,13 @@ interface UploadStats {
                 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800': !match.student
               }">
               <!-- Photo Preview -->
-              <div class="w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-gray-100 dark:bg-gray-800">
+              <div class="w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
                 <img
                   *ngIf="match.preview"
                   [src]="match.preview"
                   [alt]="match.admissionNumber"
                   class="w-full h-full object-cover"
+                  loading="lazy"
                 />
                 <div *ngIf="!match.preview" class="w-full h-full flex items-center justify-center">
                   <mat-icon class="text-gray-400">image</mat-icon>
@@ -284,6 +321,7 @@ interface UploadStats {
                   [src]="match.preview"
                   [alt]="match.student?.fullName"
                   class="w-full h-full object-cover"
+                  loading="lazy"
                 />
               </div>
 
@@ -442,6 +480,8 @@ export class BulkPhotoUploadDialogComponent implements OnInit, OnDestroy {
   photoMatches: PhotoMatch[] = [];
   students: StudentDto[] = [];
   isUploading = false;
+  isDragging = false;
+  private dragCounter = 0;
 
   stats: UploadStats = {
     total: 0,
@@ -493,6 +533,73 @@ export class BulkPhotoUploadDialogComponent implements OnInit, OnDestroy {
       });
   }
 
+  // ── Drag & Drop Handlers ──────────────────────────────────────────────
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.dragCounter++;
+    this.isDragging = true;
+  }
+
+  onDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.dragCounter--;
+    if (this.dragCounter === 0) {
+      this.isDragging = false;
+    }
+  }
+
+  async onDrop(event: DragEvent): Promise<void> {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragging = false;
+    this.dragCounter = 0;
+
+    const items = event.dataTransfer?.items;
+    if (!items) return;
+
+    const files: File[] = [];
+
+    // Process all dropped items (files and folders)
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i].webkitGetAsEntry();
+      if (item) {
+        await this.traverseFileTree(item, files);
+      }
+    }
+
+    if (files.length > 0) {
+      this.processFiles(files);
+    }
+  }
+
+  // Recursively traverse directory structure
+  private async traverseFileTree(item: any, files: File[]): Promise<void> {
+    return new Promise((resolve) => {
+      if (item.isFile) {
+        item.file((file: File) => {
+          // Only add image files
+          if (file.type.startsWith('image/')) {
+            files.push(file);
+          }
+          resolve();
+        });
+      } else if (item.isDirectory) {
+        const dirReader = item.createReader();
+        dirReader.readEntries(async (entries: any[]) => {
+          for (const entry of entries) {
+            await this.traverseFileTree(entry, files);
+          }
+          resolve();
+        });
+      } else {
+        resolve();
+      }
+    });
+  }
+
+  // ── File Selection Handler ────────────────────────────────────────────
   onFilesSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (!input.files?.length) return;
@@ -502,6 +609,13 @@ export class BulkPhotoUploadDialogComponent implements OnInit, OnDestroy {
   }
 
   private processFiles(files: File[]): void {
+    // Clear previous selections
+    this.photoMatches.forEach(match => {
+      if (match.preview) {
+        URL.revokeObjectURL(match.preview);
+      }
+    });
+    
     this.photoMatches = [];
     this.stats = {
       total: files.length,
@@ -517,13 +631,19 @@ export class BulkPhotoUploadDialogComponent implements OnInit, OnDestroy {
         return;
       }
 
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        console.warn(`File ${file.name} exceeds 5MB limit`);
+        return;
+      }
+
       // Extract admission number from filename
       const admissionNumber = this.extractAdmissionNumber(file.name);
       
       // Find matching student
       const student = this.findStudentByAdmissionNumber(admissionNumber);
 
-      // Create preview
+      // Create preview URL
       const preview = URL.createObjectURL(file);
 
       const match: PhotoMatch = {
@@ -543,6 +663,9 @@ export class BulkPhotoUploadDialogComponent implements OnInit, OnDestroy {
       }
     });
 
+    // Update total to reflect valid files only
+    this.stats.total = this.photoMatches.length;
+
     if (this.photoMatches.length > 0) {
       this.currentStep = 'preview';
     }
@@ -553,7 +676,6 @@ export class BulkPhotoUploadDialogComponent implements OnInit, OnDestroy {
     const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.')) || filename;
     
     // Return the filename without extension as the admission number
-    // This allows for various admission number formats
     return nameWithoutExt.trim();
   }
 
@@ -636,6 +758,12 @@ export class BulkPhotoUploadDialogComponent implements OnInit, OnDestroy {
   cancel(): void {
     if (this.currentStep === 'preview') {
       this.currentStep = 'instructions';
+      // Clean up preview URLs
+      this.photoMatches.forEach(match => {
+        if (match.preview) {
+          URL.revokeObjectURL(match.preview);
+        }
+      });
       this.photoMatches = [];
       this.stats = {
         total: 0,

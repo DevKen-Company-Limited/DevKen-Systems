@@ -81,27 +81,36 @@
 <ng-template #studentCell let-row>
   <div class="flex items-center gap-3">
     <div 
-      class="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center border border-indigo-200 dark:border-indigo-800 transition-all hover:shadow-lg hover:scale-105"
-      [class.cursor-pointer]="photoCache[row.id]?.url || row.photoUrl"
-      (click)="photoCache[row.id]?.url || row.photoUrl ? viewStudentPhoto(row) : null"
-      [matTooltip]="photoCache[row.id]?.url || row.photoUrl ? 'Click to enlarge photo' : ''"
+      class="relative w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center border border-indigo-200 dark:border-indigo-800 transition-all"
+      [class.cursor-pointer]="photoCache[row.id]?.blobUrl && !photoCache[row.id]?.error"
+      [class.hover:shadow-lg]="photoCache[row.id]?.blobUrl && !photoCache[row.id]?.error"
+      [class.hover:scale-105]="photoCache[row.id]?.blobUrl && !photoCache[row.id]?.error"
+      (click)="photoCache[row.id]?.blobUrl && !photoCache[row.id]?.error ? viewStudentPhoto(row) : null"
+      [matTooltip]="getPhotoTooltip(row)"
       matTooltipPosition="above">
+      
       <!-- Loading Spinner -->
-      <div *ngIf="photoCache[row.id]?.isLoading" class="w-full h-full flex items-center justify-center">
+      <div *ngIf="photoCache[row.id]?.isLoading" 
+           class="absolute inset-0 w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 z-10">
         <mat-spinner diameter="20"></mat-spinner>
       </div>
       
-      <!-- Error State -->
-      <div *ngIf="photoCache[row.id]?.error" class="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800">
-        <mat-icon class="text-gray-400 icon-size-5">error_outline</mat-icon>
+      <!-- Error State with Retry -->
+      <div *ngIf="photoCache[row.id]?.error && !photoCache[row.id]?.isLoading" 
+           class="absolute inset-0 w-full h-full flex items-center justify-center bg-red-50 dark:bg-red-900/20 cursor-pointer group z-10"
+           (click)="retryPhotoLoad(row); $event.stopPropagation()"
+           matTooltip="Click to retry loading photo">
+        <mat-icon class="text-red-400 group-hover:text-red-600 icon-size-5 transition-colors">refresh</mat-icon>
       </div>
       
       <!-- Image with hover effect -->
-      <div *ngIf="photoCache[row.id]?.url" class="w-full h-full relative group">
+      <div *ngIf="photoCache[row.id]?.blobUrl && !photoCache[row.id]?.error && !photoCache[row.id]?.isLoading" 
+           class="w-full h-full relative group">
         <img
-          [src]="photoCache[row.id]?.url"
+          [src]="photoCache[row.id]?.blobUrl"
           [alt]="row.fullName"
-          class="w-full h-full object-cover transition-transform" />
+          class="w-full h-full object-cover transition-transform"
+          loading="lazy" />
         <!-- Overlay on hover -->
         <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
           <mat-icon class="text-white opacity-0 group-hover:opacity-100 transition-opacity icon-size-5">
@@ -111,14 +120,16 @@
       </div>
       
       <!-- Initials Fallback -->
-      <span *ngIf="!photoCache[row.id]?.url && !photoCache[row.id]?.isLoading && !photoCache[row.id]?.error"
-              class="text-sm font-bold text-indigo-600 dark:text-indigo-400">
-          {{ row.firstName?.[0] || '' }}{{ row.lastName?.[0] || '' }}
+      <span *ngIf="!photoCache[row.id]?.blobUrl && !photoCache[row.id]?.isLoading && !photoCache[row.id]?.error"
+            class="text-sm font-bold text-indigo-600 dark:text-indigo-400 z-0">
+        {{ row.firstName?.[0] || '' }}{{ row.lastName?.[0] || '' }}
       </span>
     </div>
     <div>
       <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ row.fullName }}</p>
-      <p class="text-xs text-gray-500 dark:text-gray-400">{{ getGenderName(row.gender) }} • {{ getCBCLevelName(row.cbcLevel) }}</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        {{ getGenderName(row.gender) }} • {{ getCBCLevelName(row.cbcLevel) }}
+      </p>
     </div>
   </div>
 </ng-template>

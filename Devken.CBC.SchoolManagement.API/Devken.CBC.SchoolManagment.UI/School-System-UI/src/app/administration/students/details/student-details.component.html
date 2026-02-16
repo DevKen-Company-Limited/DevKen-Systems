@@ -1,0 +1,294 @@
+<!-- Student Details Container -->
+<div class="absolute inset-0 flex min-w-0 flex-col overflow-y-auto" cdkScrollable>
+
+  <!-- ── Page Header with Actions ────────────────────────────────────────── -->
+  <app-page-header
+    [title]="student?.fullName || 'Student Details'"
+    [description]="student ? ('Admission No: ' + student.admissionNumber) : 'Loading...'"
+    icon="person"
+    [breadcrumbs]="breadcrumbs"
+    [actionTemplate]="headerActions">
+  </app-page-header>
+
+  <!-- Header Actions -->
+  <ng-template #headerActions>
+    <button mat-stroked-button 
+      class="mr-3 border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800" 
+      (click)="goBack()">
+      <mat-icon class="icon-size-5">arrow_back</mat-icon>
+      <span class="ml-2">Back to List</span>
+    </button>
+
+    <button mat-stroked-button 
+      class="mr-3 border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-900/30"
+      [disabled]="!student"
+      (click)="uploadPhoto()">
+      <mat-icon class="icon-size-5">photo_camera</mat-icon>
+      <span class="ml-2">Upload Photo</span>
+    </button>
+
+    <button mat-flat-button 
+      class="mr-3 bg-indigo-600 text-white hover:bg-indigo-700"
+      [disabled]="!student"
+      (click)="editStudent()">
+      <mat-icon class="icon-size-5">edit</mat-icon>
+      <span class="ml-2">Edit Details</span>
+    </button>
+
+    <button mat-icon-button 
+      [matMenuTriggerFor]="actionsMenu"
+      [disabled]="!student"
+      class="text-gray-600 dark:text-gray-400">
+      <mat-icon>more_vert</mat-icon>
+    </button>
+
+    <mat-menu #actionsMenu="matMenu">
+      <button mat-menu-item (click)="toggleActive()">
+        <mat-icon [class.text-green-600]="!student?.isActive" [class.text-amber-600]="student?.isActive">
+          {{ student?.isActive ? 'block' : 'check_circle' }}
+        </mat-icon>
+        <span>{{ student?.isActive ? 'Deactivate' : 'Activate' }}</span>
+      </button>
+      <mat-divider></mat-divider>
+      <button mat-menu-item (click)="deleteStudent()" class="text-red-600">
+        <mat-icon class="text-red-600">delete</mat-icon>
+        <span>Delete Student</span>
+      </button>
+    </mat-menu>
+  </ng-template>
+
+  <!-- ── Main Content ───────────────────────────────────────────────────── -->
+  <div class="bg-card -mt-10 flex-auto rounded-t-2xl p-6 shadow sm:p-10">
+
+    <!-- Loading State -->
+    <div *ngIf="isLoading" class="flex items-center justify-center py-32">
+      <div class="text-center">
+        <mat-spinner diameter="48" class="mx-auto mb-4"></mat-spinner>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Loading student details...</p>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div *ngIf="!isLoading && student" class="animate-fade-in">
+      
+      <!-- Student Profile Card -->
+      <div class="mb-8 overflow-hidden rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 shadow-lg dark:border-gray-700 dark:from-gray-800 dark:to-gray-850">
+        <div class="bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 px-8 py-6">
+          <div class="flex flex-col items-center gap-6 md:flex-row">
+            
+            <!-- Photo Section -->
+            <div class="relative">
+              <div class="h-32 w-32 overflow-hidden rounded-2xl border-4 border-white shadow-2xl dark:border-gray-800">
+                
+                <!-- Loading -->
+                <div *ngIf="photoLoading" 
+                     class="flex h-full w-full items-center justify-center bg-gray-100 dark:bg-gray-700">
+                  <mat-spinner diameter="32"></mat-spinner>
+                </div>
+
+                <!-- Error State -->
+                <div *ngIf="photoError && !photoLoading" 
+                     class="flex h-full w-full cursor-pointer flex-col items-center justify-center bg-red-50 transition-colors hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30"
+                     (click)="retryPhotoLoad()"
+                     matTooltip="Click to retry">
+                  <mat-icon class="mb-2 text-red-400 icon-size-8">image_not_supported</mat-icon>
+                  <span class="text-xs text-red-600 dark:text-red-400">Retry</span>
+                </div>
+
+                <!-- Photo -->
+                <div *ngIf="photoUrl && !photoError && !photoLoading" 
+                     class="group relative h-full w-full cursor-pointer"
+                     (click)="viewFullPhoto()">
+                  <img [src]="photoUrl" 
+                       [alt]="student.fullName" 
+                       class="h-full w-full object-cover transition-transform group-hover:scale-105" />
+                  <div class="absolute inset-0 flex items-center justify-center bg-black/0 transition-all group-hover:bg-black/40">
+                    <mat-icon class="text-white opacity-0 transition-opacity group-hover:opacity-100 icon-size-8">
+                      zoom_in
+                    </mat-icon>
+                  </div>
+                </div>
+
+                <!-- Initials Fallback -->
+                <div *ngIf="!photoUrl && !photoLoading && !photoError"
+                     class="flex h-full w-full items-center justify-center bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-indigo-900/40 dark:to-violet-900/40">
+                  <span class="text-4xl font-bold text-indigo-600 dark:text-indigo-400">
+                    {{ student.firstName?.[0] || '' }}{{ student.lastName?.[0] || '' }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Status Badge -->
+              <div class="absolute -bottom-2 -right-2">
+                <span class="flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold shadow-lg"
+                      [ngClass]="{
+                        'bg-green-500 text-white': student.isActive,
+                        'bg-red-500 text-white': !student.isActive
+                      }">
+                  <mat-icon class="icon-size-4">{{ student.isActive ? 'check_circle' : 'cancel' }}</mat-icon>
+                  {{ student.isActive ? 'Active' : 'Inactive' }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Student Info -->
+            <div class="flex-1 text-center md:text-left">
+              <h1 class="mb-2 text-3xl font-bold text-white">
+                {{ student.fullName }}
+              </h1>
+              <div class="mb-4 flex flex-wrap items-center justify-center gap-3 md:justify-start">
+                <span class="inline-flex items-center gap-1 rounded-lg bg-white/20 px-3 py-1 text-sm font-medium text-white backdrop-blur-sm">
+                  <mat-icon class="icon-size-4">confirmation_number</mat-icon>
+                  {{ student.admissionNumber }}
+                </span>
+                <span *ngIf="student.nemisNumber" 
+                      class="inline-flex items-center gap-1 rounded-lg bg-white/20 px-3 py-1 text-sm font-medium text-white backdrop-blur-sm">
+                  <mat-icon class="icon-size-4">tag</mat-icon>
+                  NEMIS: {{ student.nemisNumber }}
+                </span>
+                <span class="inline-flex items-center gap-1 rounded-lg bg-white/20 px-3 py-1 text-sm font-medium text-white backdrop-blur-sm">
+                  <mat-icon class="icon-size-4">wc</mat-icon>
+                  {{ getEnumName('gender', student.gender) }}
+                </span>
+              </div>
+              <div class="flex flex-wrap items-center justify-center gap-4 text-sm text-white/90 md:justify-start">
+                <span class="flex items-center gap-1">
+                  <mat-icon class="icon-size-4">school</mat-icon>
+                  {{ getEnumName('cbcLevel', student.cbcLevel) }}
+                </span>
+                <span class="flex items-center gap-1">
+                  <mat-icon class="icon-size-4">stairs</mat-icon>
+                  {{ student.currentLevel || 'N/A' }}
+                </span>
+                <span *ngIf="student.dateOfBirth" class="flex items-center gap-1">
+                  <mat-icon class="icon-size-4">cake</mat-icon>
+                  {{ formatDate(student.dateOfBirth) }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Stats -->
+      <div class="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-white p-4 dark:border-blue-800 dark:from-blue-900/20 dark:to-gray-800">
+          <div class="flex items-center gap-3">
+            <div class="rounded-lg bg-blue-100 p-3 dark:bg-blue-900/40">
+              <mat-icon class="text-blue-600 dark:text-blue-400 icon-size-6">school</mat-icon>
+            </div>
+            <div>
+              <p class="text-xs text-gray-600 dark:text-gray-400">Student Status</p>
+              <p class="text-sm font-bold text-gray-900 dark:text-white">
+                {{ getEnumName('studentStatus', student.studentStatus) }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="rounded-xl border border-green-200 bg-gradient-to-br from-green-50 to-white p-4 dark:border-green-800 dark:from-green-900/20 dark:to-gray-800">
+          <div class="flex items-center gap-3">
+            <div class="rounded-lg bg-green-100 p-3 dark:bg-green-900/40">
+              <mat-icon class="text-green-600 dark:text-green-400 icon-size-6">event</mat-icon>
+            </div>
+            <div>
+              <p class="text-xs text-gray-600 dark:text-gray-400">Admission Date</p>
+              <p class="text-sm font-bold text-gray-900 dark:text-white">
+                {{ formatDate(student.admissionDate) }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="rounded-xl border border-purple-200 bg-gradient-to-br from-purple-50 to-white p-4 dark:border-purple-800 dark:from-purple-900/20 dark:to-gray-800">
+          <div class="flex items-center gap-3">
+            <div class="rounded-lg bg-purple-100 p-3 dark:bg-purple-900/40">
+              <mat-icon class="text-purple-600 dark:text-purple-400 icon-size-6">contact_phone</mat-icon>
+            </div>
+            <div>
+              <p class="text-xs text-gray-600 dark:text-gray-400">Guardian Phone</p>
+              <p class="text-sm font-bold text-gray-900 dark:text-white">
+                {{ student.primaryGuardianPhone || 'N/A' }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-4 dark:border-amber-800 dark:from-amber-900/20 dark:to-gray-800">
+          <div class="flex items-center gap-3">
+            <div class="rounded-lg bg-amber-100 p-3 dark:bg-amber-900/40">
+              <mat-icon class="text-amber-600 dark:text-amber-400 icon-size-6">bloodtype</mat-icon>
+            </div>
+            <div>
+              <p class="text-xs text-gray-600 dark:text-gray-400">Blood Group</p>
+              <p class="text-sm font-bold text-gray-900 dark:text-white">
+                {{ student.bloodGroup || 'N/A' }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabbed Details -->
+      <mat-tab-group class="detail-tabs" animationDuration="300ms">
+        <mat-tab *ngFor="let section of detailSections" [label]="section.title">
+          <ng-template mat-tab-label>
+            <mat-icon class="mr-2 icon-size-5" [ngClass]="section.iconColor">{{ section.icon }}</mat-icon>
+            <span class="hidden sm:inline">{{ section.title }}</span>
+          </ng-template>
+
+          <div class="py-6">
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div *ngFor="let item of section.items" 
+                   class="group rounded-lg border border-gray-200 bg-white p-4 transition-all hover:border-indigo-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:hover:border-indigo-600">
+                <div class="flex items-start justify-between">
+                  <div class="flex-1">
+                    <div class="mb-1 flex items-center gap-2">
+                      <mat-icon *ngIf="item.icon" class="text-gray-400 icon-size-5">{{ item.icon }}</mat-icon>
+                      <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                        {{ item.label }}
+                      </p>
+                    </div>
+                    
+                    <p class="text-sm font-semibold text-gray-900 dark:text-white"
+                       [ngClass]="{
+                         'inline-flex items-center gap-2 rounded-full bg-indigo-100 dark:bg-indigo-900/30 px-3 py-1 text-indigo-700 dark:text-indigo-300': item.type === 'badge',
+                         'inline-flex items-center gap-2 rounded-full px-3 py-1': item.type === 'status',
+                         'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300': item.type === 'status' && item.value === 'Active',
+                         'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300': item.type === 'status' && item.value === 'Inactive'
+                       }">
+                      <a *ngIf="item.type === 'email' && item.value" 
+                         [href]="'mailto:' + item.value" 
+                         class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">
+                        {{ item.value }}
+                      </a>
+                      <a *ngIf="item.type === 'phone' && item.value" 
+                         [href]="'tel:' + item.value" 
+                         class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">
+                        {{ item.value }}
+                      </a>
+                      <span *ngIf="!item.type || (item.type !== 'email' && item.type !== 'phone')">
+                        {{ item.value || '—' }}
+                      </span>
+                    </p>
+                  </div>
+
+                  <!-- Copy Button -->
+                  <button *ngIf="item.copyable && item.value" 
+                          mat-icon-button 
+                          class="opacity-0 transition-opacity group-hover:opacity-100"
+                          (click)="copyToClipboard(item.value)"
+                          matTooltip="Copy to clipboard">
+                    <mat-icon class="text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 icon-size-5">
+                      content_copy
+                    </mat-icon>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+    </div>
+  </div>
+</div>

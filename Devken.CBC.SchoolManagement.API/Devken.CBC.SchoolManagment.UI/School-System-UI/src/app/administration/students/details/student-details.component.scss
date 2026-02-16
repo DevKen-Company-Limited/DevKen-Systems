@@ -1,0 +1,131 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  width: 100%;
+}
+
+// Fade-in animation
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Custom tab styling
+::ng-deep .detail-tabs {
+  .mat-mdc-tab-labels {
+    border-bottom: 2px solid rgb(229, 231, 235);
+    
+    .dark & {
+      border-bottom-color: rgb(55, 65, 81);
+    }
+  }
+
+  .mat-mdc-tab {
+    min-width: 120px;
+    
+    &:hover:not(.mat-mdc-tab-disabled) {
+      background-color: rgba(99, 102, 241, 0.05);
+      
+      .dark & {
+        background-color: rgba(99, 102, 241, 0.1);
+      }
+    }
+  }
+
+  .mat-mdc-tab.mdc-tab--active {
+    .mdc-tab__text-label {
+      color: rgb(99, 102, 241);
+      
+      .dark & {
+        color: rgb(165, 180, 252);
+      }
+    }
+
+    .mat-icon {
+      color: rgb(99, 102, 241);
+      
+      .dark & {
+        color: rgb(165, 180, 252);
+      }
+    }
+  }
+
+  .mat-mdc-tab-body-content {
+    padding: 0;
+  }
+
+  .mdc-tab-indicator__content--underline {
+    border-color: rgb(99, 102, 241);
+    border-top-width: 3px;
+    
+    .dark & {
+      border-color: rgb(165, 180, 252);
+    }
+  }
+}
+
+// Smooth transitions
+* {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+// Responsive breakpoints
+@media (max-width: 768px) {
+  ::ng-deep .detail-tabs {
+    .mat-mdc-tab {
+      min-width: 80px;
+      padding: 0 12px;
+    }
+  }
+}
+
+// Dark mode enhancements
+.dark {
+  .bg-card {
+    background-color: rgb(31, 41, 55);
+  }
+}
+
+// Custom scrollbar
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgb(243, 244, 246);
+  
+  .dark & {
+    background: rgb(31, 41, 55);
+  }
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(209, 213, 219);
+  border-radius: 4px;
+  
+  .dark & {
+    background: rgb(75, 85, 99);
+  }
+  
+  &:hover {
+    background: rgb(156, 163, 175);
+    
+    .dark & {
+      background: rgb(107, 114, 128);
+    }
+  }
+}

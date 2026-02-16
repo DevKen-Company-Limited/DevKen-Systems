@@ -46,6 +46,8 @@ export class EnumService {
   getGenders() { return this.fetchEnum('genders'); }
   getStudentStatuses() { return this.fetchEnum('student-statuses'); }
   getCBCLevels() { return this.fetchEnum('cbc-levels'); }
+  getReligions() { return this.fetchEnum('religions'); }
+  getNationalities() { return this.fetchEnum('nationalities'); }
 
   /** ===== ACADEMICS ===== */
   getTermTypes() { return this.fetchEnum('term-types'); }
