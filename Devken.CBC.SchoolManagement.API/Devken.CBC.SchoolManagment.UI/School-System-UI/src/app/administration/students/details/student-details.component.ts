@@ -9,13 +9,11 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatMenuModule } from '@angular/material/menu';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Subject, forkJoin, of } from 'rxjs';
 import { takeUntil, catchError, finalize } from 'rxjs/operators';
-import { FuseConfirmationService } from '@fuse/services/confirmation';
 import { StudentService } from 'app/core/DevKenService/administration/students/StudentService';
 import { EnumService, EnumItemDto } from 'app/core/DevKenService/common/enum.service';
 import { AuthService } from 'app/core/auth/auth.service';
@@ -23,6 +21,7 @@ import { API_BASE_URL } from 'app/app.config';
 import { PageHeaderComponent, Breadcrumb } from 'app/shared/Page-Header/page-header.component';
 import { PhotoViewerDialogComponent } from 'app/dialog-modals/Student/photo-viewer-dialog';
 import { StudentDto } from '../types/studentdto';
+import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
 
 interface DetailSection {
   title: string;
@@ -61,7 +60,6 @@ interface EnumMaps {
     MatDividerModule,
     MatTooltipModule,
     MatMenuModule,
-    MatSnackBarModule,
     MatDialogModule,
     PageHeaderComponent,
   ],
@@ -74,9 +72,8 @@ export class StudentDetailsComponent implements OnInit, OnDestroy {
   private _router = inject(Router);
   private _service = inject(StudentService);
   private _enumService = inject(EnumService);
-  private _snackBar = inject(MatSnackBar);
+  private _alertService = inject(AlertService);
   private _dialog = inject(MatDialog);
-  private _confirmation = inject(FuseConfirmationService);
   private _http = inject(HttpClient);
   private _sanitizer = inject(DomSanitizer);
   private _authService = inject(AuthService);
@@ -150,7 +147,7 @@ export class StudentDetailsComponent implements OnInit, OnDestroy {
         },
         error: (err) => {
           console.error('Error loading enums:', err);
-          this._showError('Failed to load configuration data');
+          this._alertService.error('Failed to load configuration data');
           this.isEnumLoading = false;
           // Continue loading student even if enums fail
           this.loadStudent();
@@ -194,7 +191,7 @@ export class StudentDetailsComponent implements OnInit, OnDestroy {
     const studentId = this._route.snapshot.paramMap.get('id');
     if (!studentId) {
       console.error('No student ID in route');
-      this._showError('Invalid student ID');
+      this._alertService.error('Invalid student ID');
       this._router.navigate(['/academic/students']);
       return;
     }
@@ -207,7 +204,7 @@ export class StudentDetailsComponent implements OnInit, OnDestroy {
         takeUntil(this._unsubscribe),
         catchError((err) => {
           console.error('Error loading student:', err);
-          this._showError(err.error?.message || 'Failed to load student details');
+          this._alertService.error(err.error?.message || 'Failed to load student details');
           this.isLoading = false;
           this._router.navigate(['/academic/students']);
           return of(null);
@@ -233,7 +230,7 @@ export class StudentDetailsComponent implements OnInit, OnDestroy {
         },
         error: (err) => {
           console.error('Subscription error:', err);
-          this._showError(err.error?.message || 'Failed to load student details');
+          this._alertService.error(err.error?.message || 'Failed to load student details');
         }
       });
   }
@@ -464,9 +461,9 @@ export class StudentDetailsComponent implements OnInit, OnDestroy {
     if (!value) return;
 
     navigator.clipboard.writeText(value.toString()).then(() => {
-      this._showSuccess('Copied to clipboard');
+      this._alertService.success('Copied to clipboard');
     }).catch(() => {
-      this._showError('Failed to copy');
+      this._alertService.error('Failed to copy');
     });
   }
 
@@ -482,37 +479,25 @@ export class StudentDetailsComponent implements OnInit, OnDestroy {
     const newStatus = !this.student.isActive;
     const action = newStatus ? 'activate' : 'deactivate';
 
-    const confirmation = this._confirmation.open({
+    this._alertService.confirm({
       title: `${newStatus ? 'Activate' : 'Deactivate'} Student`,
       message: `Are you sure you want to ${action} ${this.student.fullName}?`,
-      icon: {
-        name: newStatus ? 'check_circle' : 'block',
-        color: newStatus ? 'success' : 'warn',
-      },
-      actions: {
-        confirm: {
-          label: newStatus ? 'Activate' : 'Deactivate',
-          color: newStatus ? 'primary' : 'warn',
-        },
-        cancel: {
-          label: 'Cancel',
-        },
-      },
-    });
+      confirmText: newStatus ? 'Activate' : 'Deactivate',
+      cancelText: 'Cancel',
+      onConfirm: () => {
+        if (!this.student) return;
 
-    confirmation.afterClosed().pipe(takeUntil(this._unsubscribe)).subscribe(result => {
-      if (result === 'confirmed' && this.student) {
         const payload: Partial<StudentDto> = { isActive: newStatus };
 
         this._service.updatePartial(this.student.id, payload)
           .pipe(takeUntil(this._unsubscribe))
           .subscribe({
             next: () => {
-              this._showSuccess(`Student ${action}d successfully`);
+              this._alertService.success(`Student ${action}d successfully`);
               this.loadStudent();
             },
             error: (err) => {
-              this._showError(err.error?.message || `Failed to ${action} student`);
+              this._alertService.error(err.error?.message || `Failed to ${action} student`);
             }
           });
       }
@@ -522,35 +507,23 @@ export class StudentDetailsComponent implements OnInit, OnDestroy {
   deleteStudent(): void {
     if (!this.student) return;
 
-    const confirmation = this._confirmation.open({
+    this._alertService.confirm({
       title: 'Delete Student',
       message: `Are you sure you want to delete ${this.student.fullName}? This action cannot be undone.`,
-      icon: {
-        name: 'delete',
-        color: 'warn',
-      },
-      actions: {
-        confirm: {
-          label: 'Delete',
-          color: 'warn',
-        },
-        cancel: {
-          label: 'Cancel',
-        },
-      },
-    });
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      onConfirm: () => {
+        if (!this.student) return;
 
-    confirmation.afterClosed().pipe(takeUntil(this._unsubscribe)).subscribe(result => {
-      if (result === 'confirmed' && this.student) {
         this._service.delete(this.student.id)
           .pipe(takeUntil(this._unsubscribe))
           .subscribe({
             next: () => {
-              this._showSuccess('Student deleted successfully');
+              this._alertService.success('Student deleted successfully');
               this._router.navigate(['/academic/students']);
             },
             error: (err) => {
-              this._showError(err.error?.message || 'Failed to delete student');
+              this._alertService.error(err.error?.message || 'Failed to delete student');
             }
           });
       }
@@ -569,12 +542,12 @@ export class StudentDetailsComponent implements OnInit, OnDestroy {
       const file = target.files[0];
 
       if (file.size > 5 * 1024 * 1024) {
-        this._showError('File size must be less than 5MB');
+        this._alertService.error('File size must be less than 5MB');
         return;
       }
 
       if (!file.type.startsWith('image/')) {
-        this._showError('File must be an image');
+        this._alertService.error('File must be an image');
         return;
       }
 
@@ -582,11 +555,11 @@ export class StudentDetailsComponent implements OnInit, OnDestroy {
         .pipe(takeUntil(this._unsubscribe))
         .subscribe({
           next: () => {
-            this._showSuccess('Photo uploaded successfully');
+            this._alertService.success('Photo uploaded successfully');
             this.loadStudent();
           },
           error: (err) => {
-            this._showError(err.error?.message || 'Failed to upload photo');
+            this._alertService.error(err.error?.message || 'Failed to upload photo');
           }
         });
     };
@@ -596,19 +569,5 @@ export class StudentDetailsComponent implements OnInit, OnDestroy {
 
   goBack(): void {
     this._router.navigate(['/academic/students']);
-  }
-
-  private _showSuccess(message: string): void {
-    this._snackBar.open(message, 'Close', {
-      duration: 3000,
-      panelClass: ['bg-green-600', 'text-white']
-    });
-  }
-
-  private _showError(message: string): void {
-    this._snackBar.open(message, 'Close', {
-      duration: 5000,
-      panelClass: ['bg-red-600', 'text-white']
-    });
   }
 }
