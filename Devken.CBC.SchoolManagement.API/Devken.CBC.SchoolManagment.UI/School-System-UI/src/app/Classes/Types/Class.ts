@@ -61,7 +61,7 @@ export interface ClassDetailDto extends ClassDto {
 }
 
 export interface CreateClassRequest {
-  schoolId: string;
+  schoolId?: string;
   name: string;
   code: string;
   level: number; // CBCLevel

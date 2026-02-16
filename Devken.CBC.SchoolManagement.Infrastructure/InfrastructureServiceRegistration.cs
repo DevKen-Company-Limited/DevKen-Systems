@@ -277,7 +277,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             // Services
             services.AddScoped<IUserManagementService, UserManagementService>();
             services.AddScoped<ITeacherService, TeacherService>();
-            services.AddScoped<ITermService, TermService>(); 
+            services.AddScoped<ITermService, TermService>();
             services.AddScoped<IJwtService, JwtService>();
             services.AddScoped<IPermissionSeedService, PermissionSeedService>();
             services.AddScoped<ISubscriptionSeedService, SubscriptionSeedService>();
