@@ -194,7 +194,7 @@
             <div>
               <p class="text-xs text-gray-600 dark:text-gray-400">Admission Date</p>
               <p class="text-sm font-bold text-gray-900 dark:text-white">
-                {{ formatDate(student.admissionDate) }}
+                {{ formatDate(student.dateOfAdmission) }}
               </p>
             </div>
           </div>
@@ -231,7 +231,7 @@
 
       <!-- Tabbed Details -->
       <mat-tab-group class="detail-tabs" animationDuration="300ms">
-        <mat-tab *ngFor="let section of detailSections" [label]="section.title">
+        <mat-tab *ngFor="let section of detailSections; trackBy: trackByTitle" [label]="section.title">
           <ng-template mat-tab-label>
             <mat-icon class="mr-2 icon-size-5" [ngClass]="section.iconColor">{{ section.icon }}</mat-icon>
             <span class="hidden sm:inline">{{ section.title }}</span>
@@ -239,7 +239,7 @@
 
           <div class="py-6">
             <div class="grid gap-4 sm:grid-cols-2">
-              <div *ngFor="let item of section.items" 
+              <div *ngFor="let item of section.items; trackBy: trackByLabel" 
                    class="group rounded-lg border border-gray-200 bg-white p-4 transition-all hover:border-indigo-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:hover:border-indigo-600">
                 <div class="flex items-start justify-between">
                   <div class="flex-1">

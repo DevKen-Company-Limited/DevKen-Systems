@@ -767,7 +767,7 @@ export class StudentsComponent implements OnInit, OnDestroy {
   }
 
   viewStudent(student: StudentDto): void {
-    this._router.navigate(['/academic/students', student.id]);
+    this._router.navigate(['/academic/students/details', student.id]);
   }
 
   editStudent(student: StudentDto): void {
@@ -855,46 +855,49 @@ viewStudentPhoto(student: StudentDto): void {
     }
   }
 
-  toggleActive(student: StudentDto): void {
-    const newStatus = !student.isActive;
-    const action = newStatus ? 'activate' : 'deactivate';
-    
-    const confirmation = this._confirmation.open({
-      title: `${newStatus ? 'Activate' : 'Deactivate'} Student`,
-      message: `Are you sure you want to ${action} ${student.fullName}?`,
-      icon: {
-        name: newStatus ? 'check_circle' : 'block',
-        color: newStatus ? 'success' : 'warn',
-      },
-      actions: {
-        confirm: {
-          label: newStatus ? 'Activate' : 'Deactivate',
-          color: newStatus ? 'primary' : 'warn',
-        },
-        cancel: {
-          label: 'Cancel',
-        },
-      },
-    });
+toggleActive(student: StudentDto): void {
+  const newStatus = !student.isActive;
+  const action = newStatus ? 'activate' : 'deactivate';
 
-    confirmation.afterClosed().pipe(takeUntil(this._unsubscribe)).subscribe(result => {
+  const confirmation = this._confirmation.open({
+    title: `${newStatus ? 'Activate' : 'Deactivate'} Student`,
+    message: `Are you sure you want to ${action} ${student.fullName}?`,
+    icon: {
+      name: newStatus ? 'check_circle' : 'block',
+      color: newStatus ? 'success' : 'warn',
+    },
+    actions: {
+      confirm: {
+        label: newStatus ? 'Activate' : 'Deactivate',
+        color: newStatus ? 'primary' : 'warn',
+      },
+      cancel: {
+        label: 'Cancel',
+      },
+    },
+  });
+
+  confirmation.afterClosed()
+    .pipe(takeUntil(this._unsubscribe))
+    .subscribe(result => {
       if (result === 'confirmed') {
-        const payload: Partial<StudentDto> = { isActive: newStatus };
-        
-        this._service.updatePartial(student.id, payload)
+
+        this._service.toggleStatus(student.id, newStatus)
           .pipe(takeUntil(this._unsubscribe))
           .subscribe({
-            next: () => {
-              this._showSuccess(`Student ${action}d successfully`);
+            next: (response) => {
+              this._showSuccess(response.message || `Student ${action}d successfully`);
               this.loadAll();
             },
             error: (err) => {
               this._showError(err.error?.message || `Failed to ${action} student`);
             }
           });
+
       }
     });
-  }
+}
+
 
   removeStudent(student: StudentDto): void {
     const confirmation = this._confirmation.open({

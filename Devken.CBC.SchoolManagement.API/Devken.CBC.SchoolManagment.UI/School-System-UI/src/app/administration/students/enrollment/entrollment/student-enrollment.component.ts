@@ -168,25 +168,32 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
     this.studentService.getAcademicYears().pipe(takeUntil(this.destroy$)).subscribe(y => this.academicYears = y);
   }
 
-  private loadExistingStudent(id: string): void {
-    this.studentService.getById(id)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (student) => {
+private loadExistingStudent(id: string): void {
+  this.studentService.getById(id)
+    .pipe(takeUntil(this.destroy$))
+    .subscribe({
+      next: (student) => {
 
-          console.log('[Enrollment] Raw student data:', student);
+        console.log('[Enrollment] Raw student data:', student);
 
-          this.hydrateFromStudent(student);
+        this.hydrateFromStudent(student);
 
-          this.steps.slice(0, 5).forEach((_, i) => this.completedSteps.add(i));
-          this.showAlert('info', 'Editing existing student record');
-        },
-        error: (err) => {
-          console.error('[Enrollment] Failed to load student:', err);
-          this.showAlert('error', 'Could not load student data.');
-        },
-      });
-  }
+        // ✅ Mark all steps completed
+        this.steps.slice(0, 5).forEach((_, i) => this.completedSteps.add(i));
+
+        // ✅ CRITICAL: Mark all sections as valid
+        Object.keys(this.sectionValid).forEach(key => {
+          this.sectionValid[key] = true;
+        });
+
+        this.showAlert('info', 'Editing existing student record');
+      },
+      error: (err) => {
+        console.error('[Enrollment] Failed to load student:', err);
+        this.showAlert('error', 'Could not load student data.');
+      },
+    });
+}
 
   /**
    * Safely convert API values to numbers
@@ -393,22 +400,41 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
     }
   }
 
-  private buildPayload(): any {
-    // All enum values should already be numbers from form emissions
-    return {
-      ...this.formSections.personal,
-      ...this.formSections.location,
-      ...this.formSections.academic,
-      ...this.formSections.medical,
-      ...this.formSections.guardians,
-    };
+private buildPayload(): any {
+
+  const payload: any = {
+    ...this.formSections.personal,
+    ...this.formSections.location,
+    ...this.formSections.academic,
+    ...this.formSections.medical,
+    ...this.formSections.guardians,
+  };
+
+  // ✅ SAFETY: Remove secondary guardian fields if email is empty
+  const secondaryEmail = payload.secondaryGuardianEmail?.trim();
+
+  if (!secondaryEmail) {
+    delete payload.secondaryGuardianName;
+    delete payload.secondaryGuardianRelationship;
+    delete payload.secondaryGuardianPhone;
+    delete payload.secondaryGuardianEmail;
+    delete payload.secondaryGuardianOccupation;
+  } else {
+    payload.secondaryGuardianEmail = secondaryEmail;
   }
 
+  return payload;
+}
+
+
   // ─── Guards ───────────────────────────────────────────────────────
-  canProceed(): boolean {
-    const key = this.steps[this.currentStep]?.sectionKey;
-    return this.sectionValid[key] !== false;
-  }
+canProceed(): boolean {
+  if (this.isEditMode) return true;
+
+  const key = this.steps[this.currentStep]?.sectionKey;
+  return this.sectionValid[key] !== false;
+}
+
 
   canNavigateTo(index: number): boolean {
     if (index === 0) return true;
@@ -421,9 +447,12 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
     return this.completedSteps.has(index);
   }
 
-  allStepsCompleted(): boolean {
-    return this.steps.slice(0, 5).every((_, i) => this.completedSteps.has(i));
-  }
+allStepsCompleted(): boolean {
+  if (this.isEditMode) return true;
+
+  return this.steps.slice(0, 5).every((_, i) => this.completedSteps.has(i));
+}
+
 
   // ─── Progress ring ────────────────────────────────────────────────
   getProgressPercent(): number {

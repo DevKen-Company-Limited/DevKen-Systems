@@ -422,13 +422,22 @@ export class StudentDetailsComponent implements OnInit, OnDestroy {
         iconColor: 'text-teal-600',
         items: [
           { label: 'School', value: this.student.schoolName, icon: 'school' },
-          { label: 'Academic Year', value: this.student.currentAcademicYearId, icon: 'calendar_today' },
+          { label: 'Academic Year', value: this.student.academicYearName, icon: 'calendar_today' },
           { label: 'Notes', value: this.student.notes, icon: 'note' },
           { label: 'Created', value: this.formatDate(this.student.createdAt), icon: 'schedule', type: 'date' },
           { label: 'Last Updated', value: this.formatDate(this.student.updatedAt), icon: 'update', type: 'date' },
         ]
       }
     ];
+  }
+
+  // TrackBy functions to prevent NG0956 error
+  trackByTitle(index: number, section: DetailSection): string {
+    return section.title;
+  }
+
+  trackByLabel(index: number, item: DetailItem): string {
+    return item.label;
   }
 
   formatDate(date: string | Date | undefined | null): string {

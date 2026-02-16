@@ -16,8 +16,12 @@ export default[
       path: 'edit/:id',
       component: StudentEnrollmentComponent,
     },
-    {
-      path: ':id',
-      component: StudentDetailsComponent, // Optional
-    },
+ {
+    path: 'details/:id',
+    component: StudentDetailsComponent,
+    data: {
+      title: 'Student Details',
+      breadcrumb: 'Details'
+    }
+  }
 ] as Routes;

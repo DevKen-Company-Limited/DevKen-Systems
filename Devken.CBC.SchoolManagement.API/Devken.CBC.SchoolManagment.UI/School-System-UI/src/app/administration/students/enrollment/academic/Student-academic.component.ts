@@ -77,8 +77,8 @@ export class StudentAcademicComponent implements OnInit, OnChanges {
         normalizedData.currentLevel ?? '', 
         Validators.required
       ],
-      currentClassId: [normalizedData.currentClassId ?? ''],
-      currentAcademicYearId: [normalizedData.currentAcademicYearId ?? ''],
+      currentClassId: [normalizedData.currentClassId ?? null],
+      currentAcademicYearId: [normalizedData.currentAcademicYearId ?? null],
       previousSchool: [normalizedData.previousSchool ?? ''],
       status: [normalizedData.status ?? ''],
     };

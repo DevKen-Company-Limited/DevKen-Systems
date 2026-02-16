@@ -295,7 +295,9 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Students
         /// </summary>
         [HttpPatch("{id:guid}/toggle-status")]
         [Authorize(Policy = PermissionKeys.StudentWrite)]
-        public async Task<IActionResult> ToggleStatus(Guid id, [FromBody] bool isActive)
+        public async Task<IActionResult> ToggleStatus(
+       Guid id,
+       [FromBody] ToggleStudentStatusRequest request)
         {
             try
             {
@@ -303,11 +305,12 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Students
 
                 var result = await _studentService.ToggleStudentStatusAsync(
                     id,
-                    isActive,
+                    request.IsActive,
                     userSchoolId,
                     IsSuperAdmin);
 
-                var action = isActive ? "activated" : "deactivated";
+                var action = request.IsActive ? "activated" : "deactivated";
+
                 await LogUserActivityAsync(
                     "student.toggle-status",
                     $"{action} student {result.AdmissionNumber} - {result.FullName}");
@@ -319,6 +322,11 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Students
             catch (UnauthorizedException ex) { return ForbiddenResponse(ex.Message); }
             catch (Exception ex) { return InternalServerErrorResponse(GetFullExceptionMessage(ex)); }
         }
+        public class ToggleStudentStatusRequest
+        {
+            public bool IsActive { get; set; }
+        }
+
 
         #endregion
     }

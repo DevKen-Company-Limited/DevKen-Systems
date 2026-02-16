@@ -1,4 +1,6 @@
 export interface StudentDto {
+  academicYearName: string | number;
+  AcademicYearName: string | number;
   // ── Core Identity ────────────────────────────────────────────────────────
   id: string;
   schoolId: string;

@@ -81,9 +81,13 @@ export class StudentService {
   /**
    * Toggle student active status
    */
-  toggleStatus(id: string, isActive: boolean): Observable<ApiResponse<StudentDto>> {
-    return this.http.patch<ApiResponse<StudentDto>>(`${this.base}/${id}/status`, { isActive });
-  }
+toggleStatus(id: string, isActive: boolean): Observable<ApiResponse<StudentDto>> {
+  return this.http.patch<ApiResponse<StudentDto>>(
+    `${this.base}/${id}/toggle-status`,
+    { isActive }  
+  );
+}
+
 
   /**
    * Upload student photo
@@ -187,6 +191,8 @@ export class StudentService {
       map(response => response?.data ?? {})
     );
   }
+
+  
 
   /**
    * Get enrollment trends
