@@ -1,7 +1,7 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, Inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -21,6 +21,14 @@ export interface ExportConfig {
   columns: ExportColumn[];
   includePhoto: boolean;
   includeSchoolHeader: boolean;
+  studentCount?: number; // Number of students that will be exported
+}
+
+export interface ExportDialogData {
+  filteredStudentCount: number; // Number of students after filters
+  totalStudentCount: number; // Total students without filters
+  hasActiveFilters: boolean; // Whether filters are active
+  preSelectedFormat?: 'excel' | 'pdf' | 'word'; // Optional pre-selected format
 }
 
 @Component({
@@ -46,7 +54,9 @@ export interface ExportConfig {
           </div>
           <div>
             <h2 class="text-xl font-bold text-gray-900 dark:text-white">Export Students</h2>
-            <p class="text-sm text-gray-500 dark:text-gray-400">Choose format and columns to export</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              {{ getExportSummary() }}
+            </p>
           </div>
         </div>
         <button mat-icon-button (click)="dialogRef.close()" class="text-gray-400 hover:text-gray-600">
@@ -57,6 +67,21 @@ export interface ExportConfig {
       <!-- Content -->
       <div class="flex-1 overflow-y-auto p-6 space-y-6">
         
+        <!-- Filter Info Banner -->
+        <div *ngIf="data.hasActiveFilters" class="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+          <div class="flex items-start gap-3">
+            <mat-icon class="text-blue-600 dark:text-blue-400 icon-size-5">info</mat-icon>
+            <div class="flex-1">
+              <p class="text-sm font-medium text-blue-900 dark:text-blue-100">
+                Active Filters Detected
+              </p>
+              <p class="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                Exporting <strong>{{ data.filteredStudentCount }}</strong> of {{ data.totalStudentCount }} total students based on your current filters.
+              </p>
+            </div>
+          </div>
+        </div>
+
         <!-- Export Format Selection -->
         <div class="space-y-3">
           <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">Export Format</label>
@@ -80,7 +105,9 @@ export interface ExportConfig {
                 </div>
                 <div>
                   <div class="font-medium text-gray-900 dark:text-white">PDF Document (.pdf)</div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400">Professional report with photos and formatting</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400">
+                    Professional report with photos (max {{ getMaxColumnsForFormat('pdf') }} columns)
+                  </div>
                 </div>
               </div>
             </mat-radio-button>
@@ -92,7 +119,9 @@ export interface ExportConfig {
                 </div>
                 <div>
                   <div class="font-medium text-gray-900 dark:text-white">Microsoft Word (.docx)</div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400">Editable document with full formatting</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400">
+                    Editable document (max {{ getMaxColumnsForFormat('word') }} columns)
+                  </div>
                 </div>
               </div>
             </mat-radio-button>
@@ -119,12 +148,13 @@ export interface ExportConfig {
           <mat-checkbox 
             [(ngModel)]="exportConfig.includePhoto"
             [disabled]="exportConfig.format === 'excel'"
+            (ngModelChange)="onPhotoCheckboxChange($event)"
             class="block">
             <div class="flex items-center gap-2">
               <span class="text-sm font-medium">Include Student Photos</span>
               <mat-icon 
                 class="icon-size-4 text-gray-400" 
-                [matTooltip]="exportConfig.format === 'excel' ? 'Photos not supported in Excel format' : 'Include student photos in the document'">
+                [matTooltip]="getPhotoTooltip()">
                 info
               </mat-icon>
             </div>
@@ -177,9 +207,26 @@ export interface ExportConfig {
             </mat-checkbox>
           </div>
 
+          <!-- Column Limit Warning -->
+          <div *ngIf="selectedColumnsCount > getMaxColumnsForFormat()" 
+               class="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+            <mat-icon class="text-amber-600 dark:text-amber-400 icon-size-5">warning</mat-icon>
+            <div class="flex-1 text-xs text-amber-700 dark:text-amber-300">
+              <strong>Too many columns selected!</strong> 
+              {{ exportConfig.format === 'word' ? 'Word' : 'PDF' }} documents can only fit 
+              <strong>{{ getMaxColumnsForFormat() }} columns</strong> 
+              {{ exportConfig.includePhoto ? 'with photos' : 'without photos' }}. 
+              The first {{ getMaxColumnsForFormat() }} selected columns will be used.
+            </div>
+          </div>
+
           <div class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
             <mat-icon class="icon-size-4">info</mat-icon>
             <span>{{ selectedColumnsCount }} of {{ exportConfig.columns.length }} columns selected</span>
+            <span *ngIf="exportConfig.format !== 'excel' && selectedColumnsCount > getMaxColumnsForFormat()" 
+                  class="text-amber-600 dark:text-amber-400 font-semibold">
+              ({{ getMaxColumnsForFormat() }} will be exported)
+            </span>
           </div>
         </div>
       </div>
@@ -187,8 +234,8 @@ export interface ExportConfig {
       <!-- Footer Actions -->
       <div class="flex items-center justify-between gap-3 p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
         <div class="text-sm text-gray-600 dark:text-gray-400">
-          <mat-icon class="icon-size-4 inline-block mr-1">info</mat-icon>
-          Export will include {{ selectedColumnsCount }} columns
+          <mat-icon class="icon-size-4 inline-block mr-1">people</mat-icon>
+          Exporting <strong>{{ data.filteredStudentCount }}</strong> student{{ data.filteredStudentCount !== 1 ? 's' : '' }}
         </div>
         <div class="flex gap-3">
           <button 
@@ -200,7 +247,7 @@ export interface ExportConfig {
           <button 
             mat-flat-button 
             (click)="export()"
-            [disabled]="selectedColumnsCount === 0"
+            [disabled]="selectedColumnsCount === 0 || data.filteredStudentCount === 0"
             class="bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:from-indigo-700 hover:to-violet-700">
             <mat-icon class="icon-size-5">download</mat-icon>
             <span class="ml-2">Export {{ getFormatLabel() }}</span>
@@ -260,7 +307,14 @@ export class ExportStudentsDialogComponent implements OnInit {
     ]
   };
 
+  constructor(@Inject(MAT_DIALOG_DATA) public data: ExportDialogData) {}
+
   ngOnInit(): void {
+    // Use pre-selected format if provided, otherwise default to excel
+    if (this.data.preSelectedFormat) {
+      this.exportConfig.format = this.data.preSelectedFormat;
+    }
+    
     // Auto-disable photo checkbox for Excel
     if (this.exportConfig.format === 'excel') {
       this.exportConfig.includePhoto = false;
@@ -269,6 +323,53 @@ export class ExportStudentsDialogComponent implements OnInit {
 
   get selectedColumnsCount(): number {
     return this.exportConfig.columns.filter(col => col.selected).length;
+  }
+
+  getExportSummary(): string {
+    const count = this.data.filteredStudentCount;
+    if (this.data.hasActiveFilters) {
+      return `${count} filtered student${count !== 1 ? 's' : ''} • Choose format and columns`;
+    }
+    return `${count} student${count !== 1 ? 's' : ''} • Choose format and columns`;
+  }
+
+  getMaxColumnsForFormat(format?: 'excel' | 'pdf' | 'word'): number {
+    const selectedFormat = format || this.exportConfig.format;
+    
+    if (selectedFormat === 'excel') {
+      return 999; // No limit for Excel
+    }
+    
+    if (selectedFormat === 'pdf') {
+      return this.exportConfig.includePhoto ? 5 : 7;
+    }
+    
+    if (selectedFormat === 'word') {
+      return this.exportConfig.includePhoto ? 3 : 5;
+    }
+    
+    return 999;
+  }
+
+  getPhotoTooltip(): string {
+    if (this.exportConfig.format === 'excel') {
+      return 'Photos not supported in Excel format';
+    }
+    
+    const format = this.exportConfig.format === 'pdf' ? 'PDF' : 'Word';
+    const maxCols = this.getMaxColumnsForFormat();
+    return `Include student photos in the ${format} document. Note: Photos reduce max columns to ${maxCols}`;
+  }
+
+  onPhotoCheckboxChange(checked: boolean): void {
+    // Automatically adjust column selection if needed when photo checkbox changes
+    if (checked && this.exportConfig.format !== 'excel') {
+      const maxCols = this.getMaxColumnsForFormat();
+      if (this.selectedColumnsCount > maxCols) {
+        // Show a hint that columns will be limited
+        console.log(`Photo enabled: Will limit to ${maxCols} columns`);
+      }
+    }
   }
 
   selectAllColumns(): void {
@@ -301,6 +402,10 @@ export class ExportStudentsDialogComponent implements OnInit {
       return;
     }
 
+    if (this.data.filteredStudentCount === 0) {
+      return;
+    }
+
     // Filter out photo column if Excel format
     if (this.exportConfig.format === 'excel') {
       const photoColumn = this.exportConfig.columns.find(col => col.id === 'photo');
@@ -309,6 +414,9 @@ export class ExportStudentsDialogComponent implements OnInit {
       }
       this.exportConfig.includePhoto = false;
     }
+
+    // Add student count to config
+    this.exportConfig.studentCount = this.data.filteredStudentCount;
 
     this.dialogRef.close(this.exportConfig);
   }

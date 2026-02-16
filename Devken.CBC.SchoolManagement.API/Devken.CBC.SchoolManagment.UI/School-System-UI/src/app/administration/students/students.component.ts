@@ -729,13 +729,19 @@ export class StudentsComponent implements OnInit, OnDestroy {
       }
     });
   }
-  openExportDialog(): void {
+openExportDialog(format?: 'excel' | 'pdf' | 'word'): void {
   const dialogRef = this._dialog.open(ExportStudentsDialogComponent, {
     width: '800px',
     maxWidth: '95vw',
     maxHeight: '90vh',
     disableClose: false,
     panelClass: 'export-students-dialog',
+    data: {
+      filteredStudentCount: this.filteredData.length,
+      totalStudentCount: this.allData.length,
+      hasActiveFilters: this.hasActiveFilters(),
+      preSelectedFormat: format // Pass the pre-selected format
+    }
   });
 
   dialogRef.afterClosed()
@@ -747,9 +753,25 @@ export class StudentsComponent implements OnInit, OnDestroy {
     });
 }
 
+private hasActiveFilters(): boolean {
+  return (
+    this._filterValues.search !== '' ||
+    this._filterValues.status !== 'all' ||
+    this._filterValues.gender !== 'all' ||
+    this._filterValues.cbcLevel !== 'all' ||
+    this._filterValues.studentStatus !== 'all' ||
+    (this.isSuperAdmin && this._filterValues.schoolId !== 'all')
+  );
+}
+
+/**
+ * Perform the actual export with progress feedback
+ */
 private performExport(config: ExportConfig): void {
-  // Show loading indicator
-  this._alertService.info('Preparing export...');
+  // Show loading indicator with student count
+  const studentCount = this.filteredData.length;
+  const filterInfo = this.hasActiveFilters() ? ' (filtered)' : '';
+  this._alertService.info(`Preparing to export ${studentCount} student${studentCount !== 1 ? 's' : ''}${filterInfo}...`);
 
   // Get school information for header
   const schoolInfo: SchoolHeaderInfo = {
@@ -765,12 +787,17 @@ private performExport(config: ExportConfig): void {
     schoolLogo: this.schools.length === 1 ? this.schools[0].logoUrl : undefined,
   };
 
-  // Use filtered data for export
+  // Use filtered data for export (respects current filters)
   const dataToExport = this.filteredData;
 
   if (!dataToExport || dataToExport.length === 0) {
     this._alertService.warning('No students to export with current filters');
     return;
+  }
+
+  // Show progress for large exports
+  if (dataToExport.length > 100) {
+    this._alertService.info(`Processing ${dataToExport.length} students. This may take a moment...`);
   }
 
   this._studentExportService
@@ -779,8 +806,9 @@ private performExport(config: ExportConfig): void {
     .subscribe({
       next: (result) => {
         if (result.success) {
+          const filterNote = this.hasActiveFilters() ? ' (filtered)' : '';
           this._alertService.success(
-            `Successfully exported ${dataToExport.length} students to ${config.format.toUpperCase()}`
+            `Successfully exported ${dataToExport.length} student${dataToExport.length !== 1 ? 's' : ''}${filterNote} to ${config.format.toUpperCase()}`
           );
         }
       },
@@ -791,7 +819,6 @@ private performExport(config: ExportConfig): void {
       }
     });
 }
-
 
   private clearAndReloadImage(studentId: string, photoUrl: string | null): void {
     if (this.photoCache[studentId]?.blobUrl) {

@@ -23,15 +23,15 @@
     
     <!-- Export Menu -->
     <mat-menu #exportMenu="matMenu" class="export-menu">
-      <button mat-menu-item (click)="openExportDialog()">
+      <button mat-menu-item (click)="openExportDialog('excel')">
         <mat-icon class="text-green-600">table_chart</mat-icon>
         <span>Export to Excel</span>
       </button>
-      <button mat-menu-item (click)="openExportDialog()">
+      <button mat-menu-item (click)="openExportDialog('pdf')">
         <mat-icon class="text-red-600">picture_as_pdf</mat-icon>
         <span>Export to PDF</span>
       </button>
-      <button mat-menu-item (click)="openExportDialog()">
+      <button mat-menu-item (click)="openExportDialog('word')">
         <mat-icon class="text-blue-600">description</mat-icon>
         <span>Export to Word</span>
       </button>
