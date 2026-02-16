@@ -17,6 +17,7 @@ import { StudentMedicalComponent } from '../medical/Student-medical.component';
 import { StudentReviewComponent } from '../review/Student-review.component';
 import { EnrollmentStep } from '../../types/EnrollmentStep';
 import { normalizeStudentEnums } from '../../types/Enums';
+import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
 
 // Import centralized enum utilities
 
@@ -28,7 +29,6 @@ import { normalizeStudentEnums } from '../../types/Enums';
     CommonModule,
     MatButtonModule,
     MatIconModule,
-    FuseAlertComponent,
     StudentPersonalInfoComponent,
     StudentLocationComponent,
     StudentAcademicComponent,
@@ -66,7 +66,6 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
   isSaving     = false;
   isSubmitting = false;
   lastSaved: Date | null = null;
-  alert: { type: 'success' | 'error'; message: string } | null = null;
 
   // ─── Lookup data ─────────────────────────────────────────────────
   schools: any[]       = [];
@@ -137,6 +136,7 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
 
   // ──────────────────────────────────────────────────────────────────
   constructor(
+     private alertService: AlertService,
     private studentService: StudentService,
     private router: Router,
     private route: ActivatedRoute,
@@ -186,11 +186,13 @@ private loadExistingStudent(id: string): void {
           this.sectionValid[key] = true;
         });
 
-        this.showAlert('info', 'Editing existing student record');
+         this.alertService.info('Editing existing student record');
+
       },
       error: (err) => {
-        console.error('[Enrollment] Failed to load student:', err);
-        this.showAlert('error', 'Could not load student data.');
+      //  console.error('[Enrollment] Failed to load student:', err);
+       this.alertService.error('Could not load student data.');
+
       },
     });
 }
@@ -309,7 +311,8 @@ private loadExistingStudent(id: string): void {
       this.completedSteps = new Set(draft.completedSteps ?? []);
       this.currentStep   = draft.currentStep ?? 0;
       this.lastSaved     = draft.savedAt ? new Date(draft.savedAt) : null;
-      this.showAlert('info', 'Draft loaded. You can continue where you left off.');
+      this.alertService.info('Draft loaded. You can continue where you left off.');
+
     } catch { /* malformed draft */ }
   }
 
@@ -366,7 +369,8 @@ private loadExistingStudent(id: string): void {
     this.persistDraft();
     setTimeout(() => {
       this.isSaving = false;
-      this.showAlert('success', 'Draft saved locally. You can continue later.');
+         this.alertService.success('Draft saved locally. You can continue later.');
+
     }, 500);
   }
 
@@ -382,19 +386,21 @@ private loadExistingStudent(id: string): void {
       if (this.studentId) {
         // Update existing student
         await this.studentService.update(this.studentId, payload).toPromise();
-        this.showAlert('success', 'Student updated successfully!');
+                this.alertService.success('Student updated successfully!');
       } else {
         // Create new student
         const created: any = await this.studentService.create(payload).toPromise();
         this.studentId = created?.data?.id ?? created?.id;
-        this.showAlert('success', 'Student enrolled successfully!');
+        this.alertService.success('Student enrolled successfully!.');
+
       }
       
       this.clearDraft();
       setTimeout(() => this.router.navigate(['/academic/students']), 1500);
     } catch (err: any) {
       console.error('[Enrollment] Submission error:', err);
-      this.showAlert('error', err?.error?.message || 'Submission failed. Please review and try again.');
+    this.alertService.error(err?.error?.message || 'Submission failed. Please review and try again.');
+
     } finally {
       this.isSubmitting = false;
     }
@@ -470,12 +476,5 @@ allStepsCompleted(): boolean {
     this.router.navigate(['/academic/students']);
   }
 
-  private showAlert(type: 'success' | 'error' | 'info', message: string): void {
-    this.alert = { type: type as 'success' | 'error', message };
-    if (type === 'success' || type === 'info') {
-      setTimeout(() => { 
-        if (this.alert?.type === type) this.alert = null; 
-      }, 3500);
-    }
-  }
+ 
 }

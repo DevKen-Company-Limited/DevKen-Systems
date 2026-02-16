@@ -174,17 +174,7 @@
         </div>
       </header>
 
-      <!-- Alert Banner -->
-      <fuse-alert
-        *ngIf="alert"
-        class="mx-4 sm:mx-6 lg:mx-8 mt-4 sm:mt-6"
-        [type]="alert.type === 'success' ? 'success' : (alert.type === 'error' ? 'error' : 'info')"
-        [appearance]="'soft'"
-        [showIcon]="true"
-        [dismissible]="true"
-        (dismissedChanged)="alert = null">
-        {{ alert.message }}
-      </fuse-alert>
+
 
       <!-- Step Content -->
       <div class="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8" [@stepTransition]="currentStep">

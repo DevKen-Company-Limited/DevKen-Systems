@@ -35,6 +35,7 @@ import {
 import { StudentDto } from './types/studentdto';
 import { BulkPhotoUploadDialogComponent } from 'app/dialog-modals/Student/bulk-photo-upload-dialog';
 import { PhotoViewerDialogComponent } from 'app/dialog-modals/Student/photo-viewer-dialog';
+import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
 
 interface PhotoCacheEntry {
   url: SafeUrl;
@@ -91,6 +92,7 @@ export class StudentsComponent implements OnInit, OnDestroy {
   private _authService = inject(AuthService);
   private _schoolService = inject(SchoolService);
   private _router = inject(Router);
+  private _alertService = inject(AlertService);
 
   breadcrumbs: Breadcrumb[] = [
     { label: 'Dashboard', url: '/dashboard' },
@@ -470,27 +472,27 @@ export class StudentsComponent implements OnInit, OnDestroy {
       );
     }
 
-    forkJoin(requests).pipe(
-      takeUntil(this._unsubscribe),
-      finalize(() => {
-        this.isEnumLoading = false;
-      })
-    ).subscribe({
-      next: (results: any) => {
-        if (results.schools) {
-          this.schools = results.schools.data || [];
-        }
-        
-        this.initializeFilterFields(results.genders, results.studentStatuses, results.cbcLevels);
-        this.loadAll();
-      },
-      error: () => {
-        this._showError('Failed to load configuration data');
-        this.isEnumLoading = false;
-        this.loadAll();
+   forkJoin(requests).pipe(
+    takeUntil(this._unsubscribe),
+    finalize(() => {
+      this.isEnumLoading = false;
+    })
+  ).subscribe({
+    next: (results: any) => {
+      if (results.schools) {
+        this.schools = results.schools.data || [];
       }
-    });
-  }
+      
+      this.initializeFilterFields(results.genders, results.studentStatuses, results.cbcLevels);
+      this.loadAll();
+    },
+    error: () => {
+      this._alertService.error('Failed to load configuration data');
+      this.isEnumLoading = false;
+      this.loadAll();
+    }
+  });
+}
 
   private initializeFilterFields(
     genders: EnumItemDto[], 
@@ -774,34 +776,34 @@ export class StudentsComponent implements OnInit, OnDestroy {
     this._router.navigate(['/academic/students/edit', student.id]);
   }
 
-  bulkUploadPhotos(): void {
-    const dialogRef = this._dialog.open(BulkPhotoUploadDialogComponent, {
-      width: '900px',
-      maxWidth: '95vw',
-      maxHeight: '95vh',
-      disableClose: false,
-      panelClass: 'bulk-photo-upload-dialog',
-    });
+bulkUploadPhotos(): void {
+  const dialogRef = this._dialog.open(BulkPhotoUploadDialogComponent, {
+    width: '900px',
+    maxWidth: '95vw',
+    maxHeight: '95vh',
+    disableClose: false,
+    panelClass: 'bulk-photo-upload-dialog',
+  });
 
-    dialogRef.afterClosed()
-      .pipe(takeUntil(this._unsubscribe))
-      .subscribe((uploaded: boolean) => {
-        if (uploaded) {
-          this._showSuccess('Photos uploaded successfully! Refreshing list...');
-          Object.keys(this.photoCache).forEach(key => {
-            if (this.photoCache[key].blobUrl) {
-              try {
-                URL.revokeObjectURL(this.photoCache[key].blobUrl);
-              } catch (error) {
-                // Silently handle
-              }
+  dialogRef.afterClosed()
+    .pipe(takeUntil(this._unsubscribe))
+    .subscribe((uploaded: boolean) => {
+      if (uploaded) {
+        this._alertService.success('Photos uploaded successfully! Refreshing list...');
+        Object.keys(this.photoCache).forEach(key => {
+          if (this.photoCache[key].blobUrl) {
+            try {
+              URL.revokeObjectURL(this.photoCache[key].blobUrl);
+            } catch (error) {
+              // Silently handle
             }
-          });
-          this.photoCache = {};
-          this.loadAll();
-        }
-      });
-  }
+          }
+        });
+        this.photoCache = {};
+        this.loadAll();
+      }
+    });
+}
 
 viewStudentPhoto(student: StudentDto): void {
   if (!student.photoUrl) {
@@ -859,95 +861,65 @@ toggleActive(student: StudentDto): void {
   const newStatus = !student.isActive;
   const action = newStatus ? 'activate' : 'deactivate';
 
-  const confirmation = this._confirmation.open({
+  this._alertService.confirm({
     title: `${newStatus ? 'Activate' : 'Deactivate'} Student`,
     message: `Are you sure you want to ${action} ${student.fullName}?`,
-    icon: {
-      name: newStatus ? 'check_circle' : 'block',
-      color: newStatus ? 'success' : 'warn',
-    },
-    actions: {
-      confirm: {
-        label: newStatus ? 'Activate' : 'Deactivate',
-        color: newStatus ? 'primary' : 'warn',
-      },
-      cancel: {
-        label: 'Cancel',
-      },
-    },
+    confirmText: newStatus ? 'Activate' : 'Deactivate',
+    onConfirm: () => {
+
+      this._service.toggleStatus(student.id, newStatus)
+        .subscribe({
+          next: (response) => {
+            this._alertService.success(response.message);
+            this.loadAll();
+          },
+          error: (err) => {
+            this._alertService.error(
+              err.error?.message || `Failed to ${action} student`
+            );
+          }
+        });
+
+    }
   });
-
-  confirmation.afterClosed()
-    .pipe(takeUntil(this._unsubscribe))
-    .subscribe(result => {
-      if (result === 'confirmed') {
-
-        this._service.toggleStatus(student.id, newStatus)
-          .pipe(takeUntil(this._unsubscribe))
-          .subscribe({
-            next: (response) => {
-              this._showSuccess(response.message || `Student ${action}d successfully`);
-              this.loadAll();
-            },
-            error: (err) => {
-              this._showError(err.error?.message || `Failed to ${action} student`);
-            }
-          });
-
-      }
-    });
 }
 
 
-  removeStudent(student: StudentDto): void {
-    const confirmation = this._confirmation.open({
-      title: 'Delete Student',
-      message: `Are you sure you want to delete ${student.fullName}? This action cannot be undone.`,
-      icon: {
-        name: 'delete',
-        color: 'warn',
-      },
-      actions: {
-        confirm: {
-          label: 'Delete',
-          color: 'warn',
-        },
-        cancel: {
-          label: 'Cancel',
-        },
-      },
-    });
+removeStudent(student: StudentDto): void {
+  this._alertService.confirm({
+    title: 'Delete Student',
+    message: `Are you sure you want to delete ${student.fullName}? This action cannot be undone.`,
+    confirmText: 'Delete',
+    cancelText: 'Cancel',
+    onConfirm: () => {
+      this._service.delete(student.id)
+        .subscribe({
+          next: () => {
+            this._alertService.success('Student deleted successfully');
 
-    confirmation.afterClosed().pipe(takeUntil(this._unsubscribe)).subscribe(result => {
-      if (result === 'confirmed') {
-        this._service.delete(student.id)
-          .pipe(takeUntil(this._unsubscribe))
-          .subscribe({
-            next: () => {
-              this._showSuccess('Student deleted successfully');
-              
-              if (this.photoCache[student.id]?.blobUrl) {
-                try {
-                  URL.revokeObjectURL(this.photoCache[student.id].blobUrl);
-                } catch (error) {
-                  // Silently handle
-                }
+            if (this.photoCache[student.id]?.blobUrl) {
+              try {
+                URL.revokeObjectURL(this.photoCache[student.id].blobUrl);
+              } catch (error) {
+                // Silently handle
               }
-              delete this.photoCache[student.id];
-              
-              if (this.paginatedData.length === 0 && this.currentPage > 1) {
-                this.currentPage--;
-              }
-              
-              this.loadAll();
-            },
-            error: (err) => {
-              this._showError(err.error?.message || 'Failed to delete student');
             }
-          });
-      }
-    });
-  }
+            delete this.photoCache[student.id];
+
+            if (this.paginatedData.length === 0 && this.currentPage > 1) {
+              this.currentPage--;
+            }
+
+            this.loadAll();
+          },
+          error: (err) => {
+            this._alertService.error(err.error?.message || 'Failed to delete student');
+          }
+        });
+    }
+  });
+}
+
 
   uploadPhoto(student: StudentDto): void {
     this._photoTargetStudent = student;
@@ -955,36 +927,35 @@ toggleActive(student: StudentDto): void {
     this.photoInputRef.nativeElement.click();
   }
 
-  onPhotoFileSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (!input.files?.length || !this._photoTargetStudent) return;
-    
-    const file = input.files[0];
-    
-    if (file.size > 5 * 1024 * 1024) {
-      this._showError('File size must be less than 5MB');
-      return;
-    }
-
-    if (!file.type.startsWith('image/')) {
-      this._showError('File must be an image');
-      return;
-    }
-
-    this._service.uploadPhoto(this._photoTargetStudent.id, file)
-      .pipe(takeUntil(this._unsubscribe))
-      .subscribe({
-        next: () => {
-          this._showSuccess('Photo uploaded successfully');
-          this.clearAndReloadImage(this._photoTargetStudent!.id, this._photoTargetStudent!.photoUrl || '');
-          this.loadAll();
-        },
-        error: (err) => {
-          this._showError(err.error?.message || 'Failed to upload photo');
-        }
-      });
+onPhotoFileSelected(event: Event): void {
+  const input = event.target as HTMLInputElement;
+  if (!input.files?.length || !this._photoTargetStudent) return;
+  
+  const file = input.files[0];
+  
+  if (file.size > 5 * 1024 * 1024) {
+    this._alertService.error('File size must be less than 5MB');
+    return;
   }
 
+  if (!file.type.startsWith('image/')) {
+    this._alertService.error('File must be an image');
+    return;
+  }
+
+  this._service.uploadPhoto(this._photoTargetStudent.id, file)
+    .pipe(takeUntil(this._unsubscribe))
+    .subscribe({
+      next: () => {
+        this._alertService.success('Photo uploaded successfully');
+        this.clearAndReloadImage(this._photoTargetStudent!.id, this._photoTargetStudent!.photoUrl || '');
+        this.loadAll();
+      },
+      error: (err) => {
+        this._alertService.error(err.error?.message || 'Failed to upload photo');
+      }
+    });
+}
   private _showSuccess(message: string): void {
     this._snackBar.open(message, 'Close', { 
       duration: 3000, 
