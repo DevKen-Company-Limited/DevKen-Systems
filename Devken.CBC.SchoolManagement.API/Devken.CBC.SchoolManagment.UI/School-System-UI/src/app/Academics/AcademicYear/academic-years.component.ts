@@ -4,11 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
-import { FuseConfirmationService } from '@fuse/services/confirmation';
+
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { AcademicYearService } from 'app/core/DevKenService/AcademicYearService/AcademicYearService';
@@ -27,6 +26,7 @@ import {
   TableHeader, 
   TableEmptyState 
 } from 'app/shared/data-table/data-table.component';
+import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
 
 @Component({
   selector: 'app-academic-years',
@@ -37,7 +37,6 @@ import {
     MatIconModule,
     MatButtonModule,
     MatDialogModule,
-    MatSnackBarModule,
     MatMenuModule,
     MatProgressSpinnerModule,
     MatDividerModule,
@@ -249,8 +248,7 @@ export class AcademicYearsComponent implements OnInit, OnDestroy, AfterViewInit 
   constructor(
     private _service: AcademicYearService,
     private _dialog: MatDialog,
-    private _snackBar: MatSnackBar,
-    private _confirmation: FuseConfirmationService,
+    private _alertService: AlertService,
   ) {}
 
   ngOnInit(): void {
@@ -361,7 +359,7 @@ export class AcademicYearsComponent implements OnInit, OnDestroy, AfterViewInit 
         },
         error: (error) => {
           console.error('Failed to load academic years', error);
-          this._showError('Failed to load academic years');
+          this._alertService.error('Failed to load academic years');
           this.isLoading = false;
         }
       });
@@ -402,13 +400,13 @@ export class AcademicYearsComponent implements OnInit, OnDestroy, AfterViewInit 
             .subscribe({
               next: (response) => {
                 if (response.success) {
-                  this._showSuccess('Academic year created successfully');
+                  this._alertService.success('Academic year created successfully');
                   this.loadAll();
                 }
               },
               error: (error) => {
                 console.error('Failed to create academic year', error);
-                this._showError(error.error?.message || 'Failed to create academic year');
+                this._alertService.error(error.error?.message || 'Failed to create academic year');
               }
             });
         }
@@ -417,7 +415,7 @@ export class AcademicYearsComponent implements OnInit, OnDestroy, AfterViewInit 
 
   openEdit(academicYear: AcademicYearDto): void {
     if (academicYear.isClosed) {
-      this._showError('Cannot edit a closed academic year');
+      this._alertService.error('Cannot edit a closed academic year');
       return;
     }
 
@@ -435,13 +433,13 @@ export class AcademicYearsComponent implements OnInit, OnDestroy, AfterViewInit 
             .subscribe({
               next: (response) => {
                 if (response.success) {
-                  this._showSuccess('Academic year updated successfully');
+                  this._alertService.success('Academic year updated successfully');
                   this.loadAll();
                 }
               },
               error: (error) => {
                 console.error('Failed to update academic year', error);
-                this._showError(error.error?.message || 'Failed to update academic year');
+                this._alertService.error(error.error?.message || 'Failed to update academic year');
               }
             });
         }
@@ -449,145 +447,82 @@ export class AcademicYearsComponent implements OnInit, OnDestroy, AfterViewInit 
   }
 
   setAsCurrent(academicYear: AcademicYearDto): void {
-    const confirmation = this._confirmation.open({
+    this._alertService.confirm({
       title: 'Set as Current',
       message: `Are you sure you want to set "${academicYear.name}" as the current academic year? This will unset any other current academic year.`,
-      icon: {
-        name: 'check_circle',
-        color: 'success',
-      },
-      actions: {
-        confirm: {
-          label: 'Set as Current',
-          color: 'primary',
-        },
-        cancel: {
-          label: 'Cancel',
-        },
-      },
-    });
-
-    confirmation.afterClosed()
-      .pipe(takeUntil(this._unsubscribe))
-      .subscribe((result) => {
-        if (result === 'confirmed') {
-          this._service.setAsCurrent(academicYear.id)
-            .pipe(takeUntil(this._unsubscribe))
-            .subscribe({
-              next: (response) => {
-                if (response.success) {
-                  this._showSuccess('Academic year set as current');
-                  this.loadAll();
-                }
-              },
-              error: (error) => {
-                console.error('Failed to set academic year as current', error);
-                this._showError(error.error?.message || 'Failed to set as current');
+      confirmText: 'Set as Current',
+      cancelText: 'Cancel',
+      onConfirm: () => {
+        this._service.setAsCurrent(academicYear.id)
+          .pipe(takeUntil(this._unsubscribe))
+          .subscribe({
+            next: (response) => {
+              if (response.success) {
+                this._alertService.success('Academic year set as current');
+                this.loadAll();
               }
-            });
-        }
-      });
+            },
+            error: (error) => {
+              console.error('Failed to set academic year as current', error);
+              this._alertService.error(error.error?.message || 'Failed to set as current');
+            }
+          });
+      }
+    });
   }
 
   closeYear(academicYear: AcademicYearDto): void {
-    const confirmation = this._confirmation.open({
+    this._alertService.confirm({
       title: 'Close Academic Year',
       message: `Are you sure you want to close "${academicYear.name}"? This action cannot be undone and the year will no longer be editable.`,
-      icon: {
-        name: 'lock',
-        color: 'warn',
-      },
-      actions: {
-        confirm: {
-          label: 'Close Year',
-          color: 'warn',
-        },
-        cancel: {
-          label: 'Cancel',
-        },
-      },
-    });
-
-    confirmation.afterClosed()
-      .pipe(takeUntil(this._unsubscribe))
-      .subscribe((result) => {
-        if (result === 'confirmed') {
-          this._service.close(academicYear.id)
-            .pipe(takeUntil(this._unsubscribe))
-            .subscribe({
-              next: (response) => {
-                if (response.success) {
-                  this._showSuccess('Academic year closed successfully');
-                  this.loadAll();
-                }
-              },
-              error: (error) => {
-                console.error('Failed to close academic year', error);
-                this._showError(error.error?.message || 'Failed to close academic year');
+      confirmText: 'Close Year',
+      cancelText: 'Cancel',
+      onConfirm: () => {
+        this._service.close(academicYear.id)
+          .pipe(takeUntil(this._unsubscribe))
+          .subscribe({
+            next: (response) => {
+              if (response.success) {
+                this._alertService.success('Academic year closed successfully');
+                this.loadAll();
               }
-            });
-        }
-      });
+            },
+            error: (error) => {
+              console.error('Failed to close academic year', error);
+              this._alertService.error(error.error?.message || 'Failed to close academic year');
+            }
+          });
+      }
+    });
   }
 
   removeAcademicYear(academicYear: AcademicYearDto): void {
-    const confirmation = this._confirmation.open({
+    this._alertService.confirm({
       title: 'Delete Academic Year',
       message: `Are you sure you want to delete "${academicYear.name}"? This action cannot be undone.`,
-      icon: {
-        name: 'delete',
-        color: 'warn',
-      },
-      actions: {
-        confirm: {
-          label: 'Delete',
-          color: 'warn',
-        },
-        cancel: {
-          label: 'Cancel',
-        },
-      },
-    });
-
-    confirmation.afterClosed()
-      .pipe(takeUntil(this._unsubscribe))
-      .subscribe((result) => {
-        if (result === 'confirmed') {
-          this._service.delete(academicYear.id)
-            .pipe(takeUntil(this._unsubscribe))
-            .subscribe({
-              next: (response) => {
-                if (response.success) {
-                  this._showSuccess('Academic year deleted successfully');
-                  
-                  if (this.paginatedData.length === 0 && this.currentPage > 1) {
-                    this.currentPage--;
-                  }
-                  
-                  this.loadAll();
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      onConfirm: () => {
+        this._service.delete(academicYear.id)
+          .pipe(takeUntil(this._unsubscribe))
+          .subscribe({
+            next: (response) => {
+              if (response.success) {
+                this._alertService.success('Academic year deleted successfully');
+                
+                if (this.paginatedData.length === 0 && this.currentPage > 1) {
+                  this.currentPage--;
                 }
-              },
-              error: (error) => {
-                console.error('Failed to delete academic year', error);
-                this._showError(error.error?.message || 'Failed to delete academic year');
+                
+                this.loadAll();
               }
-            });
-        }
-      });
-  }
-
-  // ── Notifications ────────────────────────────────────────────────────────────
-  private _showSuccess(message: string): void {
-    this._snackBar.open(message, 'Close', {
-      duration: 3000,
-      panelClass: ['bg-green-600', 'text-white']
-    });
-  }
-
-  private _showError(message: string): void {
-    this._snackBar.open(message, 'Close', {
-      duration: 5000,
-      panelClass: ['bg-red-600', 'text-white']
+            },
+            error: (error) => {
+              console.error('Failed to delete academic year', error);
+              this._alertService.error(error.error?.message || 'Failed to delete academic year');
+            }
+          });
+      }
     });
   }
 }
