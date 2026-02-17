@@ -8,6 +8,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 import { FuseConfirmationService } from '@fuse/services/confirmation';
@@ -15,14 +16,11 @@ import { Observable, of, Subject, forkJoin } from 'rxjs';
 import { catchError, takeUntil, map, finalize } from 'rxjs/operators';
 import { EnumItemDto, EnumService } from 'app/core/DevKenService/common/enum.service';
 import { StudentService } from 'app/core/DevKenService/administration/students/StudentService';
-
 import { API_BASE_URL } from 'app/app.config';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from 'app/core/auth/auth.service';
 import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
 import { SchoolDto } from 'app/Tenant/types/school';
-
-// Import reusable components
 import { PageHeaderComponent, Breadcrumb } from 'app/shared/Page-Header/page-header.component';
 import { FilterPanelComponent, FilterField, FilterChangeEvent } from 'app/shared/Filter/filter-panel.component';
 import { PaginationComponent } from 'app/shared/pagination/pagination.component';
@@ -35,6 +33,11 @@ import {
   TableEmptyState 
 } from 'app/shared/data-table/data-table.component';
 import { StudentDto } from './types/studentdto';
+import { BulkPhotoUploadDialogComponent } from 'app/dialog-modals/Student/bulk-photo-upload-dialog';
+import { PhotoViewerDialogComponent } from 'app/dialog-modals/Student/photo-viewer-dialog';
+import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
+import { ExportConfig, ExportStudentsDialogComponent } from 'app/dialog-modals/Student/export-students-dialog.component';
+import { SchoolHeaderInfo, StudentExportService } from 'app/core/DevKenService/administration/students/StudentExportService ';
 
 interface PhotoCacheEntry {
   url: SafeUrl;
@@ -65,7 +68,7 @@ interface EnumMaps {
     MatMenuModule,
     MatProgressSpinnerModule,
     MatDividerModule,
-    // Reusable components
+    MatTooltipModule,
     PageHeaderComponent,
     FilterPanelComponent,
     PaginationComponent,
@@ -91,15 +94,16 @@ export class StudentsComponent implements OnInit, OnDestroy {
   private _authService = inject(AuthService);
   private _schoolService = inject(SchoolService);
   private _router = inject(Router);
+  private _studentExportService = inject(StudentExportService);
 
-  // ── Breadcrumbs ──────────────────────────────────────────────────────────────
+  private _alertService = inject(AlertService);
+
   breadcrumbs: Breadcrumb[] = [
     { label: 'Dashboard', url: '/dashboard' },
     { label: 'Academic', url: '/academic' },
     { label: 'Students' }
   ];
 
-  // ── SuperAdmin State ──────────────────────────────────────────────────────────
   get isSuperAdmin(): boolean {
     return this._authService.authUser?.isSuperAdmin ?? false;
   }
@@ -111,7 +115,6 @@ export class StudentsComponent implements OnInit, OnDestroy {
     return uniqueSchools.size;
   }
 
-  // ── Stats Cards Configuration ────────────────────────────────────────────────
   get statsCards(): StatCard[] {
     const baseCards: StatCard[] = [
       {
@@ -152,7 +155,6 @@ export class StudentsComponent implements OnInit, OnDestroy {
     return baseCards;
   }
 
-  // ── Table Configuration ──────────────────────────────────────────────────────
   get tableColumns(): TableColumn<StudentDto>[] {
     const baseColumns: TableColumn<StudentDto>[] = [
       {
@@ -274,19 +276,14 @@ export class StudentsComponent implements OnInit, OnDestroy {
   };
 
   cellTemplates: { [key: string]: TemplateRef<any> } = {};
-
-  // ── Filter Fields Configuration ──────────────────────────────────────────────
   filterFields: FilterField[] = [];
   showFilterPanel = false;
-
-  // ── State ────────────────────────────────────────────────────────────────────
   allData: StudentDto[] = [];
   isLoading = false;
   isEnumLoading = true;
   photoCache: { [key: string]: PhotoCacheEntry } = {};
   private _photoTargetStudent: StudentDto | null = null;
 
-  // ── Filter Values ────────────────────────────────────────────────────────────
   private _filterValues = {
     search: '',
     status: 'all',
@@ -296,11 +293,9 @@ export class StudentsComponent implements OnInit, OnDestroy {
     schoolId: 'all',
   };
 
-  // ── Pagination ───────────────────────────────────────────────────────────────
   currentPage = 1;
   itemsPerPage = 10;
 
-  // ── Enum Observables and Maps ────────────────────────────────────────────────
   genders$!: Observable<EnumItemDto[]>;
   studentStatuses$!: Observable<EnumItemDto[]>;
   cbcLevels$!: Observable<EnumItemDto[]>;
@@ -314,7 +309,6 @@ export class StudentsComponent implements OnInit, OnDestroy {
     cbcLevelNameToValue: new Map<string, number>()
   };
 
-  // ── Computed Stats ───────────────────────────────────────────────────────────
   get total(): number { 
     return this.allData.length; 
   }
@@ -343,7 +337,6 @@ export class StudentsComponent implements OnInit, OnDestroy {
     }).length; 
   }
 
-  // ── Filtered Data ─────────────────────────────────────────────────────────────
   get filteredData(): StudentDto[] {
     return this.allData.filter(s => {
       const q = this._filterValues.search.toLowerCase();
@@ -382,7 +375,6 @@ export class StudentsComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ── Pagination Helpers ────────────────────────────────────────────────────────
   get paginatedData(): StudentDto[] {
     const start = (this.currentPage - 1) * this.itemsPerPage;
     return this.filteredData.slice(start, start + this.itemsPerPage);
@@ -418,12 +410,15 @@ export class StudentsComponent implements OnInit, OnDestroy {
     
     Object.values(this.photoCache).forEach(entry => {
       if (entry.blobUrl) {
-        URL.revokeObjectURL(entry.blobUrl);
+        try {
+          URL.revokeObjectURL(entry.blobUrl);
+        } catch (error) {
+          // Silently handle
+        }
       }
     });
   }
 
-  // ── Enum Loading and Mapping ─────────────────────────────────────────────────
   private loadEnumsAndInit(): void {
     this.isEnumLoading = true;
     
@@ -477,37 +472,32 @@ export class StudentsComponent implements OnInit, OnDestroy {
 
     if (this.isSuperAdmin) {
       requests.schools = this._schoolService.getAll().pipe(
-        catchError(err => {
-          console.error('Failed to load schools:', err);
-          return of({ success: false, message: '', data: [] });
-        })
+        catchError(() => of({ success: false, message: '', data: [] }))
       );
     }
 
-    forkJoin(requests).pipe(
-      takeUntil(this._unsubscribe),
-      finalize(() => {
-        this.isEnumLoading = false;
-      })
-    ).subscribe({
-      next: (results: any) => {
-        if (results.schools) {
-          this.schools = results.schools.data || [];
-        }
-        
-        this.initializeFilterFields(results.genders, results.studentStatuses, results.cbcLevels);
-        this.loadAll();
-      },
-      error: (error) => {
-        console.error('Failed to load enums:', error);
-        this._showError('Failed to load configuration data');
-        this.isEnumLoading = false;
-        this.loadAll();
+   forkJoin(requests).pipe(
+    takeUntil(this._unsubscribe),
+    finalize(() => {
+      this.isEnumLoading = false;
+    })
+  ).subscribe({
+    next: (results: any) => {
+      if (results.schools) {
+        this.schools = results.schools.data || [];
       }
-    });
-  }
+      
+      this.initializeFilterFields(results.genders, results.studentStatuses, results.cbcLevels);
+      this.loadAll();
+    },
+    error: () => {
+      this._alertService.error('Failed to load configuration data');
+      this.isEnumLoading = false;
+      this.loadAll();
+    }
+  });
+}
 
-  // ── Initialize Filter Fields ─────────────────────────────────────────────────
   private initializeFilterFields(
     genders: EnumItemDto[], 
     statuses: EnumItemDto[], 
@@ -584,7 +574,6 @@ export class StudentsComponent implements OnInit, OnDestroy {
     );
   }
 
-  // ── Helper Methods for Display ───────────────────────────────────────────────
   getGenderName(value: string | number | undefined): string {
     if (value === undefined || value === null) return '—';
     
@@ -618,7 +607,6 @@ export class StudentsComponent implements OnInit, OnDestroy {
     return this.enumMaps.studentStatusValueToName.get(numValue) || value.toString();
   }
 
-  // ── Filter Handlers ──────────────────────────────────────────────────────────
   toggleFilterPanel(): void {
     this.showFilterPanel = !this.showFilterPanel;
   }
@@ -653,7 +641,6 @@ export class StudentsComponent implements OnInit, OnDestroy {
     this.loadAll();
   }
 
-  // ── Pagination Handlers ──────────────────────────────────────────────────────
   onPageChange(page: number): void {
     this.currentPage = page;
   }
@@ -663,82 +650,196 @@ export class StudentsComponent implements OnInit, OnDestroy {
     this.currentPage = 1;
   }
 
-  // ── Image Loading ────────────────────────────────────────────────────────────
-  private loadStudentPhoto(studentId: string, photoUrl: string): void {
-    if (!this.photoCache[studentId]) {
-      this.photoCache[studentId] = {
-        url: null!,
-        blobUrl: '',
-        isLoading: true,
-        error: false
-      };
-    } else {
-      this.photoCache[studentId].isLoading = true;
-      this.photoCache[studentId].error = false;
-    }
-
-    const url = photoUrl.startsWith('http')
-      ? photoUrl
-      : `${this._apiBaseUrl}${photoUrl}`;
-
-    const token = this._authService.accessToken;
-    const headers = token ? new HttpHeaders().set('Authorization', `Bearer ${token}`) : undefined;
-    const authUrl = token ? `${url}?token=${token}` : url;
-
-    this._http.get(authUrl, { 
-      responseType: 'blob',
-      headers 
-    }).pipe(
-      takeUntil(this._unsubscribe),
-      catchError((error) => {
-        console.error(`Failed to load photo for student ${studentId}:`, error);
+  private loadStudentPhoto(studentId: string, photoUrl: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.photoCache[studentId]) {
         this.photoCache[studentId] = {
-          ...this.photoCache[studentId],
-          isLoading: false,
-          error: true
-        };
-        return of(null);
-      })
-    ).subscribe(blob => {
-      if (blob) {
-        if (this.photoCache[studentId]?.blobUrl) {
-          URL.revokeObjectURL(this.photoCache[studentId].blobUrl);
-        }
-
-        const blobUrl = URL.createObjectURL(blob);
-        const safeUrl = this._sanitizer.bypassSecurityTrustUrl(blobUrl);
-        
-        this.photoCache[studentId] = {
-          url: safeUrl,
-          blobUrl: blobUrl,
-          isLoading: false,
+          url: null!,
+          blobUrl: '',
+          isLoading: true,
           error: false
         };
+      } else {
+        this.photoCache[studentId].isLoading = true;
+        this.photoCache[studentId].error = false;
       }
+
+      const url = photoUrl.startsWith('http')
+        ? photoUrl
+        : `${this._apiBaseUrl}${photoUrl}`;
+
+      const token = this._authService.accessToken;
+      const headers = token ? new HttpHeaders().set('Authorization', `Bearer ${token}`) : undefined;
+
+      this._http.get(url, { 
+        responseType: 'blob',
+        headers 
+      }).pipe(
+        takeUntil(this._unsubscribe),
+        catchError(() => {
+          this.photoCache[studentId] = {
+            url: null!,
+            blobUrl: '',
+            isLoading: false,
+            error: true
+          };
+          reject(new Error('Failed to load photo'));
+          return of(null);
+        })
+      ).subscribe(blob => {
+        if (blob && blob.size > 0) {
+          if (this.photoCache[studentId]?.blobUrl) {
+            try {
+              URL.revokeObjectURL(this.photoCache[studentId].blobUrl);
+            } catch (error) {
+              // Silently handle
+            }
+          }
+
+          const blobUrl = URL.createObjectURL(blob);
+          const safeUrl = this._sanitizer.bypassSecurityTrustUrl(blobUrl);
+          
+          this.photoCache[studentId] = {
+            url: safeUrl,
+            blobUrl: blobUrl,
+            isLoading: false,
+            error: false
+          };
+          
+          resolve();
+        } else {
+          this.photoCache[studentId] = {
+            url: null!,
+            blobUrl: '',
+            isLoading: false,
+            error: true
+          };
+          reject(new Error('Invalid blob received'));
+        }
+      });
     });
   }
 
   private preloadVisibleImages(): void {
     this.paginatedData.forEach(student => {
-      if (student.photoUrl && !this.photoCache[student.id]?.url) {
-        this.loadStudentPhoto(student.id, student.photoUrl);
+      if (student.photoUrl && !this.photoCache[student.id]?.blobUrl && !this.photoCache[student.id]?.isLoading) {
+        this.loadStudentPhoto(student.id, student.photoUrl).catch(() => {
+          // Silently handle preload errors
+        });
       }
     });
   }
+openExportDialog(format?: 'excel' | 'pdf' | 'word'): void {
+  const dialogRef = this._dialog.open(ExportStudentsDialogComponent, {
+    width: '800px',
+    maxWidth: '95vw',
+    maxHeight: '90vh',
+    disableClose: false,
+    panelClass: 'export-students-dialog',
+    data: {
+      filteredStudentCount: this.filteredData.length,
+      totalStudentCount: this.allData.length,
+      hasActiveFilters: this.hasActiveFilters(),
+      preSelectedFormat: format // Pass the pre-selected format
+    }
+  });
+
+  dialogRef.afterClosed()
+    .pipe(takeUntil(this._unsubscribe))
+    .subscribe((config: ExportConfig) => {
+      if (config) {
+        this.performExport(config);
+      }
+    });
+}
+
+private hasActiveFilters(): boolean {
+  return (
+    this._filterValues.search !== '' ||
+    this._filterValues.status !== 'all' ||
+    this._filterValues.gender !== 'all' ||
+    this._filterValues.cbcLevel !== 'all' ||
+    this._filterValues.studentStatus !== 'all' ||
+    (this.isSuperAdmin && this._filterValues.schoolId !== 'all')
+  );
+}
+
+/**
+ * Perform the actual export with progress feedback
+ */
+private performExport(config: ExportConfig): void {
+  // Show loading indicator with student count
+  const studentCount = this.filteredData.length;
+  const filterInfo = this.hasActiveFilters() ? ' (filtered)' : '';
+  this._alertService.info(`Preparing to export ${studentCount} student${studentCount !== 1 ? 's' : ''}${filterInfo}...`);
+
+  // Get school information for header
+  const schoolInfo: SchoolHeaderInfo = {
+    schoolName: this.schools.length === 1
+      ? this.schools[0].name
+      : (this.isSuperAdmin && this._filterValues.schoolId !== 'all'
+          ? this.schools.find(s => s.id === this._filterValues.schoolId)?.name || 'Multiple Schools'
+          : 'School Management System'),
+    schoolAddress: this.schools.length === 1 ? this.schools[0].address : undefined,
+    schoolPhone: this.schools.length === 1 ? this.schools[0].phone : undefined,
+    schoolEmail: this.schools.length === 1 ? this.schools[0].email : undefined,
+    schoolMotto: this.schools.length === 1 ? this.schools[0].motto : undefined,
+    schoolLogo: this.schools.length === 1 ? this.schools[0].logoUrl : undefined,
+  };
+
+  // Use filtered data for export (respects current filters)
+  const dataToExport = this.filteredData;
+
+  if (!dataToExport || dataToExport.length === 0) {
+    this._alertService.warning('No students to export with current filters');
+    return;
+  }
+
+  // Show progress for large exports
+  if (dataToExport.length > 100) {
+    this._alertService.info(`Processing ${dataToExport.length} students. This may take a moment...`);
+  }
+
+  this._studentExportService
+    .exportStudents(dataToExport, config, schoolInfo, this.enumMaps)
+    .pipe(takeUntil(this._unsubscribe))
+    .subscribe({
+      next: (result) => {
+        if (result.success) {
+          const filterNote = this.hasActiveFilters() ? ' (filtered)' : '';
+          this._alertService.success(
+            `Successfully exported ${dataToExport.length} student${dataToExport.length !== 1 ? 's' : ''}${filterNote} to ${config.format.toUpperCase()}`
+          );
+        }
+      },
+      error: (err) => {
+        this._alertService.error(
+          err?.message || 'Failed to export students'
+        );
+      }
+    });
+}
 
   private clearAndReloadImage(studentId: string, photoUrl: string | null): void {
     if (this.photoCache[studentId]?.blobUrl) {
-      URL.revokeObjectURL(this.photoCache[studentId].blobUrl);
+      try {
+        URL.revokeObjectURL(this.photoCache[studentId].blobUrl);
+      } catch (error) {
+        // Silently handle
+      }
     }
     
     delete this.photoCache[studentId];
 
     if (photoUrl) {
-      this.loadStudentPhoto(studentId, photoUrl);
+      setTimeout(() => {
+        this.loadStudentPhoto(studentId, photoUrl).catch(() => {
+          // Silently handle reload errors
+        });
+      }, 100);
     }
   }
 
-  // ── Data Loading ──────────────────────────────────────────────────────────────
   loadAll(schoolId?: string | null): void {
     this.isLoading = true;
     this._service.getAll(schoolId || undefined)
@@ -751,114 +852,168 @@ export class StudentsComponent implements OnInit, OnDestroy {
           this.isLoading = false;
         },
         error: (err) => {
-          console.error('Failed to load students:', err);
           this.isLoading = false;
           this._showError(err.error?.message || 'Failed to load students');
         }
       });
   }
 
-  // ── Actions ──────────────────────────────────────────────────────────────────
   enrollStudent(): void {
     this._router.navigate(['/academic/students/enroll']);
   }
 
   viewStudent(student: StudentDto): void {
-    this._router.navigate(['/academic/students', student.id]);
+    this._router.navigate(['/academic/students/details', student.id]);
   }
 
   editStudent(student: StudentDto): void {
     this._router.navigate(['/academic/students/edit', student.id]);
   }
 
-  toggleActive(student: StudentDto): void {
-    const newStatus = !student.isActive;
-    const action = newStatus ? 'activate' : 'deactivate';
+bulkUploadPhotos(): void {
+  const dialogRef = this._dialog.open(BulkPhotoUploadDialogComponent, {
+    width: '900px',
+    maxWidth: '95vw',
+    maxHeight: '95vh',
+    disableClose: false,
+    panelClass: 'bulk-photo-upload-dialog',
+  });
+
+  dialogRef.afterClosed()
+    .pipe(takeUntil(this._unsubscribe))
+    .subscribe((uploaded: boolean) => {
+      if (uploaded) {
+        this._alertService.success('Photos uploaded successfully! Refreshing list...');
+        Object.keys(this.photoCache).forEach(key => {
+          if (this.photoCache[key].blobUrl) {
+            try {
+              URL.revokeObjectURL(this.photoCache[key].blobUrl);
+            } catch (error) {
+              // Silently handle
+            }
+          }
+        });
+        this.photoCache = {};
+        this.loadAll();
+      }
+    });
+}
+
+viewStudentPhoto(student: StudentDto): void {
+  if (!student.photoUrl) {
+    this._showError('No photo available for this student');
+    return;
+  }
+
+  // Build full backend URL
+  const backendUrl = student.photoUrl.startsWith('http')
+    ? student.photoUrl
+    : `${this._apiBaseUrl}${student.photoUrl}`;
+
+  // Get auth token from auth service
+  const token = this._authService.accessToken;
+
+  // Open the photo viewer dialog
+  this._dialog.open(PhotoViewerDialogComponent, {
+    disableClose: false,
+    data: {
+      photoUrl: backendUrl,              // Backend URL, not a blob
+      studentName: student.fullName,
+      admissionNumber: student.admissionNumber,
+      authToken: token,                  // Optional, for authorization
+      additionalInfo: [
+        this.getGenderName(student.gender),
+        this.getCBCLevelName(student.cbcLevel),
+        student.currentLevel || 'N/A'
+      ].join(' • ')
+    }
+  });
+}
+
+
+  getPhotoTooltip(student: StudentDto): string {
+    const cache = this.photoCache[student.id];
     
-    const confirmation = this._confirmation.open({
-      title: `${newStatus ? 'Activate' : 'Deactivate'} Student`,
-      message: `Are you sure you want to ${action} ${student.fullName}?`,
-      icon: {
-        name: newStatus ? 'check_circle' : 'block',
-        color: newStatus ? 'success' : 'warn',
-      },
-      actions: {
-        confirm: {
-          label: newStatus ? 'Activate' : 'Deactivate',
-          color: newStatus ? 'primary' : 'warn',
-        },
-        cancel: {
-          label: 'Cancel',
-        },
-      },
-    });
-
-    confirmation.afterClosed().pipe(takeUntil(this._unsubscribe)).subscribe(result => {
-      if (result === 'confirmed') {
-        const payload: Partial<StudentDto> = { isActive: newStatus };
-        
-        this._service.updatePartial(student.id, payload)
-          .pipe(takeUntil(this._unsubscribe))
-          .subscribe({
-            next: () => {
-              this._showSuccess(`Student ${action}d successfully`);
-              this.loadAll();
-            },
-            error: (err) => {
-              console.error('Failed to update student status:', err);
-              this._showError(err.error?.message || `Failed to ${action} student`);
-            }
-          });
-      }
-    });
+    if (!cache) {
+      return student.photoUrl ? 'Loading...' : 'No photo';
+    }
+    
+    if (cache.isLoading) return 'Loading...';
+    if (cache.error) return 'Failed to load. Click to retry.';
+    if (cache.blobUrl) return 'Click to view';
+    
+    return 'No photo';
   }
 
-  removeStudent(student: StudentDto): void {
-    const confirmation = this._confirmation.open({
-      title: 'Delete Student',
-      message: `Are you sure you want to delete ${student.fullName}? This action cannot be undone.`,
-      icon: {
-        name: 'delete',
-        color: 'warn',
-      },
-      actions: {
-        confirm: {
-          label: 'Delete',
-          color: 'warn',
-        },
-        cancel: {
-          label: 'Cancel',
-        },
-      },
-    });
+  retryPhotoLoad(student: StudentDto): void {
+    if (student.photoUrl) {
+      this.clearAndReloadImage(student.id, student.photoUrl);
+    }
+  }
 
-    confirmation.afterClosed().pipe(takeUntil(this._unsubscribe)).subscribe(result => {
-      if (result === 'confirmed') {
-        this._service.delete(student.id)
-          .pipe(takeUntil(this._unsubscribe))
-          .subscribe({
-            next: () => {
-              this._showSuccess('Student deleted successfully');
-              
-              if (this.photoCache[student.id]?.blobUrl) {
+toggleActive(student: StudentDto): void {
+  const newStatus = !student.isActive;
+  const action = newStatus ? 'activate' : 'deactivate';
+
+  this._alertService.confirm({
+    title: `${newStatus ? 'Activate' : 'Deactivate'} Student`,
+    message: `Are you sure you want to ${action} ${student.fullName}?`,
+    confirmText: newStatus ? 'Activate' : 'Deactivate',
+    onConfirm: () => {
+
+      this._service.toggleStatus(student.id, newStatus)
+        .subscribe({
+          next: (response) => {
+            this._alertService.success(response.message);
+            this.loadAll();
+          },
+          error: (err) => {
+            this._alertService.error(
+              err.error?.message || `Failed to ${action} student`
+            );
+          }
+        });
+
+    }
+  });
+}
+
+
+removeStudent(student: StudentDto): void {
+  this._alertService.confirm({
+    title: 'Delete Student',
+    message: `Are you sure you want to delete ${student.fullName}? This action cannot be undone.`,
+    confirmText: 'Delete',
+    cancelText: 'Cancel',
+    onConfirm: () => {
+      this._service.delete(student.id)
+        .subscribe({
+          next: () => {
+            this._alertService.success('Student deleted successfully');
+
+            if (this.photoCache[student.id]?.blobUrl) {
+              try {
                 URL.revokeObjectURL(this.photoCache[student.id].blobUrl);
+              } catch (error) {
+                // Silently handle
               }
-              delete this.photoCache[student.id];
-              
-              if (this.paginatedData.length === 0 && this.currentPage > 1) {
-                this.currentPage--;
-              }
-              
-              this.loadAll();
-            },
-            error: (err) => {
-              console.error('Failed to delete student:', err);
-              this._showError(err.error?.message || 'Failed to delete student');
             }
-          });
-      }
-    });
-  }
+            delete this.photoCache[student.id];
+
+            if (this.paginatedData.length === 0 && this.currentPage > 1) {
+              this.currentPage--;
+            }
+
+            this.loadAll();
+          },
+          error: (err) => {
+            this._alertService.error(err.error?.message || 'Failed to delete student');
+          }
+        });
+    }
+  });
+}
+
 
   uploadPhoto(student: StudentDto): void {
     this._photoTargetStudent = student;
@@ -866,32 +1021,35 @@ export class StudentsComponent implements OnInit, OnDestroy {
     this.photoInputRef.nativeElement.click();
   }
 
-  onPhotoFileSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (!input.files?.length || !this._photoTargetStudent) return;
-    
-    const file = input.files[0];
-    
-    if (file.size > 5 * 1024 * 1024) {
-      this._showError('File size must be less than 5MB');
-      return;
-    }
-
-    if (!file.type.startsWith('image/')) {
-      this._showError('File must be an image');
-      return;
-    }
-
-    // For students, we'd need a photo upload endpoint in the service
-    // this._uploadPhoto(this._photoTargetStudent.id, file, () => {
-    //   this._showSuccess('Photo uploaded successfully');
-    //   this.clearAndReloadImage(this._photoTargetStudent!.id, this._photoTargetStudent!.photoUrl || '');
-    //   this.loadAll();
-    // });
-    
-    this._showError('Photo upload not yet implemented for students');
+onPhotoFileSelected(event: Event): void {
+  const input = event.target as HTMLInputElement;
+  if (!input.files?.length || !this._photoTargetStudent) return;
+  
+  const file = input.files[0];
+  
+  if (file.size > 5 * 1024 * 1024) {
+    this._alertService.error('File size must be less than 5MB');
+    return;
   }
 
+  if (!file.type.startsWith('image/')) {
+    this._alertService.error('File must be an image');
+    return;
+  }
+
+  this._service.uploadPhoto(this._photoTargetStudent.id, file)
+    .pipe(takeUntil(this._unsubscribe))
+    .subscribe({
+      next: () => {
+        this._alertService.success('Photo uploaded successfully');
+        this.clearAndReloadImage(this._photoTargetStudent!.id, this._photoTargetStudent!.photoUrl || '');
+        this.loadAll();
+      },
+      error: (err) => {
+        this._alertService.error(err.error?.message || 'Failed to upload photo');
+      }
+    });
+}
   private _showSuccess(message: string): void {
     this._snackBar.open(message, 'Close', { 
       duration: 3000, 

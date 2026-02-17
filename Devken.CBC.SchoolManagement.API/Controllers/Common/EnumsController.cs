@@ -87,6 +87,16 @@ namespace Devken.CBC.SchoolManagement.API.Controllers
         public IActionResult GetCBCLevels()
             => SuccessResponse(BuildEnumResponse<CBCLevel>());
 
+        [HttpGet("religions")]
+        [AllowAnonymous]
+        public IActionResult GetReligions()
+            => SuccessResponse(BuildEnumResponse<Religion>());
+
+        [HttpGet("nationalities")]
+        [AllowAnonymous]
+        public IActionResult GetNationalities()
+            => SuccessResponse(BuildEnumResponse<Nationality>());
+
         #endregion
 
         #region ===== ACADEMICS =====

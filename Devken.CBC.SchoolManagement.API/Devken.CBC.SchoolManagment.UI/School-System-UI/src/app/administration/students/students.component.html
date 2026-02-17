@@ -12,6 +12,45 @@
 
   <!-- Header Actions Template -->
   <ng-template #headerActions>
+    <!-- Export Button with Dropdown -->
+    <button mat-stroked-button 
+      [matMenuTriggerFor]="exportMenu"
+      class="mr-3 border-green-200 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/30">
+      <mat-icon class="icon-size-5">download</mat-icon>
+      <span class="ml-2">Export</span>
+      <mat-icon class="icon-size-4 ml-1">arrow_drop_down</mat-icon>
+    </button>
+    
+    <!-- Export Menu -->
+    <mat-menu #exportMenu="matMenu" class="export-menu">
+      <button mat-menu-item (click)="openExportDialog('excel')">
+        <mat-icon class="text-green-600">table_chart</mat-icon>
+        <span>Export to Excel</span>
+      </button>
+      <button mat-menu-item (click)="openExportDialog('pdf')">
+        <mat-icon class="text-red-600">picture_as_pdf</mat-icon>
+        <span>Export to PDF</span>
+      </button>
+      <button mat-menu-item (click)="openExportDialog('word')">
+        <mat-icon class="text-blue-600">description</mat-icon>
+        <span>Export to Word</span>
+      </button>
+      <mat-divider></mat-divider>
+      <button mat-menu-item (click)="openExportDialog()">
+        <mat-icon class="text-indigo-600">settings</mat-icon>
+        <span>Custom Export...</span>
+      </button>
+    </mat-menu>
+    
+    <!-- Bulk Upload Photos Button -->
+    <button mat-stroked-button 
+      class="mr-3 border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-900/30" 
+      (click)="bulkUploadPhotos()">
+      <mat-icon class="icon-size-5">photo_library</mat-icon>
+      <span class="ml-2">Bulk Upload Photos</span>
+    </button>
+    
+    <!-- Enroll Student Button -->
     <button mat-flat-button 
       class="bg-white text-indigo-700 hover:bg-yellow-200 hover:text-indigo-900 shadow-lg transition-all hover:shadow-xl font-bold" 
       (click)="enrollStudent()">
@@ -74,32 +113,56 @@
 <!-- Student Cell Template -->
 <ng-template #studentCell let-row>
   <div class="flex items-center gap-3">
-    <div class="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center border border-indigo-200 dark:border-indigo-800">
+    <div 
+      class="relative w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center border border-indigo-200 dark:border-indigo-800 transition-all"
+      [class.cursor-pointer]="photoCache[row.id]?.blobUrl && !photoCache[row.id]?.error"
+      [class.hover:shadow-lg]="photoCache[row.id]?.blobUrl && !photoCache[row.id]?.error"
+      [class.hover:scale-105]="photoCache[row.id]?.blobUrl && !photoCache[row.id]?.error"
+      (click)="photoCache[row.id]?.blobUrl && !photoCache[row.id]?.error ? viewStudentPhoto(row) : null"
+      [matTooltip]="getPhotoTooltip(row)"
+      matTooltipPosition="above">
+      
       <!-- Loading Spinner -->
-      <div *ngIf="photoCache[row.id]?.isLoading" class="w-full h-full flex items-center justify-center">
+      <div *ngIf="photoCache[row.id]?.isLoading" 
+           class="absolute inset-0 w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 z-10">
         <mat-spinner diameter="20"></mat-spinner>
       </div>
       
-      <!-- Error State -->
-      <div *ngIf="photoCache[row.id]?.error" class="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800">
-        <mat-icon class="text-gray-400 icon-size-5">error_outline</mat-icon>
+      <!-- Error State with Retry -->
+      <div *ngIf="photoCache[row.id]?.error && !photoCache[row.id]?.isLoading" 
+           class="absolute inset-0 w-full h-full flex items-center justify-center bg-red-50 dark:bg-red-900/20 cursor-pointer group z-10"
+           (click)="retryPhotoLoad(row); $event.stopPropagation()"
+           matTooltip="Click to retry loading photo">
+        <mat-icon class="text-red-400 group-hover:text-red-600 icon-size-5 transition-colors">refresh</mat-icon>
       </div>
       
-      <!-- Image -->
-      <img *ngIf="photoCache[row.id]?.url"
-          [src]="photoCache[row.id]?.url"
+      <!-- Image with hover effect -->
+      <div *ngIf="photoCache[row.id]?.blobUrl && !photoCache[row.id]?.error && !photoCache[row.id]?.isLoading" 
+           class="w-full h-full relative group">
+        <img
+          [src]="photoCache[row.id]?.blobUrl"
           [alt]="row.fullName"
-          class="w-full h-full object-cover" />
+          class="w-full h-full object-cover transition-transform"
+          loading="lazy" />
+        <!-- Overlay on hover -->
+        <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
+          <mat-icon class="text-white opacity-0 group-hover:opacity-100 transition-opacity icon-size-5">
+            zoom_in
+          </mat-icon>
+        </div>
+      </div>
       
       <!-- Initials Fallback -->
-      <span *ngIf="!photoCache[row.id]?.url && !photoCache[row.id]?.isLoading && !photoCache[row.id]?.error"
-              class="text-sm font-bold text-indigo-600 dark:text-indigo-400">
-          {{ row.firstName?.[0] || '' }}{{ row.lastName?.[0] || '' }}
+      <span *ngIf="!photoCache[row.id]?.blobUrl && !photoCache[row.id]?.isLoading && !photoCache[row.id]?.error"
+            class="text-sm font-bold text-indigo-600 dark:text-indigo-400 z-0">
+        {{ row.firstName?.[0] || '' }}{{ row.lastName?.[0] || '' }}
       </span>
     </div>
     <div>
       <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ row.fullName }}</p>
-      <p class="text-xs text-gray-500 dark:text-gray-400">{{ getGenderName(row.gender) }} • {{ getCBCLevelName(row.cbcLevel) }}</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        {{ getGenderName(row.gender) }} • {{ getCBCLevelName(row.cbcLevel) }}
+      </p>
     </div>
   </div>
 </ng-template>

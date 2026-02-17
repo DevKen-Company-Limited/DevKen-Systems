@@ -11,6 +11,10 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Devken.CBC.SchoolManagement.Domain.Entities.Academic
 {
+
+
+
+
     /// <summary>
     /// Represents a student in the CBC school system
     /// Includes personal, academic, medical, and guardian information

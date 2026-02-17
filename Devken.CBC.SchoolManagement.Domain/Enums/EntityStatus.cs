@@ -287,6 +287,112 @@ namespace Devken.CBC.SchoolManagement.Domain.Enums
     }
 
     /// <summary>
+    /// Religious affiliations for students
+    /// </summary>
+    public enum Religion
+    {
+        [Description("Christianity")]
+        Christianity = 1,
+
+        [Description("Islam")]
+        Islam = 2,
+
+        [Description("Hinduism")]
+        Hinduism = 3,
+
+        [Description("Buddhism")]
+        Buddhism = 4,
+
+        [Description("Sikhism")]
+        Sikhism = 5,
+
+        [Description("Judaism")]
+        Judaism = 6,
+
+        [Description("Traditional African Religion")]
+        TraditionalAfrican = 7,
+
+        [Description("Other")]
+        Other = 8,
+
+        [Description("Prefer not to say")]
+        PreferNotToSay = 9
+    }
+
+    /// <summary>
+    /// Nationalities for students and staff
+    /// Primary focus on East African Community countries
+    /// </summary>
+    public enum Nationality
+    {
+        [Description("Kenyan")]
+        Kenyan = 1,
+
+        [Description("Ugandan")]
+        Ugandan = 2,
+
+        [Description("Tanzanian")]
+        Tanzanian = 3,
+
+        [Description("Rwandan")]
+        Rwandan = 4,
+
+        [Description("Burundian")]
+        Burundian = 5,
+
+        [Description("South Sudanese")]
+        SouthSudanese = 6,
+
+        [Description("Somali")]
+        Somali = 7,
+
+        [Description("Ethiopian")]
+        Ethiopian = 8,
+
+        [Description("Congolese (DRC)")]
+        Congolese = 9,
+
+        [Description("Nigerian")]
+        Nigerian = 10,
+
+        [Description("Ghanaian")]
+        Ghanaian = 11,
+
+        [Description("South African")]
+        SouthAfrican = 12,
+
+        [Description("Eritrean")]
+        Eritrean = 13,
+
+        [Description("Sudanese")]
+        Sudanese = 14,
+
+        [Description("Other African")]
+        OtherAfrican = 15,
+
+        [Description("British")]
+        British = 16,
+
+        [Description("American")]
+        American = 17,
+
+        [Description("Canadian")]
+        Canadian = 18,
+
+        [Description("Indian")]
+        Indian = 19,
+
+        [Description("Pakistani")]
+        Pakistani = 20,
+
+        [Description("Chinese")]
+        Chinese = 21,
+
+        [Description("Other")]
+        Other = 22
+    }
+
+    /// <summary>
     /// Mpesa Result Codes
     /// </summary>
     public enum MpesaResultCode

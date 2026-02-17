@@ -10,6 +10,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { FuseConfirmationService } from '@fuse/services/confirmation';
+import { AlertService } from 'app/core/DevKenService/Alert/AlertService'; 
 import { Observable, of, Subject, forkJoin } from 'rxjs';
 import { catchError, takeUntil, map, finalize } from 'rxjs/operators';
 import { EnumItemDto, EnumService } from 'app/core/DevKenService/common/enum.service';
@@ -80,6 +81,7 @@ export class TeachersComponent implements OnInit, OnDestroy {
   @ViewChild('employmentCell') employmentCellTemplate!: TemplateRef<any>;
   @ViewChild('statusCell') statusCellTemplate!: TemplateRef<any>;
   @ViewChild('schoolCell') schoolCellTemplate!: TemplateRef<any>; // ✅ Add this for school column
+  
 
   private _unsubscribe = new Subject<void>();
   private _apiBaseUrl = inject(API_BASE_URL);
@@ -87,6 +89,7 @@ export class TeachersComponent implements OnInit, OnDestroy {
   private _sanitizer = inject(DomSanitizer);
   private _authService = inject(AuthService);
   private _schoolService = inject(SchoolService); // ✅ Add this
+  private _alert= inject(AlertService);
 
   // ── Breadcrumbs ──────────────────────────────────────────────────────────────
   breadcrumbs: Breadcrumb[] = [
@@ -365,7 +368,6 @@ export class TeachersComponent implements OnInit, OnDestroy {
     private _service: TeacherService,
     private _enumService: EnumService,
     private _dialog: MatDialog,
-    private _snackBar: MatSnackBar,
     private _confirmation: FuseConfirmationService,
   ) {}
 
@@ -537,52 +539,44 @@ export class TeachersComponent implements OnInit, OnDestroy {
       }
     );
   }
-
+  private _showSuccess(message: string): void { this._alert.success(message); }
+  private _showError(message: string): void { this._alert.error(message); }
 
   // In teachers.component.ts
-
 toggleActive(teacher: TeacherDto): void {
   const newStatus = !teacher.isActive;
   const action = newStatus ? 'activate' : 'deactivate';
-  
-  const confirmation = this._confirmation.open({
+
+  // Use AlertService.confirm instead of FuseConfirmationService
+  this._alert.confirm({
     title: `${newStatus ? 'Activate' : 'Deactivate'} Teacher`,
     message: `Are you sure you want to ${action} ${teacher.fullName}?`,
-    icon: {
-      name: newStatus ? 'check_circle' : 'block',
-      color: newStatus ? 'success' : 'warn',
-    },
-    actions: {
-      confirm: {
-        label: newStatus ? 'Activate' : 'Deactivate',
-        color: newStatus ? 'primary' : 'warn',
-      },
-      cancel: {
-        label: 'Cancel',
-      },
-    },
-  });
-
-  confirmation.afterClosed().pipe(takeUntil(this._unsubscribe)).subscribe(result => {
-    if (result === 'confirmed') {
-      // ✅ UPDATED: Use dedicated toggleStatus endpoint instead of update
+    confirmText: newStatus ? 'Activate' : 'Deactivate',
+    cancelText: 'Cancel',
+    onConfirm: () => {
       this._service.toggleStatus(teacher.id, newStatus)
         .pipe(takeUntil(this._unsubscribe))
         .subscribe({
           next: (res) => {
             if (res.success) {
-              this._showSuccess(`Teacher ${action}d successfully`);
+              this._alert.success(`Teacher ${action}d successfully`);
               this.loadAll();
             }
           },
           error: (err) => {
             console.error('Failed to update teacher status:', err);
-            this._showError(err.error?.message || `Failed to ${action} teacher`);
+            this._alert.error(err.error?.message || `Failed to ${action} teacher`);
           }
         });
+    },
+    onCancel: () => {
+      // optional: you can show an info alert or just do nothing
+      this._alert.info('Action cancelled');
     }
   });
 }
+
+
   // ── Helper Methods for Display ───────────────────────────────────────────────
   
   getEmploymentTypeName(value: string | number | undefined): string {
@@ -967,17 +961,5 @@ toggleActive(teacher: TeacherDto): void {
       });
   }
 
-  private _showSuccess(message: string): void {
-    this._snackBar.open(message, 'Close', { 
-      duration: 3000, 
-      panelClass: ['bg-green-600', 'text-white'] 
-    });
-  }
 
-  private _showError(message: string): void {
-    this._snackBar.open(message, 'Close', { 
-      duration: 5000, 
-      panelClass: ['bg-red-600', 'text-white'] 
-    });
-  }
 }

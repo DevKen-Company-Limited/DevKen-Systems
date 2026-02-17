@@ -111,6 +111,18 @@ export function normalizeGender(value: any): number | null {
   
   return null;
 }
+export enum Religion {
+  Christianity = 1,
+  Islam = 2,
+  Hinduism = 3,
+  Buddhism = 4,
+  Sikhism = 5,
+  Judaism = 6,
+  TraditionalAfrican = 7,
+  Other = 8,
+  PreferNotToSay = 9,
+}
+
 
 /**
  * Convert StudentStatus value from backend format to enum number
@@ -141,6 +153,143 @@ export function normalizeStudentStatus(value: any): number | null {
   
   return statusMap[strValue] ?? null;
 }
+
+export const ReligionOptions = [
+  { value: Religion.Christianity, label: 'Christianity', name: 'Christianity' },
+  { value: Religion.Islam, label: 'Islam', name: 'Islam' },
+  { value: Religion.Hinduism, label: 'Hinduism', name: 'Hinduism' },
+  { value: Religion.Buddhism, label: 'Buddhism', name: 'Buddhism' },
+  { value: Religion.Sikhism, label: 'Sikhism', name: 'Sikhism' },
+  { value: Religion.Judaism, label: 'Judaism', name: 'Judaism' },
+  { value: Religion.TraditionalAfrican, label: 'Traditional African Religion', name: 'TraditionalAfrican' },
+  { value: Religion.Other, label: 'Other', name: 'Other' },
+  { value: Religion.PreferNotToSay, label: 'Prefer not to say', name: 'PreferNotToSay' },
+];
+
+export enum Nationality {
+  Kenyan = 1,
+  Ugandan = 2,
+  Tanzanian = 3,
+  Rwandan = 4,
+  Burundian = 5,
+  SouthSudanese = 6,
+  Somali = 7,
+  Ethiopian = 8,
+  Congolese = 9,
+  Nigerian = 10,
+  Ghanaian = 11,
+  SouthAfrican = 12,
+  Eritrean = 13,
+  Sudanese = 14,
+  OtherAfrican = 15,
+  British = 16,
+  American = 17,
+  Canadian = 18,
+  Indian = 19,
+  Pakistani = 20,
+  Chinese = 21,
+  Other = 22,
+}
+export function normalizeReligion(value: any): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  
+  // If it's already a valid number (1-9)
+  const numValue = typeof value === 'number' ? value : Number(value);
+  if (!isNaN(numValue) && numValue >= 1 && numValue <= 9) {
+    return numValue;
+  }
+  
+  // If it's a string name, convert it
+  const strValue = String(value).toLowerCase().replace(/\s+/g, '');
+  const religionMap: { [key: string]: number } = {
+    'christianity': Religion.Christianity,
+    'islam': Religion.Islam,
+    'hinduism': Religion.Hinduism,
+    'buddhism': Religion.Buddhism,
+    'sikhism': Religion.Sikhism,
+    'judaism': Religion.Judaism,
+    'traditionalafrican': Religion.TraditionalAfrican,
+    'traditionalafricanreligion': Religion.TraditionalAfrican,
+    'other': Religion.Other,
+    'prefernottosay': Religion.PreferNotToSay,
+  };
+  
+  return religionMap[strValue] ?? null;
+}
+
+export function normalizeNationality(value: any): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  
+  // If it's already a valid number (1-22)
+  const numValue = typeof value === 'number' ? value : Number(value);
+  if (!isNaN(numValue) && numValue >= 1 && numValue <= 22) {
+    return numValue;
+  }
+  
+  // If it's a string name, convert it
+  const strValue = String(value).toLowerCase().replace(/[\s\-()]/g, '');
+  const nationalityMap: { [key: string]: number } = {
+    'kenyan': Nationality.Kenyan,
+    'ugandan': Nationality.Ugandan,
+    'tanzanian': Nationality.Tanzanian,
+    'rwandan': Nationality.Rwandan,
+    'burundian': Nationality.Burundian,
+    'southsudanese': Nationality.SouthSudanese,
+    'somali': Nationality.Somali,
+    'ethiopian': Nationality.Ethiopian,
+    'congolese': Nationality.Congolese,
+    'congolesedrc': Nationality.Congolese,
+    'nigerian': Nationality.Nigerian,
+    'ghanaian': Nationality.Ghanaian,
+    'southafrican': Nationality.SouthAfrican,
+    'eritrean': Nationality.Eritrean,
+    'sudanese': Nationality.Sudanese,
+    'otherafrican': Nationality.OtherAfrican,
+    'british': Nationality.British,
+    'american': Nationality.American,
+    'canadian': Nationality.Canadian,
+    'indian': Nationality.Indian,
+    'pakistani': Nationality.Pakistani,
+    'chinese': Nationality.Chinese,
+    'other': Nationality.Other,
+  };
+  
+  return nationalityMap[strValue] ?? null;
+}
+
+
+
+
+export const NationalityOptions = [
+  // East African Community (Priority)
+  { value: Nationality.Kenyan, label: 'Kenyan', name: 'Kenyan', region: 'EAC' },
+  { value: Nationality.Ugandan, label: 'Ugandan', name: 'Ugandan', region: 'EAC' },
+  { value: Nationality.Tanzanian, label: 'Tanzanian', name: 'Tanzanian', region: 'EAC' },
+  { value: Nationality.Rwandan, label: 'Rwandan', name: 'Rwandan', region: 'EAC' },
+  { value: Nationality.Burundian, label: 'Burundian', name: 'Burundian', region: 'EAC' },
+  { value: Nationality.SouthSudanese, label: 'South Sudanese', name: 'SouthSudanese', region: 'EAC' },
+  
+  // Other African
+  { value: Nationality.Somali, label: 'Somali', name: 'Somali', region: 'Africa' },
+  { value: Nationality.Ethiopian, label: 'Ethiopian', name: 'Ethiopian', region: 'Africa' },
+  { value: Nationality.Congolese, label: 'Congolese (DRC)', name: 'Congolese', region: 'Africa' },
+  { value: Nationality.Nigerian, label: 'Nigerian', name: 'Nigerian', region: 'Africa' },
+  { value: Nationality.Ghanaian, label: 'Ghanaian', name: 'Ghanaian', region: 'Africa' },
+  { value: Nationality.SouthAfrican, label: 'South African', name: 'SouthAfrican', region: 'Africa' },
+  { value: Nationality.Eritrean, label: 'Eritrean', name: 'Eritrean', region: 'Africa' },
+  { value: Nationality.Sudanese, label: 'Sudanese', name: 'Sudanese', region: 'Africa' },
+  { value: Nationality.OtherAfrican, label: 'Other African', name: 'OtherAfrican', region: 'Africa' },
+  
+  // International
+  { value: Nationality.British, label: 'British', name: 'British', region: 'International' },
+  { value: Nationality.American, label: 'American', name: 'American', region: 'International' },
+  { value: Nationality.Canadian, label: 'Canadian', name: 'Canadian', region: 'International' },
+  { value: Nationality.Indian, label: 'Indian', name: 'Indian', region: 'International' },
+  { value: Nationality.Pakistani, label: 'Pakistani', name: 'Pakistani', region: 'International' },
+  { value: Nationality.Chinese, label: 'Chinese', name: 'Chinese', region: 'International' },
+  { value: Nationality.Other, label: 'Other', name: 'Other', region: 'International' },
+];
+
 
 /**
  * Convert CBCLevel value from backend format to enum number

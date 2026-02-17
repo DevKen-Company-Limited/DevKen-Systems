@@ -17,6 +17,7 @@ import { StudentMedicalComponent } from '../medical/Student-medical.component';
 import { StudentReviewComponent } from '../review/Student-review.component';
 import { EnrollmentStep } from '../../types/EnrollmentStep';
 import { normalizeStudentEnums } from '../../types/Enums';
+import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
 
 // Import centralized enum utilities
 
@@ -28,7 +29,6 @@ import { normalizeStudentEnums } from '../../types/Enums';
     CommonModule,
     MatButtonModule,
     MatIconModule,
-    FuseAlertComponent,
     StudentPersonalInfoComponent,
     StudentLocationComponent,
     StudentAcademicComponent,
@@ -66,7 +66,6 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
   isSaving     = false;
   isSubmitting = false;
   lastSaved: Date | null = null;
-  alert: { type: 'success' | 'error'; message: string } | null = null;
 
   // ─── Lookup data ─────────────────────────────────────────────────
   schools: any[]       = [];
@@ -137,6 +136,7 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
 
   // ──────────────────────────────────────────────────────────────────
   constructor(
+     private alertService: AlertService,
     private studentService: StudentService,
     private router: Router,
     private route: ActivatedRoute,
@@ -168,25 +168,34 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
     this.studentService.getAcademicYears().pipe(takeUntil(this.destroy$)).subscribe(y => this.academicYears = y);
   }
 
-  private loadExistingStudent(id: string): void {
-    this.studentService.getById(id)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (student) => {
+private loadExistingStudent(id: string): void {
+  this.studentService.getById(id)
+    .pipe(takeUntil(this.destroy$))
+    .subscribe({
+      next: (student) => {
 
-          console.log('[Enrollment] Raw student data:', student);
+        console.log('[Enrollment] Raw student data:', student);
 
-          this.hydrateFromStudent(student);
+        this.hydrateFromStudent(student);
 
-          this.steps.slice(0, 5).forEach((_, i) => this.completedSteps.add(i));
-          this.showAlert('info', 'Editing existing student record');
-        },
-        error: (err) => {
-          console.error('[Enrollment] Failed to load student:', err);
-          this.showAlert('error', 'Could not load student data.');
-        },
-      });
-  }
+        // ✅ Mark all steps completed
+        this.steps.slice(0, 5).forEach((_, i) => this.completedSteps.add(i));
+
+        // ✅ CRITICAL: Mark all sections as valid
+        Object.keys(this.sectionValid).forEach(key => {
+          this.sectionValid[key] = true;
+        });
+
+         this.alertService.info('Editing existing student record');
+
+      },
+      error: (err) => {
+      //  console.error('[Enrollment] Failed to load student:', err);
+       this.alertService.error('Could not load student data.');
+
+      },
+    });
+}
 
   /**
    * Safely convert API values to numbers
@@ -302,7 +311,8 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
       this.completedSteps = new Set(draft.completedSteps ?? []);
       this.currentStep   = draft.currentStep ?? 0;
       this.lastSaved     = draft.savedAt ? new Date(draft.savedAt) : null;
-      this.showAlert('info', 'Draft loaded. You can continue where you left off.');
+      this.alertService.info('Draft loaded. You can continue where you left off.');
+
     } catch { /* malformed draft */ }
   }
 
@@ -359,7 +369,8 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
     this.persistDraft();
     setTimeout(() => {
       this.isSaving = false;
-      this.showAlert('success', 'Draft saved locally. You can continue later.');
+         this.alertService.success('Draft saved locally. You can continue later.');
+
     }, 500);
   }
 
@@ -375,40 +386,61 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
       if (this.studentId) {
         // Update existing student
         await this.studentService.update(this.studentId, payload).toPromise();
-        this.showAlert('success', 'Student updated successfully!');
+                this.alertService.success('Student updated successfully!');
       } else {
         // Create new student
         const created: any = await this.studentService.create(payload).toPromise();
         this.studentId = created?.data?.id ?? created?.id;
-        this.showAlert('success', 'Student enrolled successfully!');
+        this.alertService.success('Student enrolled successfully!.');
+
       }
       
       this.clearDraft();
       setTimeout(() => this.router.navigate(['/academic/students']), 1500);
     } catch (err: any) {
       console.error('[Enrollment] Submission error:', err);
-      this.showAlert('error', err?.error?.message || 'Submission failed. Please review and try again.');
+    this.alertService.error(err?.error?.message || 'Submission failed. Please review and try again.');
+
     } finally {
       this.isSubmitting = false;
     }
   }
 
-  private buildPayload(): any {
-    // All enum values should already be numbers from form emissions
-    return {
-      ...this.formSections.personal,
-      ...this.formSections.location,
-      ...this.formSections.academic,
-      ...this.formSections.medical,
-      ...this.formSections.guardians,
-    };
+private buildPayload(): any {
+
+  const payload: any = {
+    ...this.formSections.personal,
+    ...this.formSections.location,
+    ...this.formSections.academic,
+    ...this.formSections.medical,
+    ...this.formSections.guardians,
+  };
+
+  // ✅ SAFETY: Remove secondary guardian fields if email is empty
+  const secondaryEmail = payload.secondaryGuardianEmail?.trim();
+
+  if (!secondaryEmail) {
+    delete payload.secondaryGuardianName;
+    delete payload.secondaryGuardianRelationship;
+    delete payload.secondaryGuardianPhone;
+    delete payload.secondaryGuardianEmail;
+    delete payload.secondaryGuardianOccupation;
+  } else {
+    payload.secondaryGuardianEmail = secondaryEmail;
   }
 
+  return payload;
+}
+
+
   // ─── Guards ───────────────────────────────────────────────────────
-  canProceed(): boolean {
-    const key = this.steps[this.currentStep]?.sectionKey;
-    return this.sectionValid[key] !== false;
-  }
+canProceed(): boolean {
+  if (this.isEditMode) return true;
+
+  const key = this.steps[this.currentStep]?.sectionKey;
+  return this.sectionValid[key] !== false;
+}
+
 
   canNavigateTo(index: number): boolean {
     if (index === 0) return true;
@@ -421,9 +453,12 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
     return this.completedSteps.has(index);
   }
 
-  allStepsCompleted(): boolean {
-    return this.steps.slice(0, 5).every((_, i) => this.completedSteps.has(i));
-  }
+allStepsCompleted(): boolean {
+  if (this.isEditMode) return true;
+
+  return this.steps.slice(0, 5).every((_, i) => this.completedSteps.has(i));
+}
+
 
   // ─── Progress ring ────────────────────────────────────────────────
   getProgressPercent(): number {
@@ -441,12 +476,5 @@ export class StudentEnrollmentComponent implements OnInit, OnDestroy {
     this.router.navigate(['/academic/students']);
   }
 
-  private showAlert(type: 'success' | 'error' | 'info', message: string): void {
-    this.alert = { type: type as 'success' | 'error', message };
-    if (type === 'success' || type === 'info') {
-      setTimeout(() => { 
-        if (this.alert?.type === type) this.alert = null; 
-      }, 3500);
-    }
-  }
+ 
 }

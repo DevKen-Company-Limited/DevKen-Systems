@@ -589,6 +589,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Administration.Stu
             CurrentClassId = s.CurrentClassId,
             CurrentClassName = s.CurrentClass?.Name ?? string.Empty,
             CurrentAcademicYearId = s.CurrentAcademicYearId,
+            AcademicYearName = s.CurrentAcademicYear?.Name?? string.Empty,
             Status = s.Status.ToString(),  // This can stay as string since it's not used in forms
             PreviousSchool = s.PreviousSchool ?? string.Empty,
             BloodGroup = s.BloodGroup ?? string.Empty,

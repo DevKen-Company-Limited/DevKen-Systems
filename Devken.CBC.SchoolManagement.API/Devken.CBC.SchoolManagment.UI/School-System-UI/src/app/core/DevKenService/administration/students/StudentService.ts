@@ -81,16 +81,21 @@ export class StudentService {
   /**
    * Toggle student active status
    */
-  toggleStatus(id: string, isActive: boolean): Observable<ApiResponse<StudentDto>> {
-    return this.http.patch<ApiResponse<StudentDto>>(`${this.base}/${id}/status`, { isActive });
-  }
+toggleStatus(id: string, isActive: boolean): Observable<ApiResponse<StudentDto>> {
+  return this.http.patch<ApiResponse<StudentDto>>(
+    `${this.base}/${id}/toggle-status`,
+    { isActive }  
+  );
+}
+
 
   /**
    * Upload student photo
+   * IMPORTANT: Backend expects form field name 'file', not 'photo'
    */
   uploadPhoto(id: string, file: File): Observable<ApiResponse<{ photoUrl: string }>> {
     const formData = new FormData();
-    formData.append('photo', file);
+    formData.append('file', file);  // Backend controller parameter name is 'file'
     return this.http.post<ApiResponse<{ photoUrl: string }>>(`${this.base}/${id}/photo`, formData);
   }
 
@@ -186,6 +191,8 @@ export class StudentService {
       map(response => response?.data ?? {})
     );
   }
+
+  
 
   /**
    * Get enrollment trends

@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { trigger, transition, style, animate, state } from '@angular/animations';
+import { trigger, transition, style, animate } from '@angular/animations';
 import { Subject, takeUntil } from 'rxjs';
 import { Alert, AlertService } from 'app/core/DevKenService/Alert/AlertService';
 
@@ -34,6 +34,7 @@ import { Alert, AlertService } from 'app/core/DevKenService/Alert/AlertService';
 export class AlertComponent implements OnInit, OnDestroy {
   alerts: Alert[] = [];
   private destroy$ = new Subject<void>();
+  private autoDismissTimers: { [id: string]: any } = {};
 
   constructor(private alertService: AlertService) {}
 
@@ -42,12 +43,27 @@ export class AlertComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(alerts => {
         this.alerts = alerts;
+
+        // Set auto-dismiss for non-confirm alerts
+        alerts.forEach(alert => {
+          if (alert.type !== 'confirm' && alert.dismissible && !this.autoDismissTimers[alert.id]) {
+            // Dismiss after 5 seconds (5000ms)
+            this.autoDismissTimers[alert.id] = setTimeout(() => {
+              this.dismiss(alert.id);
+              delete this.autoDismissTimers[alert.id];
+            }, 5000);
+          }
+        });
       });
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+
+    // Clear all auto-dismiss timers
+    Object.values(this.autoDismissTimers).forEach(timer => clearTimeout(timer));
+    this.autoDismissTimers = {};
   }
 
   /**
@@ -63,14 +79,20 @@ export class AlertComponent implements OnInit, OnDestroy {
     };
     return icons[type] || icons.info;
   }
-get hasConfirmAlert(): boolean {
-  return this.alerts?.some(a => a.type === 'confirm') ?? false;
-}
+
+  get hasConfirmAlert(): boolean {
+    return this.alerts?.some(a => a.type === 'confirm') ?? false;
+  }
 
   /**
    * Dismiss an alert
    */
   dismiss(id: string): void {
+    // Clear timer if exists
+    if (this.autoDismissTimers[id]) {
+      clearTimeout(this.autoDismissTimers[id]);
+      delete this.autoDismissTimers[id];
+    }
     this.alertService.dismiss(id);
   }
 

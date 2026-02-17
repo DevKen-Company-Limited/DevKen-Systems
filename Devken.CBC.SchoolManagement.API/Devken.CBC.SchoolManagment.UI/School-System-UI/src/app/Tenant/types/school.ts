@@ -68,6 +68,9 @@ export interface Subscription {
 }
 
 export interface SchoolDto {
+  logoUrl: string;
+  motto: string;
+  address: string;
   id: string;
   name: string;
   slug: string;
