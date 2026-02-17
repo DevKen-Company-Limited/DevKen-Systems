@@ -556,7 +556,7 @@ export class ClassesManagementComponent implements OnInit, OnDestroy, AfterViewI
 
   getSchoolSlug(schoolId: string): string {
     const school = this.schools.find(s => s.id === schoolId);
-    return school ? school.slug : '';
+    return school ? school.slugName : '';
   }
 
   getCapacityUtilization(classItem: ClassDto): number {

@@ -1,0 +1,590 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// school-view-dialog.component.scss
+//
+// Scroll architecture
+// ───────────────────
+//   :host            → flex column, height: 100% fills mdc-dialog__surface
+//   .svd-header      → flex-shrink: 0  — pinned, never scrolls
+//   .svd-body        → flex: 1, min-height: 0, overflow-y: auto  ← scroll zone
+//   .svd-footer      → flex-shrink: 0  — pinned, never scrolls
+//
+// The ::ng-deep .school-view-dialog block at the bottom of this file handles
+// the global CDK overlay panel so the surface itself never scrolls.
+// ═══════════════════════════════════════════════════════════════════════════
+
+
+// ── CSS Variables ──────────────────────────────────────────────────────────
+:host {
+  --svd-primary:    #4f46e5;
+  --svd-primary-lt: #ede9fe;
+  --svd-text:       #1a1a2e;
+  --svd-muted:      #8589a0;
+  --svd-border:     #e5e7ef;
+  --svd-bg:         #f3f4f8;
+  --svd-white:      #ffffff;
+  --svd-radius:     14px;
+  --svd-radius-sm:  10px;
+
+  // :host IS the dialog surface — flex column fills it entirely
+  display:        flex;
+  flex-direction: column;
+  width:          100%;
+  height:         100%;
+  overflow:       hidden;
+  background:     var(--svd-white);
+}
+
+
+// ══════════════════════════════════ HEADER ══════════════════════════════════
+
+.svd-header {
+  flex-shrink: 0;
+  position:    relative;
+  background:  #0c0c12;
+  overflow:    hidden;
+}
+
+.svd-header__bg {
+  position: absolute;
+  inset:    0;
+  background:
+    radial-gradient(ellipse 130% 200% at 85% -30%, #2d1f6e 0%, transparent 60%),
+    radial-gradient(ellipse 80%  120% at -15% 120%, #162d4a 0%, transparent 55%),
+    #0c0c12;
+
+  &::after {
+    content:          '';
+    position:         absolute;
+    inset:            0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+    background-size:  28px 28px;
+  }
+}
+
+.svd-header__content {
+  position:        relative;
+  z-index:         1;
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  padding:         20px 22px 14px;
+  gap:             14px;
+}
+
+.svd-header__left {
+  display:     flex;
+  align-items: center;
+  gap:         13px;
+  min-width:   0;
+  flex:        1;
+}
+
+.svd-header__icon-ring {
+  width:           44px;
+  height:          44px;
+  border-radius:   12px;
+  background:      rgba(255,255,255,.08);
+  border:          1px solid rgba(255,255,255,.12);
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  flex-shrink:     0;
+  box-shadow:      0 4px 16px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.08);
+}
+
+.svd-header__icon {
+  color:     #a5b4fc;
+  font-size: 20px;
+  width:     20px;
+  height:    20px;
+}
+
+.svd-header__text {
+  min-width: 0;
+  flex:      1;
+}
+
+.svd-header__eyebrow {
+  font-size:      10px;
+  font-weight:    700;
+  color:          rgba(165,180,252,.65);
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  margin:         0 0 3px;
+}
+
+.svd-header__title {
+  font-size:     17px;
+  font-weight:   800;
+  color:         #fff;
+  line-height:   1.2;
+  margin:        0;
+  white-space:   nowrap;
+  overflow:      hidden;
+  text-overflow: ellipsis;
+}
+
+.svd-header__close {
+  color:       rgba(255,255,255,.55) !important;
+  flex-shrink: 0;
+  transition:  all .2s;
+
+  &:hover {
+    color:      #fff !important;
+    background: rgba(255,255,255,.1) !important;
+  }
+}
+
+.svd-header__strip {
+  position:    relative;
+  z-index:     1;
+  display:     flex;
+  align-items: center;
+  gap:         6px;
+  padding:     0 22px 16px;
+  flex-wrap:   wrap;
+}
+
+.svd-pill {
+  display:        inline-flex;
+  align-items:    center;
+  gap:            4px;
+  padding:        3px 10px;
+  border-radius:  99px;
+  font-size:      10.5px;
+  font-weight:    600;
+  letter-spacing: .01em;
+}
+
+.svd-pill__icon {
+  font-size: 11px;
+  width:     11px;
+  height:    11px;
+}
+
+.svd-pill--active   { background: rgba(21,128,61,.2);   color: #86efac; border: 1px solid rgba(134,239,172,.2); }
+.svd-pill--inactive { background: rgba(185,28,28,.2);   color: #fca5a5; border: 1px solid rgba(252,165,165,.2); }
+.svd-pill--type     { background: rgba(139,92,246,.2);  color: #c4b5fd; border: 1px solid rgba(196,181,253,.2); }
+.svd-pill--cat      { background: rgba(251,191,36,.15); color: #fcd34d; border: 1px solid rgba(252,211,77,.2); }
+
+
+// ══════════════════════════════════ BODY ════════════════════════════════════
+//
+// KEY SCROLL FIX
+// ──────────────
+// flex: 1          → takes ALL remaining height after header & footer
+// min-height: 0    → CRITICAL — without this a flex child won't shrink below
+//                    its natural content height, breaking the entire scroll chain
+// overflow-y: auto → scrolling happens HERE and ONLY here
+
+.svd-body {
+  flex:       1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--svd-bg);
+  padding:    18px 18px 24px;
+
+  scrollbar-width: thin;
+  scrollbar-color: #c7cad9 transparent;
+
+  &::-webkit-scrollbar       { width: 5px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb {
+    background:    #c7cad9;
+    border-radius: 4px;
+    &:hover { background: #94a3b8; }
+  }
+}
+
+
+// ── Hero identity card ─────────────────────────────────────────────────────
+
+.svd-hero {
+  display:       flex;
+  align-items:   flex-start;
+  gap:           16px;
+  padding:       18px 20px;
+  margin-bottom: 14px;
+  background:    var(--svd-white);
+  border:        1px solid var(--svd-border);
+  border-radius: var(--svd-radius);
+  box-shadow:    0 1px 3px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+  animation:     svdSlideIn .3s ease both;
+}
+
+.svd-logo { flex-shrink: 0; }
+
+.svd-logo__img {
+  width:         70px;
+  height:        70px;
+  object-fit:    contain;
+  border-radius: 12px;
+  border:        1.5px solid var(--svd-border);
+  background:    #fff;
+  padding:       6px;
+}
+
+.svd-logo__placeholder {
+  width:           70px;
+  height:          70px;
+  border-radius:   12px;
+  background:      linear-gradient(135deg, #ede9fe, #e0e7ff);
+  border:          1.5px solid #ddd6fe;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+
+  mat-icon {
+    font-size: 30px;
+    width:     30px;
+    height:    30px;
+    color:     #7c3aed;
+  }
+}
+
+.svd-hero__info {
+  flex:      1;
+  min-width: 0;
+}
+
+.svd-hero__name {
+  font-size:   19px;
+  font-weight: 800;
+  color:       var(--svd-text);
+  margin:      0 0 3px;
+  line-height: 1.25;
+}
+
+.svd-hero__slug {
+  display:     flex;
+  align-items: center;
+  gap:         4px;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size:   12px;
+  color:       var(--svd-muted);
+  margin:      0 0 11px;
+}
+
+.svd-hero__slug-icon {
+  font-size: 12px;
+  width:     12px;
+  height:    12px;
+}
+
+.svd-badge-row {
+  display:   flex;
+  flex-wrap: wrap;
+  gap:       6px;
+}
+
+.svd-badge {
+  display:       inline-flex;
+  align-items:   center;
+  gap:           4px;
+  padding:       3px 10px;
+  border-radius: 99px;
+  font-size:     11px;
+  font-weight:   600;
+}
+
+.svd-badge__icon { font-size: 11px; width: 11px; height: 11px; }
+.svd-badge__dot  { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+.svd-badge--active   { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+.svd-badge--inactive { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+.svd-badge--type     { background: #ede9fe; color: #5b21b6; border: 1px solid #ddd6fe; }
+.svd-badge--cat      { background: #fff7ed; color: #92400e; border: 1px solid #fed7aa; }
+
+
+// ── Section label ──────────────────────────────────────────────────────────
+
+.svd-section-label {
+  font-size:      10.5px;
+  font-weight:    700;
+  color:          var(--svd-muted);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  margin:         18px 0 10px;
+  display:        flex;
+  align-items:    center;
+  gap:            8px;
+
+  &::after {
+    content:    '';
+    flex:       1;
+    height:     1px;
+    background: linear-gradient(to right, #dee0ea, transparent);
+  }
+}
+
+
+// ── Info grid ──────────────────────────────────────────────────────────────
+
+.svd-grid {
+  display:               grid;
+  grid-template-columns: 1fr 1fr;
+  gap:                   10px;
+}
+
+.svd-card {
+  background:    var(--svd-white);
+  border:        1px solid var(--svd-border);
+  border-radius: var(--svd-radius-sm);
+  overflow:      hidden;
+  box-shadow:    0 1px 3px rgba(0,0,0,.04);
+  animation:     svdSlideIn .3s ease both;
+
+  &:nth-child(1) { animation-delay: .04s; }
+  &:nth-child(2) { animation-delay: .08s; }
+  &:nth-child(3) { animation-delay: .12s; }
+
+  &--full { grid-column: 1 / -1; }
+}
+
+.svd-card__head {
+  display:        flex;
+  align-items:    center;
+  gap:            7px;
+  padding:        10px 14px;
+  background:     #fafafa;
+  border-bottom:  1px solid #f0f0f5;
+  font-size:      10.5px;
+  font-weight:    700;
+  color:          var(--svd-muted);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+
+.svd-card__head-icon {
+  font-size: 14px;
+  width:     14px;
+  height:    14px;
+  color:     var(--svd-primary);
+}
+
+.svd-card__body { padding: 2px 0; }
+
+
+// ── Info row ───────────────────────────────────────────────────────────────
+
+.svd-row {
+  display:     flex;
+  align-items: flex-start;
+  gap:         10px;
+  padding:     9px 14px;
+  transition:  background .15s;
+  cursor:      default;
+
+  &:hover { background: #fafafd; }
+  & + .svd-row { border-top: 1px solid #f3f4f9; }
+}
+
+.svd-row__ico {
+  width:           26px;
+  height:          26px;
+  border-radius:   7px;
+  background:      #f0effc;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  flex-shrink:     0;
+  margin-top:      1px;
+
+  mat-icon { font-size: 13px; width: 13px; height: 13px; color: #6d28d9; }
+}
+
+.svd-row__content {
+  flex:      1;
+  min-width: 0;
+}
+
+.svd-row__label {
+  font-size:      10px;
+  font-weight:    700;
+  color:          #a4a8bc;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin:         0 0 2px;
+}
+
+.svd-row__value {
+  font-size:   13px;
+  color:       var(--svd-text);
+  font-weight: 500;
+  line-height: 1.4;
+  word-break:  break-word;
+  margin:      0;
+
+  &--mono {
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size:   12px;
+    color:       #3730a3;
+  }
+
+  &--tiny { font-size: 11px; word-break: break-all; color: #4b5563; }
+}
+
+.svd-link {
+  color:           var(--svd-primary);
+  text-decoration: none;
+  &:hover { text-decoration: underline; }
+}
+
+
+// ── Empty state ────────────────────────────────────────────────────────────
+
+.svd-empty {
+  display:       flex;
+  align-items:   center;
+  gap:           8px;
+  margin-top:    16px;
+  padding:       13px 16px;
+  background:    #fffbeb;
+  border:        1px solid #fde68a;
+  border-radius: var(--svd-radius-sm);
+  font-size:     13px;
+  color:         #92400e;
+}
+
+.svd-empty__icon { font-size: 17px; width: 17px; height: 17px; color: #d97706; }
+
+
+// ══════════════════════════════════ FOOTER ══════════════════════════════════
+
+.svd-footer {
+  flex-shrink:     0;
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  gap:             12px;
+  padding:         13px 18px;
+  background:      var(--svd-white);
+  border-top:      1.5px solid var(--svd-border);
+}
+
+.svd-footer__meta {
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size:   11px;
+  color:       #b0b3c6;
+  display:     flex;
+  align-items: center;
+  gap:         5px;
+}
+
+.svd-footer__meta-icon { font-size: 13px; width: 13px; height: 13px; color: #cdd0de; }
+
+.svd-footer__actions { display: flex; align-items: center; gap: 8px; }
+
+.svd-btn {
+  display:       inline-flex !important;
+  align-items:   center !important;
+  gap:           6px !important;
+  font-size:     12.5px !important;
+  font-weight:   600 !important;
+  height:        36px !important;
+  border-radius: 9px !important;
+  transition:    all .2s !important;
+
+  mat-icon { font-size: 15px; width: 15px; height: 15px; }
+}
+
+.svd-btn--ghost {
+  color:        var(--svd-primary) !important;
+  border-color: #e0e2ef !important;
+  &:hover { background: var(--svd-primary-lt) !important; border-color: #c7c4f5 !important; }
+}
+
+.svd-btn--dark {
+  background: #1a1a2e !important;
+  color:      #fff !important;
+  box-shadow: 0 3px 10px rgba(26,26,46,.22) !important;
+  &:hover { background: #2a2a42 !important; transform: translateY(-1px); box-shadow: 0 5px 16px rgba(26,26,46,.3) !important; }
+}
+
+
+// ══════════════════════════════════ ANIMATIONS ══════════════════════════════
+
+@keyframes svdSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+
+// ══════════════════════ GLOBAL PANEL OVERRIDE (CDK overlay) ═════════════════
+//
+// Targets the CDK overlay panel class added in the constructor via
+// dialogRef.addPanelClass('school-view-dialog').
+//
+// WHY THIS IS NEEDED
+// ──────────────────
+// Material's default .mdc-dialog__surface has overflow: auto and no flex
+// context, so :host { height: 100% } has nothing to fill and the scroll
+// chain collapses. This block replaces that with a proper flex column that
+// the :host can fill edge-to-edge.
+//
+// KEY DECISIONS
+// ─────────────
+//   height: auto        → surface sizes to content (don't hard-code 90vh)
+//   max-height: 90vh    → caps it so dialog can't escape the viewport
+//   overflow: hidden    → THE SURFACE ITSELF MUST NOT SCROLL — only .svd-body does
+//   display: flex + column → prerequisite for :host { height: 100% } to work
+
+::ng-deep .school-view-dialog {
+  max-width: 680px !important;
+  width:     95vw  !important;
+
+  .mat-mdc-dialog-container {
+    padding:       0 !important;
+    border-radius: 18px !important;
+    overflow:      hidden;
+    background:    transparent !important;
+    box-shadow:    0 25px 50px -12px rgba(0,0,0,.35) !important;
+  }
+
+  .mdc-dialog__surface {
+    display:          flex !important;
+    flex-direction:   column !important;
+    overflow:         hidden !important;
+    overflow-y:       hidden !important;
+    border-radius:    18px !important;
+    background-color: transparent !important;
+    max-height:       90vh !important;
+    height:           auto !important;   // NOT a fixed 90vh — let content size it
+  }
+}
+
+
+// ══════════════════════════════════ RESPONSIVE ══════════════════════════════
+
+@media (max-width: 540px) {
+  ::ng-deep .school-view-dialog {
+    max-width: 100vw !important;
+    width:     100vw !important;
+    margin:    0 !important;
+
+    .mat-mdc-dialog-container,
+    .mdc-dialog__surface {
+      border-radius: 0 !important;
+      max-height:    100dvh !important;
+      height:        auto !important;
+    }
+  }
+
+  .svd-body            { padding: 14px 14px 18px; }
+  .svd-hero            { flex-direction: column; align-items: center; text-align: center; }
+  .svd-badge-row       { justify-content: center; }
+  .svd-hero__slug      { justify-content: center; }
+  .svd-grid            { grid-template-columns: 1fr; }
+  .svd-footer          { flex-wrap: wrap; }
+  .svd-footer__meta    { width: 100%; }
+  .svd-footer__actions { width: 100%; justify-content: flex-end; }
+}
+
+@media (min-width: 541px) and (max-width: 720px) {
+  ::ng-deep .school-view-dialog .mdc-dialog__surface {
+    max-height: 92vh !important;
+  }
+}

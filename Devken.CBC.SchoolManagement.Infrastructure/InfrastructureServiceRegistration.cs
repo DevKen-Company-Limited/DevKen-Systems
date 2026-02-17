@@ -6,6 +6,7 @@ using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Comm
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Identity;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.NumberSeries;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Payments;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Reports;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Tenant;
 using Devken.CBC.SchoolManagement.Application.Service;
 using Devken.CBC.SchoolManagement.Application.Service.Academics;
@@ -33,6 +34,7 @@ using Devken.CBC.SchoolManagement.Infrastructure.Services.Academics;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Activities;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Administration.Students;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Images;
+using Devken.CBC.SchoolManagement.Infrastructure.Services.Reports;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.RoleAssignment;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -273,8 +275,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddMemoryCache();
 
             services.AddScoped(typeof(Lazy<>), typeof(LazyServiceProvider<>));
-
+            
             // Services
+            services.AddScoped<IReportService, ReportService>();
             services.AddScoped<IUserManagementService, UserManagementService>();
             services.AddScoped<ITeacherService, TeacherService>();
             services.AddScoped<ITermService, TermService>();

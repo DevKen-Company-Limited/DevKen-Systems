@@ -15,7 +15,8 @@
 
   <ItemGroup>
 	  <PackageReference Include="BCrypt.Net-Core" Version="1.6.0" />
-	  <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
+	  <PackageReference Include="Lime.Protocol" Version="0.12.144" />
+		  <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
     <PackageReference Include="Castle.Core" Version="5.2.1" />
     <PackageReference Include="EntityFramework" Version="6.5.1" />
     <PackageReference Include="Microsoft.AspNetCore.Cryptography.KeyDerivation" Version="10.0.2" />
@@ -30,6 +31,9 @@
     <PackageReference Include="Microsoft.TestPlatform.TestHost" Version="18.0.1" />
     <PackageReference Include="Portable.BouncyCastle" Version="1.9.0" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
+	  <PackageReference Include="DevExpress.Reporting.Core" Version="24.2.3" />
+
+
   </ItemGroup>
 
   <ItemGroup>

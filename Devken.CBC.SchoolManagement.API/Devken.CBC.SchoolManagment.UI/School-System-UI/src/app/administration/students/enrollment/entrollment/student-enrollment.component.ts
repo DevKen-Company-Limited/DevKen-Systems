@@ -407,7 +407,6 @@ private loadExistingStudent(id: string): void {
   }
 
 private buildPayload(): any {
-
   const payload: any = {
     ...this.formSections.personal,
     ...this.formSections.location,
@@ -418,7 +417,6 @@ private buildPayload(): any {
 
   // ✅ SAFETY: Remove secondary guardian fields if email is empty
   const secondaryEmail = payload.secondaryGuardianEmail?.trim();
-
   if (!secondaryEmail) {
     delete payload.secondaryGuardianName;
     delete payload.secondaryGuardianRelationship;
@@ -429,8 +427,14 @@ private buildPayload(): any {
     payload.secondaryGuardianEmail = secondaryEmail;
   }
 
+  // ✅ SAFETY: Only include currentClassId if it has a value
+  if (!payload.currentClassId || !payload.currentClassId.trim()) {
+    delete payload.currentClassId;
+  }
+
   return payload;
 }
+
 
 
   // ─── Guards ───────────────────────────────────────────────────────

@@ -1,5 +1,7 @@
+// ==================== Enums ====================
+
 /**
- * Subscription Status - Numeric constants matching backend C# enum
+ * Subscription Status - matches backend C# enum
  */
 export const SubscriptionStatus = {
   PendingPayment: 0,
@@ -9,22 +11,20 @@ export const SubscriptionStatus = {
   Expired: 4,
   GracePeriod: 5
 } as const;
-
 export type SubscriptionStatus = typeof SubscriptionStatus[keyof typeof SubscriptionStatus];
 
 /**
- * Billing Cycle - Numeric constants matching backend C# enum
+ * Billing Cycle - matches backend C# enum
  */
 export const BillingCycle = {
   Monthly: 1,
   Quarterly: 3,
   Yearly: 4
 } as const;
-
 export type BillingCycle = typeof BillingCycle[keyof typeof BillingCycle];
 
 /**
- * Subscription Plan - Numeric constants matching backend C# enum
+ * Subscription Plan - matches backend C# enum
  */
 export const SubscriptionPlan = {
   Basic: 0,
@@ -32,10 +32,32 @@ export const SubscriptionPlan = {
   Premium: 2,
   Enterprise: 3
 } as const;
-
 export type SubscriptionPlan = typeof SubscriptionPlan[keyof typeof SubscriptionPlan];
 
-// ==================== API Response Types ====================
+/**
+ * School Type - matches backend C# enum (SchoolType)
+ * Public = 1, Private = 2, International = 3, NGO = 4
+ */
+export const SchoolType = {
+  Public: 1,
+  Private: 2,
+  International: 3,
+  NGO: 4
+} as const;
+export type SchoolType = typeof SchoolType[keyof typeof SchoolType];
+
+/**
+ * School Category - matches backend C# enum (SchoolCategory)
+ * Day = 1, Boarding = 2, Mixed = 3
+ */
+export const SchoolCategory = {
+  Day: 1,
+  Boarding: 2,
+  Mixed: 3
+} as const;
+export type SchoolCategory = typeof SchoolCategory[keyof typeof SchoolCategory];
+
+// ==================== API Response ====================
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -44,14 +66,79 @@ export interface ApiResponse<T> {
   errors?: string[];
 }
 
+// ==================== School DTOs (aligned to backend) ====================
+
+/** Matches C# SchoolDto exactly */
+export interface SchoolDto {
+  id: string;
+  slugName: string;
+  name: string;
+  registrationNumber?: string;
+  knecCenterCode?: string;
+  kraPin?: string;
+  address?: string;
+  county?: string;
+  subCounty?: string;
+  phoneNumber?: string;
+  email?: string;
+  logoUrl?: string;
+  schoolType: SchoolType;
+  category: SchoolCategory;
+  isActive: boolean;
+  createdOn: string;
+}
+
+/** Matches C# CreateSchoolRequest */
+export interface CreateSchoolRequest {
+  slugName: string;
+  name: string;
+  registrationNumber?: string;
+  knecCenterCode?: string;
+  kraPin?: string;
+  address?: string;
+  county?: string;
+  subCounty?: string;
+  phoneNumber?: string;
+  email?: string;
+  logoUrl?: string;
+  schoolType: SchoolType;
+  category: SchoolCategory;
+  isActive: boolean;
+}
+
+/** Matches C# UpdateSchoolRequest */
+export interface UpdateSchoolRequest {
+  slugName: string;
+  name: string;
+  registrationNumber?: string;
+  knecCenterCode?: string;
+  kraPin?: string;
+  address?: string;
+  county?: string;
+  subCounty?: string;
+  phoneNumber?: string;
+  email?: string;
+  logoUrl?: string;
+  schoolType: SchoolType;
+  category: SchoolCategory;
+  isActive: boolean;
+}
+
+/** Matches C# UpdateSchoolStatusRequest */
+export interface UpdateSchoolStatusRequest {
+  isActive: boolean;
+}
+
+// ==================== Subscription Types ====================
+
 export interface Subscription {
   id: string;
   schoolId: string;
-  plan: number; // SubscriptionPlan value
-  billingCycle: number; // BillingCycle value
-  startDate: Date;
-  expiryDate: Date;
-  status: number; // SubscriptionStatus value
+  plan: number;
+  billingCycle: number;
+  startDate: string;
+  expiryDate: string;
+  status: number;
   amount: number;
   currency: string;
   maxStudents: number;
@@ -65,52 +152,6 @@ export interface Subscription {
   suspensionReason?: string;
   isActive?: boolean;
   adminNotes?: string;
-}
-
-export interface SchoolDto {
-  logoUrl: string;
-  motto: string;
-  address: string;
-  id: string;
-  name: string;
-  slug: string;
-  email: string;
-  phone: string;
-  location: string;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface SchoolWithSubscription extends SchoolDto {
-  createdOn: string | number | Date;
-  phoneNumber: any;
-  subscription: Subscription | null;
-  subscriptionStatus: number | null;
-  subscriptionExpiry: Date | null;
-  isSubscriptionActive: boolean;
-  isSubscriptionExpired: boolean;
-  daysRemaining: number;
-  needsSubscription: boolean;
-}
-
-export interface CreateSchoolRequest {
-  name: string;
-  slug: string;
-  email: string;
-  phone: string;
-  location: string;
-}
-
-export interface UpdateSchoolRequest {
-  name?: string;
-  email?: string;
-  phone?: string;
-  location?: string;
-}
-
-export interface UpdateSchoolStatusRequest {
-  isActive: boolean;
 }
 
 export interface CreateSubscriptionRequest {
@@ -132,21 +173,35 @@ export interface UpdateSubscriptionRequest {
   adminNotes?: string;
 }
 
-export interface SchoolStats {
-  totalSchools: number;
-  activeSchools: number;
-  inactiveSchools: number;
-  totalWithSubscriptions: number;
-}
-
 export interface SubscriptionStatusCheck {
   hasActiveSubscription: boolean;
   status: string;
-  expiryDate?: Date;
+  expiryDate?: string;
   daysRemaining: number;
   message: string;
   needsRenewal: boolean;
   isExpired: boolean;
   isInGracePeriod: boolean;
   canAccess: boolean;
+}
+
+// ==================== Combined / View Types ====================
+
+export interface SchoolWithSubscription extends SchoolDto {
+  subscription: Subscription | null;
+  subscriptionStatus: number | null;
+  subscriptionExpiry: string | null;
+  isSubscriptionActive: boolean;
+  isSubscriptionExpired: boolean;
+  daysRemaining: number;
+  needsSubscription: boolean;
+}
+
+export interface SchoolStats {
+  totalSchools: number;
+  activeSchools: number;
+  inactiveSchools: number;
+  withActiveSubscription: number;
+  withExpiredSubscription: number;
+  withoutSubscription: number;
 }

@@ -1,301 +1,164 @@
-<!-- schools-management.component.html (updated) -->
+<!-- schools-management.component.html -->
 
-<div class="flex flex-col flex-auto min-w-0">
-  <!-- Header -->
-  <div class="flex flex-col sm:flex-row flex-0 sm:items-center sm:justify-between p-6 sm:py-8 sm:px-10 border-b bg-card dark:bg-gray-900 shadow-sm">
-    <div class="flex-1 min-w-0">
-      <!-- Breadcrumbs -->
-      <div class="flex flex-wrap items-center text-sm font-medium text-gray-500 dark:text-gray-400">
-        <a class="hover:text-primary-500 transition-colors cursor-pointer">Administration</a>
-        <mat-icon class="icon-size-5 mx-1">chevron_right</mat-icon>
-        <a class="hover:text-primary-500 transition-colors cursor-pointer">Tenant Management</a>
-        <mat-icon class="icon-size-5 mx-1">chevron_right</mat-icon>
-        <span class="text-gray-400">Schools & Subscriptions</span>
-      </div>
+<div class="absolute inset-0 flex min-w-0 flex-col overflow-y-auto" cdkScrollable>
 
-      <!-- Title -->
-      <h2 class="mt-2 text-3xl md:text-4xl font-extrabold tracking-tight truncate text-gray-900 dark:text-white">
-        School Management
-      </h2>
-      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-        Manage schools and their subscription status
-      </p>
+  <!-- ── Page Header ──────────────────────────────────────────────────────── -->
+  <app-page-header
+    title="School Management"
+    description="Create, manage, and monitor all schools on the platform"
+    icon="school"
+    [breadcrumbs]="breadcrumbs"
+    [actionTemplate]="headerActions">
+  </app-page-header>
+
+  <!-- Header action button -->
+  <ng-template #headerActions>
+    <button
+      mat-flat-button
+      class="bg-white text-indigo-700 hover:bg-yellow-200 hover:text-indigo-900 shadow-lg transition-all hover:shadow-xl font-bold"
+      (click)="openCreate()">
+      <mat-icon class="icon-size-5">add</mat-icon>
+      <span class="ml-2">New School</span>
+    </button>
+  </ng-template>
+
+  <!-- ── Main Content ──────────────────────────────────────────────────────── -->
+  <div class="bg-card -mt-10 flex-auto rounded-t-2xl p-6 shadow sm:p-10">
+
+    <!-- Stats Cards -->
+    <app-stats-cards [cards]="statsCards" [columns]="4"></app-stats-cards>
+
+    <!-- Filter Panel -->
+    <div class="mb-6">
+      <app-filter-panel
+        [fields]="filterFields"
+        [showPanel]="showFilterPanel"
+        [columns]="3"
+        (filterChange)="onFilterChange($event)"
+        (clearAll)="onClearFilters()"
+        (togglePanel)="toggleFilterPanel()">
+      </app-filter-panel>
     </div>
 
-    <!-- Actions -->
-    <div class="flex shrink-0 items-center mt-6 sm:mt-0 sm:ml-4 gap-3">
-      <!-- Stats -->
-      <div class="hidden sm:flex items-center gap-4 mr-4">
-        <div class="text-center">
-          <div class="text-2xl font-bold text-primary">{{ stats.totalSchools }}</div>
-          <div class="text-xs text-gray-500 dark:text-gray-400">Total</div>
-        </div>
-        <div class="h-10 w-px bg-gray-300 dark:bg-gray-600"></div>
-        <div class="text-center">
-          <div class="text-2xl font-bold text-green-600">{{ stats.withActiveSubscription }}</div>
-          <div class="text-xs text-gray-500 dark:text-gray-400">Active Subscriptions</div>
-        </div>
-        <div class="h-10 w-px bg-gray-300 dark:bg-gray-600"></div>
-        <div class="text-center">
-          <div class="text-2xl font-bold text-amber-600">{{ stats.withExpiredSubscription }}</div>
-          <div class="text-xs text-gray-500 dark:text-gray-400">Expired</div>
-        </div>
-      </div>
+    <!-- Data Table -->
+    <app-data-table
+      [columns]="tableColumns"
+      [data]="paginatedData"
+      [actions]="tableActions"
+      [loading]="isLoading"
+      [header]="tableHeader"
+      [emptyState]="tableEmptyState"
+      [cellTemplates]="cellTemplates">
+    </app-data-table>
 
-      <button mat-flat-button color="primary" (click)="refreshData()" [disabled]="isLoading" class="flex items-center gap-2">
-        <mat-icon [class.animate-spin]="isLoading">refresh</mat-icon>
-        Refresh
-      </button>
-    </div>
-  </div>
+    <!-- Pagination -->
+    <app-pagination
+      *ngIf="!isLoading"
+      [currentPage]="currentPage"
+      [totalItems]="filteredData.length"
+      [itemsPerPage]="itemsPerPage"
+      [itemLabel]="'schools'"
+      [showItemsPerPageSelector]="true"
+      [showPageNumbers]="true"
+      (pageChange)="onPageChange($event)"
+      (itemsPerPageChange)="onItemsPerPageChange($event)">
+    </app-pagination>
 
-  <!-- Alert -->
-  <fuse-alert
-    class="m-6"
-    *ngIf="showAlert"
-    [appearance]="'outline'"
-    [showIcon]="true"
-    [type]="alert.type"
-    [dismissible]="true"
-    (dismissed)="dismissAlert()">
-    {{ alert.message }}
-  </fuse-alert>
-
-  <!-- Main Content -->
-  <div class="flex-auto p-6 sm:p-10">
-    <mat-card class="shadow-md hover:shadow-lg transition-shadow">
-      <mat-card-header class="pb-4">
-        <mat-card-title class="text-2xl font-semibold">All Schools</mat-card-title>
-        <mat-card-subtitle class="text-gray-600 dark:text-gray-400">
-          Manage school information and subscription status
-        </mat-card-subtitle>
-      </mat-card-header>
-
-      <mat-card-content>
-        <!-- Search and Filter -->
-        <div class="flex flex-col md:flex-row gap-4 mb-6">
-          <mat-form-field class="flex-auto" appearance="outline">
-            <mat-label>Search schools</mat-label>
-            <input
-              matInput
-              [(ngModel)]="filterValue"
-              (input)="applyFilter($any($event.target).value)"
-              placeholder="Name, email, or phone"
-              autocomplete="off">
-            <mat-icon matPrefix>search</mat-icon>
-            <button *ngIf="filterValue" mat-icon-button matSuffix (click)="clearFilter()" matTooltip="Clear search">
-              <mat-icon>close</mat-icon>
-            </button>
-          </mat-form-field>
-
-          <mat-form-field class="md:w-56" appearance="outline">
-            <mat-label>Filter by status</mat-label>
-            <mat-select [(value)]="statusFilter" (selectionChange)="applyStatusFilter()">
-              <mat-option [value]="'all'">All Schools</mat-option>
-              <mat-option [value]="'active'">Active Only</mat-option>
-              <mat-option [value]="'inactive'">Inactive Only</mat-option>
-              <mat-option [value]="'needsSubscription'">Needs Subscription</mat-option>
-            </mat-select>
-            <mat-icon matPrefix>filter_list</mat-icon>
-          </mat-form-field>
-
-          <button 
-            mat-flat-button 
-            color="primary" 
-            (click)="openCreate()"
-            class="flex items-center gap-2 md:w-auto w-full">
-            <mat-icon>add</mat-icon>
-            <span>New School</span>
-          </button>
-        </div>
-
-        <!-- Loading Spinner -->
-        <div *ngIf="isLoading" class="flex flex-col items-center justify-center h-64">
-          <mat-spinner [diameter]="48"></mat-spinner>
-          <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">Loading schools and subscriptions...</p>
-        </div>
-
-        <!-- Schools Table -->
-        <div *ngIf="!isLoading" class="overflow-x-auto rounded-md border border-gray-200 dark:border-gray-700">
-          <table mat-table [dataSource]="dataSource" matSort class="w-full text-left">
-            
-            <!-- School Column -->
-            <ng-container matColumnDef="school">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header class="font-semibold px-4 py-3 bg-gray-50 dark:bg-gray-800">School</th>
-              <td mat-cell *matCellDef="let school" class="px-4 py-3">
-                <div class="flex items-center gap-3">
-                  <div 
-                    class="w-10 h-10 rounded-lg flex items-center justify-center shadow-sm"
-                    [class.bg-gradient-to-br]="school.isActive"
-                    [class.from-primary-400]="school.isActive"
-                    [class.to-primary-600]="school.isActive"
-                    [class.bg-gray-400]="!school.isActive">
-                    <mat-icon class="text-white" [matBadge]="school.needsSubscription ? '!' : ''" matBadgeColor="warn" matBadgeSize="small">school</mat-icon>
-                  </div>
-                  <div class="truncate">
-                    <div class="font-medium text-gray-900 dark:text-white flex items-center gap-2">
-                      {{ school.name }}
-                      <mat-icon *ngIf="school.needsSubscription" class="text-amber-500 text-sm" matTooltip="Subscription required">warning</mat-icon>
-                    </div>
-                    <div class="text-sm text-gray-500 dark:text-gray-400">
-                      {{ school.email || 'No email' }}
-                    </div>
-                  </div>
-                </div>
-              </td>
-            </ng-container>
-
-            <!-- Subscription Column -->
-            <ng-container matColumnDef="subscription">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header class="font-semibold px-4 py-3 bg-gray-50 dark:bg-gray-800">Subscription</th>
-              <td mat-cell *matCellDef="let school" class="px-4 py-3">
-                <div class="flex items-center gap-2">
-                  <button 
-                    mat-flat-button 
-                    [color]="getSubscriptionBadgeColor(school)"
-                    size="small"
-                    (click)="checkSubscriptionStatus(school)"
-                    class="text-xs"
-                    matTooltip="Click to check status">
-                    <mat-icon class="text-sm mr-1">subscriptions</mat-icon>
-                    {{ getSubscriptionDisplay(school) }}
-                  </button>
-                  
-                  <span *ngIf="school.subscriptionExpiry" class="text-xs text-gray-500 dark:text-gray-400">
-                    Expires: {{ formatDate(school.subscriptionExpiry) }}
-                  </span>
-                  
-                  <button 
-                    *ngIf="school.needsSubscription || school.isSubscriptionExpired"
-                    mat-icon-button 
-                    color="warn"
-                    size="small"
-                    (click)="manageSubscription(school)"
-                    matTooltip="Manage subscription">
-                    <mat-icon>payment</mat-icon>
-                  </button>
-                </div>
-              </td>
-            </ng-container>
-
-            <!-- Status Column -->
-            <ng-container matColumnDef="status">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header class="font-semibold px-4 py-3 bg-gray-50 dark:bg-gray-800">Status</th>
-              <td mat-cell *matCellDef="let school" class="px-4 py-3">
-                <span 
-                  class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full"
-                  [class.bg-green-100]="school.isActive"
-                  [class.dark:bg-green-900]="school.isActive"
-                  [class.text-green-800]="school.isActive"
-                  [class.dark:text-green-200]="school.isActive"
-                  [class.bg-red-100]="!school.isActive"
-                  [class.dark:bg-red-900]="!school.isActive"
-                  [class.text-red-800]="!school.isActive"
-                  [class.dark:text-red-200]="!school.isActive">
-                  <span 
-                    class="w-2 h-2 rounded-full mr-2"
-                    [class.bg-green-600]="school.isActive"
-                    [class.dark:bg-green-400]="school.isActive"
-                    [class.bg-red-600]="!school.isActive"
-                    [class.dark:bg-red-400]="!school.isActive">
-                  </span>
-                  {{ school.isActive ? 'Active' : 'Inactive' }}
-                </span>
-              </td>
-            </ng-container>
-
-            <!-- Created Date Column -->
-            <ng-container matColumnDef="created">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header class="font-semibold px-4 py-3 bg-gray-50 dark:bg-gray-800">Created</th>
-              <td mat-cell *matCellDef="let school" class="px-4 py-3">
-                <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                  <mat-icon class="text-sm">calendar_today</mat-icon>
-                  <span>{{ formatDate(school.createdOn) }}</span>
-                </div>
-              </td>
-            </ng-container>
-
-            <!-- Actions Column -->
-            <ng-container matColumnDef="actions">
-              <th mat-header-cell *matHeaderCellDef class="font-semibold px-4 py-3 text-right bg-gray-50 dark:bg-gray-800">Actions</th>
-              <td mat-cell *matCellDef="let school" class="px-4 py-3 text-right">
-                <button 
-                  mat-icon-button 
-                  [matMenuTriggerFor]="menu"
-                  matTooltip="More actions"
-                  class="hover:bg-gray-100 dark:hover:bg-gray-700">
-                  <mat-icon>more_vert</mat-icon>
-                </button>
-                
-                <mat-menu #menu="matMenu">
-                  <button mat-menu-item (click)="openEdit(school)">
-                    <mat-icon>edit</mat-icon>
-                    <span>Edit School</span>
-                  </button>
-                  
-                  <button mat-menu-item (click)="manageSubscription(school)">
-                    <mat-icon>subscriptions</mat-icon>
-                    <span>Manage Subscription</span>
-                  </button>
-                  
-                  <button mat-menu-item (click)="checkSubscriptionStatus(school)">
-                    <mat-icon>info</mat-icon>
-                    <span>Check Subscription Status</span>
-                  </button>
-                  
-                  <button mat-menu-item (click)="toggleSchoolStatus(school)">
-                    <mat-icon>{{ school.isActive ? 'block' : 'check_circle' }}</mat-icon>
-                    <span>{{ school.isActive ? 'Deactivate' : 'Activate' }}</span>
-                  </button>
-                  
-                  <mat-divider></mat-divider>
-                  
-                  <button 
-                    mat-menu-item 
-                    (click)="removeSchool(school)" 
-                    class="text-warn">
-                    <mat-icon>delete</mat-icon>
-                    <span>Delete School</span>
-                  </button>
-                </mat-menu>
-              </td>
-            </ng-container>
-
-            <tr mat-header-row *matHeaderRowDef="displayedColumns" class="bg-gray-50 dark:bg-gray-800"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns;" 
-                class="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"></tr>
-          </table>
-
-          <!-- Empty State -->
-          <div *ngIf="dataSource.data.length === 0" class="text-center py-16">
-            <mat-icon class="icon-size-16 mb-4 text-gray-400">school</mat-icon>
-            <h3 class="text-xl font-semibold mb-2 text-gray-900 dark:text-white">No Schools Found</h3>
-            <p class="text-gray-500 dark:text-gray-400 mb-4">
-              {{ filterValue ? 'Try adjusting your search' : 'Get started by creating your first school' }}
-            </p>
-            <button 
-              *ngIf="!filterValue" 
-              mat-flat-button 
-              color="primary" 
-              (click)="openCreate()"
-              class="flex items-center gap-2 mx-auto">
-              <mat-icon>add</mat-icon>
-              Create School
-            </button>
-          </div>
-
-          <!-- Paginator -->
-          <mat-paginator 
-            *ngIf="dataSource.data.length > 0"
-            [length]="total" 
-            [pageSize]="pageSize" 
-            [pageSizeOptions]="[10, 20, 50, 100]" 
-            (page)="onPageChange($event)"
-            showFirstLastButtons
-            class="border-t border-gray-200 dark:border-gray-700">
-          </mat-paginator>
-        </div>
-      </mat-card-content>
-    </mat-card>
   </div>
 </div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- Cell Templates                                                            -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+
+<!-- ── School Cell ──────────────────────────────────────────────────────────── -->
+<ng-template #schoolCell let-row>
+  <div class="flex items-center gap-3 cursor-pointer group" (click)="openView(row)">
+
+    <!-- Avatar container -->
+    <div class="w-10 h-10 rounded-xl overflow-hidden shrink-0
+                bg-gradient-to-br from-indigo-100 to-violet-100
+                flex items-center justify-center
+                border border-indigo-200 dark:border-indigo-800">
+
+      <!-- Loading spinner -->
+      <div *ngIf="logoCache[row.id]?.isLoading"
+           class="w-full h-full flex items-center justify-center">
+        <mat-spinner [diameter]="20"></mat-spinner>
+      </div>
+
+      <!-- Error state -->
+      <div *ngIf="logoCache[row.id]?.error && !logoCache[row.id]?.isLoading"
+           class="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800">
+        <mat-icon class="text-gray-400 icon-size-5">broken_image</mat-icon>
+      </div>
+
+      <!-- Loaded logo -->
+      <img *ngIf="logoCache[row.id]?.url && !logoCache[row.id]?.isLoading"
+           [src]="logoCache[row.id].url"
+           [alt]="row.name + ' logo'"
+           class="w-full h-full object-contain p-0.5" />
+
+      <!-- Initials fallback: shown when no logo URL at all, or while not yet attempted -->
+      <span *ngIf="!row.logoUrl && !logoCache[row.id]?.isLoading && !logoCache[row.id]?.error"
+            class="text-sm font-bold"
+            [ngClass]="row.isActive
+              ? 'text-indigo-600 dark:text-indigo-400'
+              : 'text-gray-500 dark:text-gray-400'">
+        {{ getInitials(row.name) }}
+      </span>
+
+      <!-- Initials fallback: shown when logo URL exists but hasn't started loading yet -->
+      <span *ngIf="row.logoUrl && !logoCache[row.id]"
+            class="text-sm font-bold text-indigo-600 dark:text-indigo-400">
+        {{ getInitials(row.name) }}
+      </span>
+    </div>
+
+    <!-- Name / sub-label -->
+    <div class="min-w-0">
+      <p class="text-sm font-semibold text-gray-900 dark:text-white truncate
+                group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+        {{ row.name }}
+      </p>
+      <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
+        {{ row.email || row.slugName || '—' }}
+      </p>
+    </div>
+  </div>
+</ng-template>
+
+
+<!-- ── Type Cell ────────────────────────────────────────────────────────────── -->
+<ng-template #typeCell let-row>
+  <div class="flex flex-col gap-0.5">
+    <span class="text-sm font-medium text-gray-800 dark:text-gray-200">
+      {{ getSchoolTypeLabel(row.schoolType) }}
+    </span>
+    <span class="text-xs text-gray-500 dark:text-gray-400">
+      {{ getCategoryLabel(row.category) }}
+    </span>
+  </div>
+</ng-template>
+
+
+<!-- ── Status Cell ──────────────────────────────────────────────────────────── -->
+<ng-template #statusCell let-row>
+  <span class="px-3 py-1 rounded-full text-xs font-semibold"
+        [ngClass]="{
+          'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400':  row.isActive,
+          'bg-red-100   dark:bg-red-900/30   text-red-700   dark:text-red-400':   !row.isActive
+        }">
+    {{ row.isActive ? 'Active' : 'Inactive' }}
+  </span>
+</ng-template>
+
+
+<!-- ── Created Cell ──────────────────────────────────────────────────────────── -->
+<ng-template #createdCell let-row>
+  <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+    <mat-icon class="icon-size-4 text-gray-400">calendar_today</mat-icon>
+    <span>{{ formatDate(row.createdOn) }}</span>
+  </div>
+</ng-template>

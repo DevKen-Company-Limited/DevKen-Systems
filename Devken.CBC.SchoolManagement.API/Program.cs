@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.OpenApi.Models;
+using QuestPDF.Infrastructure;
 using System.Globalization;
 using System.Reflection;
 
@@ -23,6 +24,8 @@ if (!Directory.Exists(uploadsPath))
 {
     Directory.CreateDirectory(uploadsPath);
 }
+
+QuestPDF.Settings.License = LicenseType.Community;
 
 
 

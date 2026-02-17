@@ -6,6 +6,39 @@ namespace Devken.CBC.SchoolManagement.Domain.Enums
     /// <summary>
     /// Gender options
     /// </summary>
+    /// 
+
+
+    public enum SchoolType
+    {
+        [Description("Public School (Government Funded)")]
+        Public = 1,
+
+        [Description("Private School")]
+        Private = 2,
+
+        [Description("International Curriculum School")]
+        International = 3,
+
+        [Description("NGO / Mission Sponsored School")]
+        NGO = 4
+    }
+
+    public enum SchoolCategory
+    {
+        [Description("Day School")]
+        Day = 1,
+
+        [Description("Boarding School")]
+        Boarding = 2,
+
+        [Description("Mixed (Day & Boarding)")]
+        Mixed = 3
+    }
+
+
+
+
     public enum Gender
     {
         [Description("Male")]

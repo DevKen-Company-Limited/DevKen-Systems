@@ -496,7 +496,7 @@ export class TeachersComponent implements OnInit, OnDestroy {
         options: [
           { label: 'All Schools', value: 'all' },
           ...this.schools.map(s => ({ 
-            label: `${s.name}${s.slug ? ' (' + s.phone + ')' : ''}`, 
+            label: `${s.name}${s.slugName ? ' (' + s.phoneNumber + ')' : ''}`, 
             value: s.id 
           })),
         ],

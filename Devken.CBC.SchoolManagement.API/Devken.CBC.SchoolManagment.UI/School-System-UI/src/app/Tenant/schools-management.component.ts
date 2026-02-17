@@ -1,32 +1,52 @@
-import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { MatTableModule, MatTableDataSource } from '@angular/material/table';
-import { MatPaginator, MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-import { MatSort, MatSortModule } from '@angular/material/sort';
+import {
+  Component,
+  OnInit,
+  OnDestroy,
+  AfterViewInit,
+  ViewChild,
+  TemplateRef,
+  inject,
+} from '@angular/core';
+import { CommonModule, DatePipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatCardModule } from '@angular/material/card';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatSelectModule } from '@angular/material/select';
-import { MatMenuModule } from '@angular/material/menu';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { FormsModule } from '@angular/forms';
-import { Subject } from 'rxjs';
-import { takeUntil, take } from 'rxjs/operators';
-import { FuseAlertComponent } from '@fuse/components/alert';
-import { CreateEditSchoolDialogComponent } from 'app/dialog-modals/Tenant/create-edit-school-dialog.component';
-import { BaseListComponent } from 'app/shared/Lists/BaseListComponent';
-import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
 import { MatDividerModule } from '@angular/material/divider';
-import { DatePipe } from '@angular/common';
-import { MatBadgeModule } from '@angular/material/badge';
-import { SchoolWithSubscription, SubscriptionStatus } from './types/school';
-import { ManageSubscriptionDialogComponent } from 'app/dialog-modals/Tenant/ManageSubscriptionDialogComponent';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Subject, of } from 'rxjs';
+import { takeUntil, take, catchError } from 'rxjs/operators';
 
+import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
+import { SchoolDto, SchoolType, SchoolCategory } from './types/school';
+import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
+import { API_BASE_URL } from 'app/app.config';
+import { AuthService } from 'app/core/auth/auth.service';
+import { CreateEditSchoolDialogComponent } from 'app/dialog-modals/Tenant/create-edit-school-dialog.component';
+import { SchoolViewDialogComponent } from 'app/dialog-modals/Student/school-view-dialog.component';
+
+// ── Reusable shared components ──────────────────────────────────────────────
+import { PageHeaderComponent, Breadcrumb } from 'app/shared/Page-Header/page-header.component';
+import { FilterPanelComponent, FilterField, FilterChangeEvent } from 'app/shared/Filter/filter-panel.component';
+import { PaginationComponent } from 'app/shared/pagination/pagination.component';
+import { StatsCardsComponent, StatCard } from 'app/shared/stats-cards/stats-cards.component';
+import {
+  DataTableComponent,
+  TableColumn,
+  TableAction,
+  TableHeader,
+  TableEmptyState,
+} from 'app/shared/data-table/data-table.component';
+
+// ── Logo cache entry — mirrors PhotoCacheEntry from teachers ───────────────
+export interface LogoCacheEntry {
+  url:       SafeUrl;
+  blobUrl:   string;
+  isLoading: boolean;
+  error:     boolean;
+}
 
 @Component({
   selector: 'app-schools-management',
@@ -34,432 +54,484 @@ import { ManageSubscriptionDialogComponent } from 'app/dialog-modals/Tenant/Mana
   imports: [
     CommonModule,
     FormsModule,
-    MatTableModule,
-    MatPaginatorModule,
-    MatSortModule,
     MatIconModule,
     MatButtonModule,
     MatDialogModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatCardModule,
-    MatSnackBarModule,
     MatProgressSpinnerModule,
-    MatSelectModule,
-    MatMenuModule,
-    MatTooltipModule,
     MatDividerModule,
-    MatBadgeModule,
-    FuseAlertComponent
+    PageHeaderComponent,
+    FilterPanelComponent,
+    PaginationComponent,
+    StatsCardsComponent,
+    DataTableComponent,
   ],
   templateUrl: './schools-management.component.html',
-  providers: [DatePipe]
+  providers: [DatePipe],
 })
-export class SchoolsManagementComponent implements OnInit, OnDestroy {
-  @ViewChild(MatPaginator) paginator!: MatPaginator;
-  @ViewChild(MatSort) sort!: MatSort;
+export class SchoolsManagementComponent implements OnInit, AfterViewInit, OnDestroy {
 
+  // ── Cell template refs ────────────────────────────────────────────────────
+  @ViewChild('schoolCell')  schoolCellTemplate!:  TemplateRef<any>;
+  @ViewChild('typeCell')    typeCellTemplate!:    TemplateRef<any>;
+  @ViewChild('statusCell')  statusCellTemplate!:  TemplateRef<any>;
+  @ViewChild('createdCell') createdCellTemplate!: TemplateRef<any>;
+
+  private _baseUrl     = inject(API_BASE_URL);
+  private _sanitizer   = inject(DomSanitizer);
+  private _http        = inject(HttpClient);
+  private _authService = inject(AuthService);
   private _unsubscribe = new Subject<void>();
 
-  displayedColumns: string[] = ['school', 'subscription', 'status', 'created', 'actions'];
-  
-  // Filter state
-  filterValue = '';
-  statusFilter: 'all' | 'active' | 'inactive' | 'needsSubscription' = 'all';
-  
-  // Paging state
-  pageSize = 20;
-  currentPage = 0;
-  total = 0;
-  
-  // Stats
-  stats = {
-    totalSchools: 0,
-    activeSchools: 0,
-    inactiveSchools: 0,
-    withActiveSubscription: 0,
-    withExpiredSubscription: 0,
-    withoutSubscription: 0
+  // ── Breadcrumbs ───────────────────────────────────────────────────────────
+  breadcrumbs: Breadcrumb[] = [
+    { label: 'Administration',    url: '/admin' },
+    { label: 'Tenant Management', url: '/admin/tenants' },
+    { label: 'Schools' },
+  ];
+
+  // ── Label maps ────────────────────────────────────────────────────────────
+  readonly schoolTypeLabels: Record<number, string> = {
+    [SchoolType.Public]:        'Public School',
+    [SchoolType.Private]:       'Private School',
+    [SchoolType.International]: 'International School',
+    [SchoolType.NGO]:           'NGO / Mission School',
   };
 
-  // Alerts
-  showAlert = false;
-  alert = { type: 'success' as 'success' | 'error', message: '' };
+  readonly categoryLabels: Record<number, string> = {
+    [SchoolCategory.Day]:      'Day School',
+    [SchoolCategory.Boarding]: 'Boarding School',
+    [SchoolCategory.Mixed]:    'Mixed (Day & Boarding)',
+  };
 
-  // Data source
-  dataSource = new MatTableDataSource<SchoolWithSubscription>([]);
+  // ── Stats Cards ───────────────────────────────────────────────────────────
+  get statsCards(): StatCard[] {
+    return [
+      {
+        label:     'Total Schools',
+        value:     this.allData.length,
+        icon:      'school',
+        iconColor: 'indigo',
+      },
+      {
+        label:     'Active',
+        value:     this.allData.filter(s => s.isActive).length,
+        icon:      'check_circle',
+        iconColor: 'green',
+      },
+      {
+        label:     'Inactive',
+        value:     this.allData.filter(s => !s.isActive).length,
+        icon:      'block',
+        iconColor: 'red',
+      },
+      {
+        label:     'Public Schools',
+        value:     this.allData.filter(s => s.schoolType === SchoolType.Public).length,
+        icon:      'account_balance',
+        iconColor: 'blue',
+      },
+    ];
+  }
+
+  // ── Table columns ─────────────────────────────────────────────────────────
+  readonly tableColumns: TableColumn<SchoolDto>[] = [
+    { id: 'school',  label: 'School',  align: 'left',   sortable: true },
+    { id: 'type',    label: 'Type',    align: 'left',   hideOnMobile: true },
+    { id: 'status',  label: 'Status',  align: 'center' },
+    { id: 'created', label: 'Created', align: 'left',   hideOnTablet: true },
+  ];
+
+  tableActions: TableAction<SchoolDto>[] = [
+    {
+      id:      'view',
+      label:   'View Details',
+      icon:    'visibility',
+      color:   'indigo',
+      handler: (school) => this.openView(school),
+    },
+    {
+      id:      'edit',
+      label:   'Edit School',
+      icon:    'edit',
+      color:   'blue',
+      handler: (school) => this.openEdit(school),
+    },
+    {
+      id:      'deactivate',
+      label:   'Deactivate',
+      icon:    'block',
+      color:   'amber',
+      handler: (school) => this.toggleSchoolStatus(school),
+      visible: (school) => school.isActive,
+    },
+    {
+      id:      'activate',
+      label:   'Activate',
+      icon:    'check_circle',
+      color:   'green',
+      handler: (school) => this.toggleSchoolStatus(school),
+      visible: (school) => !school.isActive,
+      divider: true,
+    },
+    {
+      id:      'delete',
+      label:   'Delete School',
+      icon:    'delete',
+      color:   'red',
+      handler: (school) => this.removeSchool(school),
+    },
+  ];
+
+  tableHeader: TableHeader = {
+    title:        'All Schools',
+    subtitle:     '',
+    icon:         'table_chart',
+    iconGradient: 'bg-gradient-to-br from-indigo-500 via-violet-600 to-purple-700',
+  };
+
+  tableEmptyState: TableEmptyState = {
+    icon:        'school',
+    message:     'No Schools Found',
+    description: 'Try adjusting your filters or create your first school.',
+    action: {
+      label:   'Create First School',
+      icon:    'add',
+      handler: () => this.openCreate(),
+    },
+  };
+
+  cellTemplates: { [key: string]: TemplateRef<any> } = {};
+
+  // ── Filter ────────────────────────────────────────────────────────────────
+  filterFields:   FilterField[] = [];
+  showFilterPanel = false;
+
+  private _filterValues = { search: '', status: 'all', type: 'all' };
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  allData:  SchoolDto[] = [];
   isLoading = false;
 
+  // ── Logo cache — keyed by school id, same shape as teachers' photoCache ───
+  logoCache: { [id: string]: LogoCacheEntry } = {};
+
+  // ── Pagination ────────────────────────────────────────────────────────────
+  currentPage  = 1;
+  itemsPerPage = 10;
+
+  // ── Derived data ──────────────────────────────────────────────────────────
+  get filteredData(): SchoolDto[] {
+    return this.allData.filter(s => {
+      const q = this._filterValues.search.toLowerCase();
+      const searchMatch =
+        !q ||
+        s.name.toLowerCase().includes(q) ||
+        (s.email       ?? '').toLowerCase().includes(q) ||
+        (s.phoneNumber ?? '').toLowerCase().includes(q) ||
+        (s.slugName    ?? '').toLowerCase().includes(q);
+
+      const statusMatch =
+        this._filterValues.status === 'all' ||
+        (this._filterValues.status === 'active'   &&  s.isActive) ||
+        (this._filterValues.status === 'inactive' && !s.isActive);
+
+      const typeMatch =
+        this._filterValues.type === 'all' ||
+        String(s.schoolType) === this._filterValues.type;
+
+      return searchMatch && statusMatch && typeMatch;
+    });
+  }
+
+  get paginatedData(): SchoolDto[] {
+    const start = (this.currentPage - 1) * this.itemsPerPage;
+    return this.filteredData.slice(start, start + this.itemsPerPage);
+  }
+
   constructor(
-    private service: SchoolService,
-    private dialog: MatDialog,
-    private snackBar: MatSnackBar,
-    private datePipe: DatePipe
+    private _service:      SchoolService,
+    private _dialog:       MatDialog,
+    private _alertService: AlertService,
+    private _datePipe:     DatePipe,
   ) {}
 
   ngOnInit(): void {
-    this.init();
+    this._initFilterFields();
+    this.loadData();
+  }
+
+  ngAfterViewInit(): void {
+    this.cellTemplates = {
+      school:  this.schoolCellTemplate,
+      type:    this.typeCellTemplate,
+      status:  this.statusCellTemplate,
+      created: this.createdCellTemplate,
+    };
   }
 
   ngOnDestroy(): void {
     this._unsubscribe.next();
     this._unsubscribe.complete();
+    // Revoke all blob URLs to prevent memory leaks
+    Object.values(this.logoCache).forEach(e => { if (e?.blobUrl) URL.revokeObjectURL(e.blobUrl); });
   }
 
-  init(): void {
-    this.loadData();
+  // ── Filter setup ──────────────────────────────────────────────────────────
+  private _initFilterFields(): void {
+    this.filterFields = [
+      {
+        id: 'search', label: 'Search', type: 'text',
+        placeholder: 'Name, email, phone or slug…', value: '',
+      },
+      {
+        id: 'status', label: 'Status', type: 'select', value: 'all',
+        options: [
+          { label: 'All Statuses', value: 'all' },
+          { label: 'Active',       value: 'active' },
+          { label: 'Inactive',     value: 'inactive' },
+        ],
+      },
+      {
+        id: 'type', label: 'School Type', type: 'select', value: 'all',
+        options: [
+          { label: 'All Types',            value: 'all' },
+          { label: 'Public School',        value: String(SchoolType.Public) },
+          { label: 'Private School',       value: String(SchoolType.Private) },
+          { label: 'International School', value: String(SchoolType.International) },
+          { label: 'NGO / Mission School', value: String(SchoolType.NGO) },
+        ],
+      },
+    ];
   }
 
+  // ── Data loading ──────────────────────────────────────────────────────────
   loadData(): void {
     this.isLoading = true;
-    this.service.getAllWithSubscriptions()
-      .pipe(takeUntil(this._unsubscribe))
-      .subscribe({
-        next: (response) => {
-          if (response?.success && response.data) {
-            this.dataSource.data = response.data;
-            this.total = response.data.length;
-            this.calculateStats();
-            
-            // Set up sorting
-            this.dataSource.sort = this.sort;
-            this.dataSource.paginator = this.paginator;
-            
-            // Set up custom sorting
-            this.setupSorting();
-          } else {
-            this.showErrorAlert(response?.message || 'Failed to load schools');
-          }
-          this.isLoading = false;
-        },
-        error: (error) => {
-          console.error('Error loading schools:', error);
-          this.showErrorAlert('Failed to load schools');
-          this.isLoading = false;
+    this._service.getAll().pipe(takeUntil(this._unsubscribe)).subscribe({
+      next: (response) => {
+        if (response?.success && response.data) {
+          this.allData = response.data;
+          this.tableHeader.subtitle = `${this.filteredData.length} schools found`;
+          setTimeout(() => this._preloadVisibleLogos(), 0);
+        } else {
+          this._alertService.error(response?.message || 'Failed to load schools', 'Load Error');
         }
+        this.isLoading = false;
+      },
+      error: () => {
+        this._alertService.error('An unexpected error occurred while loading schools.', 'Load Error');
+        this.isLoading = false;
+      },
+    });
+  }
+
+  // ── Logo loading (identical pattern to teachers' _loadTeacherPhoto) ───────
+
+  /**
+   * Resolves a relative logo path to an absolute URL.
+   */
+  private _resolveLogoUrl(logoUrl: string): string {
+    if (logoUrl.startsWith('http://') || logoUrl.startsWith('https://')) return logoUrl;
+    const base = this._baseUrl.replace(/\/$/, '');
+    const path = logoUrl.startsWith('/') ? logoUrl : `/${logoUrl}`;
+    return `${base}${path}`;
+  }
+
+  /**
+   * Fetches a school logo as an authenticated blob and stores
+   * a SafeUrl in logoCache — mirrors loadTeacherPhoto() exactly.
+   */
+  private _loadLogo(schoolId: string, logoUrl: string): void {
+    // Initialise or reset the cache entry to loading state
+    if (!this.logoCache[schoolId]) {
+      this.logoCache[schoolId] = { url: null!, blobUrl: '', isLoading: true, error: false };
+    } else {
+      this.logoCache[schoolId].isLoading = true;
+      this.logoCache[schoolId].error     = false;
+    }
+
+    const resolved = this._resolveLogoUrl(logoUrl);
+    const token    = this._authService.accessToken;
+    const headers  = token ? new HttpHeaders().set('Authorization', `Bearer ${token}`) : undefined;
+    const fetchUrl = token ? `${resolved}?token=${token}` : resolved;
+
+    this._http.get(fetchUrl, { responseType: 'blob', headers })
+      .pipe(
+        takeUntil(this._unsubscribe),
+        catchError(err => {
+          console.error(`Failed to load logo for school ${schoolId}:`, err);
+          this.logoCache[schoolId] = { ...this.logoCache[schoolId], isLoading: false, error: true };
+          return of(null);
+        }),
+      )
+      .subscribe(blob => {
+        if (!blob) return;
+
+        // Revoke stale blob URL before replacing
+        if (this.logoCache[schoolId]?.blobUrl) {
+          URL.revokeObjectURL(this.logoCache[schoolId].blobUrl);
+        }
+
+        const blobUrl = URL.createObjectURL(blob);
+        const safeUrl = this._sanitizer.bypassSecurityTrustUrl(blobUrl);
+
+        this.logoCache[schoolId] = { url: safeUrl, blobUrl, isLoading: false, error: false };
       });
   }
 
-  applyFilter(value: string): void {
-    this.filterValue = value;
-    this.dataSource.filter = value.trim().toLowerCase();
-    this.updateFilteredTotal();
-  }
-
-  clearFilter(): void {
-    this.filterValue = '';
-    this.dataSource.filter = '';
-    this.total = this.dataSource.data.length;
-  }
-
-  applyStatusFilter(): void {
-    this.dataSource.filterPredicate = (data: SchoolWithSubscription, filter: string) => {
-      let statusMatch = true;
-      
-      if (this.statusFilter === 'active') {
-        statusMatch = data.isActive;
-      } else if (this.statusFilter === 'inactive') {
-        statusMatch = !data.isActive;
-      } else if (this.statusFilter === 'needsSubscription') {
-        statusMatch = data.needsSubscription || data.isSubscriptionExpired;
-      }
-      
-      const searchMatch = !this.filterValue || 
-                         data.name.toLowerCase().includes(this.filterValue.toLowerCase()) ||
-                         data.email?.toLowerCase().includes(this.filterValue.toLowerCase()) ||
-                         data.phoneNumber?.toLowerCase().includes(this.filterValue.toLowerCase());
-      
-      return statusMatch && searchMatch;
-    };
-    
-    this.dataSource.filter = 'trigger';
-    this.updateFilteredTotal();
-    
-    if (this.paginator) {
-      this.paginator.firstPage();
-    }
-  }
-
-  private updateFilteredTotal(): void {
-    if (this.dataSource.filteredData) {
-      this.total = this.dataSource.filteredData.length;
-    }
-  }
-
-  openCreate(): void {
-    const dialogRef = this.dialog.open(CreateEditSchoolDialogComponent, { 
-      width: '600px', 
-      data: { mode: 'create' } 
-    });
-
-    dialogRef.afterClosed().pipe(take(1)).subscribe((result) => {
-      if (result?.success) {
-        this.loadData();
+  /** Queues logo loads for every school visible on the current page. */
+  private _preloadVisibleLogos(): void {
+    this.paginatedData.forEach(school => {
+      if (school.logoUrl && !this.logoCache[school.id]?.url && !this.logoCache[school.id]?.isLoading) {
+        this._loadLogo(school.id, school.logoUrl);
       }
     });
   }
 
-  openEdit(school: SchoolWithSubscription): void {
-    const dialogRef = this.dialog.open(CreateEditSchoolDialogComponent, { 
-      width: '600px', 
-      data: { mode: 'edit', school } 
-    });
-
-    dialogRef.afterClosed().pipe(take(1)).subscribe((result) => {
-      if (result?.success) {
-        this.loadData();
-      }
-    });
+  /** Clears cached entry and re-fetches (used after a logo update). */
+  refreshLogo(schoolId: string, logoUrl: string | null): void {
+    if (this.logoCache[schoolId]?.blobUrl) URL.revokeObjectURL(this.logoCache[schoolId].blobUrl);
+    delete this.logoCache[schoolId];
+    if (logoUrl) this._loadLogo(schoolId, logoUrl);
   }
 
-  removeSchool(school: SchoolWithSubscription): void {
-    if (confirm(`Are you sure you want to delete "${school.name}"? This will also remove any associated subscription.`)) {
-      this.isLoading = true;
-      this.service.delete(school.id)
-        .pipe(takeUntil(this._unsubscribe))
-        .subscribe({
-          next: (response) => {
-            if (response?.success) {
-              this.snackBar.open('School deleted successfully', 'Close', {
-                duration: 3000,
-                horizontalPosition: 'end',
-                verticalPosition: 'top'
-              });
-              this.loadData();
-            } else {
-              this.showErrorAlert(response?.message || 'Failed to delete school');
-            }
-            this.isLoading = false;
-          },
-          error: (error) => {
-            console.error('Error deleting school:', error);
-            this.showErrorAlert('Failed to delete school');
-            this.isLoading = false;
-          }
-        });
-    }
+  // ── Display helpers ───────────────────────────────────────────────────────
+  getSchoolTypeLabel(schoolType: number | string | null | undefined): string {
+    if (schoolType == null) return '—';
+    const key = typeof schoolType === 'string' ? parseInt(schoolType, 10) : schoolType;
+    return this.schoolTypeLabels[key] ?? `Type ${schoolType}`;
   }
 
-// Updated manageSubscription method for schools-management.component.ts
-
-    manageSubscription(school: SchoolWithSubscription): void {
-      const dialogRef = this.dialog.open(ManageSubscriptionDialogComponent, {
-        width: '95vw',           // Responsive width - 95% of viewport
-        maxWidth: '1400px',      // Maximum width for large screens
-        maxHeight: '95vh',       // Prevent overflow on short screens
-        panelClass: 'manage-subscription-dialog',
-        data: { school }
-      });
-
-      dialogRef.afterClosed().pipe(take(1)).subscribe(result => {
-        if (result?.refresh) {
-          this.refreshSchoolData(school.id);
-        }
-      });
-    }
-
-  checkSubscriptionStatus(school: SchoolWithSubscription): void {
-    this.service.checkSubscriptionStatus(school.id)
-      .pipe(takeUntil(this._unsubscribe))
-      .subscribe({
-        next: (status) => {
-          let snackBarRef = this.snackBar.open(
-            `${school.name}: ${status.message}`,
-            status.needsRenewal ? 'Renew Now' : 'OK',
-            {
-              duration: 5000,
-              horizontalPosition: 'end',
-              verticalPosition: 'top',
-              panelClass: status.canAccess ? 'success-snackbar' : 'warn-snackbar'
-            }
-          );
-
-          if (status.needsRenewal) {
-            snackBarRef.onAction().subscribe(() => {
-              this.manageSubscription(school);
-            });
-          }
-        },
-        error: (error) => {
-          console.error('Error checking subscription status:', error);
-          this.snackBar.open('Failed to check subscription status', 'Close', {
-            duration: 3000,
-            horizontalPosition: 'end',
-            verticalPosition: 'top'
-          });
-        }
-      });
-  }
-
-  private refreshSchoolData(schoolId: string): void {
-    this.service.getSchoolWithSubscription(schoolId)
-      .pipe(takeUntil(this._unsubscribe))
-      .subscribe({
-        next: (response) => {
-          if (response?.success && response.data) {
-            const index = this.dataSource.data.findIndex(s => s.id === schoolId);
-            if (index > -1) {
-              this.dataSource.data[index] = response.data;
-              this.dataSource._updateChangeSubscription();
-              this.calculateStats();
-            }
-          }
-        },
-        error: (error) => {
-          console.error('Error refreshing school data:', error);
-        }
-      });
-  }
-
-  toggleSchoolStatus(school: SchoolWithSubscription): void {
-    const newStatus = !school.isActive;
-    const action = newStatus ? 'activate' : 'deactivate';
-    
-    if (confirm(`Are you sure you want to ${action} "${school.name}"?`)) {
-      this.isLoading = true;
-      this.service.updateStatus(school.id, newStatus)
-        .pipe(takeUntil(this._unsubscribe))
-        .subscribe({
-          next: (response) => {
-            if (response?.success) {
-              this.snackBar.open(`School ${action}d successfully`, 'Close', {
-                duration: 3000,
-                horizontalPosition: 'end',
-                verticalPosition: 'top'
-              });
-              this.loadData();
-            } else {
-              this.showErrorAlert(response?.message || `Failed to ${action} school`);
-            }
-            this.isLoading = false;
-          },
-          error: (error) => {
-            console.error(`Error ${action}ing school:`, error);
-            this.showErrorAlert(`Failed to ${action} school`);
-            this.isLoading = false;
-          }
-        });
-    }
-  }
-
-  viewSchoolDetails(school: SchoolWithSubscription): void {
-    this.snackBar.open(`Viewing details for ${school.name}`, 'Close', {
-      duration: 3000,
-      horizontalPosition: 'end',
-      verticalPosition: 'top'
-    });
-  }
-
-  private calculateStats(): void {
-    const schools = this.dataSource.data;
-    this.stats.totalSchools = schools.length;
-    this.stats.activeSchools = schools.filter(s => s.isActive).length;
-    this.stats.inactiveSchools = schools.filter(s => !s.isActive).length;
-    this.stats.withActiveSubscription = schools.filter(s => s.isSubscriptionActive).length;
-    this.stats.withExpiredSubscription = schools.filter(s => s.isSubscriptionExpired).length;
-    this.stats.withoutSubscription = schools.filter(s => !s.subscription || s.needsSubscription).length;
-  }
-
-  private setupSorting(): void {
-    this.dataSource.sortingDataAccessor = (item: SchoolWithSubscription, property: string) => {
-      switch (property) {
-        case 'school':
-          return item.name.toLowerCase();
-        case 'subscription':
-          return item.subscription?.status || 'No Subscription';
-        case 'status':
-          return item.isActive ? 1 : 0;
-        case 'created':
-          return new Date(item.createdOn).getTime();
-        default:
-          return '';
-      }
-    };
+  getCategoryLabel(category: number | string | null | undefined): string {
+    if (category == null) return '—';
+    const key = typeof category === 'string' ? parseInt(category, 10) : category;
+    return this.categoryLabels[key] ?? `Category ${category}`;
   }
 
   formatDate(dateString: string): string {
     if (!dateString) return '—';
-    return this.datePipe.transform(dateString, 'MMM d, y') || '—';
+    return this._datePipe.transform(dateString, 'MMM d, y') || '—';
   }
 
-  getSubscriptionBadgeColor(school: SchoolWithSubscription): string {
-    if (!school.subscription) return 'warn';
-    
-    switch (school.subscription.status) {
-      case SubscriptionStatus.Active:
-        return 'accent';
-      case SubscriptionStatus.Expired:
-        return 'warn';
-      case SubscriptionStatus.Suspended:
-        return 'warn';
-      case SubscriptionStatus.Cancelled:
-        return 'warn';
-      case SubscriptionStatus.GracePeriod:
-        return 'accent';
-      default:
-        return 'primary';
-    }
+  getInitials(name: string): string {
+    return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
   }
 
-  
+  // ── Filter handlers ───────────────────────────────────────────────────────
+  toggleFilterPanel(): void { this.showFilterPanel = !this.showFilterPanel; }
 
-  getSubscriptionDisplay(school: SchoolWithSubscription): string {
-    if (!school.subscription) return 'No Subscription';
-    
-    const plan = this.service.getSubscriptionPlanDisplay(school.subscription.plan);
-    const cycle = this.service.getBillingCycleDisplay(school.subscription.billingCycle);
-    const status = school.subscription.status;
-    const days = school.daysRemaining > 0 ? ` (${school.daysRemaining}d)` : '';
-    
-    return `${plan} ${cycle} - ${status}${days}`;
+  onFilterChange(event: FilterChangeEvent): void {
+    (this._filterValues as any)[event.filterId] = event.value;
+    this.currentPage = 1;
+    this.tableHeader.subtitle = `${this.filteredData.length} schools found`;
+    setTimeout(() => this._preloadVisibleLogos(), 0);
   }
 
-  dismissAlert(): void {
-    this.showAlert = false;
+  onClearFilters(): void {
+    this._filterValues = { search: '', status: 'all', type: 'all' };
+    this.filterFields.forEach(f => (f.value = (this._filterValues as any)[f.id]));
+    this.currentPage = 1;
+    this.tableHeader.subtitle = `${this.filteredData.length} schools found`;
+    setTimeout(() => this._preloadVisibleLogos(), 0);
   }
 
-  private showSuccessAlert(message: string): void {
-    this.alert = { type: 'success', message };
-    this.showAlert = true;
-    setTimeout(() => this.showAlert = false, 5000);
-    
-    this.snackBar.open(message, 'Close', {
-      duration: 3000,
-      horizontalPosition: 'end',
-      verticalPosition: 'top',
-      panelClass: ['success-snackbar']
+  // ── Pagination handlers ───────────────────────────────────────────────────
+  onPageChange(page: number): void {
+    this.currentPage = page;
+    setTimeout(() => this._preloadVisibleLogos(), 0);
+  }
+
+  onItemsPerPageChange(n: number): void {
+    this.itemsPerPage = n;
+    this.currentPage  = 1;
+    setTimeout(() => this._preloadVisibleLogos(), 0);
+  }
+
+  // ── CRUD ──────────────────────────────────────────────────────────────────
+  openView(school: SchoolDto): void {
+    const ref = this._dialog.open(SchoolViewDialogComponent, { data: { school } });
+    ref.afterClosed().pipe(take(1)).subscribe(result => {
+      if (result?.action === 'edit') this.openEdit(result.school);
     });
   }
 
-  private showErrorAlert(message: string): void {
-    this.alert = { type: 'error', message };
-    this.showAlert = true;
-    
-    this.snackBar.open(message, 'Close', {
-      duration: 5000,
-      horizontalPosition: 'end',
-      verticalPosition: 'top',
-      panelClass: ['error-snackbar']
-    });
-  }
-
-  onPageChange(event: PageEvent): void {
-    this.currentPage = event.pageIndex;
-    this.pageSize = event.pageSize;
-  }
-
-  refreshData(): void {
-    this.loadData();
-  }
-
-  // Helper method to open dialog following BaseListComponent pattern
-  private openDialog(component: any, config: any = {}) {
-    const ref = this.dialog.open(component, config);
-    ref.afterClosed().pipe(take(1)).subscribe((result) => {
+  openCreate(): void {
+    const ref = this._dialog.open(CreateEditSchoolDialogComponent, { data: { mode: 'create' } });
+    ref.afterClosed().pipe(take(1)).subscribe(result => {
       if (result?.success) {
+        this.loadData();
         this.loadData();
       }
     });
-    return ref;
+  }
+
+  openEdit(school: SchoolDto): void {
+    const ref = this._dialog.open(CreateEditSchoolDialogComponent, {
+      data: { mode: 'edit', school },
+    });
+    ref.afterClosed().pipe(take(1)).subscribe(result => {
+      if (result?.success) {
+        // Refresh cached logo if it may have changed
+        this.refreshLogo(school.id, result.school?.logoUrl ?? school.logoUrl ?? null);
+        this.loadData();
+           this.loadData();
+      }
+    });
+  }
+
+  removeSchool(school: SchoolDto): void {
+    this._alertService.confirm({
+      title: 'Delete School',
+      message: `Are you sure you want to delete "${school.name}"? This action cannot be undone.`,
+      confirmText: 'Delete', cancelText: 'Cancel',
+      onConfirm: () => {
+        this.isLoading = true;
+        this._service.delete(school.id).pipe(takeUntil(this._unsubscribe)).subscribe({
+          next: (response) => {
+            if (response?.success) {
+              // Clean up blob URL before removing from cache
+              if (this.logoCache[school.id]?.blobUrl) URL.revokeObjectURL(this.logoCache[school.id].blobUrl);
+              delete this.logoCache[school.id];
+
+              this.loadData();
+              this._alertService.success(`"${school.name}" was deleted successfully.`, 'Deleted');
+            } else {
+              this._alertService.error(response?.message || 'Failed to delete school.', 'Error');
+            }
+            this.isLoading = false;
+          },
+          error: () => { this._alertService.error('An unexpected error occurred.', 'Error'); this.isLoading = false; },
+        });
+      },
+    });
+  }
+
+  toggleSchoolStatus(school: SchoolDto): void {
+    const newStatus = !school.isActive;
+    const action    = newStatus ? 'activate' : 'deactivate';
+    this._alertService.confirm({
+      title:       newStatus ? 'Activate School' : 'Deactivate School',
+      message:     `Are you sure you want to ${action} "${school.name}"?`,
+      confirmText: newStatus ? 'Activate' : 'Deactivate',
+      cancelText:  'Cancel',
+      onConfirm:   () => {
+        this.isLoading = true;
+        this._service.updateStatus(school.id, newStatus).pipe(takeUntil(this._unsubscribe)).subscribe({
+          next: (response) => {
+            if (response?.success) {
+              this.loadData();
+              this._alertService.success(`School ${action}d successfully.`, 'Status Updated');
+            } else {
+              this._alertService.error(response?.message || `Failed to ${action} school.`, 'Error');
+            }
+            this.isLoading = false;
+          },
+          error: () => {
+            this._alertService.error(`An error occurred while trying to ${action} the school.`, 'Error');
+            this.isLoading = false;
+          },
+        });
+      },
+    });
   }
 }
