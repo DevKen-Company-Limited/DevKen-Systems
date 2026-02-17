@@ -5,16 +5,15 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
-import { FuseConfirmationService } from '@fuse/services/confirmation';
 import { Observable, of, Subject, forkJoin } from 'rxjs';
-import { catchError, takeUntil, map, finalize } from 'rxjs/operators';
+import { catchError, takeUntil, finalize } from 'rxjs/operators';
 import { AuthService } from 'app/core/auth/auth.service';
 import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
 import { SchoolDto } from 'app/Tenant/types/school';
+import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
 
 // Import reusable components
 import { PageHeaderComponent, Breadcrumb } from 'app/shared/Page-Header/page-header.component';
@@ -43,7 +42,6 @@ import { TermDto, CreateTermRequest, UpdateTermRequest, CloseTermRequest } from 
     MatIconModule,
     MatButtonModule,
     MatDialogModule,
-    MatSnackBarModule,
     MatMenuModule,
     MatProgressSpinnerModule,
     MatDividerModule,
@@ -67,6 +65,7 @@ export class TermsComponent implements OnInit, OnDestroy {
   private _authService = inject(AuthService);
   private _schoolService = inject(SchoolService);
   private _academicYearService = inject(AcademicYearService);
+  private _alert = inject(AlertService);
 
   // ── Breadcrumbs ──────────────────────────────────────────────────────────────
   breadcrumbs: Breadcrumb[] = [
@@ -305,8 +304,6 @@ export class TermsComponent implements OnInit, OnDestroy {
   constructor(
     private _service: TermService,
     private _dialog: MatDialog,
-    private _snackBar: MatSnackBar,
-    private _confirmation: FuseConfirmationService,
   ) {}
 
   ngOnInit(): void {
@@ -327,9 +324,6 @@ export class TermsComponent implements OnInit, OnDestroy {
     this._unsubscribe.next();
     this._unsubscribe.complete();
   }
-
-  // Continued in Part 2...
-// terms.component.ts - Part 2 (continuation)
 
   // ── Data Loading and Initialization ──────────────────────────────────────────
   private loadDataAndInit(): void {
@@ -371,7 +365,7 @@ export class TermsComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         console.error('Failed to load data:', error);
-        this._showError('Failed to load configuration data');
+        this._alert.error('Failed to load configuration data');
         this.isDataLoading = false;
         this.loadAll();
       }
@@ -507,7 +501,7 @@ export class TermsComponent implements OnInit, OnDestroy {
         error: (err) => {
           console.error('Failed to load terms:', err);
           this.isLoading = false;
-          this._showError(err.error?.message || 'Failed to load terms');
+          this._alert.error(err.error?.message || 'Failed to load terms');
         }
       });
   }
@@ -536,13 +530,13 @@ export class TermsComponent implements OnInit, OnDestroy {
           .subscribe({
             next: (res) => {
               if (res.success) {
-                this._showSuccess('Term created successfully');
+                this._alert.success('Term created successfully');
                 this.loadAll();
               }
             },
             error: (err) => {
               console.error('Failed to create term:', err);
-              this._showError(err.error?.message || 'Failed to create term');
+              this._alert.error(err.error?.message || 'Failed to create term');
             }
           });
       });
@@ -571,78 +565,50 @@ export class TermsComponent implements OnInit, OnDestroy {
           .subscribe({
             next: (res) => {
               if (res.success) {
-                this._showSuccess('Term updated successfully');
+                this._alert.success('Term updated successfully');
                 this.loadAll();
               }
             },
             error: (err) => {
               console.error('Failed to update term:', err);
-              this._showError(err.error?.message || 'Failed to update term');
+              this._alert.error(err.error?.message || 'Failed to update term');
             }
           });
       });
   }
 
   setAsCurrent(term: TermDto): void {
-    const confirmation = this._confirmation.open({
+    this._alert.confirm({
       title: 'Set as Current Term',
       message: `Are you sure you want to set "${term.name}" as the current term? This will unset any other current terms.`,
-      icon: {
-        name: 'radio_button_checked',
-        color: 'primary',
-      },
-      actions: {
-        confirm: {
-          label: 'Set as Current',
-          color: 'primary',
-        },
-        cancel: {
-          label: 'Cancel',
-        },
-      },
-    });
-
-    confirmation.afterClosed().pipe(takeUntil(this._unsubscribe)).subscribe(result => {
-      if (result === 'confirmed') {
+      confirmText: 'Set as Current',
+      cancelText: 'Cancel',
+      onConfirm: () => {
         this._service.setCurrent(term.id)
           .pipe(takeUntil(this._unsubscribe))
           .subscribe({
             next: (res) => {
               if (res.success) {
-                this._showSuccess('Term set as current successfully');
+                this._alert.success('Term set as current successfully');
                 this.loadAll();
               }
             },
             error: (err) => {
               console.error('Failed to set term as current:', err);
-              this._showError(err.error?.message || 'Failed to set term as current');
+              this._alert.error(err.error?.message || 'Failed to set term as current');
             }
           });
-      }
+      },
     });
   }
 
   closeTerm(term: TermDto): void {
-    const confirmation = this._confirmation.open({
+    this._alert.confirm({
       title: 'Close Term',
       message: `Are you sure you want to close "${term.name}"? This action will prevent further modifications.`,
-      icon: {
-        name: 'lock',
-        color: 'warn',
-      },
-      actions: {
-        confirm: {
-          label: 'Close Term',
-          color: 'warn',
-        },
-        cancel: {
-          label: 'Cancel',
-        },
-      },
-    });
-
-    confirmation.afterClosed().pipe(takeUntil(this._unsubscribe)).subscribe(result => {
-      if (result === 'confirmed') {
+      confirmText: 'Close Term',
+      cancelText: 'Cancel',
+      onConfirm: () => {
         const request: CloseTermRequest = {
           termId: term.id,
           remarks: 'Term closed by user',
@@ -653,85 +619,57 @@ export class TermsComponent implements OnInit, OnDestroy {
           .subscribe({
             next: (res) => {
               if (res.success) {
-                this._showSuccess('Term closed successfully');
+                this._alert.success('Term closed successfully');
                 this.loadAll();
               }
             },
             error: (err) => {
               console.error('Failed to close term:', err);
-              this._showError(err.error?.message || 'Failed to close term');
+              this._alert.error(err.error?.message || 'Failed to close term');
             }
           });
-      }
+      },
     });
   }
 
   reopenTerm(term: TermDto): void {
-    const confirmation = this._confirmation.open({
+    this._alert.confirm({
       title: 'Reopen Term',
       message: `Are you sure you want to reopen "${term.name}"? This will allow modifications again.`,
-      icon: {
-        name: 'lock_open',
-        color: 'primary',
-      },
-      actions: {
-        confirm: {
-          label: 'Reopen Term',
-          color: 'primary',
-        },
-        cancel: {
-          label: 'Cancel',
-        },
-      },
-    });
-
-    confirmation.afterClosed().pipe(takeUntil(this._unsubscribe)).subscribe(result => {
-      if (result === 'confirmed') {
+      confirmText: 'Reopen Term',
+      cancelText: 'Cancel',
+      onConfirm: () => {
         this._service.reopen(term.id)
           .pipe(takeUntil(this._unsubscribe))
           .subscribe({
             next: (res) => {
               if (res.success) {
-                this._showSuccess('Term reopened successfully');
+                this._alert.success('Term reopened successfully');
                 this.loadAll();
               }
             },
             error: (err) => {
               console.error('Failed to reopen term:', err);
-              this._showError(err.error?.message || 'Failed to reopen term');
+              this._alert.error(err.error?.message || 'Failed to reopen term');
             }
           });
-      }
+      },
     });
   }
 
   removeTerm(term: TermDto): void {
-    const confirmation = this._confirmation.open({
+    this._alert.confirm({
       title: 'Delete Term',
       message: `Are you sure you want to delete "${term.name}"? This action cannot be undone.`,
-      icon: {
-        name: 'delete',
-        color: 'warn',
-      },
-      actions: {
-        confirm: {
-          label: 'Delete',
-          color: 'warn',
-        },
-        cancel: {
-          label: 'Cancel',
-        },
-      },
-    });
-
-    confirmation.afterClosed().pipe(takeUntil(this._unsubscribe)).subscribe(result => {
-      if (result === 'confirmed') {
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      onConfirm: () => {
         this._service.delete(term.id)
           .pipe(takeUntil(this._unsubscribe))
           .subscribe({
             next: (res) => {
               if (res.success) {
-                this._showSuccess('Term deleted successfully');
+                this._alert.success('Term deleted successfully');
                 
                 if (this.paginatedData.length === 0 && this.currentPage > 1) {
                   this.currentPage--;
@@ -742,10 +680,10 @@ export class TermsComponent implements OnInit, OnDestroy {
             },
             error: (err) => {
               console.error('Failed to delete term:', err);
-              this._showError(err.error?.message || 'Failed to delete term');
+              this._alert.error(err.error?.message || 'Failed to delete term');
             }
           });
-      }
+      },
     });
   }
 
@@ -779,20 +717,6 @@ export class TermsComponent implements OnInit, OnDestroy {
       year: 'numeric', 
       month: 'short', 
       day: 'numeric' 
-    });
-  }
-
-  private _showSuccess(message: string): void {
-    this._snackBar.open(message, 'Close', { 
-      duration: 3000, 
-      panelClass: ['bg-green-600', 'text-white'] 
-    });
-  }
-
-  private _showError(message: string): void {
-    this._snackBar.open(message, 'Close', { 
-      duration: 5000, 
-      panelClass: ['bg-red-600', 'text-white'] 
     });
   }
 }
