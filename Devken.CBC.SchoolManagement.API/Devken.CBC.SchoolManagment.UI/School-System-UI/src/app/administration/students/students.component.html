@@ -23,7 +23,7 @@
 
     <!-- Export Menu -->
     <mat-menu #exportMenu="matMenu" class="export-menu">
-      <button mat-menu-item (click)="openExportDialog('excel')">
+      <!-- <button mat-menu-item (click)="openExportDialog('excel')">
         <mat-icon class="text-green-600">table_chart</mat-icon>
         <span>Export to Excel</span>
       </button>
@@ -35,11 +35,37 @@
         <mat-icon class="text-blue-600">description</mat-icon>
         <span>Export to Word</span>
       </button>
+
       <mat-divider></mat-divider>
       <button mat-menu-item (click)="openExportDialog()">
         <mat-icon class="text-indigo-600">settings</mat-icon>
         <span>Custom Export...</span>
-      </button>
+      </button> -->
+      
+<!-- Server-rendered PDF report -->
+<button
+  mat-menu-item
+  (click)="downloadStudentsReport()"
+  [disabled]="isDownloadingReport"
+  matTooltip="Download a server-generated PDF report of the current student list"
+  matTooltipPosition="left">
+
+  <!-- Spinner while downloading, icon otherwise -->
+  <ng-container *ngIf="isDownloadingReport; else reportIcon">
+    <mat-progress-spinner
+      class="inline-block mr-2"
+      mode="indeterminate"
+      diameter="18"
+      strokeWidth="2">
+    </mat-progress-spinner>
+  </ng-container>
+
+  <ng-template #reportIcon>
+    <mat-icon class="text-teal-600">article</mat-icon>
+  </ng-template>
+
+  <span>{{ isDownloadingReport ? 'Generating…' : 'Students Report (PDF)' }}</span>
+</button>
     </mat-menu>
 
     <!-- Bulk Upload Photos Button -->

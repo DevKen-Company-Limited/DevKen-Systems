@@ -37,7 +37,8 @@ import { BulkPhotoUploadDialogComponent } from 'app/dialog-modals/Student/bulk-p
 import { PhotoViewerDialogComponent } from 'app/dialog-modals/Student/photo-viewer-dialog';
 import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
 import { ExportConfig, ExportStudentsDialogComponent } from 'app/dialog-modals/Student/export-students-dialog.component';
-import { SchoolHeaderInfo, StudentExportService } from 'app/core/DevKenService/administration/students/StudentExportService ';
+import { StudentReportService } from 'app/core/DevKenService/administration/students/StudentExportService ';
+
 
 interface PhotoCacheEntry {
   url: SafeUrl;
@@ -87,6 +88,8 @@ export class StudentsComponent implements OnInit, OnDestroy {
   @ViewChild('statusCell')   statusCellTemplate!: TemplateRef<any>;
   @ViewChild('schoolCell')   schoolCellTemplate!: TemplateRef<any>;
 
+    isDownloadingReport = false;
+
   private _unsubscribe          = new Subject<void>();
   private _apiBaseUrl           = inject(API_BASE_URL);
   private _http                 = inject(HttpClient);
@@ -94,7 +97,7 @@ export class StudentsComponent implements OnInit, OnDestroy {
   private _authService          = inject(AuthService);
   private _schoolService        = inject(SchoolService);
   private _router               = inject(Router);
-  private _studentExportService = inject(StudentExportService);
+  private _reportService  = inject(StudentReportService);
   private _alertService         = inject(AlertService);
 
   // ─── Breadcrumbs ─────────────────────────────────────────────────────────
@@ -619,80 +622,34 @@ export class StudentsComponent implements OnInit, OnDestroy {
       }
     });
   }
+ downloadStudentsReport(): void {
+    if (this.isDownloadingReport) return;
 
-  // ─── Export ───────────────────────────────────────────────────────────────
+    this.isDownloadingReport = true;
 
-  openExportDialog(format?: 'excel' | 'pdf' | 'word'): void {
-    const ref = this._dialog.open(ExportStudentsDialogComponent, {
-      width: '800px', maxWidth: '95vw', maxHeight: '90vh',
-      disableClose: false, panelClass: 'export-students-dialog',
-      data: {
-        filteredStudentCount: this.filteredData.length,
-        totalStudentCount:    this.allData.length,
-        hasActiveFilters:     this.hasActiveFilters(),
-        preSelectedFormat:    format,
-      },
-    });
-    ref.afterClosed().pipe(takeUntil(this._unsubscribe)).subscribe((config: ExportConfig) => {
-      if (config) this.performExport(config);
-    });
-  }
+    const schoolId =
+      this.isSuperAdmin && this._filterValues.schoolId !== 'all'
+        ? this._filterValues.schoolId
+        : null;
 
-  private hasActiveFilters(): boolean {
-    return (
-      this._filterValues.search        !== ''    ||
-      this._filterValues.status        !== 'all' ||
-      this._filterValues.gender        !== 'all' ||
-      this._filterValues.cbcLevel      !== 'all' ||
-      this._filterValues.studentStatus !== 'all' ||
-      (this.isSuperAdmin && this._filterValues.schoolId !== 'all')
-    );
-  }
+    this._alertService.info('Generating PDF report…');
 
-  private performExport(config: ExportConfig): void {
-    const dataToExport = this.filteredData;
-    if (!dataToExport.length) {
-      this._alertService.warning('No students to export with current filters');
-      return;
-    }
-
-    const filterInfo = this.hasActiveFilters() ? ' (filtered)' : '';
-    this._alertService.info(`Preparing to export ${dataToExport.length} student${dataToExport.length !== 1 ? 's' : ''}${filterInfo}...`);
-    if (dataToExport.length > 100) {
-      this._alertService.info(`Processing ${dataToExport.length} students. This may take a moment...`);
-    }
-
-    // Resolve which school record to use for the report header
-    const onlySchool     = this.schools.length === 1 ? this.schools[0] : null;
-    const filteredSchool = (this.isSuperAdmin && this._filterValues.schoolId !== 'all')
-      ? this.schools.find(s => s.id === this._filterValues.schoolId) ?? null
-      : null;
-    const ref = onlySchool ?? filteredSchool;
-
-    const schoolInfo: SchoolHeaderInfo = {
-      schoolName:    ref?.name        ?? 'School Management System',
-      schoolAddress: ref?.address     ?? undefined,
-      // ✅ Fixed: was school.phone  → SchoolDto has phoneNumber
-      schoolPhone:   ref?.phoneNumber ?? undefined,
-      schoolEmail:   ref?.email       ?? undefined,
-      // ✅ Fixed: removed schoolMotto — 'motto' was removed from SchoolDto
-      schoolLogo:    ref?.logoUrl     ?? undefined,
-    };
-
-    this._studentExportService
-      .exportStudents(dataToExport, config, schoolInfo, this.enumMaps)
+    this._reportService
+      .downloadStudentsList(schoolId)
       .pipe(takeUntil(this._unsubscribe))
       .subscribe({
-        next:  result => {
-          if (result.success) {
-            this._alertService.success(
-              `Successfully exported ${dataToExport.length} student${dataToExport.length !== 1 ? 's' : ''}${filterInfo} to ${config.format.toUpperCase()}`
-            );
-          }
+        next: () => {
+          this._alertService.success('Students list report downloaded successfully');
+          this.isDownloadingReport = false;
         },
-        error: err => this._alertService.error(err?.message || 'Failed to export students')
+        error: (err: Error) => {
+          this._alertService.error(err.message || 'Failed to generate report');
+          this.isDownloadingReport = false;
+        },
       });
   }
+
+
 
   // ─── Snack helpers ────────────────────────────────────────────────────────
 private _showSuccess(msg: string): void {
