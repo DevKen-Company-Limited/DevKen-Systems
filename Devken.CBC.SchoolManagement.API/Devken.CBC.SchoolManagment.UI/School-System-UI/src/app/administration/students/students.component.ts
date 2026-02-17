@@ -25,12 +25,12 @@ import { PageHeaderComponent, Breadcrumb } from 'app/shared/Page-Header/page-hea
 import { FilterPanelComponent, FilterField, FilterChangeEvent } from 'app/shared/Filter/filter-panel.component';
 import { PaginationComponent } from 'app/shared/pagination/pagination.component';
 import { StatsCardsComponent, StatCard } from 'app/shared/stats-cards/stats-cards.component';
-import { 
-  DataTableComponent, 
-  TableColumn, 
-  TableAction, 
-  TableHeader, 
-  TableEmptyState 
+import {
+  DataTableComponent,
+  TableColumn,
+  TableAction,
+  TableHeader,
+  TableEmptyState
 } from 'app/shared/data-table/data-table.component';
 import { StudentDto } from './types/studentdto';
 import { BulkPhotoUploadDialogComponent } from 'app/dialog-modals/Student/bulk-photo-upload-dialog';
@@ -78,299 +78,180 @@ interface EnumMaps {
   templateUrl: './students.component.html',
 })
 export class StudentsComponent implements OnInit, OnDestroy {
-  @ViewChild('photoInput') photoInputRef!: ElementRef<HTMLInputElement>;
-  @ViewChild('studentCell') studentCellTemplate!: TemplateRef<any>;
-  @ViewChild('numberCell') numberCellTemplate!: TemplateRef<any>;
-  @ViewChild('contactCell') contactCellTemplate!: TemplateRef<any>;
+  @ViewChild('photoInput')   photoInputRef!: ElementRef<HTMLInputElement>;
+  @ViewChild('studentCell')  studentCellTemplate!: TemplateRef<any>;
+  @ViewChild('numberCell')   numberCellTemplate!: TemplateRef<any>;
+  @ViewChild('contactCell')  contactCellTemplate!: TemplateRef<any>;
   @ViewChild('academicCell') academicCellTemplate!: TemplateRef<any>;
   @ViewChild('guardianCell') guardianCellTemplate!: TemplateRef<any>;
-  @ViewChild('statusCell') statusCellTemplate!: TemplateRef<any>;
-  @ViewChild('schoolCell') schoolCellTemplate!: TemplateRef<any>;
+  @ViewChild('statusCell')   statusCellTemplate!: TemplateRef<any>;
+  @ViewChild('schoolCell')   schoolCellTemplate!: TemplateRef<any>;
 
-  private _unsubscribe = new Subject<void>();
-  private _apiBaseUrl = inject(API_BASE_URL);
-  private _http = inject(HttpClient);
-  private _sanitizer = inject(DomSanitizer);
-  private _authService = inject(AuthService);
-  private _schoolService = inject(SchoolService);
-  private _router = inject(Router);
+  private _unsubscribe          = new Subject<void>();
+  private _apiBaseUrl           = inject(API_BASE_URL);
+  private _http                 = inject(HttpClient);
+  private _sanitizer            = inject(DomSanitizer);
+  private _authService          = inject(AuthService);
+  private _schoolService        = inject(SchoolService);
+  private _router               = inject(Router);
   private _studentExportService = inject(StudentExportService);
+  private _alertService         = inject(AlertService);
 
-  private _alertService = inject(AlertService);
+  // ─── Breadcrumbs ─────────────────────────────────────────────────────────
 
   breadcrumbs: Breadcrumb[] = [
     { label: 'Dashboard', url: '/dashboard' },
-    { label: 'Academic', url: '/academic' },
+    { label: 'Academic',  url: '/academic'  },
     { label: 'Students' }
   ];
+
+  // ─── Auth ─────────────────────────────────────────────────────────────────
 
   get isSuperAdmin(): boolean {
     return this._authService.authUser?.isSuperAdmin ?? false;
   }
 
+  // ─── Schools ──────────────────────────────────────────────────────────────
+
   schools: SchoolDto[] = [];
-  
+
   get schoolsCount(): number {
-    const uniqueSchools = new Set(this.allData.map(s => s.schoolId));
-    return uniqueSchools.size;
+    return new Set(this.allData.map(s => s.schoolId)).size;
   }
+
+  // ─── Stats ────────────────────────────────────────────────────────────────
 
   get statsCards(): StatCard[] {
-    const baseCards: StatCard[] = [
-      {
-        label: 'Total Students',
-        value: this.total,
-        icon: 'groups',
-        iconColor: 'indigo',
-      },
-      {
-        label: 'Active',
-        value: this.activeCount,
-        icon: 'check_circle',
-        iconColor: 'green',
-      },
-      {
-        label: 'Male',
-        value: this.maleCount,
-        icon: 'male',
-        iconColor: 'blue',
-      },
-      {
-        label: 'Female',
-        value: this.femaleCount,
-        icon: 'female',
-        iconColor: 'pink',
-      },
+    const cards: StatCard[] = [
+      { label: 'Total Students', value: this.total,       icon: 'groups',       iconColor: 'indigo' },
+      { label: 'Active',         value: this.activeCount, icon: 'check_circle', iconColor: 'green'  },
+      { label: 'Male',           value: this.maleCount,   icon: 'male',         iconColor: 'blue'   },
+      { label: 'Female',         value: this.femaleCount, icon: 'female',       iconColor: 'pink'   },
     ];
-
     if (this.isSuperAdmin) {
-      baseCards.push({
-        label: 'Schools',
-        value: this.schoolsCount,
-        icon: 'school',
-        iconColor: 'green',
-      });
+      cards.push({ label: 'Schools', value: this.schoolsCount, icon: 'school', iconColor: 'green' });
     }
-
-    return baseCards;
+    return cards;
   }
+
+  // ─── Table Columns ────────────────────────────────────────────────────────
 
   get tableColumns(): TableColumn<StudentDto>[] {
-    const baseColumns: TableColumn<StudentDto>[] = [
-      {
-        id: 'student',
-        label: 'Student',
-        align: 'left',
-        sortable: true,
-      },
-      {
-        id: 'number',
-        label: 'Admission No.',
-        align: 'left',
-        hideOnMobile: true,
-      },
+    const cols: TableColumn<StudentDto>[] = [
+      { id: 'student', label: 'Student',       align: 'left', sortable: true },
+      { id: 'number',  label: 'Admission No.', align: 'left', hideOnMobile: true },
     ];
-
     if (this.isSuperAdmin) {
-      baseColumns.push({
-        id: 'school',
-        label: 'School',
-        align: 'left',
-        hideOnMobile: true,
-      });
+      cols.push({ id: 'school', label: 'School', align: 'left', hideOnMobile: true });
     }
-
-    baseColumns.push(
-      {
-        id: 'contact',
-        label: 'Guardian Contact',
-        align: 'left',
-        hideOnMobile: true,
-      },
-      {
-        id: 'academic',
-        label: 'Academic Details',
-        align: 'left',
-        hideOnTablet: true,
-      },
-      {
-        id: 'guardian',
-        label: 'Guardian',
-        align: 'left',
-        hideOnTablet: true,
-      },
-      {
-        id: 'status',
-        label: 'Status',
-        align: 'center',
-      }
+    cols.push(
+      { id: 'contact',  label: 'Guardian Contact', align: 'left',   hideOnMobile: true },
+      { id: 'academic', label: 'Academic Details',  align: 'left',   hideOnTablet: true },
+      { id: 'guardian', label: 'Guardian',          align: 'left',   hideOnTablet: true },
+      { id: 'status',   label: 'Status',            align: 'center' }
     );
-
-    return baseColumns;
+    return cols;
   }
 
+  // ─── Table Actions ────────────────────────────────────────────────────────
+
   tableActions: TableAction<StudentDto>[] = [
+    { id: 'view',        label: 'View Details', icon: 'visibility',   color: 'blue',   handler: s => this.viewStudent(s)  },
+    { id: 'edit',        label: 'Edit',         icon: 'edit',         color: 'indigo', handler: s => this.editStudent(s)  },
+    { id: 'uploadPhoto', label: 'Upload Photo', icon: 'photo_camera', color: 'violet', handler: s => this.uploadPhoto(s)  },
     {
-      id: 'view',
-      label: 'View Details',
-      icon: 'visibility',
-      color: 'blue',
-      handler: (student) => this.viewStudent(student),
+      id: 'toggleActive', label: 'Deactivate', icon: 'block', color: 'amber',
+      handler: s => this.toggleActive(s),
+      visible: s => s.isActive,
     },
     {
-      id: 'edit',
-      label: 'Edit',
-      icon: 'edit',
-      color: 'indigo',
-      handler: (student) => this.editStudent(student),
+      id: 'activate', label: 'Activate', icon: 'check_circle', color: 'green', divider: true,
+      handler: s => this.toggleActive(s),
+      visible: s => !s.isActive,
     },
-    {
-      id: 'uploadPhoto',
-      label: 'Upload Photo',
-      icon: 'photo_camera',
-      color: 'violet',
-      handler: (student) => this.uploadPhoto(student),
-    },
-    {
-      id: 'toggleActive',
-      label: 'Deactivate',
-      icon: 'block',
-      color: 'amber',
-      handler: (student) => this.toggleActive(student),
-      visible: (student) => student.isActive,
-    },
-    {
-      id: 'activate',
-      label: 'Activate',
-      icon: 'check_circle',
-      color: 'green',
-      handler: (student) => this.toggleActive(student),
-      visible: (student) => !student.isActive,
-      divider: true,
-    },
-    {
-      id: 'delete',
-      label: 'Delete',
-      icon: 'delete',
-      color: 'red',
-      handler: (student) => this.removeStudent(student),
-    },
+    { id: 'delete', label: 'Delete', icon: 'delete', color: 'red', handler: s => this.removeStudent(s) },
   ];
 
   tableHeader: TableHeader = {
-    title: 'Students List',
-    subtitle: '',
-    icon: 'table_chart',
+    title:        'Students List',
+    subtitle:     '',
+    icon:         'table_chart',
     iconGradient: 'bg-gradient-to-br from-indigo-500 via-violet-600 to-purple-700',
   };
 
   tableEmptyState: TableEmptyState = {
-    icon: 'person_search',
-    message: 'No students found',
+    icon:        'person_search',
+    message:     'No students found',
     description: 'Try adjusting your filters or enroll a new student',
-    action: {
-      label: 'Enroll First Student',
-      icon: 'person_add',
-      handler: () => this.enrollStudent(),
-    },
+    action: { label: 'Enroll First Student', icon: 'person_add', handler: () => this.enrollStudent() },
   };
 
+  // ─── State ────────────────────────────────────────────────────────────────
+
   cellTemplates: { [key: string]: TemplateRef<any> } = {};
-  filterFields: FilterField[] = [];
+  filterFields:  FilterField[] = [];
   showFilterPanel = false;
-  allData: StudentDto[] = [];
-  isLoading = false;
+  allData:      StudentDto[] = [];
+  isLoading     = false;
   isEnumLoading = true;
   photoCache: { [key: string]: PhotoCacheEntry } = {};
+
   private _photoTargetStudent: StudentDto | null = null;
 
   private _filterValues = {
-    search: '',
-    status: 'all',
-    gender: 'all',
-    cbcLevel: 'all',
-    studentStatus: 'all',
-    schoolId: 'all',
+    search: '', status: 'all', gender: 'all',
+    cbcLevel: 'all', studentStatus: 'all', schoolId: 'all',
   };
 
-  currentPage = 1;
+  currentPage  = 1;
   itemsPerPage = 10;
 
-  genders$!: Observable<EnumItemDto[]>;
+  genders$!:         Observable<EnumItemDto[]>;
   studentStatuses$!: Observable<EnumItemDto[]>;
-  cbcLevels$!: Observable<EnumItemDto[]>;
-  
+  cbcLevels$!:       Observable<EnumItemDto[]>;
+
   private enumMaps: EnumMaps = {
-    genderValueToName: new Map<number, string>(),
-    genderNameToValue: new Map<string, number>(),
+    genderValueToName:        new Map<number, string>(),
+    genderNameToValue:        new Map<string, number>(),
     studentStatusValueToName: new Map<number, string>(),
     studentStatusNameToValue: new Map<string, number>(),
-    cbcLevelValueToName: new Map<number, string>(),
-    cbcLevelNameToValue: new Map<string, number>()
+    cbcLevelValueToName:      new Map<number, string>(),
+    cbcLevelNameToValue:      new Map<string, number>(),
   };
 
-  get total(): number { 
-    return this.allData.length; 
+  // ─── Computed ─────────────────────────────────────────────────────────────
+
+  get total():       number { return this.allData.length; }
+  get activeCount(): number { return this.allData.filter(s => s.isActive).length; }
+
+  get maleCount(): number {
+    const v = this.enumMaps.genderNameToValue.get('Male');
+    return this.allData.filter(s => v !== undefined ? Number(s.gender) === v : s.gender === 'Male').length;
   }
-  
-  get activeCount(): number { 
-    return this.allData.filter(s => s.isActive).length; 
-  }
-  
-  get maleCount(): number { 
-    const maleValue = this.enumMaps.genderNameToValue.get('Male');
-    return this.allData.filter(s => {
-      if (maleValue !== undefined) {
-        return Number(s.gender) === maleValue;
-      }
-      return s.gender === 'Male';
-    }).length; 
-  }
-  
-  get femaleCount(): number { 
-    const femaleValue = this.enumMaps.genderNameToValue.get('Female');
-    return this.allData.filter(s => {
-      if (femaleValue !== undefined) {
-        return Number(s.gender) === femaleValue;
-      }
-      return s.gender === 'Female';
-    }).length; 
+
+  get femaleCount(): number {
+    const v = this.enumMaps.genderNameToValue.get('Female');
+    return this.allData.filter(s => v !== undefined ? Number(s.gender) === v : s.gender === 'Female').length;
   }
 
   get filteredData(): StudentDto[] {
     return this.allData.filter(s => {
-      const q = this._filterValues.search.toLowerCase();
-      
-      let genderName = s.gender;
-      if (s.gender && !isNaN(Number(s.gender))) {
-        const value = Number(s.gender);
-        genderName = this.enumMaps.genderValueToName.get(value) || s.gender;
-      }
+      const q           = this._filterValues.search.toLowerCase();
+      const genderName  = this._resolveEnum(s.gender,        this.enumMaps.genderValueToName);
+      const levelName   = this._resolveEnum(s.cbcLevel,      this.enumMaps.cbcLevelValueToName);
+      const statusName  = this._resolveEnum(s.studentStatus, this.enumMaps.studentStatusValueToName);
 
-      let cbcLevelName = s.cbcLevel;
-      if (s.cbcLevel && !isNaN(Number(s.cbcLevel))) {
-        const value = Number(s.cbcLevel);
-        cbcLevelName = this.enumMaps.cbcLevelValueToName.get(value) || s.cbcLevel;
-      }
-
-      let studentStatusName = s.studentStatus;
-      if (s.studentStatus && !isNaN(Number(s.studentStatus))) {
-        const value = Number(s.studentStatus);
-        studentStatusName = this.enumMaps.studentStatusValueToName.get(value) || s.studentStatus;
-      }
-      
       return (
-        (!q || 
-          s.fullName?.toLowerCase().includes(q) || 
-          s.admissionNumber?.toLowerCase().includes(q) ||
-          s.nemisNumber?.toString().includes(q)) &&
+        (!q || s.fullName?.toLowerCase().includes(q) ||
+               s.admissionNumber?.toLowerCase().includes(q) ||
+               s.nemisNumber?.toString().includes(q)) &&
         (this._filterValues.status === 'all' ||
-          (this._filterValues.status === 'active' && s.isActive) ||
+          (this._filterValues.status === 'active'   &&  s.isActive) ||
           (this._filterValues.status === 'inactive' && !s.isActive)) &&
-        (this._filterValues.gender === 'all' || genderName === this._filterValues.gender) &&
-        (this._filterValues.cbcLevel === 'all' || cbcLevelName === this._filterValues.cbcLevel) &&
-        (this._filterValues.studentStatus === 'all' || studentStatusName === this._filterValues.studentStatus) &&
-        (this._filterValues.schoolId === 'all' || s.schoolId === this._filterValues.schoolId)
+        (this._filterValues.gender        === 'all' || genderName === this._filterValues.gender) &&
+        (this._filterValues.cbcLevel      === 'all' || levelName  === this._filterValues.cbcLevel) &&
+        (this._filterValues.studentStatus === 'all' || statusName === this._filterValues.studentStatus) &&
+        (this._filterValues.schoolId      === 'all' || s.schoolId === this._filterValues.schoolId)
       );
     });
   }
@@ -381,149 +262,120 @@ export class StudentsComponent implements OnInit, OnDestroy {
   }
 
   constructor(
-    private _service: StudentService,
-    private _enumService: EnumService,
-    private _dialog: MatDialog,
-    private _snackBar: MatSnackBar,
+    private _service:      StudentService,
+    private _enumService:  EnumService,
+    private _dialog:       MatDialog,
+  
     private _confirmation: FuseConfirmationService,
   ) {}
 
-  ngOnInit(): void {
-    this.loadEnumsAndInit();
-  }
+  // ─── Lifecycle ────────────────────────────────────────────────────────────
+
+  ngOnInit(): void { this.loadEnumsAndInit(); }
 
   ngAfterViewInit(): void {
     this.cellTemplates = {
-      student: this.studentCellTemplate,
-      number: this.numberCellTemplate,
-      school: this.schoolCellTemplate,
-      contact: this.contactCellTemplate,
+      student:  this.studentCellTemplate,
+      number:   this.numberCellTemplate,
+      school:   this.schoolCellTemplate,
+      contact:  this.contactCellTemplate,
       academic: this.academicCellTemplate,
       guardian: this.guardianCellTemplate,
-      status: this.statusCellTemplate,
+      status:   this.statusCellTemplate,
     };
   }
 
   ngOnDestroy(): void {
     this._unsubscribe.next();
     this._unsubscribe.complete();
-    
-    Object.values(this.photoCache).forEach(entry => {
-      if (entry.blobUrl) {
-        try {
-          URL.revokeObjectURL(entry.blobUrl);
-        } catch (error) {
-          // Silently handle
-        }
-      }
+    Object.values(this.photoCache).forEach(e => {
+      if (e.blobUrl) try { URL.revokeObjectURL(e.blobUrl); } catch { /* silent */ }
     });
   }
 
+  // ─── Init ─────────────────────────────────────────────────────────────────
+
   private loadEnumsAndInit(): void {
     this.isEnumLoading = true;
-    
+
     this.genders$ = this._enumService.getGenders().pipe(
-      map(items => {
-        items.forEach(item => {
-          if (item.value !== undefined && item.name) {
-            this.enumMaps.genderValueToName.set(item.value, item.name);
-            this.enumMaps.genderNameToValue.set(item.name, item.value);
-            this.enumMaps.genderNameToValue.set(item.name.toLowerCase(), item.value);
-          }
-        });
-        return items;
-      }),
+      map(items => { this._buildMaps(items, this.enumMaps.genderValueToName, this.enumMaps.genderNameToValue); return items; }),
       takeUntil(this._unsubscribe)
     );
-
     this.studentStatuses$ = this._enumService.getStudentStatuses().pipe(
-      map(items => {
-        items.forEach(item => {
-          if (item.value !== undefined && item.name) {
-            this.enumMaps.studentStatusValueToName.set(item.value, item.name);
-            this.enumMaps.studentStatusNameToValue.set(item.name, item.value);
-            this.enumMaps.studentStatusNameToValue.set(item.name.toLowerCase(), item.value);
-          }
-        });
-        return items;
-      }),
+      map(items => { this._buildMaps(items, this.enumMaps.studentStatusValueToName, this.enumMaps.studentStatusNameToValue); return items; }),
       takeUntil(this._unsubscribe)
     );
-
     this.cbcLevels$ = this._enumService.getCBCLevels().pipe(
-      map(items => {
-        items.forEach(item => {
-          if (item.value !== undefined && item.name) {
-            this.enumMaps.cbcLevelValueToName.set(item.value, item.name);
-            this.enumMaps.cbcLevelNameToValue.set(item.name, item.value);
-            this.enumMaps.cbcLevelNameToValue.set(item.name.toLowerCase(), item.value);
-          }
-        });
-        return items;
-      }),
+      map(items => { this._buildMaps(items, this.enumMaps.cbcLevelValueToName, this.enumMaps.cbcLevelNameToValue); return items; }),
       takeUntil(this._unsubscribe)
     );
 
     const requests: any = {
-      genders: this.genders$,
-      studentStatuses: this.studentStatuses$,
-      cbcLevels: this.cbcLevels$
+      genders: this.genders$, studentStatuses: this.studentStatuses$, cbcLevels: this.cbcLevels$,
     };
-
     if (this.isSuperAdmin) {
       requests.schools = this._schoolService.getAll().pipe(
         catchError(() => of({ success: false, message: '', data: [] }))
       );
     }
 
-   forkJoin(requests).pipe(
-    takeUntil(this._unsubscribe),
-    finalize(() => {
-      this.isEnumLoading = false;
-    })
-  ).subscribe({
-    next: (results: any) => {
-      if (results.schools) {
-        this.schools = results.schools.data || [];
+    forkJoin(requests)
+      .pipe(takeUntil(this._unsubscribe), finalize(() => { this.isEnumLoading = false; }))
+      .subscribe({
+        next: (results: any) => {
+          if (results.schools) this.schools = results.schools.data ?? [];
+          this.initializeFilterFields(results.genders, results.studentStatuses, results.cbcLevels);
+          this.loadAll();
+        },
+        error: () => {
+          this._alertService.error('Failed to load configuration data');
+          this.isEnumLoading = false;
+          this.loadAll();
+        }
+      });
+  }
+
+  private _buildMaps(
+    items:       EnumItemDto[],
+    valueToName: Map<number, string>,
+    nameToValue: Map<string, number>
+  ): void {
+    items.forEach(item => {
+      if (item.value !== undefined && item.name) {
+        valueToName.set(item.value, item.name);
+        nameToValue.set(item.name, item.value);
+        nameToValue.set(item.name.toLowerCase(), item.value);
       }
-      
-      this.initializeFilterFields(results.genders, results.studentStatuses, results.cbcLevels);
-      this.loadAll();
-    },
-    error: () => {
-      this._alertService.error('Failed to load configuration data');
-      this.isEnumLoading = false;
-      this.loadAll();
-    }
-  });
-}
+    });
+  }
+
+  private _resolveEnum(raw: string | number | undefined, map: Map<number, string>): string {
+    if (raw === undefined || raw === null) return '';
+    if (typeof raw === 'string' && isNaN(Number(raw))) return raw;
+    const n = typeof raw === 'string' ? parseInt(raw, 10) : raw;
+    return map.get(n) ?? raw.toString();
+  }
 
   private initializeFilterFields(
-    genders: EnumItemDto[], 
-    statuses: EnumItemDto[], 
-    levels: EnumItemDto[]
+    genders:  EnumItemDto[],
+    statuses: EnumItemDto[],
+    levels:   EnumItemDto[]
   ): void {
-    this.filterFields = [
-      {
-        id: 'search',
-        label: 'Search',
-        type: 'text',
-        placeholder: 'Name, admission number, NEMIS...',
-        value: this._filterValues.search,
-      },
-    ];
+    this.filterFields = [{
+      id: 'search', label: 'Search', type: 'text',
+      placeholder: 'Name, admission number, NEMIS...', value: this._filterValues.search,
+    }];
 
     if (this.isSuperAdmin) {
       this.filterFields.push({
-        id: 'schoolId',
-        label: 'School',
-        type: 'select',
-        value: this._filterValues.schoolId,
+        id: 'schoolId', label: 'School', type: 'select', value: this._filterValues.schoolId,
         options: [
           { label: 'All Schools', value: 'all' },
-          ...this.schools.map(s => ({ 
-            label: `${s.name}${s.phone ? ' (' + s.phone + ')' : ''}`, 
-            value: s.id 
+          // ✅ Fixed: SchoolDto.phoneNumber  (was s.phone – field does not exist)
+          ...this.schools.map(s => ({
+            label: s.phoneNumber ? `${s.name} (${s.phoneNumber})` : s.name,
+            value: s.id,
           })),
         ],
       });
@@ -531,314 +383,59 @@ export class StudentsComponent implements OnInit, OnDestroy {
 
     this.filterFields.push(
       {
-        id: 'status',
-        label: 'Status',
-        type: 'select',
-        value: this._filterValues.status,
+        id: 'status', label: 'Status', type: 'select', value: this._filterValues.status,
         options: [
           { label: 'All Statuses', value: 'all' },
-          { label: 'Active', value: 'active' },
-          { label: 'Inactive', value: 'inactive' },
+          { label: 'Active',       value: 'active'   },
+          { label: 'Inactive',     value: 'inactive' },
         ],
       },
       {
-        id: 'gender',
-        label: 'Gender',
-        type: 'select',
-        value: this._filterValues.gender,
-        options: [
-          { label: 'All Genders', value: 'all' },
-          ...genders.map(g => ({ label: g.name, value: g.name })),
-        ],
+        id: 'gender', label: 'Gender', type: 'select', value: this._filterValues.gender,
+        options: [{ label: 'All Genders', value: 'all' }, ...genders.map(g => ({ label: g.name, value: g.name }))],
       },
       {
-        id: 'cbcLevel',
-        label: 'CBC Level',
-        type: 'select',
-        value: this._filterValues.cbcLevel,
-        options: [
-          { label: 'All Levels', value: 'all' },
-          ...levels.map(l => ({ label: l.name, value: l.name })),
-        ],
+        id: 'cbcLevel', label: 'CBC Level', type: 'select', value: this._filterValues.cbcLevel,
+        options: [{ label: 'All Levels', value: 'all' }, ...levels.map(l => ({ label: l.name, value: l.name }))],
       },
       {
-        id: 'studentStatus',
-        label: 'Student Status',
-        type: 'select',
-        value: this._filterValues.studentStatus,
-        options: [
-          { label: 'All Types', value: 'all' },
-          ...statuses.map(s => ({ label: s.name, value: s.name })),
-        ],
+        id: 'studentStatus', label: 'Student Status', type: 'select', value: this._filterValues.studentStatus,
+        options: [{ label: 'All Types', value: 'all' }, ...statuses.map(s => ({ label: s.name, value: s.name }))],
       }
     );
   }
 
-  getGenderName(value: string | number | undefined): string {
-    if (value === undefined || value === null) return '—';
-    
-    if (typeof value === 'string' && isNaN(Number(value))) {
-      return value;
-    }
-    
-    const numValue = typeof value === 'string' ? parseInt(value, 10) : value;
-    return this.enumMaps.genderValueToName.get(numValue) || value.toString();
-  }
+  // ─── Enum helpers ─────────────────────────────────────────────────────────
 
-  getCBCLevelName(value: string | number | undefined): string {
-    if (value === undefined || value === null) return '—';
-    
-    if (typeof value === 'string' && isNaN(Number(value))) {
-      return value;
-    }
-    
-    const numValue = typeof value === 'string' ? parseInt(value, 10) : value;
-    return this.enumMaps.cbcLevelValueToName.get(numValue) || value.toString();
-  }
+  getGenderName(v: string | number | undefined):        string { return this._resolveEnum(v, this.enumMaps.genderValueToName); }
+  getCBCLevelName(v: string | number | undefined):      string { return this._resolveEnum(v, this.enumMaps.cbcLevelValueToName); }
+  getStudentStatusName(v: string | number | undefined): string { return this._resolveEnum(v, this.enumMaps.studentStatusValueToName); }
 
-  getStudentStatusName(value: string | number | undefined): string {
-    if (value === undefined || value === null) return '—';
-    
-    if (typeof value === 'string' && isNaN(Number(value))) {
-      return value;
-    }
-    
-    const numValue = typeof value === 'string' ? parseInt(value, 10) : value;
-    return this.enumMaps.studentStatusValueToName.get(numValue) || value.toString();
-  }
+  // ─── Filter events ────────────────────────────────────────────────────────
 
-  toggleFilterPanel(): void {
-    this.showFilterPanel = !this.showFilterPanel;
-  }
+  toggleFilterPanel(): void { this.showFilterPanel = !this.showFilterPanel; }
 
   onFilterChange(event: FilterChangeEvent): void {
     (this._filterValues as any)[event.filterId] = event.value;
     this.currentPage = 1;
     this.tableHeader.subtitle = `${this.filteredData.length} students found`;
-    
     if (event.filterId === 'schoolId' && this.isSuperAdmin) {
-      const schoolId = event.value === 'all' ? null : event.value;
-      this.loadAll(schoolId);
+      this.loadAll(event.value === 'all' ? null : event.value);
     }
   }
 
   onClearFilters(): void {
-    this._filterValues = {
-      search: '',
-      status: 'all',
-      gender: 'all',
-      cbcLevel: 'all',
-      studentStatus: 'all',
-      schoolId: 'all',
-    };
-    
-    this.filterFields.forEach(field => {
-      field.value = (this._filterValues as any)[field.id];
-    });
-    
+    this._filterValues = { search: '', status: 'all', gender: 'all', cbcLevel: 'all', studentStatus: 'all', schoolId: 'all' };
+    this.filterFields.forEach(f => { f.value = (this._filterValues as any)[f.id]; });
     this.currentPage = 1;
     this.tableHeader.subtitle = `${this.filteredData.length} students found`;
     this.loadAll();
   }
 
-  onPageChange(page: number): void {
-    this.currentPage = page;
-  }
+  onPageChange(page: number):      void { this.currentPage  = page; }
+  onItemsPerPageChange(n: number): void { this.itemsPerPage = n; this.currentPage = 1; }
 
-  onItemsPerPageChange(itemsPerPage: number): void {
-    this.itemsPerPage = itemsPerPage;
-    this.currentPage = 1;
-  }
-
-  private loadStudentPhoto(studentId: string, photoUrl: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (!this.photoCache[studentId]) {
-        this.photoCache[studentId] = {
-          url: null!,
-          blobUrl: '',
-          isLoading: true,
-          error: false
-        };
-      } else {
-        this.photoCache[studentId].isLoading = true;
-        this.photoCache[studentId].error = false;
-      }
-
-      const url = photoUrl.startsWith('http')
-        ? photoUrl
-        : `${this._apiBaseUrl}${photoUrl}`;
-
-      const token = this._authService.accessToken;
-      const headers = token ? new HttpHeaders().set('Authorization', `Bearer ${token}`) : undefined;
-
-      this._http.get(url, { 
-        responseType: 'blob',
-        headers 
-      }).pipe(
-        takeUntil(this._unsubscribe),
-        catchError(() => {
-          this.photoCache[studentId] = {
-            url: null!,
-            blobUrl: '',
-            isLoading: false,
-            error: true
-          };
-          reject(new Error('Failed to load photo'));
-          return of(null);
-        })
-      ).subscribe(blob => {
-        if (blob && blob.size > 0) {
-          if (this.photoCache[studentId]?.blobUrl) {
-            try {
-              URL.revokeObjectURL(this.photoCache[studentId].blobUrl);
-            } catch (error) {
-              // Silently handle
-            }
-          }
-
-          const blobUrl = URL.createObjectURL(blob);
-          const safeUrl = this._sanitizer.bypassSecurityTrustUrl(blobUrl);
-          
-          this.photoCache[studentId] = {
-            url: safeUrl,
-            blobUrl: blobUrl,
-            isLoading: false,
-            error: false
-          };
-          
-          resolve();
-        } else {
-          this.photoCache[studentId] = {
-            url: null!,
-            blobUrl: '',
-            isLoading: false,
-            error: true
-          };
-          reject(new Error('Invalid blob received'));
-        }
-      });
-    });
-  }
-
-  private preloadVisibleImages(): void {
-    this.paginatedData.forEach(student => {
-      if (student.photoUrl && !this.photoCache[student.id]?.blobUrl && !this.photoCache[student.id]?.isLoading) {
-        this.loadStudentPhoto(student.id, student.photoUrl).catch(() => {
-          // Silently handle preload errors
-        });
-      }
-    });
-  }
-openExportDialog(format?: 'excel' | 'pdf' | 'word'): void {
-  const dialogRef = this._dialog.open(ExportStudentsDialogComponent, {
-    width: '800px',
-    maxWidth: '95vw',
-    maxHeight: '90vh',
-    disableClose: false,
-    panelClass: 'export-students-dialog',
-    data: {
-      filteredStudentCount: this.filteredData.length,
-      totalStudentCount: this.allData.length,
-      hasActiveFilters: this.hasActiveFilters(),
-      preSelectedFormat: format // Pass the pre-selected format
-    }
-  });
-
-  dialogRef.afterClosed()
-    .pipe(takeUntil(this._unsubscribe))
-    .subscribe((config: ExportConfig) => {
-      if (config) {
-        this.performExport(config);
-      }
-    });
-}
-
-private hasActiveFilters(): boolean {
-  return (
-    this._filterValues.search !== '' ||
-    this._filterValues.status !== 'all' ||
-    this._filterValues.gender !== 'all' ||
-    this._filterValues.cbcLevel !== 'all' ||
-    this._filterValues.studentStatus !== 'all' ||
-    (this.isSuperAdmin && this._filterValues.schoolId !== 'all')
-  );
-}
-
-/**
- * Perform the actual export with progress feedback
- */
-private performExport(config: ExportConfig): void {
-  // Show loading indicator with student count
-  const studentCount = this.filteredData.length;
-  const filterInfo = this.hasActiveFilters() ? ' (filtered)' : '';
-  this._alertService.info(`Preparing to export ${studentCount} student${studentCount !== 1 ? 's' : ''}${filterInfo}...`);
-
-  // Get school information for header
-  const schoolInfo: SchoolHeaderInfo = {
-    schoolName: this.schools.length === 1
-      ? this.schools[0].name
-      : (this.isSuperAdmin && this._filterValues.schoolId !== 'all'
-          ? this.schools.find(s => s.id === this._filterValues.schoolId)?.name || 'Multiple Schools'
-          : 'School Management System'),
-    schoolAddress: this.schools.length === 1 ? this.schools[0].address : undefined,
-    schoolPhone: this.schools.length === 1 ? this.schools[0].phone : undefined,
-    schoolEmail: this.schools.length === 1 ? this.schools[0].email : undefined,
-    schoolMotto: this.schools.length === 1 ? this.schools[0].motto : undefined,
-    schoolLogo: this.schools.length === 1 ? this.schools[0].logoUrl : undefined,
-  };
-
-  // Use filtered data for export (respects current filters)
-  const dataToExport = this.filteredData;
-
-  if (!dataToExport || dataToExport.length === 0) {
-    this._alertService.warning('No students to export with current filters');
-    return;
-  }
-
-  // Show progress for large exports
-  if (dataToExport.length > 100) {
-    this._alertService.info(`Processing ${dataToExport.length} students. This may take a moment...`);
-  }
-
-  this._studentExportService
-    .exportStudents(dataToExport, config, schoolInfo, this.enumMaps)
-    .pipe(takeUntil(this._unsubscribe))
-    .subscribe({
-      next: (result) => {
-        if (result.success) {
-          const filterNote = this.hasActiveFilters() ? ' (filtered)' : '';
-          this._alertService.success(
-            `Successfully exported ${dataToExport.length} student${dataToExport.length !== 1 ? 's' : ''}${filterNote} to ${config.format.toUpperCase()}`
-          );
-        }
-      },
-      error: (err) => {
-        this._alertService.error(
-          err?.message || 'Failed to export students'
-        );
-      }
-    });
-}
-
-  private clearAndReloadImage(studentId: string, photoUrl: string | null): void {
-    if (this.photoCache[studentId]?.blobUrl) {
-      try {
-        URL.revokeObjectURL(this.photoCache[studentId].blobUrl);
-      } catch (error) {
-        // Silently handle
-      }
-    }
-    
-    delete this.photoCache[studentId];
-
-    if (photoUrl) {
-      setTimeout(() => {
-        this.loadStudentPhoto(studentId, photoUrl).catch(() => {
-          // Silently handle reload errors
-        });
-      }, 100);
-    }
-  }
+  // ─── Data ─────────────────────────────────────────────────────────────────
 
   loadAll(schoolId?: string | null): void {
     this.isLoading = true;
@@ -851,169 +448,64 @@ private performExport(config: ExportConfig): void {
           setTimeout(() => this.preloadVisibleImages(), 0);
           this.isLoading = false;
         },
-        error: (err) => {
-          this.isLoading = false;
-          this._showError(err.error?.message || 'Failed to load students');
-        }
+        error: err => { this.isLoading = false; this._showError(err.error?.message || 'Failed to load students'); }
       });
   }
 
-  enrollStudent(): void {
-    this._router.navigate(['/academic/students/enroll']);
-  }
+  // ─── Photo cache ──────────────────────────────────────────────────────────
 
-  viewStudent(student: StudentDto): void {
-    this._router.navigate(['/academic/students/details', student.id]);
-  }
+  private loadStudentPhoto(studentId: string, photoUrl: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.photoCache[studentId] = { url: null!, blobUrl: '', isLoading: true, error: false };
+      const url     = photoUrl.startsWith('http') ? photoUrl : `${this._apiBaseUrl}${photoUrl}`;
+      const token   = this._authService.accessToken;
+      const headers = token ? new HttpHeaders().set('Authorization', `Bearer ${token}`) : undefined;
 
-  editStudent(student: StudentDto): void {
-    this._router.navigate(['/academic/students/edit', student.id]);
-  }
-
-bulkUploadPhotos(): void {
-  const dialogRef = this._dialog.open(BulkPhotoUploadDialogComponent, {
-    width: '900px',
-    maxWidth: '95vw',
-    maxHeight: '95vh',
-    disableClose: false,
-    panelClass: 'bulk-photo-upload-dialog',
-  });
-
-  dialogRef.afterClosed()
-    .pipe(takeUntil(this._unsubscribe))
-    .subscribe((uploaded: boolean) => {
-      if (uploaded) {
-        this._alertService.success('Photos uploaded successfully! Refreshing list...');
-        Object.keys(this.photoCache).forEach(key => {
-          if (this.photoCache[key].blobUrl) {
-            try {
-              URL.revokeObjectURL(this.photoCache[key].blobUrl);
-            } catch (error) {
-              // Silently handle
-            }
+      this._http.get(url, { responseType: 'blob', headers })
+        .pipe(
+          takeUntil(this._unsubscribe),
+          catchError(() => {
+            this.photoCache[studentId] = { url: null!, blobUrl: '', isLoading: false, error: true };
+            reject(new Error('Failed to load photo'));
+            return of(null);
+          })
+        )
+        .subscribe(blob => {
+          if (blob && blob.size > 0) {
+            try { URL.revokeObjectURL(this.photoCache[studentId]?.blobUrl); } catch { /* silent */ }
+            const blobUrl = URL.createObjectURL(blob);
+            this.photoCache[studentId] = {
+              url: this._sanitizer.bypassSecurityTrustUrl(blobUrl),
+              blobUrl, isLoading: false, error: false,
+            };
+            resolve();
+          } else {
+            this.photoCache[studentId] = { url: null!, blobUrl: '', isLoading: false, error: true };
+            reject(new Error('Invalid blob received'));
           }
         });
-        this.photoCache = {};
-        this.loadAll();
+    });
+  }
+
+  private preloadVisibleImages(): void {
+    this.paginatedData.forEach(s => {
+      if (s.photoUrl && !this.photoCache[s.id]?.blobUrl && !this.photoCache[s.id]?.isLoading) {
+        this.loadStudentPhoto(s.id, s.photoUrl).catch(() => { /* silent */ });
       }
     });
-}
-
-viewStudentPhoto(student: StudentDto): void {
-  if (!student.photoUrl) {
-    this._showError('No photo available for this student');
-    return;
   }
 
-  // Build full backend URL
-  const backendUrl = student.photoUrl.startsWith('http')
-    ? student.photoUrl
-    : `${this._apiBaseUrl}${student.photoUrl}`;
-
-  // Get auth token from auth service
-  const token = this._authService.accessToken;
-
-  // Open the photo viewer dialog
-  this._dialog.open(PhotoViewerDialogComponent, {
-    disableClose: false,
-    data: {
-      photoUrl: backendUrl,              // Backend URL, not a blob
-      studentName: student.fullName,
-      admissionNumber: student.admissionNumber,
-      authToken: token,                  // Optional, for authorization
-      additionalInfo: [
-        this.getGenderName(student.gender),
-        this.getCBCLevelName(student.cbcLevel),
-        student.currentLevel || 'N/A'
-      ].join(' • ')
-    }
-  });
-}
-
-
-  getPhotoTooltip(student: StudentDto): string {
-    const cache = this.photoCache[student.id];
-    
-    if (!cache) {
-      return student.photoUrl ? 'Loading...' : 'No photo';
-    }
-    
-    if (cache.isLoading) return 'Loading...';
-    if (cache.error) return 'Failed to load. Click to retry.';
-    if (cache.blobUrl) return 'Click to view';
-    
-    return 'No photo';
+  private clearAndReloadImage(studentId: string, photoUrl: string | null): void {
+    try { URL.revokeObjectURL(this.photoCache[studentId]?.blobUrl); } catch { /* silent */ }
+    delete this.photoCache[studentId];
+    if (photoUrl) setTimeout(() => this.loadStudentPhoto(studentId, photoUrl).catch(() => {}), 100);
   }
 
-  retryPhotoLoad(student: StudentDto): void {
-    if (student.photoUrl) {
-      this.clearAndReloadImage(student.id, student.photoUrl);
-    }
-  }
+  // ─── Actions ─────────────────────────────────────────────────────────────
 
-toggleActive(student: StudentDto): void {
-  const newStatus = !student.isActive;
-  const action = newStatus ? 'activate' : 'deactivate';
-
-  this._alertService.confirm({
-    title: `${newStatus ? 'Activate' : 'Deactivate'} Student`,
-    message: `Are you sure you want to ${action} ${student.fullName}?`,
-    confirmText: newStatus ? 'Activate' : 'Deactivate',
-    onConfirm: () => {
-
-      this._service.toggleStatus(student.id, newStatus)
-        .subscribe({
-          next: (response) => {
-            this._alertService.success(response.message);
-            this.loadAll();
-          },
-          error: (err) => {
-            this._alertService.error(
-              err.error?.message || `Failed to ${action} student`
-            );
-          }
-        });
-
-    }
-  });
-}
-
-
-removeStudent(student: StudentDto): void {
-  this._alertService.confirm({
-    title: 'Delete Student',
-    message: `Are you sure you want to delete ${student.fullName}? This action cannot be undone.`,
-    confirmText: 'Delete',
-    cancelText: 'Cancel',
-    onConfirm: () => {
-      this._service.delete(student.id)
-        .subscribe({
-          next: () => {
-            this._alertService.success('Student deleted successfully');
-
-            if (this.photoCache[student.id]?.blobUrl) {
-              try {
-                URL.revokeObjectURL(this.photoCache[student.id].blobUrl);
-              } catch (error) {
-                // Silently handle
-              }
-            }
-            delete this.photoCache[student.id];
-
-            if (this.paginatedData.length === 0 && this.currentPage > 1) {
-              this.currentPage--;
-            }
-
-            this.loadAll();
-          },
-          error: (err) => {
-            this._alertService.error(err.error?.message || 'Failed to delete student');
-          }
-        });
-    }
-  });
-}
-
+  enrollStudent():            void { this._router.navigate(['/academic/students/enroll']); }
+  viewStudent(s: StudentDto): void { this._router.navigate(['/academic/students/details', s.id]); }
+  editStudent(s: StudentDto): void { this._router.navigate(['/academic/students/edit', s.id]); }
 
   uploadPhoto(student: StudentDto): void {
     this._photoTargetStudent = student;
@@ -1021,46 +513,194 @@ removeStudent(student: StudentDto): void {
     this.photoInputRef.nativeElement.click();
   }
 
-onPhotoFileSelected(event: Event): void {
-  const input = event.target as HTMLInputElement;
-  if (!input.files?.length || !this._photoTargetStudent) return;
-  
-  const file = input.files[0];
-  
-  if (file.size > 5 * 1024 * 1024) {
-    this._alertService.error('File size must be less than 5MB');
-    return;
+  onPhotoFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length || !this._photoTargetStudent) return;
+    const file = input.files[0];
+    if (file.size > 5 * 1024 * 1024)    { this._alertService.error('File size must be less than 5 MB'); return; }
+    if (!file.type.startsWith('image/')) { this._alertService.error('File must be an image'); return; }
+
+    this._service.uploadPhoto(this._photoTargetStudent.id, file)
+      .pipe(takeUntil(this._unsubscribe))
+      .subscribe({
+        next:  () => {
+          this._alertService.success('Photo uploaded successfully');
+          this.clearAndReloadImage(this._photoTargetStudent!.id, this._photoTargetStudent!.photoUrl || '');
+          this.loadAll();
+        },
+        error: err => this._alertService.error(err.error?.message || 'Failed to upload photo')
+      });
   }
 
-  if (!file.type.startsWith('image/')) {
-    this._alertService.error('File must be an image');
-    return;
-  }
+  viewStudentPhoto(student: StudentDto): void {
+    if (!student.photoUrl) { this._showError('No photo available for this student'); return; }
+    const backendUrl = student.photoUrl.startsWith('http')
+      ? student.photoUrl
+      : `${this._apiBaseUrl}${student.photoUrl}`;
 
-  this._service.uploadPhoto(this._photoTargetStudent.id, file)
-    .pipe(takeUntil(this._unsubscribe))
-    .subscribe({
-      next: () => {
-        this._alertService.success('Photo uploaded successfully');
-        this.clearAndReloadImage(this._photoTargetStudent!.id, this._photoTargetStudent!.photoUrl || '');
-        this.loadAll();
+    this._dialog.open(PhotoViewerDialogComponent, {
+      disableClose: false,
+      data: {
+        photoUrl:        backendUrl,
+        studentName:     student.fullName,
+        admissionNumber: student.admissionNumber,
+        authToken:       this._authService.accessToken,
+        additionalInfo: [
+          this.getGenderName(student.gender),
+          this.getCBCLevelName(student.cbcLevel),
+          student.currentLevel || 'N/A',
+        ].join(' • '),
       },
-      error: (err) => {
-        this._alertService.error(err.error?.message || 'Failed to upload photo');
+    });
+  }
+
+  getPhotoTooltip(student: StudentDto): string {
+    const c = this.photoCache[student.id];
+    if (!c)          return student.photoUrl ? 'Loading...' : 'No photo';
+    if (c.isLoading) return 'Loading...';
+    if (c.error)     return 'Failed to load. Click to retry.';
+    if (c.blobUrl)   return 'Click to view';
+    return 'No photo';
+  }
+
+  retryPhotoLoad(student: StudentDto): void {
+    if (student.photoUrl) this.clearAndReloadImage(student.id, student.photoUrl);
+  }
+
+  toggleActive(student: StudentDto): void {
+    const newStatus = !student.isActive;
+    const action    = newStatus ? 'activate' : 'deactivate';
+
+    this._alertService.confirm({
+      title: `${newStatus ? 'Activate' : 'Deactivate'} Student`,
+      message: `Are you sure you want to ${action} ${student.fullName}?`,
+      confirmText: newStatus ? 'Activate' : 'Deactivate',
+      onConfirm: () => {
+        this._service.toggleStatus(student.id, newStatus).subscribe({
+          next:  res => { this._alertService.success(res.message); this.loadAll(); },
+          error: err => this._alertService.error(err.error?.message || `Failed to ${action} student`)
+        });
       }
     });
-}
-  private _showSuccess(message: string): void {
-    this._snackBar.open(message, 'Close', { 
-      duration: 3000, 
-      panelClass: ['bg-green-600', 'text-white'] 
+  }
+
+  removeStudent(student: StudentDto): void {
+    this._alertService.confirm({
+      title: 'Delete Student', confirmText: 'Delete', cancelText: 'Cancel',
+      message: `Are you sure you want to delete ${student.fullName}? This action cannot be undone.`,
+      onConfirm: () => {
+        this._service.delete(student.id).subscribe({
+          next: () => {
+            this._alertService.success('Student deleted successfully');
+            try { URL.revokeObjectURL(this.photoCache[student.id]?.blobUrl); } catch { /* silent */ }
+            delete this.photoCache[student.id];
+            if (this.paginatedData.length === 0 && this.currentPage > 1) this.currentPage--;
+            this.loadAll();
+          },
+          error: err => this._alertService.error(err.error?.message || 'Failed to delete student')
+        });
+      }
     });
   }
 
-  private _showError(message: string): void {
-    this._snackBar.open(message, 'Close', { 
-      duration: 5000, 
-      panelClass: ['bg-red-600', 'text-white'] 
+  bulkUploadPhotos(): void {
+    const ref = this._dialog.open(BulkPhotoUploadDialogComponent, {
+      width: '900px', maxWidth: '95vw', maxHeight: '95vh',
+      disableClose: false, panelClass: 'bulk-photo-upload-dialog',
+    });
+    ref.afterClosed().pipe(takeUntil(this._unsubscribe)).subscribe((uploaded: boolean) => {
+      if (uploaded) {
+        this._alertService.success('Photos uploaded successfully! Refreshing list...');
+        Object.values(this.photoCache).forEach(e => {
+          try { URL.revokeObjectURL(e.blobUrl); } catch { /* silent */ }
+        });
+        this.photoCache = {};
+        this.loadAll();
+      }
     });
   }
+
+  // ─── Export ───────────────────────────────────────────────────────────────
+
+  openExportDialog(format?: 'excel' | 'pdf' | 'word'): void {
+    const ref = this._dialog.open(ExportStudentsDialogComponent, {
+      width: '800px', maxWidth: '95vw', maxHeight: '90vh',
+      disableClose: false, panelClass: 'export-students-dialog',
+      data: {
+        filteredStudentCount: this.filteredData.length,
+        totalStudentCount:    this.allData.length,
+        hasActiveFilters:     this.hasActiveFilters(),
+        preSelectedFormat:    format,
+      },
+    });
+    ref.afterClosed().pipe(takeUntil(this._unsubscribe)).subscribe((config: ExportConfig) => {
+      if (config) this.performExport(config);
+    });
+  }
+
+  private hasActiveFilters(): boolean {
+    return (
+      this._filterValues.search        !== ''    ||
+      this._filterValues.status        !== 'all' ||
+      this._filterValues.gender        !== 'all' ||
+      this._filterValues.cbcLevel      !== 'all' ||
+      this._filterValues.studentStatus !== 'all' ||
+      (this.isSuperAdmin && this._filterValues.schoolId !== 'all')
+    );
+  }
+
+  private performExport(config: ExportConfig): void {
+    const dataToExport = this.filteredData;
+    if (!dataToExport.length) {
+      this._alertService.warning('No students to export with current filters');
+      return;
+    }
+
+    const filterInfo = this.hasActiveFilters() ? ' (filtered)' : '';
+    this._alertService.info(`Preparing to export ${dataToExport.length} student${dataToExport.length !== 1 ? 's' : ''}${filterInfo}...`);
+    if (dataToExport.length > 100) {
+      this._alertService.info(`Processing ${dataToExport.length} students. This may take a moment...`);
+    }
+
+    // Resolve which school record to use for the report header
+    const onlySchool     = this.schools.length === 1 ? this.schools[0] : null;
+    const filteredSchool = (this.isSuperAdmin && this._filterValues.schoolId !== 'all')
+      ? this.schools.find(s => s.id === this._filterValues.schoolId) ?? null
+      : null;
+    const ref = onlySchool ?? filteredSchool;
+
+    const schoolInfo: SchoolHeaderInfo = {
+      schoolName:    ref?.name        ?? 'School Management System',
+      schoolAddress: ref?.address     ?? undefined,
+      // ✅ Fixed: was school.phone  → SchoolDto has phoneNumber
+      schoolPhone:   ref?.phoneNumber ?? undefined,
+      schoolEmail:   ref?.email       ?? undefined,
+      // ✅ Fixed: removed schoolMotto — 'motto' was removed from SchoolDto
+      schoolLogo:    ref?.logoUrl     ?? undefined,
+    };
+
+    this._studentExportService
+      .exportStudents(dataToExport, config, schoolInfo, this.enumMaps)
+      .pipe(takeUntil(this._unsubscribe))
+      .subscribe({
+        next:  result => {
+          if (result.success) {
+            this._alertService.success(
+              `Successfully exported ${dataToExport.length} student${dataToExport.length !== 1 ? 's' : ''}${filterInfo} to ${config.format.toUpperCase()}`
+            );
+          }
+        },
+        error: err => this._alertService.error(err?.message || 'Failed to export students')
+      });
+  }
+
+  // ─── Snack helpers ────────────────────────────────────────────────────────
+private _showSuccess(msg: string): void {
+  this._alertService.success(msg);
+}
+
+private _showError(msg: string): void {
+  this._alertService.error(msg);
+}
+
 }

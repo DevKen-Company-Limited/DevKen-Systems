@@ -16,5 +16,6 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
         public School? Tenant { get; set; }
         public ICollection<RolePermission> RolePermissions { get; set; } = new List<RolePermission>();
         public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
+        public Guid? SchoolId { get; set; }
     }
 }

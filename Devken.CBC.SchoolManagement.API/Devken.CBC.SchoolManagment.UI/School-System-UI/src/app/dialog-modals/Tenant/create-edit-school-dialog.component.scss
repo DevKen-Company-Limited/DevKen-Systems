@@ -1,0 +1,624 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// School Dialog — edge-to-edge gradient, scrollable tab body
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── CSS Variables ─────────────────────────────────────────────────────────────
+:host {
+  --primary:       #4f46e5;
+  --primary-light: #e0e7ff;
+  --primary-dark:  #3730a3;
+  --danger:        #ef4444;
+  --success:       #22c55e;
+  --text-primary:  #111827;
+  --text-muted:    #6b7280;
+  --border:        #e5e7eb;
+  --bg:            #f9fafb;
+  --radius:        12px;
+  --radius-sm:     8px;
+
+  // :host IS the dialog surface — make it a flex column
+  // that fills 100% of whatever height Material gives the panel.
+  display:        flex;
+  flex-direction: column;
+  width:          100%;
+  height:         100%;      // fills mdc-dialog__surface
+  overflow:       hidden;
+  background:     #ffffff;
+}
+
+// ── Header (fixed, never scrolls) ─────────────────────────────────────────────
+.dialog-header {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  padding:         20px 24px;
+  background:      linear-gradient(135deg, #4f46e5 0%, #7c3aed 60%, #6d28d9 100%);
+  flex-shrink:     0;                                     // ← never shrink
+  gap:             12px;
+  border-bottom:   1px solid rgba(255, 255, 255, .1);
+
+  .header-left {
+    display:     flex;
+    align-items: center;
+    gap:         14px;
+    min-width:   0;
+    flex:        1;
+  }
+
+  .header-icon-ring {
+    width:            48px;
+    height:           48px;
+    border-radius:    50%;
+    background:       rgba(255, 255, 255, .2);
+    backdrop-filter:  blur(8px);
+    display:          flex;
+    align-items:      center;
+    justify-content:  center;
+    flex-shrink:      0;
+    border:           1px solid rgba(255, 255, 255, .3);
+    box-shadow:       0 4px 12px rgba(0, 0, 0, .15);
+  }
+
+  .header-icon {
+    color:       #fff;
+    font-size:   22px;
+    width:       22px;
+    height:      22px;
+  }
+
+  .header-text { min-width: 0; flex: 1; }
+
+  .header-title {
+    font-size:      18px;
+    font-weight:    700;
+    color:          #fff;
+    margin:         0;
+    line-height:    1.3;
+    white-space:    nowrap;
+    overflow:       hidden;
+    text-overflow:  ellipsis;
+    text-shadow:    0 1px 2px rgba(0, 0, 0, .1);
+  }
+
+  .header-subtitle {
+    font-size:      13px;
+    color:          rgba(255, 255, 255, .85);
+    margin:         2px 0 0;
+    white-space:    nowrap;
+    overflow:       hidden;
+    text-overflow:  ellipsis;
+  }
+
+  .close-btn {
+    color:       rgba(255, 255, 255, .85);
+    flex-shrink: 0;
+    transition:  all .2s ease;
+
+    &:hover {
+      color:      #fff;
+      background: rgba(255, 255, 255, .15);
+      transform:  scale(1.05);
+    }
+  }
+}
+
+// ── Progress bar (flush below header, never scrolls) ──────────────────────────
+mat-progress-bar { flex-shrink: 0; }
+
+// ── Form — the flex child that grows to fill all remaining space ───────────────
+.dialog-form {
+  flex:           1;          // grow to fill space between header and footer
+  min-height:     0;          // ← CRITICAL: allows flex child to shrink below content height
+  overflow:       hidden;
+  display:        flex;
+  flex-direction: column;
+}
+
+// ── Tab group — fills the form, tab body scrolls ──────────────────────────────
+.school-dialog-tabs {
+  flex:           1;
+  min-height:     0;          // ← CRITICAL
+  display:        flex;
+  flex-direction: column;
+  overflow:       hidden;
+
+  // Tab header row (fixed)
+  ::ng-deep .mat-mdc-tab-header {
+    flex-shrink:    0;
+    border-bottom:  2px solid var(--border);
+    background:     #ffffff;
+    padding:        0 12px;
+  }
+
+  ::ng-deep .mat-mdc-tab {
+    min-width:   0;
+    padding:     0 18px;
+    height:      52px;
+    font-size:   13.5px;
+    font-weight: 500;
+    color:       var(--text-muted);
+    opacity:     1;
+    transition:  all .2s ease;
+
+    .tab-icon {
+      font-size:       19px;
+      width:           19px;
+      height:          19px;
+      margin-right:    7px;
+      vertical-align:  middle;
+    }
+
+    &.mdc-tab--active {
+      color:       var(--primary);
+      font-weight: 600;
+    }
+
+    &:hover:not(.mdc-tab--active) {
+      color:      var(--text-primary);
+      background: var(--bg);
+    }
+  }
+
+  ::ng-deep .mdc-tab-indicator__content--underline {
+    border-color:     var(--primary);
+    border-top-width: 3px;
+  }
+
+  // Body wrapper — must grow + allow children to scroll
+  ::ng-deep .mat-mdc-tab-body-wrapper {
+    flex:           1;
+    min-height:     0;          // ← CRITICAL
+    display:        flex;
+    flex-direction: column;
+    overflow:       hidden;
+  }
+
+  ::ng-deep .mat-mdc-tab-body {
+    flex:           1;
+    min-height:     0;
+    display:        flex;
+    flex-direction: column;
+    overflow:       hidden;
+
+    &.mat-mdc-tab-body-active {
+      display:        flex;
+      flex-direction: column;
+    }
+  }
+
+  // This is where scrolling actually happens
+  ::ng-deep .mat-mdc-tab-body-content {
+    flex:       1;
+    min-height: 0;
+    overflow-y: auto;           // ← THE scroll container
+    overflow-x: hidden;
+    padding:    24px 24px 20px;
+    background: #ffffff;
+
+    // Smooth scrollbar
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+
+    &::-webkit-scrollbar       { width: 6px; }
+    &::-webkit-scrollbar-track { background: transparent; }
+    &::-webkit-scrollbar-thumb {
+      background:    #cbd5e1;
+      border-radius: 4px;
+      &:hover { background: #94a3b8; }
+    }
+  }
+}
+
+// ── Tab pane animation ────────────────────────────────────────────────────────
+.tab-pane {
+  animation: fadeIn .2s ease;
+  // Do NOT set overflow or height here — let the parent scroll container handle it
+}
+
+// ── Section labels ────────────────────────────────────────────────────────────
+.section-label {
+  display:         flex;
+  align-items:     center;
+  gap:             7px;
+  margin:          0 0 14px;
+  color:           var(--text-muted);
+  font-size:       12.5px;
+  font-weight:     600;
+  text-transform:  uppercase;
+  letter-spacing:  .06em;
+
+  mat-icon {
+    font-size: 17px;
+    width:     17px;
+    height:    17px;
+    color:     var(--primary);
+  }
+}
+
+// Spacing when section labels follow each other
+.tab-pane > p.section-label + p.section-label,
+.tab-pane > div + p.section-label,
+.tab-pane > mat-form-field + p.section-label,
+.tab-pane > .grid-2 + p.section-label {
+  margin-top: 20px;
+}
+
+// ── Logo section ──────────────────────────────────────────────────────────────
+.logo-section {
+  margin-bottom:  24px;
+  padding-bottom: 24px;
+  border-bottom:  1px solid var(--border);
+}
+
+// ── Drop zone ─────────────────────────────────────────────────────────────────
+.drop-zone {
+  position:        relative;
+  border:          2px dashed var(--border);
+  border-radius:   var(--radius-sm);
+  background:      var(--bg);
+  cursor:          pointer;
+  transition:      all .2s ease;
+  margin-bottom:   14px;
+  min-height:      140px;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  overflow:        hidden;
+
+  &:hover    { border-color: var(--primary); background: #faf5ff; }
+  &.dragover {
+    border-color: var(--primary);
+    background:   var(--primary-light);
+    box-shadow:   0 0 0 4px rgba(79, 70, 229, .1);
+  }
+}
+
+.logo-preview-wrap {
+  position:        relative;
+  width:           100%;
+  height:          140px;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+
+  .logo-preview-img {
+    max-width:    100%;
+    max-height:   130px;
+    object-fit:   contain;
+    border-radius: 6px;
+  }
+
+  .logo-remove-btn {
+    position:      absolute;
+    top:           8px;
+    right:         8px;
+    width:         28px;
+    height:        28px;
+    border-radius: 50%;
+    background:    var(--danger);
+    border:        2px solid #fff;
+    cursor:        pointer;
+    display:       flex;
+    align-items:   center;
+    justify-content: center;
+    color:         #fff;
+    opacity:       0;
+    transition:    all .2s ease;
+    box-shadow:    0 2px 8px rgba(239, 68, 68, .4);
+
+    mat-icon { font-size: 16px; width: 16px; height: 16px; }
+    &:hover  { background: #dc2626; transform: scale(1.1); }
+  }
+
+  &:hover .logo-remove-btn { opacity: 1; }
+}
+
+.logo-loading-wrap {
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  gap:             8px;
+  padding:         24px;
+
+  .logo-loading-text {
+    font-size: 13px;
+    color:     var(--text-muted);
+    margin:    0;
+  }
+}
+
+.drop-zone-prompt {
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  gap:             8px;
+  padding:         28px 20px;
+  text-align:      center;
+
+  .drop-zone-icon-wrap {
+    width:           52px;
+    height:          52px;
+    border-radius:   50%;
+    background:      var(--primary-light);
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    margin-bottom:   4px;
+
+    mat-icon {
+      font-size: 26px;
+      width:     26px;
+      height:    26px;
+      color:     var(--primary);
+    }
+  }
+
+  .drop-zone-text {
+    font-size:   14px;
+    color:       var(--text-primary);
+    margin:      0;
+    font-weight: 500;
+
+    .browse-link {
+      color:           var(--primary);
+      font-weight:     600;
+      text-decoration: underline;
+    }
+  }
+
+  .drop-zone-hint {
+    font-size: 12px;
+    color:     var(--text-muted);
+    margin:    0;
+  }
+}
+
+// ── Grid ──────────────────────────────────────────────────────────────────────
+.grid-2 {
+  display:               grid;
+  grid-template-columns: 1fr 1fr;
+  gap:                   14px 18px;
+}
+
+// ── Form fields ───────────────────────────────────────────────────────────────
+.field {
+  width:         100%;
+  margin-bottom: 4px;
+}
+
+.field-prefix-icon {
+  font-size:    19px;
+  width:        19px;
+  height:       19px;
+  color:        #9ca3af;
+  margin-right: 6px;
+}
+
+.req {
+  color:       var(--danger);
+  font-weight: 700;
+}
+
+// ── Toggle card ───────────────────────────────────────────────────────────────
+.toggle-card {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  gap:             14px;
+  padding:         16px 18px;
+  margin-top:      12px;
+  background:      linear-gradient(135deg, #fafbfc, #f8f9fa);
+  border:          1.5px solid var(--border);
+  border-radius:   var(--radius-sm);
+  transition:      all .2s ease;
+
+  &:hover {
+    box-shadow:  0 4px 12px rgba(0, 0, 0, .08);
+    border-color: #d1d5db;
+    transform:   translateY(-1px);
+  }
+
+  .toggle-card-text {
+    display:     flex;
+    align-items: center;
+    gap:         12px;
+    flex:        1;
+    min-width:   0;
+  }
+
+  .toggle-icon {
+    font-size:   22px;
+    width:       22px;
+    height:      22px;
+    flex-shrink: 0;
+    &.green  { color: var(--success); }
+    &.indigo { color: #6366f1; }
+  }
+
+  .toggle-title {
+    font-size:   14px;
+    font-weight: 600;
+    color:       var(--text-primary);
+    margin:      0;
+  }
+
+  .toggle-desc {
+    font-size:   12.5px;
+    color:       var(--text-muted);
+    margin:      3px 0 0;
+    line-height: 1.4;
+  }
+}
+
+// ── Footer (fixed, never scrolls) ─────────────────────────────────────────────
+.dialog-footer {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  gap:             14px;
+  padding:         16px 24px;
+  border-top:      2px solid var(--border);
+  background:      linear-gradient(to bottom, #ffffff, #fafbfc);
+  flex-shrink:     0;                                       // ← never shrink
+
+  .footer-hint {
+    font-size: 13px;
+    color:     var(--text-muted);
+    margin:    0;
+  }
+
+  .footer-actions {
+    display:     flex;
+    align-items: center;
+    gap:         12px;
+  }
+
+  .cancel-btn {
+    font-size:    14px;
+    font-weight:  500;
+    color:        var(--text-muted);
+    border-color: var(--border);
+    transition:   all .2s ease;
+
+    &:hover {
+      background:   var(--bg);
+      color:        var(--text-primary);
+      border-color: #d1d5db;
+    }
+  }
+
+  .submit-btn {
+    display:       flex;
+    align-items:   center;
+    gap:           7px;
+    font-size:     14px;
+    font-weight:   600;
+    background:    linear-gradient(135deg, var(--primary) 0%, #7c3aed 100%);
+    color:         #fff;
+    padding:       0 22px;
+    height:        42px;
+    border-radius: var(--radius-sm);
+    transition:    all .2s ease;
+    box-shadow:    0 4px 12px rgba(79, 70, 229, .3);
+
+    &:hover:not(:disabled) {
+      opacity:    .92;
+      transform:  translateY(-2px);
+      box-shadow: 0 6px 20px rgba(79, 70, 229, .4);
+    }
+    &:active:not(:disabled) { transform: translateY(0); }
+    &:disabled {
+      opacity:    .5;
+      cursor:     not-allowed;
+      box-shadow: none;
+    }
+
+    .submit-icon { font-size: 19px; width: 19px; height: 19px; }
+  }
+}
+
+// ── Animations ────────────────────────────────────────────────────────────────
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  50%      { opacity: .6;  transform: scale(.95); }
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+// ── Material field adjustments ────────────────────────────────────────────────
+::ng-deep {
+  mat-form-field.mat-mdc-form-field {
+    .mat-mdc-form-field-infix {
+      padding-top:    14px;
+      padding-bottom: 8px;
+      min-height:     50px;
+    }
+    .mat-mdc-text-field-wrapper        { border-radius: 8px; }
+    .mat-mdc-form-field-focus-overlay  { background-color: rgba(79, 70, 229, .05); }
+  }
+  .mat-mdc-input-element { color: var(--text-primary); }
+  .mat-mdc-select-value  { color: var(--text-primary); }
+}
+
+// ── Global dialog panel ───────────────────────────────────────────────────────
+// Removes Material's default padding and makes the surface a transparent
+// flex column so :host can fill it edge-to-edge with no white gaps.
+:global(.school-dialog) {
+  max-width: 760px !important;
+  width:     95vw !important;
+
+  .mat-mdc-dialog-container {
+    padding:       0 !important;
+    border-radius: 12px !important;
+    overflow:      hidden;
+    background:    transparent !important;
+    box-shadow:    0 25px 50px -12px rgba(0, 0, 0, .25) !important;
+  }
+
+  .mdc-dialog__surface {
+    overflow:         hidden !important;
+    border-radius:    12px !important;
+    background-color: transparent !important;
+    // Must be a flex column so :host height: 100% works
+    display:          flex !important;
+    flex-direction:   column !important;
+    // Give the surface a max-height so the dialog doesn't grow off-screen
+    max-height:       90vh !important;
+    height:           90vh !important;
+  }
+}
+
+// ── Responsive ────────────────────────────────────────────────────────────────
+@media (max-width: 639px) {
+  :global(.school-dialog) {
+    max-width: 100vw !important;
+    width:     100vw !important;
+    margin:    0 !important;
+
+    .mat-mdc-dialog-container,
+    .mdc-dialog__surface {
+      border-radius: 0 !important;
+      max-height:    100dvh !important;
+      height:        100dvh !important;
+    }
+  }
+
+  .dialog-header {
+    padding: 14px 18px;
+
+    .header-icon-ring { width: 40px; height: 40px; }
+    .header-icon      { font-size: 20px; width: 20px; height: 20px; }
+    .header-title     { font-size: 16px; }
+    .header-subtitle  { display: none; }
+  }
+
+  .school-dialog-tabs {
+    ::ng-deep .mat-mdc-tab-body-content {
+      padding: 16px 16px 12px;
+    }
+  }
+
+  .grid-2       { grid-template-columns: 1fr; gap: 12px; }
+
+  .dialog-footer {
+    padding:    12px 16px;
+    flex-wrap:  wrap;
+    .footer-hint    { width: 100%; }
+    .footer-actions { width: 100%; justify-content: flex-end; }
+  }
+}
+
+@media (min-width: 640px) and (max-width: 899px) {
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+
+  :global(.school-dialog) .mdc-dialog__surface {
+    max-height: 92vh !important;
+    height:     92vh !important;
+  }
+}

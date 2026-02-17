@@ -399,7 +399,7 @@ export class TermsComponent implements OnInit, OnDestroy {
         options: [
           { label: 'All Schools', value: 'all' },
           ...this.schools.map(s => ({ 
-            label: `${s.name}${s.phone ? ' (' + s.phone + ')' : ''}`, 
+            label: `${s.name}${s.phoneNumber ? ' (' + s.phoneNumber + ')' : ''}`, 
             value: s.id 
           })),
         ],

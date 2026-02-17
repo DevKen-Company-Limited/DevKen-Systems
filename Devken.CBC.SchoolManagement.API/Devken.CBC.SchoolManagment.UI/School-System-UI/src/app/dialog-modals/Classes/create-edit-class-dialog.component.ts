@@ -267,7 +267,7 @@ export class CreateEditClassDialogComponent implements OnInit, OnDestroy {
             this.schools = results.schools.data.map((school: SchoolDto) => ({
               id: school.id,
               name: school.name,
-              code: school.slug || school.id.substring(0, 8).toUpperCase() // Use slug as code fallback
+              code: school.slugName || school.id.substring(0, 8).toUpperCase() // Use slug as code fallback
             }));
             console.log('[Class Dialog] ✓ Schools loaded:', this.schools.length);
           }

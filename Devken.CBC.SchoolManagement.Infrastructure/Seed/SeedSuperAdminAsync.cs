@@ -1,5 +1,6 @@
 ﻿using Devken.CBC.SchoolManagement.Domain.Entities.Administration;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
+using Devken.CBC.SchoolManagement.Domain.Enums;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -11,26 +12,47 @@ using System.Threading.Tasks;
 namespace Devken.CBC.SchoolManagement.Infrastructure.Seed
 {
     /// <summary>
-    /// Seeds the database with initial SuperAdmin and default school data
+    /// Seeds the database with initial SuperAdmin and default school data.
     /// </summary>
     public static class DatabaseSeeder
     {
+        #region SuperAdmin Constants
+
         private const string DefaultSuperAdminEmail = "superadmin@devken.com";
         private const string DefaultSuperAdminPassword = "SuperAdmin@123";
+
+        #endregion
+
+        #region Default School Constants
 
         private const string DefaultSchoolSlug = "default-school";
         private const string DefaultSchoolName = "Default School";
         private const string DefaultSchoolEmail = "info@defaultschool.com";
         private const string DefaultSchoolPhone = "+254700000000";
         private const string DefaultSchoolAddress = "Default Address, Nairobi, Kenya";
+        private const string DefaultSchoolCounty = "Nairobi";
+        private const string DefaultSchoolSubCounty = "Westlands";
+        private const string DefaultSchoolRegNumber = "REG/2024/001";
+        private const SchoolType DefaultSchoolType = SchoolType.Public;
+        private const SchoolCategory DefaultSchoolCategory = SchoolCategory.Day;
+
+        #endregion
+
+        #region Default School Admin Constants
 
         private const string DefaultSchoolAdminEmail = "admin@defaultschool.com";
         private const string DefaultSchoolAdminPassword = "Admin@123";
         private const string DefaultSchoolAdminFirstName = "School";
         private const string DefaultSchoolAdminLastName = "Administrator";
 
+        #endregion
+
+        // ─────────────────────────────────────────────────────────────────────
+        // ENTRY POINT
+        // ─────────────────────────────────────────────────────────────────────
+
         /// <summary>
-        /// Seeds the database with SuperAdmin and default school
+        /// Seeds the database with SuperAdmin, default school, and default school admin.
         /// </summary>
         public static async Task SeedDatabaseAsync(this AppDbContext dbContext, ILogger? logger = null)
         {
@@ -39,27 +61,32 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Seed
 
             logger?.LogInformation("Starting database seeding...");
 
-            // ── 1. SEED SUPERADMIN ────────────────────────────────
+            // 1. SuperAdmin
             await SeedSuperAdminAsync(dbContext, logger);
 
-            // ── 2. SEED DEFAULT SCHOOL ────────────────────────────
+            // 2. Default school
             var defaultSchool = await SeedDefaultSchoolAsync(dbContext, logger);
 
-            // ── 3. SEED DEFAULT SCHOOL ADMIN ──────────────────────
+            // 3. Default school admin
+            //    ⚠️ School must be saved before the User is inserted (FK on SchoolId)
             await SeedDefaultSchoolAdminAsync(dbContext, defaultSchool, logger);
 
             logger?.LogInformation("Database seeding completed successfully.");
         }
 
+        // ─────────────────────────────────────────────────────────────────────
+        // PRIVATE SEEDERS
+        // ─────────────────────────────────────────────────────────────────────
+
         /// <summary>
-        /// Seeds the SuperAdmin account
+        /// Seeds the SuperAdmin account.
         /// </summary>
         private static async Task SeedSuperAdminAsync(AppDbContext dbContext, ILogger? logger)
         {
-            var superAdminExists = await dbContext.SuperAdmins
+            var exists = await dbContext.SuperAdmins
                 .AnyAsync(sa => sa.Email == DefaultSuperAdminEmail);
 
-            if (!superAdminExists)
+            if (!exists)
             {
                 var superAdmin = new SuperAdmin
                 {
@@ -68,8 +95,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Seed
                     FirstName = "Super",
                     LastName = "Admin",
                     IsActive = true,
-                    CreatedOn = DateTime.UtcNow,
-                    UpdatedOn = DateTime.UtcNow
+                    CreatedOn = DateTime.UtcNow
                 };
 
                 superAdmin.PasswordHash = new PasswordHasher<SuperAdmin>()
@@ -79,85 +105,91 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Seed
                 await dbContext.SaveChangesAsync();
 
                 logger?.LogInformation(
-                    "✅ Seeded SuperAdmin with email: {Email}",
-                    DefaultSuperAdminEmail);
+                    "✅ Seeded SuperAdmin: {Email}", DefaultSuperAdminEmail);
             }
             else
             {
                 logger?.LogInformation(
-                    "ℹ️ SuperAdmin already exists with email: {Email}",
-                    DefaultSuperAdminEmail);
+                    "ℹ️ SuperAdmin already exists: {Email}", DefaultSuperAdminEmail);
             }
         }
 
         /// <summary>
-        /// Seeds the default school
+        /// Seeds the default school. Must be committed before any Users are inserted.
         /// </summary>
         private static async Task<School> SeedDefaultSchoolAsync(AppDbContext dbContext, ILogger? logger)
         {
-            var defaultSchool = await dbContext.Schools
+            var school = await dbContext.Schools
                 .FirstOrDefaultAsync(s => s.SlugName == DefaultSchoolSlug);
 
-            if (defaultSchool == null)
+            if (school == null)
             {
-                defaultSchool = new School
+                school = new School
                 {
                     Id = Guid.NewGuid(),
-                    Name = DefaultSchoolName,
                     SlugName = DefaultSchoolSlug,
+                    Name = DefaultSchoolName,
+                    RegistrationNumber = DefaultSchoolRegNumber,
                     Email = DefaultSchoolEmail,
                     PhoneNumber = DefaultSchoolPhone,
                     Address = DefaultSchoolAddress,
+                    County = DefaultSchoolCounty,
+                    SubCounty = DefaultSchoolSubCounty,
+                    SchoolType = DefaultSchoolType,
+                    Category = DefaultSchoolCategory,
                     IsActive = true,
-                    CreatedOn = DateTime.UtcNow,
-                    UpdatedOn = DateTime.UtcNow
+                    CreatedOn = DateTime.UtcNow
                 };
 
-                dbContext.Schools.Add(defaultSchool);
+                dbContext.Schools.Add(school);
+
+                // ⚠️ CRITICAL: SaveChanges here so the School row exists in the DB
+                // before any User with SchoolId FK is inserted.
                 await dbContext.SaveChangesAsync();
 
                 logger?.LogInformation(
-                    "✅ Seeded default school: {Name} (ID: {Id})",
-                    DefaultSchoolName,
-                    defaultSchool.Id);
+                    "✅ Seeded default school: {Name} (ID: {Id}, Type: {Type}, Category: {Category})",
+                    DefaultSchoolName, school.Id, DefaultSchoolType, DefaultSchoolCategory);
             }
             else
             {
                 logger?.LogInformation(
                     "ℹ️ Default school already exists: {Name} (ID: {Id})",
-                    defaultSchool.Name,
-                    defaultSchool.Id);
+                    school.Name, school.Id);
             }
 
-            return defaultSchool;
+            return school;
         }
 
         /// <summary>
-        /// Seeds the default school administrator
+        /// Seeds the default school administrator.
+        /// Requires the school to already be persisted (FK: Users.SchoolId → Schools.Id).
         /// </summary>
         private static async Task SeedDefaultSchoolAdminAsync(
             AppDbContext dbContext,
             School defaultSchool,
             ILogger? logger)
         {
-            var schoolAdminExists = await dbContext.Users
+            var exists = await dbContext.Users
                 .AnyAsync(u => u.Email == DefaultSchoolAdminEmail && u.TenantId == defaultSchool.Id);
 
-            if (!schoolAdminExists)
+            if (!exists)
             {
-                // Create the user
                 var user = new User
                 {
                     Id = Guid.NewGuid(),
                     Email = DefaultSchoolAdminEmail,
                     FirstName = DefaultSchoolAdminFirstName,
                     LastName = DefaultSchoolAdminLastName,
-                    TenantId = defaultSchool.Id,  // ✅ Set TenantId
+                    // ✅ Both SchoolId AND TenantId must point to the school's PK.
+                    //    SchoolId is the FK enforced by the DB constraint.
+                    //    TenantId is the application-level tenant discriminator.
+                    SchoolId = defaultSchool.Id,
+                    TenantId = defaultSchool.Id,
                     IsActive = true,
                     IsEmailVerified = true,
-                    RequirePasswordChange = false,  // ✅ Set to false for default admin
-                    CreatedOn = DateTime.UtcNow,
-                    UpdatedOn = DateTime.UtcNow
+                    RequirePasswordChange = false,
+                    CreatedOn = DateTime.UtcNow
                 };
 
                 user.PasswordHash = new PasswordHasher<User>()
@@ -168,35 +200,25 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Seed
 
                 logger?.LogInformation(
                     "✅ Seeded default school admin: {Email} (ID: {Id})",
-                    DefaultSchoolAdminEmail,
-                    user.Id);
+                    DefaultSchoolAdminEmail, user.Id);
 
-                // The SchoolAdmin role and permissions will be assigned by PermissionSeedService
-                // which is called separately in SeedExtensions
+                // Role and permission assignment is handled separately by PermissionSeedService
             }
             else
             {
                 logger?.LogInformation(
-                    "ℹ️ Default school admin already exists: {Email}",
-                    DefaultSchoolAdminEmail);
+                    "ℹ️ Default school admin already exists: {Email}", DefaultSchoolAdminEmail);
             }
         }
 
+        // ─────────────────────────────────────────────────────────────────────
+        // PUBLIC UTILITY: SEED A NEW SCHOOL
+        // ─────────────────────────────────────────────────────────────────────
+
         /// <summary>
-        /// Seeds a new school with an admin user
+        /// Creates a new school and its admin user programmatically.
+        /// Safe to call multiple times — skips if the school slug already exists.
         /// </summary>
-        /// <param name="dbContext">Database context</param>
-        /// <param name="schoolName">Name of the school</param>
-        /// <param name="schoolSlug">URL-friendly slug for the school</param>
-        /// <param name="schoolEmail">School email</param>
-        /// <param name="schoolPhone">School phone number</param>
-        /// <param name="schoolAddress">School address</param>
-        /// <param name="adminEmail">School admin email</param>
-        /// <param name="adminPassword">School admin password</param>
-        /// <param name="adminFullName">School admin full name</param>
-        /// <param name="adminPhone">School admin phone</param>
-        /// <param name="logger">Logger instance</param>
-        /// <returns>The created school</returns>
         public static async Task<School> SeedNewSchoolAsync(
             AppDbContext dbContext,
             string schoolName,
@@ -207,77 +229,87 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Seed
             string adminEmail,
             string adminPassword,
             string adminFullName,
+            string? schoolCounty = null,
+            string? schoolSubCounty = null,
+            string? registrationNumber = null,
+            string? knecCenterCode = null,
+            string? kraPin = null,
+            SchoolType schoolType = SchoolType.Public,
+            SchoolCategory category = SchoolCategory.Day,
             string? adminPhone = null,
             ILogger? logger = null)
         {
-            // Check if school already exists
-            var existingSchool = await dbContext.Schools
+            // ── School ────────────────────────────────────────────────────────
+            var school = await dbContext.Schools
                 .FirstOrDefaultAsync(s => s.SlugName == schoolSlug);
 
-            if (existingSchool != null)
+            if (school != null)
             {
                 logger?.LogWarning(
-                    "School with slug '{Slug}' already exists",
-                    schoolSlug);
-                return existingSchool;
+                    "School with slug '{Slug}' already exists — skipping creation.", schoolSlug);
+                return school;
             }
 
-            // Create the school
-            var school = new School
+            school = new School
             {
                 Id = Guid.NewGuid(),
-                Name = schoolName,
-                SlugName = schoolSlug,
-                Email = schoolEmail,
-                PhoneNumber = schoolPhone,
-                Address = schoolAddress,
+                SlugName = schoolSlug.Trim(),
+                Name = schoolName.Trim(),
+                RegistrationNumber = registrationNumber?.Trim(),
+                KnecCenterCode = knecCenterCode?.Trim(),
+                KraPin = kraPin?.Trim(),
+                Email = schoolEmail.Trim(),
+                PhoneNumber = schoolPhone.Trim(),
+                Address = schoolAddress.Trim(),
+                County = schoolCounty?.Trim(),
+                SubCounty = schoolSubCounty?.Trim(),
+                SchoolType = schoolType,
+                Category = category,
                 IsActive = true,
-                CreatedOn = DateTime.UtcNow,
-                UpdatedOn = DateTime.UtcNow
+                CreatedOn = DateTime.UtcNow
             };
 
             dbContext.Schools.Add(school);
+
+            // ⚠️ CRITICAL: Commit the school row BEFORE inserting the admin User
+            // to satisfy the FK_Users_Schools_SchoolId constraint.
             await dbContext.SaveChangesAsync();
 
             logger?.LogInformation(
-                "✅ Created new school: {Name} (ID: {Id})",
-                schoolName,
-                school.Id);
+                "✅ Created school: {Name} (ID: {Id}, Type: {Type}, Category: {Category})",
+                schoolName, school.Id, schoolType, category);
 
-            // Parse admin name
-            var nameParts = adminFullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            var firstName = nameParts.Length > 0 ? nameParts[0] : "Admin";
-            var lastName = nameParts.Length > 1
-                ? string.Join(" ", nameParts.Skip(1))
-                : "User";
-
-            // Check if admin user already exists for this school
+            // ── Admin User ────────────────────────────────────────────────────
             var existingAdmin = await dbContext.Users
                 .FirstOrDefaultAsync(u => u.Email == adminEmail && u.TenantId == school.Id);
 
             if (existingAdmin != null)
             {
                 logger?.LogInformation(
-                    "ℹ️ Admin user already exists: {Email} for school {SchoolName}",
-                    adminEmail,
-                    schoolName);
+                    "ℹ️ Admin user already exists: {Email} for school '{SchoolName}'",
+                    adminEmail, schoolName);
                 return school;
             }
 
-            // Create school admin user
+            var nameParts = adminFullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var firstName = nameParts.Length > 0 ? nameParts[0] : "Admin";
+            var lastName = nameParts.Length > 1 ? string.Join(" ", nameParts.Skip(1)) : "User";
+
             var adminUser = new User
             {
                 Id = Guid.NewGuid(),
-                Email = adminEmail,
+                Email = adminEmail.Trim(),
                 FirstName = firstName,
                 LastName = lastName,
-                PhoneNumber = adminPhone,
-                TenantId = school.Id,  // ✅ Set TenantId
+                PhoneNumber = adminPhone?.Trim(),
+                // ✅ Both must be set — SchoolId satisfies the DB FK,
+                //    TenantId is the application-level tenant discriminator.
+                SchoolId = school.Id,
+                TenantId = school.Id,
                 IsActive = true,
                 IsEmailVerified = true,
-                RequirePasswordChange = false,  // ✅ Set to false for seeded admin
-                CreatedOn = DateTime.UtcNow,
-                UpdatedOn = DateTime.UtcNow
+                RequirePasswordChange = false,
+                CreatedOn = DateTime.UtcNow
             };
 
             adminUser.PasswordHash = new PasswordHasher<User>()
@@ -287,9 +319,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Seed
             await dbContext.SaveChangesAsync();
 
             logger?.LogInformation(
-                "✅ Created school admin: {Email} for school {SchoolName}",
-                adminEmail,
-                schoolName);
+                "✅ Created school admin: {Email} for school '{SchoolName}'",
+                adminEmail, schoolName);
 
             return school;
         }

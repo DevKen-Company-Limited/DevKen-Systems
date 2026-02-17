@@ -383,7 +383,7 @@ export class ClassesManagementComponent implements OnInit, OnDestroy, AfterViewI
         options: [
           { label: 'All Schools', value: 'all' },
           ...this.schools.map(s => ({ 
-            label: `${s.name}${s.slug ? ' (' + s.slug + ')' : ''}`, 
+            label: `${s.name}${s.slugName ? ' (' + s.slugName + ')' : ''}`, 
             value: s.id 
           })),
         ],
@@ -590,7 +590,7 @@ export class ClassesManagementComponent implements OnInit, OnDestroy, AfterViewI
 
   getSchoolSlug(schoolId: string): string {
     const school = this.schools.find(s => s.id === schoolId);
-    return school ? school.slug : '';
+    return school ? school.slugName : '';
   }
 
   getCapacityUtilization(classItem: ClassDto): number {

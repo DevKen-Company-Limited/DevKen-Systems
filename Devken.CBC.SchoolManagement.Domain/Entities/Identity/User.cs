@@ -42,5 +42,6 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
             LockedUntil.HasValue && LockedUntil.Value > DateTime.UtcNow;
 
         public bool IsSuperAdmin { get; set; } = false;
+        public Guid? SchoolId { get; set; }
     }
 }
