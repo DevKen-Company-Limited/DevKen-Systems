@@ -1,0 +1,313 @@
+<!-- ══════════════════════════════════════════════════════════════════════
+     school-view-dialog.component.html
+     Scroll chain: :host(flex col) → svd-body(flex:1, min-h:0, overflow-y:auto)
+     Header + Footer: flex-shrink:0 — they never move.
+     ══════════════════════════════════════════════════════════════════════ -->
+
+<!-- ── Header ──────────────────────────────────────────────────────────── -->
+<div class="svd-header">
+  <div class="svd-header__bg"></div>
+
+  <div class="svd-header__content">
+    <div class="svd-header__left">
+      <div class="svd-header__icon-ring">
+        <mat-icon class="svd-header__icon">domain</mat-icon>
+      </div>
+      <div class="svd-header__text">
+        <p class="svd-header__eyebrow">School Record</p>
+        <h2 class="svd-header__title">{{ school.name }}</h2>
+      </div>
+    </div>
+    <button mat-icon-button class="svd-header__close" (click)="close()" matTooltip="Close">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <!-- Status pills row (inside dark header) -->
+  <div class="svd-header__strip">
+    <span class="svd-pill svd-pill--active" *ngIf="school.isActive">
+      <mat-icon class="svd-pill__icon">radio_button_checked</mat-icon>
+      Active
+    </span>
+    <span class="svd-pill svd-pill--inactive" *ngIf="!school.isActive">
+      <mat-icon class="svd-pill__icon">cancel</mat-icon>
+      Inactive
+    </span>
+    <span class="svd-pill svd-pill--type">
+      <mat-icon class="svd-pill__icon">category</mat-icon>
+      {{ getTypeLabel(school.schoolType) }}
+    </span>
+    <span class="svd-pill svd-pill--cat">
+      <mat-icon class="svd-pill__icon">home_work</mat-icon>
+      {{ getCategoryLabel(school.category) }}
+    </span>
+  </div>
+</div>
+
+<!-- ── Scrollable body ─────────────────────────────────────────────────── -->
+<div class="svd-body">
+
+  <!-- ── Identity hero card ──────────────────────────────────────────── -->
+  <div class="svd-hero">
+
+    <!-- Logo -->
+    <div class="svd-logo">
+      <ng-container *ngIf="logoUrl">
+        <ng-container *ngIf="logoUrl | secureImage | async as safeSrc; else logoFallback">
+          <img [src]="safeSrc" [alt]="school.name" class="svd-logo__img" />
+        </ng-container>
+      </ng-container>
+      <ng-template #logoFallback>
+        <div class="svd-logo__placeholder">
+          <mat-icon>school</mat-icon>
+        </div>
+      </ng-template>
+      <ng-container *ngIf="!logoUrl">
+        <div class="svd-logo__placeholder">
+          <mat-icon>school</mat-icon>
+        </div>
+      </ng-container>
+    </div>
+
+    <!-- Identity text + badges -->
+    <div class="svd-hero__info">
+      <h3 class="svd-hero__name">{{ school.name }}</h3>
+      <p class="svd-hero__slug">
+        <mat-icon class="svd-hero__slug-icon">link</mat-icon>
+        {{ school.slugName }}
+      </p>
+      <div class="svd-badge-row">
+        <span class="svd-badge"
+              [class.svd-badge--active]="school.isActive"
+              [class.svd-badge--inactive]="!school.isActive">
+          <span class="svd-badge__dot"></span>
+          {{ school.isActive ? 'Active' : 'Inactive' }}
+        </span>
+        <span class="svd-badge svd-badge--type">
+          <mat-icon class="svd-badge__icon">category</mat-icon>
+          {{ getTypeLabel(school.schoolType) }}
+        </span>
+        <span class="svd-badge svd-badge--cat">
+          <mat-icon class="svd-badge__icon">home_work</mat-icon>
+          {{ getCategoryLabel(school.category) }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Contact & Location ───────────────────────────────────────────── -->
+  <ng-container *ngIf="school.email || school.phoneNumber || school.address || school.county || school.subCounty">
+    <p class="svd-section-label">Contact &amp; Location</p>
+    <div class="svd-grid">
+
+      <!-- Contact card -->
+      <div class="svd-card" *ngIf="school.email || school.phoneNumber">
+        <div class="svd-card__head">
+          <mat-icon class="svd-card__head-icon">contact_phone</mat-icon>
+          Contact
+        </div>
+        <div class="svd-card__body">
+
+          <div class="svd-row" *ngIf="school.email">
+            <div class="svd-row__ico"><mat-icon>email</mat-icon></div>
+            <div class="svd-row__content">
+              <p class="svd-row__label">Email</p>
+              <p class="svd-row__value">
+                <a [href]="'mailto:' + school.email" class="svd-link">{{ school.email }}</a>
+              </p>
+            </div>
+          </div>
+
+          <div class="svd-row" *ngIf="school.phoneNumber">
+            <div class="svd-row__ico"><mat-icon>phone</mat-icon></div>
+            <div class="svd-row__content">
+              <p class="svd-row__label">Phone</p>
+              <p class="svd-row__value">{{ school.phoneNumber }}</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Location card -->
+      <div class="svd-card" *ngIf="school.address || school.county || school.subCounty">
+        <div class="svd-card__head">
+          <mat-icon class="svd-card__head-icon">location_on</mat-icon>
+          Location
+        </div>
+        <div class="svd-card__body">
+
+          <div class="svd-row" *ngIf="school.address">
+            <div class="svd-row__ico"><mat-icon>map</mat-icon></div>
+            <div class="svd-row__content">
+              <p class="svd-row__label">Address</p>
+              <p class="svd-row__value">{{ school.address }}</p>
+            </div>
+          </div>
+
+          <div class="svd-row" *ngIf="school.county">
+            <div class="svd-row__ico"><mat-icon>location_city</mat-icon></div>
+            <div class="svd-row__content">
+              <p class="svd-row__label">County</p>
+              <p class="svd-row__value">{{ school.county }}</p>
+            </div>
+          </div>
+
+          <div class="svd-row" *ngIf="school.subCounty">
+            <div class="svd-row__ico"><mat-icon>near_me</mat-icon></div>
+            <div class="svd-row__content">
+              <p class="svd-row__label">Sub-County</p>
+              <p class="svd-row__value">{{ school.subCounty }}</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </ng-container>
+
+  <!-- ── Legal & Registration (with system info alongside) ────────────── -->
+  <ng-container *ngIf="school.registrationNumber || school.knecCenterCode || school.kraPin">
+    <p class="svd-section-label">Legal &amp; Registration</p>
+    <div class="svd-grid">
+
+      <!-- Government card -->
+      <div class="svd-card">
+        <div class="svd-card__head">
+          <mat-icon class="svd-card__head-icon">gavel</mat-icon>
+          Government
+        </div>
+        <div class="svd-card__body">
+
+          <div class="svd-row" *ngIf="school.registrationNumber">
+            <div class="svd-row__ico"><mat-icon>badge</mat-icon></div>
+            <div class="svd-row__content">
+              <p class="svd-row__label">Registration No.</p>
+              <p class="svd-row__value svd-row__value--mono">{{ school.registrationNumber }}</p>
+            </div>
+          </div>
+
+          <div class="svd-row" *ngIf="school.knecCenterCode">
+            <div class="svd-row__ico"><mat-icon>confirmation_number</mat-icon></div>
+            <div class="svd-row__content">
+              <p class="svd-row__label">KNEC Center Code</p>
+              <p class="svd-row__value svd-row__value--mono">{{ school.knecCenterCode }}</p>
+            </div>
+          </div>
+
+          <div class="svd-row" *ngIf="school.kraPin">
+            <div class="svd-row__ico"><mat-icon>receipt_long</mat-icon></div>
+            <div class="svd-row__content">
+              <p class="svd-row__label">KRA PIN</p>
+              <p class="svd-row__value svd-row__value--mono">{{ school.kraPin }}</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- System info card (alongside legal) -->
+      <div class="svd-card">
+        <div class="svd-card__head">
+          <mat-icon class="svd-card__head-icon">info</mat-icon>
+          System Info
+        </div>
+        <div class="svd-card__body">
+
+          <div class="svd-row">
+            <div class="svd-row__ico"><mat-icon>tag</mat-icon></div>
+            <div class="svd-row__content">
+              <p class="svd-row__label">School ID</p>
+              <p class="svd-row__value svd-row__value--mono svd-row__value--tiny">{{ school.id }}</p>
+            </div>
+          </div>
+
+          <div class="svd-row" *ngIf="school.createdOn">
+            <div class="svd-row__ico"><mat-icon>calendar_today</mat-icon></div>
+            <div class="svd-row__content">
+              <p class="svd-row__label">Created</p>
+              <p class="svd-row__value">{{ school.createdOn | date:'mediumDate' }}</p>
+            </div>
+          </div>
+
+          <div class="svd-row" *ngIf="school.updatedOn">
+            <div class="svd-row__ico"><mat-icon>update</mat-icon></div>
+            <div class="svd-row__content">
+              <p class="svd-row__label">Last Updated</p>
+              <p class="svd-row__value">{{ school.updatedOn | date:'mediumDate' }}</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </ng-container>
+
+  <!-- ── System info only (no legal data present) ─────────────────────── -->
+  <ng-container *ngIf="!school.registrationNumber && !school.knecCenterCode && !school.kraPin">
+    <p class="svd-section-label">System Info</p>
+    <div class="svd-grid">
+      <div class="svd-card svd-card--full">
+        <div class="svd-card__head">
+          <mat-icon class="svd-card__head-icon">info</mat-icon>
+          System
+        </div>
+        <div class="svd-card__body">
+
+          <div class="svd-row">
+            <div class="svd-row__ico"><mat-icon>tag</mat-icon></div>
+            <div class="svd-row__content">
+              <p class="svd-row__label">School ID</p>
+              <p class="svd-row__value svd-row__value--mono svd-row__value--tiny">{{ school.id }}</p>
+            </div>
+          </div>
+
+          <div class="svd-row" *ngIf="school.createdOn">
+            <div class="svd-row__ico"><mat-icon>calendar_today</mat-icon></div>
+            <div class="svd-row__content">
+              <p class="svd-row__label">Created</p>
+              <p class="svd-row__value">{{ school.createdOn | date:'mediumDate' }}</p>
+            </div>
+          </div>
+
+          <div class="svd-row" *ngIf="school.updatedOn">
+            <div class="svd-row__ico"><mat-icon>update</mat-icon></div>
+            <div class="svd-row__content">
+              <p class="svd-row__label">Last Updated</p>
+              <p class="svd-row__value">{{ school.updatedOn | date:'mediumDate' }}</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- ── Empty state ──────────────────────────────────────────────────── -->
+  <div class="svd-empty"
+       *ngIf="!school.email && !school.phoneNumber && !school.address
+              && !school.county && !school.registrationNumber">
+    <mat-icon class="svd-empty__icon">info_outline</mat-icon>
+    <span>No additional details have been added for this school yet.</span>
+  </div>
+
+</div><!-- /svd-body -->
+
+<!-- ── Footer ──────────────────────────────────────────────────────────── -->
+<div class="svd-footer">
+  <div class="svd-footer__meta">
+    <mat-icon class="svd-footer__meta-icon">fingerprint</mat-icon>
+    {{ school.id | slice:0:8 }}…
+  </div>
+  <div class="svd-footer__actions">
+    <button mat-stroked-button class="svd-btn svd-btn--ghost" (click)="edit()">
+      <mat-icon>edit</mat-icon>
+      Edit School
+    </button>
+    <button mat-flat-button class="svd-btn svd-btn--dark" (click)="close()">
+      Close
+    </button>
+  </div>
+</div>

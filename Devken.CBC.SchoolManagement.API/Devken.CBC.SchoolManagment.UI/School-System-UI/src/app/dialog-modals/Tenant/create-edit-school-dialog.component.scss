@@ -1,5 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // School Dialog — edge-to-edge gradient, scrollable tab body
+// Fixed: proper scroll chain, Angular-compatible global overrides
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ── CSS Variables ─────────────────────────────────────────────────────────────
@@ -547,9 +548,9 @@ mat-progress-bar { flex-shrink: 0; }
 }
 
 // ── Global dialog panel ───────────────────────────────────────────────────────
-// Removes Material's default padding and makes the surface a transparent
-// flex column so :host can fill it edge-to-edge with no white gaps.
-:global(.school-dialog) {
+// FIX: Use ::ng-deep at root level (not :global) for Angular SCSS compatibility.
+// This targets the CDK overlay panel class set via addPanelClass().
+::ng-deep .school-dialog {
   max-width: 760px !important;
   width:     95vw !important;
 
@@ -568,15 +569,24 @@ mat-progress-bar { flex-shrink: 0; }
     // Must be a flex column so :host height: 100% works
     display:          flex !important;
     flex-direction:   column !important;
-    // Give the surface a max-height so the dialog doesn't grow off-screen
+    // FIX: Use ONLY max-height — do NOT set a fixed height.
+    // A fixed height forces the dialog to always be tall even on short content.
+    // max-height alone lets it shrink to content AND cap at 90vh.
     max-height:       90vh !important;
-    height:           90vh !important;
+    // FIX: Remove `height: 90vh` — it was preventing the surface from
+    // being taller than the viewport on some browsers and causing the
+    // scroll chain to break because :host fills a fixed-height surface.
+    // Instead, let :host { height: 100% } fill whatever the surface is.
+    height:           auto !important;
+
+    // FIX: Ensure the surface itself never scrolls — only the tab body does.
+    overflow-y:       hidden !important;
   }
 }
 
 // ── Responsive ────────────────────────────────────────────────────────────────
 @media (max-width: 639px) {
-  :global(.school-dialog) {
+  ::ng-deep .school-dialog {
     max-width: 100vw !important;
     width:     100vw !important;
     margin:    0 !important;
@@ -585,7 +595,7 @@ mat-progress-bar { flex-shrink: 0; }
     .mdc-dialog__surface {
       border-radius: 0 !important;
       max-height:    100dvh !important;
-      height:        100dvh !important;
+      height:        auto !important;
     }
   }
 
@@ -617,8 +627,8 @@ mat-progress-bar { flex-shrink: 0; }
 @media (min-width: 640px) and (max-width: 899px) {
   .grid-2 { grid-template-columns: 1fr 1fr; }
 
-  :global(.school-dialog) .mdc-dialog__surface {
+  ::ng-deep .school-dialog .mdc-dialog__surface {
     max-height: 92vh !important;
-    height:     92vh !important;
+    height:     auto !important;
   }
 }
