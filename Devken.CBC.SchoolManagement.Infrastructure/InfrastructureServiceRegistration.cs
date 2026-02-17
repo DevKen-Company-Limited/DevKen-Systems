@@ -8,6 +8,7 @@ using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Numb
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Payments;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Tenant;
 using Devken.CBC.SchoolManagement.Application.Service;
+using Devken.CBC.SchoolManagement.Application.Service.Academics;
 using Devken.CBC.SchoolManagement.Application.Service.Activities;
 using Devken.CBC.SchoolManagement.Application.Service.Administration.Student;
 using Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment;
@@ -28,6 +29,7 @@ using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Payments;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Tenant;
 using Devken.CBC.SchoolManagement.Infrastructure.Security;
 using Devken.CBC.SchoolManagement.Infrastructure.Services;
+using Devken.CBC.SchoolManagement.Infrastructure.Services.Academics;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Activities;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Administration.Students;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Images;
@@ -173,6 +175,17 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                 RegisterPermissionPolicy(options, PermissionKeys.ClassWrite);
                 RegisterPermissionPolicy(options, PermissionKeys.GradeRead);
                 RegisterPermissionPolicy(options, PermissionKeys.GradeWrite);
+                // Academic Year Permissions
+                RegisterPermissionPolicy(options, PermissionKeys.AcademicYearRead);
+                RegisterPermissionPolicy(options, PermissionKeys.AcademicYearWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.AcademicYearDelete);
+                RegisterPermissionPolicy(options, PermissionKeys.AcademicYearClose);
+                //Term Permissions
+                RegisterPermissionPolicy(options, PermissionKeys.TermRead);
+                RegisterPermissionPolicy(options, PermissionKeys.TermWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.TermDelete);
+
+                // Finance Permissions
 
                 // Assessment Permissions
                 RegisterPermissionPolicy(options, PermissionKeys.AssessmentRead);
@@ -180,11 +193,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                 RegisterPermissionPolicy(options, PermissionKeys.AssessmentDelete);
                 RegisterPermissionPolicy(options, PermissionKeys.ReportRead);
                 RegisterPermissionPolicy(options, PermissionKeys.ReportWrite);
-                // Academic Year Permissions
-                RegisterPermissionPolicy(options, PermissionKeys.AcademicYearRead);
-                RegisterPermissionPolicy(options, PermissionKeys.AcademicYearWrite);
-                RegisterPermissionPolicy(options, PermissionKeys.AcademicYearDelete);
-                RegisterPermissionPolicy(options, PermissionKeys.AcademicYearClose);
 
 
                 // Finance Permissions
@@ -269,6 +277,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             // Services
             services.AddScoped<IUserManagementService, UserManagementService>();
             services.AddScoped<ITeacherService, TeacherService>();
+            services.AddScoped<ITermService, TermService>();
             services.AddScoped<IJwtService, JwtService>();
             services.AddScoped<IPermissionSeedService, PermissionSeedService>();
             services.AddScoped<ISubscriptionSeedService, SubscriptionSeedService>();

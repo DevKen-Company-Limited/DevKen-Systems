@@ -1,0 +1,157 @@
+<!-- terms.component.html -->
+<div class="absolute inset-0 flex min-w-0 flex-col overflow-y-auto" cdkScrollable>
+
+  <!-- ── Reusable Page Header ────────────────────────────────────────────── -->
+  <app-page-header
+    title="Terms Management"
+    description="Manage academic terms across all years"
+    icon="event_note"
+    [breadcrumbs]="breadcrumbs"
+    [actionTemplate]="headerActions">
+  </app-page-header>
+
+  <!-- Header Actions Template -->
+  <ng-template #headerActions>
+    <button mat-flat-button 
+      class="bg-white text-indigo-700 hover:bg-yellow-200 hover:text-indigo-900 shadow-lg transition-all hover:shadow-xl font-bold" 
+      (click)="openCreate()">
+      <mat-icon class="icon-size-5">add</mat-icon>
+      <span class="ml-2">Add Term</span>
+    </button>
+  </ng-template>
+
+  <!-- ── Main Content ───────────────────────────────────────────────────── -->
+  <div class="bg-card -mt-10 flex-auto rounded-t-2xl p-6 shadow sm:p-10">
+
+    <!-- Stats Cards (Reusable Component) -->
+    <app-stats-cards [cards]="statsCards" [columns]="4"></app-stats-cards>
+
+    <!-- Filter Panel Section -->
+    <div class="mb-6">
+      <app-filter-panel
+        [fields]="filterFields"
+        [showPanel]="showFilterPanel"
+        [columns]="4"
+        (filterChange)="onFilterChange($event)"
+        (clearAll)="onClearFilters()"
+        (togglePanel)="toggleFilterPanel()">
+      </app-filter-panel>
+    </div>
+
+    <!-- ── Reusable Data Table ───────────────────────────────────────────── -->
+    <app-data-table
+      [columns]="tableColumns"
+      [data]="paginatedData"
+      [actions]="tableActions"
+      [loading]="isLoading"
+      [header]="tableHeader"
+      [emptyState]="tableEmptyState"
+      [cellTemplates]="cellTemplates">
+    </app-data-table>
+
+    <!-- Pagination (Reusable Component) -->
+    <app-pagination
+      *ngIf="!isLoading"
+      [currentPage]="currentPage"
+      [totalItems]="filteredData.length"
+      [itemsPerPage]="itemsPerPage"
+      [itemLabel]="'terms'"
+      [showItemsPerPageSelector]="true"
+      [showPageNumbers]="true"
+      (pageChange)="onPageChange($event)"
+      (itemsPerPageChange)="onItemsPerPageChange($event)">
+    </app-pagination>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- Cell Templates for Data Table -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+
+<!-- Term Cell Template -->
+<ng-template #termCell let-row>
+  <div class="flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl overflow-hidden shrink-0 flex items-center justify-center border"
+         [ngClass]="{
+           'bg-gradient-to-br from-blue-100 to-indigo-100 border-blue-200 dark:border-blue-800': row.termNumber === 1,
+           'bg-gradient-to-br from-indigo-100 to-violet-100 border-indigo-200 dark:border-indigo-800': row.termNumber === 2,
+           'bg-gradient-to-br from-violet-100 to-purple-100 border-violet-200 dark:border-violet-800': row.termNumber === 3
+         }">
+      <span class="text-lg font-bold"
+            [ngClass]="{
+              'text-blue-600 dark:text-blue-400': row.termNumber === 1,
+              'text-indigo-600 dark:text-indigo-400': row.termNumber === 2,
+              'text-violet-600 dark:text-violet-400': row.termNumber === 3
+            }">
+        {{ row.termNumber }}
+      </span>
+    </div>
+    <div>
+      <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ row.name }}</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">{{ row.durationDays }} days</p>
+    </div>
+  </div>
+</ng-template>
+
+<!-- Academic Year Cell Template -->
+<ng-template #academicYearCell let-row>
+  <div class="flex items-center gap-2">
+    <mat-icon class="icon-size-5 text-indigo-600 dark:text-indigo-400">calendar_today</mat-icon>
+    <div>
+      <p class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ row.academicYearName }}</p>
+    </div>
+  </div>
+</ng-template>
+
+<!-- School Cell Template (SuperAdmin only) -->
+<ng-template #schoolCell let-row>
+  <div class="flex items-center gap-2">
+    <mat-icon class="icon-size-5 text-violet-600 dark:text-violet-400">school</mat-icon>
+    <span class="text-sm text-gray-700 dark:text-gray-300">
+      {{ row.schoolName || '—' }}
+    </span>
+  </div>
+</ng-template>
+
+<!-- Dates Cell Template -->
+<ng-template #datesCell let-row>
+  <div class="text-sm">
+    <div class="flex items-center gap-1 text-gray-700 dark:text-gray-300">
+      <mat-icon class="icon-size-4 text-green-600">play_arrow</mat-icon>
+      <span>{{ formatDate(row.startDate) }}</span>
+    </div>
+    <div class="flex items-center gap-1 text-gray-500 dark:text-gray-400 mt-0.5">
+      <mat-icon class="icon-size-4 text-red-600">stop</mat-icon>
+      <span>{{ formatDate(row.endDate) }}</span>
+    </div>
+  </div>
+</ng-template>
+
+<!-- Status Cell Template -->
+<ng-template #statusCell let-row>
+  <div class="flex flex-col items-center gap-1">
+    <span class="px-3 py-1 rounded-full text-xs font-semibold inline-flex items-center gap-1"
+      [ngClass]="{
+        'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400': row.status === 'Current',
+        'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400': row.status === 'Active',
+        'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400': row.status === 'Closed',
+        'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400': row.status === 'Upcoming',
+        'bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-400': row.status === 'Past'
+      }">
+      <mat-icon class="icon-size-4">{{ getStatusIcon(row.status) }}</mat-icon>
+      {{ row.status }}
+    </span>
+    
+    <!-- Additional badges -->
+    <div class="flex gap-1">
+      <span *ngIf="row.isCurrent" 
+            class="px-2 py-0.5 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
+        Current
+      </span>
+      <span *ngIf="row.isClosed" 
+            class="px-2 py-0.5 rounded-full text-xs font-bold bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800">
+        Closed
+      </span>
+    </div>
+  </div>
+</ng-template>

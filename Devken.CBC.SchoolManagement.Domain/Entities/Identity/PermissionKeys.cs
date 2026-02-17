@@ -38,12 +38,16 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
         public const string TeacherRead = "Teacher.Read";
         public const string TeacherWrite = "Teacher.Write";
         public const string TeacherDelete = "Teacher.Delete";
+        public const string TermRead = "Term.Read";
+        public const string TermWrite = "Term.Write";
+        public const string TermDelete = "Term.Delete";
         public const string SubjectRead = "Subject.Read";
         public const string SubjectWrite = "Subject.Write";
         public const string ClassRead = "Class.Read";
         public const string ClassWrite = "Class.Write";
         public const string GradeRead = "Grade.Read";
         public const string GradeWrite = "Grade.Write";
+
 
         // ── Assessment ───────────────────────────────────
         public const string AssessmentRead = "Assessment.Read";
@@ -65,6 +69,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
         public const string CurriculumWrite = "Curriculum.Write";
         public const string LessonPlanRead = "LessonPlan.Read";
         public const string LessonPlanWrite = "LessonPlan.Write";
+
         // ✅ NEW: M-Pesa Specific Permissions
         public const string MpesaInitiate = "Mpesa.Initiate";
         public const string MpesaViewTransactions = "Mpesa.ViewTransactions";
@@ -82,6 +87,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
             RoleRead, RoleWrite, RoleDelete,
             StudentRead, StudentWrite, StudentDelete,
             TeacherRead, TeacherWrite, TeacherDelete,
+            TermRead, TermWrite, TermDelete,
             SubjectRead, SubjectWrite,
             ClassRead, ClassWrite,
             GradeRead, GradeWrite,
@@ -94,7 +100,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
             AcademicYearRead, AcademicYearWrite, AcademicYearDelete, AcademicYearClose,
             LessonPlanRead, LessonPlanWrite,
             MpesaInitiate, MpesaViewTransactions, MpesaRefund, MpesaReconcile,
-            DocumentNumberSeriesRead, DocumentNumberSeriesWrite, DocumentNumberSeriesDelete  // ✅ Added
+            DocumentNumberSeriesRead, DocumentNumberSeriesWrite, DocumentNumberSeriesDelete
         };
     }
 }

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, Inject, Optional, Injector, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, Inject, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, FormGroup } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
@@ -11,12 +11,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Subject, takeUntil, debounceTime, forkJoin, finalize, of } from 'rxjs';
+import { Subject, takeUntil, debounceTime, forkJoin, finalize, of, catchError } from 'rxjs';
 
 import { ClassService } from 'app/core/DevKenService/ClassService';
 import { AcademicYearService } from 'app/core/DevKenService/AcademicYearService/AcademicYearService';
 import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
 import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
+import { AuthService } from 'app/core/auth/auth.service';
 
 import {
   CreateClassRequest,
@@ -25,7 +26,10 @@ import {
   AcademicYearOption,
   TeacherOption
 } from 'app/Classes/Types/Class';
-import { AuthService } from 'app/core/auth/auth.service';
+import { AcademicYearDto } from 'app/Academics/AcademicYear/Types/AcademicYear';
+import { SchoolDto } from 'app/Tenant/types/school';
+import { TeacherService } from 'app/core/DevKenService/Teacher/TeacherService';
+import { TeacherDto } from 'app/core/DevKenService/Types/Teacher';
 
 interface SchoolOption {
   id: string;
@@ -58,35 +62,39 @@ interface SchoolOption {
   `]
 })
 export class CreateEditClassDialogComponent implements OnInit, OnDestroy {
-  private _unsubscribe = new Subject<void>();
+  private readonly _unsubscribe = new Subject<void>();
   private _codeGenerated = false;
+  
+  // ── Services ─────────────────────────────────────────────────────────────
   private readonly _authService = inject(AuthService);
+  private readonly _schoolService = inject(SchoolService);
+  private readonly _academicYearService = inject(AcademicYearService);
+  private readonly _teacherService = inject(TeacherService);
+  private readonly _classService = inject(ClassService);
+  private readonly _alertService = inject(AlertService);
 
-  // Form
+  // ── Form State ───────────────────────────────────────────────────────────
   form!: FormGroup;
   formSubmitted = false;
   isSaving = false;
 
-  // Dropdown options
+  // ── Dropdown Data ────────────────────────────────────────────────────────
   schools: SchoolOption[] = [];
   cbcLevels: { value: number; label: string }[] = [];
-  academicYears: AcademicYearOption[] = [];
-  teachers: TeacherOption[] = [];
+  academicYears: AcademicYearDto[] = [];
+  teachers: TeacherDto[] = [];
 
-  // Loading states
+  // ── Loading States ───────────────────────────────────────────────────────
   isLoadingSchools = false;
   isLoadingAcademicYears = false;
   isLoadingTeachers = false;
 
-  // Code preview
+  // ── Code Preview ─────────────────────────────────────────────────────────
   codePreview: string | null = null;
   isLoadingPreview = false;
 
-  // Teacher service availability flag
-  teacherServiceAvailable = false;
-  private teacherService: any = null;
-
-   get isSuperAdmin(): boolean { 
+  // ── Computed Properties ──────────────────────────────────────────────────
+  get isSuperAdmin(): boolean { 
     return this._authService.authUser?.isSuperAdmin ?? false; 
   }
 
@@ -100,7 +108,7 @@ export class CreateEditClassDialogComponent implements OnInit, OnDestroy {
 
   get dialogSubtitle(): string {
     return this.isEditMode 
-      ? `Update class information and assignments`
+      ? 'Update class information and assignments'
       : 'Add a new class to your school system';
   }
 
@@ -108,52 +116,56 @@ export class CreateEditClassDialogComponent implements OnInit, OnDestroy {
     return !this.isEditMode && !this.form.get('code')?.value && this.codePreview !== null;
   }
 
-  constructor(
-    private fb: FormBuilder,
-    private service: ClassService,
-   private _schoolService: SchoolService,
-    private alertService: AlertService,
-    private dialogRef: MatDialogRef<CreateEditClassDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: { mode: 'create' | 'edit'; class?: ClassDto; schoolId?: string },
-    private academicYearService: AcademicYearService,
-    private injector: Injector
-  ) {
-    // Try to get TeacherService if available (to avoid circular dependency)
-    try {
-      this.teacherService = this.injector.get('TeacherService' as any, null);
-      this.teacherServiceAvailable = !!this.teacherService;
-    } catch (e) {
-      console.info('TeacherService not available - teacher assignment will be optional');
-      this.teacherServiceAvailable = false;
+  // ── Filtered Data (following Terms pattern) ─────────────────────────────
+  get filteredAcademicYears(): AcademicYearDto[] {
+    if (!this.isSuperAdmin) {
+      // Non-SuperAdmin: show all academic years (already filtered by backend)
+      return this.academicYears;
     }
+
+    // SuperAdmin: filter by selected school
+    const schoolId = this.form.get('schoolId')?.value;
+    if (!schoolId) {
+      return [];
+    }
+
+    return this.academicYears.filter(ay => ay.schoolId === schoolId);
   }
 
-  ngOnInit(): void {
-    this.buildForm();
-    this.cbcLevels = this.service.getAllCBCLevels();
-    
-    // Load schools first
-    this.loadSchools();
-    this.setupCodeGeneration();
-
-    if (this.isEditMode && this.data.class) {
-      this.patchForm(this.data.class);
-    } else {
-      // In create mode, if schoolId is pre-selected, load dependent data
-      const preSelectedSchoolId = this.form.get('schoolId')?.value;
-      if (preSelectedSchoolId) {
-        this.onSchoolChange(preSelectedSchoolId);
-      }
+  get filteredTeachers(): TeacherDto[] {
+    if (!this.isSuperAdmin) {
+      // Non-SuperAdmin: show all teachers (already filtered by backend)
+      return this.teachers;
     }
 
-    // Watch for school changes to reload academic years and teachers
-    this.form.get('schoolId')?.valueChanges
-      .pipe(takeUntil(this._unsubscribe))
-      .subscribe((schoolId) => {
-        if (schoolId) {
-          this.onSchoolChange(schoolId);
-        }
-      });
+    // SuperAdmin: filter by selected school
+    const schoolId = this.form.get('schoolId')?.value;
+    if (!schoolId) {
+      return [];
+    }
+
+    return this.teachers.filter(t => t.schoolId === schoolId);
+  }
+
+  // ── Constructor ──────────────────────────────────────────────────────────
+  constructor(
+    private readonly _fb: FormBuilder,
+    private readonly _dialogRef: MatDialogRef<CreateEditClassDialogComponent>,
+    @Inject(MAT_DIALOG_DATA) public data: { 
+      mode: 'create' | 'edit'; 
+      class?: ClassDto; 
+      schoolId?: string 
+    }
+  ) {
+    _dialogRef.addPanelClass(['class-dialog', 'responsive-dialog']);
+  }
+
+  // ── Lifecycle ────────────────────────────────────────────────────────────
+  ngOnInit(): void {
+    this._buildForm();
+    this.cbcLevels = this._classService.getAllCBCLevels();
+    this._loadData();
+    this._setupCodeGeneration();
   }
 
   ngOnDestroy(): void {
@@ -161,21 +173,10 @@ export class CreateEditClassDialogComponent implements OnInit, OnDestroy {
     this._unsubscribe.complete();
   }
 
-  private buildForm(): void {
-    // Get schoolId with proper fallback logic
-    const initialSchoolId = this.isEditMode && this.data.class?.schoolId 
-      ? this.data.class.schoolId 
-      : (this.data.schoolId || '');
-    
-    console.log('[Class Dialog] buildForm - schoolId resolution:', {
-      mode: this.data.mode,
-      dataSchoolId: this.data.schoolId,
-      classSchoolId: this.data.class?.schoolId,
-      finalSchoolId: initialSchoolId
-    });
-    
-    this.form = this.fb.group({
-      schoolId:[null, this.isSuperAdmin ? [Validators.required] : []],
+  // ── Form Setup ───────────────────────────────────────────────────────────
+  private _buildForm(): void {
+    this.form = this._fb.group({
+      schoolId: [null, this.isSuperAdmin ? [Validators.required] : []],
       name: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(100)]],
       code: ['', [Validators.maxLength(20)]],
       level: ['', Validators.required],
@@ -185,9 +186,118 @@ export class CreateEditClassDialogComponent implements OnInit, OnDestroy {
       teacherId: [''],
       isActive: [true]
     });
+
+    // For SuperAdmin: manage dependent dropdowns based on school selection
+    if (this.isSuperAdmin) {
+      this.form.get('schoolId')?.valueChanges
+        .pipe(takeUntil(this._unsubscribe))
+        .subscribe(schoolId => {
+          // Reset dependent fields when school changes
+          this.form.patchValue({
+            academicYearId: null,
+            teacherId: null
+          });
+
+          // Clear code preview
+          this.codePreview = null;
+
+          // Load new code preview if in create mode
+          if (!this.isEditMode && schoolId) {
+            this._loadCodePreview(schoolId);
+          }
+        });
+    }
   }
 
-  private patchForm(classData: ClassDto): void {
+  // ── Data Loading ─────────────────────────────────────────────────────────
+  private _loadData(): void {
+    const requests: any = {
+      academicYears: this._academicYearService.getAll().pipe(
+        catchError(err => {
+          console.error('Failed to load academic years:', err);
+          return of({ success: false, message: '', data: [] });
+        })
+      ),
+      teachers: this._teacherService.getAll().pipe(
+        catchError(err => {
+          console.error('Failed to load teachers:', err);
+          return of({ success: false, message: '', data: [] });
+        })
+      )
+    };
+
+    // Add schools request only for SuperAdmin
+    if (this.isSuperAdmin) {
+      this.isLoadingSchools = true;
+      requests.schools = this._schoolService.getAll().pipe(
+        catchError(err => {
+          console.error('Failed to load schools:', err);
+          return of({ success: false, message: '', data: [] });
+        })
+      );
+    }
+
+    this.isLoadingAcademicYears = true;
+    this.isLoadingTeachers = true;
+
+    forkJoin(requests).pipe(
+      takeUntil(this._unsubscribe),
+      finalize(() => {
+        this.isLoadingSchools = false;
+        this.isLoadingAcademicYears = false;
+        this.isLoadingTeachers = false;
+      })
+    ).subscribe({
+      next: (results: any) => {
+        // Process Academic Years
+        if (results.academicYears?.success && results.academicYears.data) {
+          this.academicYears = results.academicYears.data || [];
+          console.log('[Class Dialog] ✓ Academic years loaded:', this.academicYears.length);
+        }
+
+        // Process Teachers
+        if (results.teachers?.success && results.teachers.data) {
+          this.teachers = results.teachers.data || [];
+          console.log('[Class Dialog] ✓ Teachers loaded:', this.teachers.length);
+        }
+
+        // Process Schools (SuperAdmin only)
+        if (results.schools) {
+          if (results.schools.success && results.schools.data) {
+            this.schools = results.schools.data.map((school: SchoolDto) => ({
+              id: school.id,
+              name: school.name,
+              code: school.slug || school.id.substring(0, 8).toUpperCase() // Use slug as code fallback
+            }));
+            console.log('[Class Dialog] ✓ Schools loaded:', this.schools.length);
+          }
+        }
+
+        // Patch form if in edit mode
+        if (this.isEditMode && this.data.class) {
+          this._patchForm(this.data.class);
+        } else if (!this.isEditMode) {
+          // Load code preview for create mode
+          const schoolId = this.form.get('schoolId')?.value;
+          if (schoolId) {
+            this._loadCodePreview(schoolId);
+          }
+        }
+      },
+      error: (err) => {
+        console.error('Failed to load data:', err);
+        this._alertService.error('Failed to load form data', 'Loading Error');
+        
+        // Still patch form if in edit mode
+        if (this.isEditMode && this.data.class) {
+          this._patchForm(this.data.class);
+        }
+      }
+    });
+  }
+
+  // ── Form Population ──────────────────────────────────────────────────────
+  private _patchForm(classData: ClassDto): void {
     this.form.patchValue({
       schoolId: classData.schoolId,
       name: classData.name,
@@ -201,155 +311,43 @@ export class CreateEditClassDialogComponent implements OnInit, OnDestroy {
     });
 
     // In edit mode, disable schoolId as it shouldn't be changed
-    this.form.get('schoolId')?.disable();
-  }
-
-  /** Load all schools for the dropdown */
-  private loadSchools(): void {
-     if (this.isSuperAdmin) {
-    this.isLoadingSchools = true;
-    this._schoolService.getAll()
-      .pipe(
-        takeUntil(this._unsubscribe),
-        finalize(() => {
-          this.isLoadingSchools = false;
-          console.log('[Class Dialog] Schools loaded:', this.schools.length);
-        })
-      )
-      .subscribe({
-        next: (response) => {
-          console.log('[Class Dialog] Schools API response:', response);
-          
-          if (response.success && response.data) {
-            if (Array.isArray(response.data) && response.data.length > 0) {
-              this.schools = response.data.map((school: any) => ({
-                id: school.id,
-                name: school.name,
-                code: school.code
-              }));
-              console.log('[Class Dialog] ✓ Schools loaded successfully:', this.schools.length);
-            } else if (Array.isArray(response.data) && response.data.length === 0) {
-              console.warn('[Class Dialog] Schools API returned empty array');
-              this.schools = [];
-              this.alertService.warning(
-                'No schools found. Please create a school first.',
-                'No Schools'
-              );
-            }
-          } else {
-            console.warn('[Class Dialog] ✗ Schools failed to load');
-            this.schools = [];
-          }
-        },
-        error: (error) => {
-          console.error('[Class Dialog] ✗ Error loading schools:', error);
-          const errorMessage = error?.error?.message || error?.message || 'Unknown error occurred';
-          
-          this.alertService.error(
-            `Failed to load schools: ${errorMessage}`,
-            'Loading Error'
-          );
-        }
-      });
-  }}
-
-  /** Called when school selection changes */
-  private onSchoolChange(schoolId: string): void {
-    console.log('[Class Dialog] School changed to:', schoolId);
-    
-    // Reset dependent fields
-    this.form.patchValue({
-      academicYearId: '',
-      teacherId: ''
-    });
-    
-    // Clear existing data
-    this.academicYears = [];
-    this.teachers = [];
-    this.codePreview = null;
-    
-    // Load new data for selected school
-    this.loadDropdownData(schoolId);
-    
-    // Load code preview in create mode
-    if (!this.isEditMode) {
-      this.loadCodePreview(schoolId);
+    if (this.isEditMode) {
+      this.form.get('schoolId')?.disable();
     }
   }
 
-  /** Load academic years and teachers for selected school */
-  private loadDropdownData(schoolId: string): void {
-    if (!schoolId) {
-      console.warn('[Class Dialog] No schoolId provided to loadDropdownData');
-      return;
+  // ── Code Generation ──────────────────────────────────────────────────────
+  private _setupCodeGeneration(): void {
+    if (this.data.mode === 'create') {
+      this.form.get('level')?.valueChanges
+        .pipe(debounceTime(300), takeUntil(this._unsubscribe))
+        .subscribe(() => this._generateCodeIfNeeded());
+
+      this.form.get('name')?.valueChanges
+        .pipe(debounceTime(300), takeUntil(this._unsubscribe))
+        .subscribe(() => this._generateCodeIfNeeded());
+
+      this.form.get('code')?.valueChanges
+        .pipe(takeUntil(this._unsubscribe))
+        .subscribe(() => {
+          this._codeGenerated = true;
+        });
     }
-
-    console.log('[Class Dialog] Loading dropdown data for schoolId:', schoolId);
-
-    this.isLoadingAcademicYears = true;
-    this.isLoadingTeachers = true;
-
-    const requests: any = {
-      academicYears: this.academicYearService.getAll(schoolId)
-    };
-
-    if (this.teacherServiceAvailable && this.teacherService?.getAll) {
-      requests.teachers = this.teacherService.getAll(schoolId);
-    } else {
-      requests.teachers = of({ success: true, data: [], message: 'TeacherService not available' });
-    }
-
-    forkJoin(requests)
-      .pipe(
-        takeUntil(this._unsubscribe),
-        finalize(() => {
-          this.isLoadingAcademicYears = false;
-          this.isLoadingTeachers = false;
-        })
-      )
-      .subscribe({
-        next: ({ academicYears, teachers }) => {
-          // Academic Years
-          if (academicYears?.success && academicYears.data && Array.isArray(academicYears.data)) {
-            if (academicYears.data.length > 0) {
-              this.academicYears = academicYears.data.map((ay: any) => ({
-                id: ay.id,
-                name: ay.name,
-                code: ay.code
-              }));
-              console.log('[Class Dialog] ✓ Academic years loaded:', this.academicYears.length);
-            } else {
-              this.academicYears = [];
-              this.alertService.warning(
-                'No academic years found for this school.',
-                'No Academic Years'
-              );
-            }
-          } else {
-            this.academicYears = [];
-          }
-
-          // Teachers
-          if (teachers?.success && teachers.data && Array.isArray(teachers.data) && teachers.data.length > 0) {
-            this.teachers = teachers.data.map((t: any) => ({
-              id: t.id,
-              name: `${t.firstName} ${t.lastName}`,
-              teacherNumber: t.teacherNumber
-            }));
-            console.log('[Class Dialog] ✓ Teachers loaded:', this.teachers.length);
-          } else {
-            this.teachers = [];
-          }
-        },
-        error: (error) => {
-          console.error('[Class Dialog] ✗ Error loading dropdown data:', error);
-          this.alertService.error('Failed to load dropdown data', 'Loading Error');
-        }
-      });
   }
 
-  /** Load code preview from number series */
-  private loadCodePreview(schoolId?: string): void {
+  private _generateCodeIfNeeded(): void {
+    if (this._codeGenerated) return;
+
+    const level = this.form.get('level')?.value;
+    const name = this.form.get('name')?.value;
+
+    if (level !== '' && name) {
+      const code = this._classService.generateClassCode(level, name);
+      this.form.patchValue({ code }, { emitEvent: false });
+    }
+  }
+
+  private _loadCodePreview(schoolId?: string): void {
     const sid = schoolId || this.form.get('schoolId')?.value;
     if (!sid) {
       this.codePreview = null;
@@ -357,7 +355,7 @@ export class CreateEditClassDialogComponent implements OnInit, OnDestroy {
     }
 
     this.isLoadingPreview = true;
-    this.service.previewNextCode(sid)
+    this._classService.previewNextCode(sid)
       .pipe(
         takeUntil(this._unsubscribe),
         finalize(() => this.isLoadingPreview = false)
@@ -374,46 +372,16 @@ export class CreateEditClassDialogComponent implements OnInit, OnDestroy {
       });
   }
 
-  private setupCodeGeneration(): void {
-    if (this.data.mode === 'create') {
-      this.form.get('level')?.valueChanges
-        .pipe(debounceTime(300), takeUntil(this._unsubscribe))
-        .subscribe(() => this.generateCodeIfNeeded());
-
-      this.form.get('name')?.valueChanges
-        .pipe(debounceTime(300), takeUntil(this._unsubscribe))
-        .subscribe(() => this.generateCodeIfNeeded());
-
-      this.form.get('code')?.valueChanges
-        .pipe(takeUntil(this._unsubscribe))
-        .subscribe(() => {
-          this._codeGenerated = true;
-        });
-    }
-  }
-
-  private generateCodeIfNeeded(): void {
-    if (this._codeGenerated) return;
-
-    const level = this.form.get('level')?.value;
-    const name = this.form.get('name')?.value;
-
-    if (level !== '' && name) {
-      const code = this.service.generateClassCode(level, name);
-      this.form.patchValue({ code }, { emitEvent: false });
-    }
-  }
-
   generateCode(): void {
     const level = this.form.get('level')?.value;
     const name = this.form.get('name')?.value;
 
     if (level !== '' && name) {
-      const code = this.service.generateClassCode(level, name);
+      const code = this._classService.generateClassCode(level, name);
       this.form.patchValue({ code });
       this._codeGenerated = true;
     } else {
-      this.alertService.info('Please select a level and enter a name first', 'Missing Information');
+      this._alertService.info('Please select a level and enter a name first', 'Missing Information');
     }
   }
 
@@ -424,6 +392,7 @@ export class CreateEditClassDialogComponent implements OnInit, OnDestroy {
     }
   }
 
+  // ── Submit & Cancel ──────────────────────────────────────────────────────
   submit(): void {
     this.formSubmitted = true;
     this.form.markAllAsTouched();
@@ -436,7 +405,7 @@ export class CreateEditClassDialogComponent implements OnInit, OnDestroy {
         element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
 
-      this.alertService.error('Please fix the errors in the form', 'Validation Error');
+      this._alertService.error('Please fix the errors in the form', 'Validation Error');
       return;
     }
 
@@ -455,7 +424,7 @@ export class CreateEditClassDialogComponent implements OnInit, OnDestroy {
         isActive: raw.isActive
       };
 
-      this.service.update(this.data.class!.id, updateRequest)
+      this._classService.update(this.data.class!.id, updateRequest)
         .pipe(
           takeUntil(this._unsubscribe),
           finalize(() => this.isSaving = false)
@@ -463,23 +432,23 @@ export class CreateEditClassDialogComponent implements OnInit, OnDestroy {
         .subscribe({
           next: (response) => {
             if (response.success) {
-              this.alertService.success(response.message || 'Class updated successfully', 'Success');
-              this.dialogRef.close({ success: true, data: response.data });
+              this._alertService.success(response.message || 'Class updated successfully', 'Success');
+              this._dialogRef.close({ success: true, data: response.data });
             } else {
-              this.alertService.error(response.message || 'Failed to update class', 'Update Failed');
+              this._alertService.error(response.message || 'Failed to update class', 'Update Failed');
             }
           },
           error: (err) => {
             console.error('Update error:', err);
-            this.alertService.error(
+            this._alertService.error(
               err?.error?.message || 'An error occurred while updating the class',
               'Error'
             );
           }
         });
     } else {
+      // Create mode
       const createRequest: CreateClassRequest = {
-        schoolId: raw.schoolId,
         name: raw.name?.trim(),
         code: raw.code?.trim() || '',
         level: Number(raw.level),
@@ -488,13 +457,14 @@ export class CreateEditClassDialogComponent implements OnInit, OnDestroy {
         academicYearId: raw.academicYearId,
         teacherId: raw.teacherId || undefined,
         isActive: raw.isActive ?? true
-      };// Add schoolId ONLY for SuperAdmins (explicitly exclude for non-SuperAdmins)
-        if (this.isSuperAdmin) {
-          createRequest.schoolId = raw.schoolId ?? null;
-        }
-      // 
+      };
 
-      this.service.create(createRequest)
+      // Add schoolId only for SuperAdmin (backend gets it from auth context for non-SuperAdmin)
+      if (this.isSuperAdmin) {
+        createRequest.schoolId = raw.schoolId;
+      }
+
+      this._classService.create(createRequest)
         .pipe(
           takeUntil(this._unsubscribe),
           finalize(() => this.isSaving = false)
@@ -502,15 +472,15 @@ export class CreateEditClassDialogComponent implements OnInit, OnDestroy {
         .subscribe({
           next: (response) => {
             if (response.success) {
-              this.alertService.success(response.message || 'Class created successfully', 'Success');
-              this.dialogRef.close({ success: true, data: response.data });
+              this._alertService.success(response.message || 'Class created successfully', 'Success');
+              this._dialogRef.close({ success: true, data: response.data });
             } else {
-              this.alertService.error(response.message || 'Failed to create class', 'Creation Failed');
+              this._alertService.error(response.message || 'Failed to create class', 'Creation Failed');
             }
           },
           error: (err) => {
             console.error('Create error:', err);
-            this.alertService.error(
+            this._alertService.error(
               err?.error?.message || 'An error occurred while creating the class',
               'Error'
             );
@@ -523,10 +493,17 @@ export class CreateEditClassDialogComponent implements OnInit, OnDestroy {
     if (this.form.dirty && !confirm('You have unsaved changes. Are you sure you want to cancel?')) {
       return;
     }
-    this.dialogRef.close({ success: false });
+    this._dialogRef.close({ success: false });
   }
 
+  // ── Helpers ──────────────────────────────────────────────────────────────
   getLevelDisplay(level: number): string {
-    return this.service.getCBCLevelDisplay(level);
+    return this._classService.getCBCLevelDisplay(level);
+  }
+
+  // ── Template Helper for Error Messages ──────────────────────────────────
+  hasError(field: string, error: string): boolean {
+    const c = this.form.get(field);
+    return !!(c && (this.formSubmitted || c.touched) && c.hasError(error));
   }
 }

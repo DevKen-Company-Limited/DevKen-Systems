@@ -37,8 +37,8 @@
     </ul>
   </div>
 
-  <!-- School Selection - Full Width at Top -->
-  <div class="mb-4">
+  <!-- School Selection - Full Width at Top (SuperAdmin Only) -->
+  <div *ngIf="isSuperAdmin" class="mb-4">
     <mat-form-field appearance="outline" class="w-full">
       <mat-label>School</mat-label>
       <mat-select formControlName="schoolId" placeholder="Select school">
@@ -202,14 +202,14 @@
             </div>
           </mat-option>
           <!-- Empty message -->
-          <mat-option *ngIf="!isLoadingAcademicYears && academicYears.length === 0" [value]="" disabled>
+          <mat-option *ngIf="!isLoadingAcademicYears && filteredAcademicYears.length === 0" [value]="" disabled>
             <div class="flex items-center gap-2 text-orange-600">
               <mat-icon class="icon-size-4">warning</mat-icon>
               <span>No academic years found</span>
             </div>
           </mat-option>
           <!-- Academic year options -->
-          <mat-option *ngFor="let year of academicYears" [value]="year.id">
+          <mat-option *ngFor="let year of filteredAcademicYears" [value]="year.id">
             {{ year.name }} ({{ year.code }})
           </mat-option>
         </mat-select>
@@ -219,13 +219,13 @@
             <mat-spinner diameter="12"></mat-spinner>
             Loading academic years...
           </span>
-          <span *ngIf="!isLoadingAcademicYears && academicYears.length === 0 && !form.get('schoolId')?.value" class="text-gray-500">
+          <span *ngIf="!isLoadingAcademicYears && isSuperAdmin && !form.get('schoolId')?.value" class="text-gray-500">
             Please select a school first
           </span>
-          <span *ngIf="!isLoadingAcademicYears && academicYears.length === 0 && form.get('schoolId')?.value" class="text-orange-600">
+          <span *ngIf="!isLoadingAcademicYears && filteredAcademicYears.length === 0 && form.get('schoolId')?.value" class="text-orange-600">
             No academic years available for this school
           </span>
-          <span *ngIf="!isLoadingAcademicYears && academicYears.length > 0">
+          <span *ngIf="!isLoadingAcademicYears && filteredAcademicYears.length > 0">
             Select the academic year
           </span>
         </mat-hint>
@@ -239,26 +239,23 @@
         <mat-label>Class Teacher (Optional)</mat-label>
         <mat-select formControlName="teacherId">
           <mat-option [value]="''">-- No Teacher Assigned --</mat-option>
+          <!-- Loading indicator -->
           <mat-option *ngIf="isLoadingTeachers" [value]="" disabled>
             <div class="flex items-center gap-2">
               <mat-spinner diameter="16"></mat-spinner>
               <span>Loading teachers...</span>
             </div>
           </mat-option>
-          <mat-option *ngIf="!isLoadingTeachers && teachers.length === 0 && teacherServiceAvailable" [value]="" disabled>
+          <!-- Empty message -->
+          <mat-option *ngIf="!isLoadingTeachers && filteredTeachers.length === 0" [value]="" disabled>
             <div class="flex items-center gap-2 text-gray-500">
               <mat-icon class="icon-size-4">info</mat-icon>
               <span>No teachers found</span>
             </div>
           </mat-option>
-          <mat-option *ngIf="!isLoadingTeachers && teachers.length === 0 && !teacherServiceAvailable" [value]="" disabled>
-            <div class="flex items-center gap-2 text-gray-500">
-              <mat-icon class="icon-size-4">info</mat-icon>
-              <span>Teacher service not available</span>
-            </div>
-          </mat-option>
-          <mat-option *ngFor="let teacher of teachers" [value]="teacher.id">
-            {{ teacher.name }} ({{ teacher.teacherNumber }})
+          <!-- Teacher options -->
+          <mat-option *ngFor="let teacher of filteredTeachers" [value]="teacher.id">
+            {{ teacher.firstName }} {{ teacher.lastName }} ({{ teacher.teacherNumber }})
           </mat-option>
         </mat-select>
         <mat-icon matPrefix>person</mat-icon>
@@ -267,16 +264,13 @@
             <mat-spinner diameter="12"></mat-spinner>
             Loading teachers...
           </span>
-          <span *ngIf="!isLoadingTeachers && teachers.length === 0 && !form.get('schoolId')?.value" class="text-gray-500">
+          <span *ngIf="!isLoadingTeachers && isSuperAdmin && !form.get('schoolId')?.value" class="text-gray-500">
             Please select a school first
           </span>
-          <span *ngIf="!isLoadingTeachers && teachers.length === 0 && teacherServiceAvailable && form.get('schoolId')?.value" class="text-orange-600">
+          <span *ngIf="!isLoadingTeachers && filteredTeachers.length === 0 && form.get('schoolId')?.value" class="text-orange-600">
             No teachers available for this school
           </span>
-          <span *ngIf="!isLoadingTeachers && teachers.length === 0 && !teacherServiceAvailable" class="text-gray-500">
-            Teacher assignment can be done later
-          </span>
-          <span *ngIf="!isLoadingTeachers && teachers.length > 0">
+          <span *ngIf="!isLoadingTeachers && filteredTeachers.length > 0">
             Assign a class teacher (optional)
           </span>
         </mat-hint>
