@@ -35,13 +35,16 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Students
 
         #region Helpers
 
-        private string GetFullExceptionMessage(Exception ex)
+        /// <summary>
+        /// Builds a user-friendly error message by chaining all inner exception messages.
+        /// </summary>
+        private static string GetFullExceptionMessage(Exception ex)
         {
             var message = ex.Message;
             var inner = ex.InnerException;
             while (inner != null)
             {
-                message += $" | Inner: {inner.Message}";
+                message += $" | Detail: {inner.Message}";
                 inner = inner.InnerException;
             }
             return message;
@@ -52,7 +55,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Students
         #region GET
 
         /// <summary>
-        /// Get all students with optional school filter (SuperAdmin)
+        /// Get all students with optional school filter (SuperAdmin).
         /// </summary>
         [HttpGet]
         [Authorize(Policy = PermissionKeys.StudentRead)]
@@ -72,13 +75,22 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Students
 
                 return SuccessResponse(students);
             }
-            catch (UnauthorizedAccessException ex) { return UnauthorizedResponse(ex.Message); }
-            catch (UnauthorizedException ex) { return ForbiddenResponse(ex.Message); }
-            catch (Exception ex) { return InternalServerErrorResponse(GetFullExceptionMessage(ex)); }
+            catch (UnauthorizedAccessException ex)
+            {
+                return UnauthorizedResponse(GetFullExceptionMessage(ex));
+            }
+            catch (UnauthorizedException ex)
+            {
+                return ForbiddenResponse(GetFullExceptionMessage(ex));
+            }
+            catch (Exception ex)
+            {
+                return InternalServerErrorResponse(GetFullExceptionMessage(ex));
+            }
         }
 
         /// <summary>
-        /// Get student by ID
+        /// Get student by ID.
         /// </summary>
         [HttpGet("{id:guid}")]
         [Authorize(Policy = PermissionKeys.StudentRead)]
@@ -95,10 +107,22 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Students
 
                 return SuccessResponse(student);
             }
-            catch (NotFoundException ex) { return NotFoundResponse(ex.Message); }
-            catch (UnauthorizedAccessException ex) { return UnauthorizedResponse(ex.Message); }
-            catch (UnauthorizedException ex) { return ForbiddenResponse(ex.Message); }
-            catch (Exception ex) { return InternalServerErrorResponse(GetFullExceptionMessage(ex)); }
+            catch (NotFoundException ex)
+            {
+                return NotFoundResponse(GetFullExceptionMessage(ex));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return UnauthorizedResponse(GetFullExceptionMessage(ex));
+            }
+            catch (UnauthorizedException ex)
+            {
+                return ForbiddenResponse(GetFullExceptionMessage(ex));
+            }
+            catch (Exception ex)
+            {
+                return InternalServerErrorResponse(GetFullExceptionMessage(ex));
+            }
         }
 
         #endregion
@@ -106,7 +130,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Students
         #region CREATE
 
         /// <summary>
-        /// Create a new student with auto-generated admission number
+        /// Create a new student with auto-generated admission number.
         /// </summary>
         [HttpPost]
         [Authorize(Policy = PermissionKeys.StudentWrite)]
@@ -119,15 +143,12 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Students
             {
                 var userSchoolId = GetUserSchoolIdOrNullWithValidation();
 
-                // Enforce schoolId handling based on user role
                 if (!IsSuperAdmin)
                 {
-                    // Non-SuperAdmin: Force their own school
                     request.SchoolId = userSchoolId!.Value;
                 }
                 else if (request.SchoolId == null || request.SchoolId == Guid.Empty)
                 {
-                    // SuperAdmin: Require schoolId in request
                     return ValidationErrorResponse("SchoolId is required for SuperAdmin.");
                 }
 
@@ -142,12 +163,30 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Students
 
                 return CreatedResponse(result, "Student created successfully");
             }
-            catch (ValidationException ex) { return ValidationErrorResponse(ex.Message); }
-            catch (ConflictException ex) { return ConflictResponse(ex.Message); }
-            catch (NotFoundException ex) { return NotFoundResponse(ex.Message); }
-            catch (UnauthorizedAccessException ex) { return UnauthorizedResponse(ex.Message); }
-            catch (UnauthorizedException ex) { return ForbiddenResponse(ex.Message); }
-            catch (Exception ex) { return InternalServerErrorResponse(GetFullExceptionMessage(ex)); }
+            catch (ValidationException ex)
+            {
+                return ValidationErrorResponse(GetFullExceptionMessage(ex));
+            }
+            catch (ConflictException ex)
+            {
+                return ConflictResponse(GetFullExceptionMessage(ex));
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFoundResponse(GetFullExceptionMessage(ex));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return UnauthorizedResponse(GetFullExceptionMessage(ex));
+            }
+            catch (UnauthorizedException ex)
+            {
+                return ForbiddenResponse(GetFullExceptionMessage(ex));
+            }
+            catch (Exception ex)
+            {
+                return InternalServerErrorResponse(GetFullExceptionMessage(ex));
+            }
         }
 
         #endregion
@@ -155,7 +194,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Students
         #region UPDATE
 
         /// <summary>
-        /// Update an existing student
+        /// Update an existing student.
         /// </summary>
         [HttpPut("{id:guid}")]
         [Authorize(Policy = PermissionKeys.StudentWrite)]
@@ -180,12 +219,30 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Students
 
                 return SuccessResponse(result, "Student updated successfully");
             }
-            catch (ValidationException ex) { return ValidationErrorResponse(ex.Message); }
-            catch (ConflictException ex) { return ConflictResponse(ex.Message); }
-            catch (NotFoundException ex) { return NotFoundResponse(ex.Message); }
-            catch (UnauthorizedAccessException ex) { return UnauthorizedResponse(ex.Message); }
-            catch (UnauthorizedException ex) { return ForbiddenResponse(ex.Message); }
-            catch (Exception ex) { return InternalServerErrorResponse(GetFullExceptionMessage(ex)); }
+            catch (ValidationException ex)
+            {
+                return ValidationErrorResponse(GetFullExceptionMessage(ex));
+            }
+            catch (ConflictException ex)
+            {
+                return ConflictResponse(GetFullExceptionMessage(ex));
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFoundResponse(GetFullExceptionMessage(ex));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return UnauthorizedResponse(GetFullExceptionMessage(ex));
+            }
+            catch (UnauthorizedException ex)
+            {
+                return ForbiddenResponse(GetFullExceptionMessage(ex));
+            }
+            catch (Exception ex)
+            {
+                return InternalServerErrorResponse(GetFullExceptionMessage(ex));
+            }
         }
 
         #endregion
@@ -193,7 +250,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Students
         #region PHOTO MANAGEMENT
 
         /// <summary>
-        /// Upload student photo
+        /// Upload student photo.
         /// </summary>
         [HttpPost("{id:guid}/photo")]
         [Authorize(Policy = PermissionKeys.StudentWrite)]
@@ -215,7 +272,6 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Students
             {
                 var userSchoolId = GetUserSchoolIdOrNullWithValidation();
 
-                // Use the dedicated service method for photo upload
                 var photoUrl = await _studentService.UploadStudentPhotoAsync(
                     id,
                     file,
@@ -228,15 +284,30 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Students
 
                 return SuccessResponse(new { photoUrl }, "Photo uploaded successfully");
             }
-            catch (NotFoundException ex) { return NotFoundResponse(ex.Message); }
-            catch (UnauthorizedAccessException ex) { return UnauthorizedResponse(ex.Message); }
-            catch (UnauthorizedException ex) { return ForbiddenResponse(ex.Message); }
-            catch (ValidationException ex) { return ValidationErrorResponse(ex.Message); }
-            catch (Exception ex) { return InternalServerErrorResponse(GetFullExceptionMessage(ex)); }
+            catch (NotFoundException ex)
+            {
+                return NotFoundResponse(GetFullExceptionMessage(ex));
+            }
+            catch (ValidationException ex)
+            {
+                return ValidationErrorResponse(GetFullExceptionMessage(ex));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return UnauthorizedResponse(GetFullExceptionMessage(ex));
+            }
+            catch (UnauthorizedException ex)
+            {
+                return ForbiddenResponse(GetFullExceptionMessage(ex));
+            }
+            catch (Exception ex)
+            {
+                return InternalServerErrorResponse(GetFullExceptionMessage(ex));
+            }
         }
 
         /// <summary>
-        /// Delete student photo
+        /// Delete student photo.
         /// </summary>
         [HttpDelete("{id:guid}/photo")]
         [Authorize(Policy = PermissionKeys.StudentWrite)]
@@ -254,11 +325,26 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Students
 
                 return SuccessResponse<object?>(null, "Photo deleted successfully");
             }
-            catch (NotFoundException ex) { return NotFoundResponse(ex.Message); }
-            catch (ValidationException ex) { return ValidationErrorResponse(ex.Message); }
-            catch (UnauthorizedAccessException ex) { return UnauthorizedResponse(ex.Message); }
-            catch (UnauthorizedException ex) { return ForbiddenResponse(ex.Message); }
-            catch (Exception ex) { return InternalServerErrorResponse(GetFullExceptionMessage(ex)); }
+            catch (NotFoundException ex)
+            {
+                return NotFoundResponse(GetFullExceptionMessage(ex));
+            }
+            catch (ValidationException ex)
+            {
+                return ValidationErrorResponse(GetFullExceptionMessage(ex));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return UnauthorizedResponse(GetFullExceptionMessage(ex));
+            }
+            catch (UnauthorizedException ex)
+            {
+                return ForbiddenResponse(GetFullExceptionMessage(ex));
+            }
+            catch (Exception ex)
+            {
+                return InternalServerErrorResponse(GetFullExceptionMessage(ex));
+            }
         }
 
         #endregion
@@ -266,7 +352,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Students
         #region DELETE & TOGGLE STATUS
 
         /// <summary>
-        /// Delete a student
+        /// Delete a student.
         /// </summary>
         [HttpDelete("{id:guid}")]
         [Authorize(Policy = PermissionKeys.StudentDelete)]
@@ -284,20 +370,40 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Students
 
                 return SuccessResponse("Student deleted successfully");
             }
-            catch (NotFoundException ex) { return NotFoundResponse(ex.Message); }
-            catch (UnauthorizedAccessException ex) { return UnauthorizedResponse(ex.Message); }
-            catch (UnauthorizedException ex) { return ForbiddenResponse(ex.Message); }
-            catch (Exception ex) { return InternalServerErrorResponse(GetFullExceptionMessage(ex)); }
+            catch (NotFoundException ex)
+            {
+                return NotFoundResponse(GetFullExceptionMessage(ex));
+            }
+            catch (ValidationException ex)
+            {
+                return ValidationErrorResponse(GetFullExceptionMessage(ex));
+            }
+            catch (ConflictException ex)
+            {
+                return ConflictResponse(GetFullExceptionMessage(ex));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return UnauthorizedResponse(GetFullExceptionMessage(ex));
+            }
+            catch (UnauthorizedException ex)
+            {
+                return ForbiddenResponse(GetFullExceptionMessage(ex));
+            }
+            catch (Exception ex)
+            {
+                return InternalServerErrorResponse(GetFullExceptionMessage(ex));
+            }
         }
 
         /// <summary>
-        /// Toggle student active status
+        /// Toggle student active status.
         /// </summary>
         [HttpPatch("{id:guid}/toggle-status")]
         [Authorize(Policy = PermissionKeys.StudentWrite)]
         public async Task<IActionResult> ToggleStatus(
-       Guid id,
-       [FromBody] ToggleStudentStatusRequest request)
+            Guid id,
+            [FromBody] ToggleStudentStatusRequest request)
         {
             try
             {
@@ -317,16 +423,36 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Administration.Students
 
                 return SuccessResponse(result, $"Student {action} successfully");
             }
-            catch (NotFoundException ex) { return NotFoundResponse(ex.Message); }
-            catch (UnauthorizedAccessException ex) { return UnauthorizedResponse(ex.Message); }
-            catch (UnauthorizedException ex) { return ForbiddenResponse(ex.Message); }
-            catch (Exception ex) { return InternalServerErrorResponse(GetFullExceptionMessage(ex)); }
+            catch (NotFoundException ex)
+            {
+                return NotFoundResponse(GetFullExceptionMessage(ex));
+            }
+            catch (ValidationException ex)
+            {
+                return ValidationErrorResponse(GetFullExceptionMessage(ex));
+            }
+            catch (ConflictException ex)
+            {
+                return ConflictResponse(GetFullExceptionMessage(ex));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return UnauthorizedResponse(GetFullExceptionMessage(ex));
+            }
+            catch (UnauthorizedException ex)
+            {
+                return ForbiddenResponse(GetFullExceptionMessage(ex));
+            }
+            catch (Exception ex)
+            {
+                return InternalServerErrorResponse(GetFullExceptionMessage(ex));
+            }
         }
+
         public class ToggleStudentStatusRequest
         {
             public bool IsActive { get; set; }
         }
-
 
         #endregion
     }
