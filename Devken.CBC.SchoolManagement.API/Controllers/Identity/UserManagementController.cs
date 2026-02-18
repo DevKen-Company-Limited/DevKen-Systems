@@ -38,6 +38,11 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
 
         /// <summary>
         /// Create a new user.
+        ///
+        /// Password is ALWAYS auto-generated server-side — no password is accepted from the client.
+        /// The generated temporary password is returned in the response so the admin can securely
+        /// hand it to the new user. The user is forced to change it on first login.
+        ///
         /// SuperAdmin MUST specify SchoolId — they have no school of their own (TenantId = Guid.Empty).
         /// SchoolAdmin/Admin can only create users in their own school; any SchoolId they supply
         /// is ignored and their own TenantId is used instead.
@@ -100,17 +105,18 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                 "Creating user {Email} in school {SchoolId} by user {CreatedBy} with {RoleCount} role(s)",
                 request.Email, targetSchoolId, CurrentUserId, request.RoleIds.Count);
 
-            // Strip SchoolId from the forwarded request — it is passed separately as targetSchoolId.
+            // Build a clean request — SchoolId and any password fields are intentionally excluded.
+            // The service always auto-generates the password server-side.
             var createRequest = new CreateUserRequest
             {
                 Email = request.Email,
                 FirstName = request.FirstName,
                 LastName = request.LastName,
                 PhoneNumber = request.PhoneNumber,
-                TemporaryPassword = request.TemporaryPassword,
-                RequirePasswordChange = request.RequirePasswordChange,
+                RequirePasswordChange = true,   // always force a password change on first login
                 RoleIds = request.RoleIds
-                // SchoolId deliberately omitted here — service receives targetSchoolId directly
+                // SchoolId omitted — passed separately as targetSchoolId
+                // TemporaryPassword omitted — generated entirely server-side
             };
 
             var result = await _userManagementService.CreateUserAsync(
@@ -134,10 +140,11 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                 "user.create",
                 $"Created user {request.Email} in school {targetSchoolId}");
 
+            // Response includes TemporaryPassword so the admin can relay it securely to the new user.
             return CreatedResponse(
                 $"/api/user-management/{result.Data?.Id}",
                 result.Data!,
-                "User created successfully");
+                "User created successfully. Please securely share the temporary password with the user.");
         }
 
         #endregion
@@ -145,7 +152,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
         #region Get Users
 
         /// <summary>
-        /// Get users.
+        /// Get users (paginated).
         /// SuperAdmin can view all schools or filter by schoolId.
         /// School users always see only their own school.
         /// </summary>
@@ -166,8 +173,8 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
             }
 
             Guid? targetSchoolId = IsSuperAdmin
-                ? schoolId                       // null → all schools
-                : GetCurrentUserSchoolId();      // always own school
+                ? schoolId                  // null → all schools
+                : GetCurrentUserSchoolId(); // always own school
 
             if (!IsSuperAdmin && schoolId.HasValue && schoolId != targetSchoolId)
             {
@@ -240,7 +247,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
         #region Update User
 
         /// <summary>
-        /// Update user details and roles.
+        /// Update user details.
         /// </summary>
         [HttpPut("{userId:guid}")]
         public async Task<IActionResult> UpdateUser(Guid userId, [FromBody] UpdateUserRequest request)
@@ -298,7 +305,6 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
             }
 
             _logger.LogInformation("Successfully updated user {UserId}", userId);
-
             await LogUserActivityAsync("user.update", $"Updated user {userId}");
 
             return SuccessResponse(result.Data, "User updated successfully");
@@ -310,9 +316,8 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
 
         /// <summary>
         /// Get available roles, optionally scoped to a specific school.
-        /// Used by the frontend dialog to populate the roles dropdown.
-        /// SuperAdmin uses this with ?schoolId=... to get roles for the school they are
-        /// assigning the new user to; regular users call it without schoolId.
+        /// SuperAdmin passes ?schoolId=... to get roles for the school they are creating a user in.
+        /// Regular users call it without schoolId — backend returns their own school's roles.
         /// </summary>
         [HttpGet("available-roles")]
         public async Task<IActionResult> GetAvailableRoles([FromQuery] Guid? schoolId = null)
@@ -323,13 +328,10 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
 
             if (IsSuperAdmin)
             {
-                // SuperAdmin must pass schoolId so we return only that school's roles.
-                // If omitted, fall through and return all roles (useful for SuperAdmin tooling).
-                targetSchoolId = schoolId;
+                targetSchoolId = schoolId; // null → all roles (SuperAdmin tooling)
             }
             else
             {
-                // Regular users always get their own school's roles regardless of query param.
                 targetSchoolId = GetCurrentUserSchoolId();
             }
 
@@ -368,9 +370,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
             }
 
             if (request.RoleIds == null || request.RoleIds.Count == 0)
-                return ErrorResponse(
-                    "At least one role must be provided.",
-                    StatusCodes.Status400BadRequest);
+                return ErrorResponse("At least one role must be provided.", StatusCodes.Status400BadRequest);
 
             var userResult = await _userManagementService.GetUserByIdAsync(userId);
             if (!userResult.Success || userResult.Data == null)
@@ -499,7 +499,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
         #region Password Management
 
         /// <summary>
-        /// Admin-initiated password reset. Returns a temporary password.
+        /// Admin-initiated password reset. Generates a new temporary password and returns it.
         /// </summary>
         [HttpPost("{userId:guid}/reset-password")]
         public async Task<IActionResult> ResetPassword(Guid userId)
@@ -644,6 +644,10 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
             return SuccessResponse<object?>(null, "User deactivated successfully");
         }
 
+        /// <summary>
+        /// Permanently delete a user and all their associated data.
+        /// This action is irreversible.
+        /// </summary>
         [HttpDelete("{userId:guid}")]
         public async Task<IActionResult> DeleteUser(Guid userId)
         {
@@ -662,16 +666,19 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
             if (!IsSuperAdmin && userResult.Data.SchoolId != CurrentTenantId)
                 return ForbiddenResponse("You can only delete users in your own school.");
 
-            _logger.LogInformation("Deleting user {UserId} by {DeletedBy}", userId, CurrentUserId);
+            _logger.LogInformation(
+                "Permanently deleting user {UserId} ({Email}) by {DeletedBy}",
+                userId, userResult.Data.Email, CurrentUserId);
 
             var result = await _userManagementService.DeleteUserAsync(userId, CurrentUserId);
 
             if (!result.Success)
                 return ErrorResponse(result.Error ?? "User deletion failed", StatusCodes.Status400BadRequest);
 
-            await LogUserActivityAsync("user.delete", $"Deleted user {userId}");
+            await LogUserActivityAsync("user.delete",
+                $"Permanently deleted user {userId} ({userResult.Data.Email})");
 
-            return SuccessResponse<object?>(null, "User deleted successfully");
+            return SuccessResponse<object?>(null, "User permanently deleted");
         }
 
         #endregion
