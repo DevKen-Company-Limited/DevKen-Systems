@@ -32,6 +32,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         private readonly Lazy<IAcademicYearRepository> _academicYearRepository;
         private readonly Lazy<ITermRepository> _termRepository;
         private readonly Lazy<IClassRepository> _classRepository;
+        private readonly Lazy<ISubjectRepository> _subjectRepository;
 
         // ── Identity ─────────────────────────────────────────────────────────
         private readonly Lazy<IUserRepository> _userRepository;
@@ -66,6 +67,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
                 new TermRepository(_context, _tenantContext));
             _classRepository = new Lazy<IClassRepository>(() =>
                 new ClassRepository(_context, _tenantContext));
+            _subjectRepository = new Lazy<ISubjectRepository>(() =>
+                new SubjectRepository(_context, _tenantContext));
 
             // Identity
             _userRepository = new Lazy<IUserRepository>(() =>
@@ -101,6 +104,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
 
         public ITermRepository Term => _termRepository.Value;
         public IClassRepository Class => _classRepository.Value;
+        public ISubjectRepository Subject => _subjectRepository.Value;
 
         public IUserRepository User => _userRepository.Value;
         public IRoleRepository Role => _roleRepository.Value;

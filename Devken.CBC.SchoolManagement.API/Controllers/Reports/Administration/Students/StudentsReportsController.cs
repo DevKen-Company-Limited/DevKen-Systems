@@ -1,7 +1,6 @@
 ﻿using Devken.CBC.SchoolManagement.Api.Controllers.Common;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Reports;
 using Devken.CBC.SchoolManagement.Application.Service.Activities;
-using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -17,7 +16,6 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Reports.Administration.Stu
     {
         private readonly IReportService _reportService;
 
-        // Pass activityService and logger to base controller if needed
         public StudentsReportsController(
             IReportService reportService,
             IUserActivityService? activityService = null,
@@ -27,6 +25,13 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Reports.Administration.Stu
             _reportService = reportService;
         }
 
+        /// <summary>
+        /// Downloads the Students List PDF.
+        ///
+        ///  • SuperAdmin, no schoolId  → all-schools report (extra School column)
+        ///  • SuperAdmin, with schoolId → scoped to that specific school
+        ///  • Regular user             → always scoped to their own school (403 if they try another)
+        /// </summary>
         [HttpGet("students-list")]
         public async Task<IActionResult> DownloadStudentsList([FromQuery] Guid? schoolId)
         {
@@ -35,34 +40,59 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Reports.Administration.Stu
                 bool isSuperAdmin = IsSuperAdmin;
                 var userSchoolId = GetUserSchoolIdOrNull();
 
-                // Validate access for non-SuperAdmin users
-                if (!isSuperAdmin && schoolId.HasValue)
+                if (isSuperAdmin)
                 {
-                    var forbiddenResult = ValidateSchoolAccess(schoolId.Value);
-                    if (forbiddenResult != null)
-                        return forbiddenResult;
+                    if (!schoolId.HasValue)
+                    {
+                        // All-schools report
+                        var pdf = await _reportService.GenerateAllSchoolsStudentsListReportAsync();
+
+                        await LogUserActivityAsync(
+                            "report.download.students_list.all_schools",
+                            "[SuperAdmin] Downloaded students list for ALL schools");
+
+                        return PdfFile(pdf, "Students_List_AllSchools");
+                    }
+                    else
+                    {
+                        // Single school chosen by SuperAdmin
+                        var pdf = await _reportService.GenerateStudentsListReportAsync(
+                            schoolId: schoolId,
+                            userSchoolId: null,
+                            isSuperAdmin: true);
+
+                        await LogUserActivityAsync(
+                            "report.download.students_list",
+                            $"[SuperAdmin] Downloaded students list for schoolId={schoolId.Value}");
+
+                        return PdfFile(pdf, "Students_List");
+                    }
                 }
+                else
+                {
+                    // Regular user — validate they're not requesting another school's data
+                    if (schoolId.HasValue)
+                    {
+                        var forbidden = ValidateSchoolAccess(schoolId.Value);
+                        if (forbidden != null)
+                            return forbidden;
+                    }
 
-                // Use provided schoolId or current user's school
-                var finalSchoolId = schoolId ?? userSchoolId;
+                    var finalSchoolId = schoolId ?? userSchoolId;
+                    if (!finalSchoolId.HasValue)
+                        return UnauthorizedResponse("School context is required.");
 
-                if (!finalSchoolId.HasValue)
-                    throw new UnauthorizedAccessException("School context is required.");
+                    var pdf = await _reportService.GenerateStudentsListReportAsync(
+                        schoolId: finalSchoolId,
+                        userSchoolId: userSchoolId,
+                        isSuperAdmin: false);
 
-                // Generate the PDF
-                var pdfBytes = await _reportService.GenerateStudentsListReportAsync(
-                    finalSchoolId.Value, userSchoolId, isSuperAdmin);
+                    await LogUserActivityAsync(
+                        "report.download.students_list",
+                        $"Downloaded students list for schoolId={finalSchoolId.Value}");
 
-                // Log the download activity
-                await LogUserActivityAsync(
-                    activityType: "report.download.students_list",
-                    details: $"Downloaded students list report for schoolId={finalSchoolId.Value}");
-
-                // Return PDF file
-                return File(
-                    pdfBytes,
-                    "application/pdf",
-                    $"Students_List_{DateTime.UtcNow:yyyyMMddHHmmss}.pdf");
+                    return PdfFile(pdf, "Students_List");
+                }
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -74,5 +104,8 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Reports.Administration.Stu
             }
         }
 
+        private FileContentResult PdfFile(byte[] bytes, string baseName) =>
+            File(bytes, "application/pdf",
+                $"{baseName}_{DateTime.UtcNow:yyyyMMddHHmmss}.pdf");
     }
 }

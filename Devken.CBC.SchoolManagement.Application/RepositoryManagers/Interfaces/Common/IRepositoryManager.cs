@@ -19,6 +19,7 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
         IAcademicYearRepository AcademicYear { get; }
         ITermRepository Term { get; }
         IClassRepository Class { get; }
+        ISubjectRepository Subject { get; }
 
         /// <summary>
         /// Exposes the underlying DbContext for advanced scenarios like execution strategy

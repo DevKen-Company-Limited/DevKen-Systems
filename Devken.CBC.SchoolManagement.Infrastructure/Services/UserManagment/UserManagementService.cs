@@ -3,11 +3,9 @@ using Devken.CBC.SchoolManagement.Application.Dtos;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
 using Devken.CBC.SchoolManagement.Application.Services.UserManagement;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
-using Devken.CBC.SchoolManagement.Domain.Enums;
 using Devken.CBC.SchoolManagement.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
-using System.Text;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
 {
@@ -24,6 +22,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
             _passwordHashingService = passwordHashingService;
         }
 
+        // ── Create ─────────────────────────────────────────────────────────
         public async Task<ServiceResult<UserDto>> CreateUserAsync(
             CreateUserRequest request,
             Guid schoolId,
@@ -31,24 +30,23 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
         {
             try
             {
-                // Verify school exists
                 var school = await _repository.School.GetByIdAsync(schoolId);
                 if (school == null)
-                    return ServiceResult<UserDto>.FailureResult("School not found");
+                    return ServiceResult<UserDto>.FailureResult("School not found.");
 
-                // Check if email already exists in this school
-                var existingUser = await _repository.User.FindByCondition(
-                    u => u.Email == request.Email && u.TenantId == schoolId,
-                    trackChanges: false)
-                    .FirstOrDefaultAsync();
+                var emailTaken = await _repository.User
+                    .FindByCondition(
+                        u => u.Email == request.Email && u.TenantId == schoolId,
+                        trackChanges: false)
+                    .AnyAsync();
 
-                if (existingUser != null)
-                    return ServiceResult<UserDto>.FailureResult("Email already exists in this school");
+                if (emailTaken)
+                    return ServiceResult<UserDto>.FailureResult(
+                        "A user with this email already exists in the selected school.");
 
-                // Generate temporary password if not provided
-                var tempPassword = request.TemporaryPassword ?? GenerateTemporaryPassword();
+                // Always auto-generate — never accept a client-supplied password.
+                var tempPassword = GenerateTemporaryPassword();
 
-                // Create user
                 var user = new User
                 {
                     Id = Guid.NewGuid(),
@@ -60,20 +58,20 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
                     PasswordHash = _passwordHashingService.HashPassword(tempPassword),
                     IsActive = true,
                     IsEmailVerified = false,
-                    RequirePasswordChange = request.RequirePasswordChange,
+                    RequirePasswordChange = true,   // always force change on first login
                     FailedLoginAttempts = 0
                 };
 
                 _repository.User.Create(user);
                 await _repository.SaveAsync();
 
-                // Assign roles if provided
-                if (request.RoleIds != null && request.RoleIds.Count > 0)
+                if (request.RoleIds?.Count > 0)
                 {
                     await AssignRolesInternalAsync(user.Id, request.RoleIds, schoolId);
                     await _repository.SaveAsync();
                 }
 
+                // Pass tempPassword into the DTO so the controller can return it to the admin.
                 return ServiceResult<UserDto>.SuccessResult(MapToUserDto(user, tempPassword));
             }
             catch (Exception ex)
@@ -82,6 +80,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
             }
         }
 
+        // ── Get all (paginated) ────────────────────────────────────────────
         public async Task<ServiceResult<PaginatedUsersResponse>> GetUsersAsync(
             Guid? schoolId,
             int page,
@@ -93,22 +92,19 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
             {
                 var query = _repository.User.FindAll(trackChanges: false);
 
-                // Filter by school if specified
                 if (schoolId.HasValue)
                     query = query.Where(u => u.TenantId == schoolId.Value);
 
-                // Filter by active status
                 if (isActive.HasValue)
                     query = query.Where(u => u.IsActive == isActive.Value);
 
-                // Search filter
                 if (!string.IsNullOrWhiteSpace(search))
                 {
-                    var searchLower = search.ToLower();
+                    var s = search.ToLower();
                     query = query.Where(u =>
-                        u.Email.ToLower().Contains(searchLower, StringComparison.OrdinalIgnoreCase) ||
-                        (u.FirstName != null && u.FirstName.ToLower().Contains(searchLower, StringComparison.OrdinalIgnoreCase)) ||
-                        (u.LastName != null && u.LastName.ToLower().Contains(searchLower, StringComparison.OrdinalIgnoreCase)));
+                        u.Email.ToLower().Contains(s) ||
+                        (u.FirstName != null && u.FirstName.ToLower().Contains(s)) ||
+                        (u.LastName != null && u.LastName.ToLower().Contains(s)));
                 }
 
                 var totalCount = await query.CountAsync();
@@ -124,11 +120,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
                     .Take(pageSize)
                     .ToListAsync();
 
-                var userDtos = users.Select(user => MapToUserDto(user)).ToList();
-
                 var result = new PaginatedUsersResponse
                 {
-                    Users = userDtos,
+                    Users = users.Select(u => MapToUserDto(u)).ToList(),
                     TotalCount = totalCount,
                     Page = page,
                     PageSize = pageSize,
@@ -139,17 +133,18 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
             }
             catch (Exception ex)
             {
-                return ServiceResult<PaginatedUsersResponse>.FailureResult($"Error retrieving users: {ex.Message}");
+                return ServiceResult<PaginatedUsersResponse>.FailureResult(
+                    $"Error retrieving users: {ex.Message}");
             }
         }
 
+        // ── Get by ID ──────────────────────────────────────────────────────
         public async Task<ServiceResult<UserDto>> GetUserByIdAsync(Guid userId)
         {
             try
             {
-                var user = await _repository.User.FindByCondition(
-                    u => u.Id == userId,
-                    trackChanges: false)
+                var user = await _repository.User
+                    .FindByCondition(u => u.Id == userId, trackChanges: false)
                     .Include(u => u.Tenant)
                     .Include(u => u.UserRoles)
                         .ThenInclude(ur => ur.Role)
@@ -157,11 +152,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
                                 .ThenInclude(rp => rp.Permission)
                     .FirstOrDefaultAsync();
 
-                if (user == null)
-                    return ServiceResult<UserDto>.FailureResult("User not found");
-
-                var userDto = MapToUserDto(user);
-                return ServiceResult<UserDto>.SuccessResult(userDto);
+                return user is null
+                    ? ServiceResult<UserDto>.FailureResult("User not found.")
+                    : ServiceResult<UserDto>.SuccessResult(MapToUserDto(user));
             }
             catch (Exception ex)
             {
@@ -169,6 +162,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
             }
         }
 
+        // ── Update ─────────────────────────────────────────────────────────
         public async Task<ServiceResult<UserDto>> UpdateUserAsync(
             Guid userId,
             UpdateUserRequest request,
@@ -178,38 +172,32 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
             {
                 var user = await _repository.User.GetByIdAsync(userId, trackChanges: true);
                 if (user == null)
-                    return ServiceResult<UserDto>.FailureResult("User not found");
+                    return ServiceResult<UserDto>.FailureResult("User not found.");
 
-                // Update only provided fields
+                // Email change — verify uniqueness within the same school
                 if (!string.IsNullOrWhiteSpace(request.Email) && request.Email != user.Email)
                 {
-                    // Check if new email already exists in the same school
-                    var emailExists = await _repository.User.FindByCondition(
-                        u => u.Email == request.Email && u.TenantId == user.TenantId && u.Id != userId,
-                        trackChanges: false)
+                    var emailTaken = await _repository.User
+                        .FindByCondition(
+                            u => u.Email == request.Email &&
+                                 u.TenantId == user.TenantId &&
+                                 u.Id != userId,
+                            trackChanges: false)
                         .AnyAsync();
 
-                    if (emailExists)
-                        return ServiceResult<UserDto>.FailureResult("Email already exists in this school");
+                    if (emailTaken)
+                        return ServiceResult<UserDto>.FailureResult(
+                            "Email already exists in this school.");
 
                     user.Email = request.Email;
                     user.IsEmailVerified = false;
                 }
 
-                if (!string.IsNullOrWhiteSpace(request.FirstName))
-                    user.FirstName = request.FirstName;
-
-                if (!string.IsNullOrWhiteSpace(request.LastName))
-                    user.LastName = request.LastName;
-
-                if (request.PhoneNumber != null)
-                    user.PhoneNumber = request.PhoneNumber;
-
-                if (request.ProfileImageUrl != null)
-                    user.ProfileImageUrl = request.ProfileImageUrl;
-
-                if (request.IsActive.HasValue)
-                    user.IsActive = request.IsActive.Value;
+                if (!string.IsNullOrWhiteSpace(request.FirstName)) user.FirstName = request.FirstName;
+                if (!string.IsNullOrWhiteSpace(request.LastName)) user.LastName = request.LastName;
+                if (request.PhoneNumber != null) user.PhoneNumber = request.PhoneNumber;
+                if (request.ProfileImageUrl != null) user.ProfileImageUrl = request.ProfileImageUrl;
+                if (request.IsActive.HasValue) user.IsActive = request.IsActive.Value;
 
                 _repository.User.Update(user);
                 await _repository.SaveAsync();
@@ -222,6 +210,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
             }
         }
 
+        // ── Role management ────────────────────────────────────────────────
         public async Task<ServiceResult<UserDto>> AssignRolesToUserAsync(
             Guid userId,
             List<string> roleIds,
@@ -231,9 +220,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
             {
                 var user = await _repository.User.GetByIdAsync(userId, trackChanges: false);
                 if (user == null)
-                    return ServiceResult<UserDto>.FailureResult("User not found");
+                    return ServiceResult<UserDto>.FailureResult("User not found.");
 
-                var roleGuids = roleIds.Select(r => Guid.Parse(r)).ToList();
+                var roleGuids = roleIds.Select(Guid.Parse).ToList();
                 await AssignRolesInternalAsync(userId, roleGuids, user.TenantId);
                 await _repository.SaveAsync();
 
@@ -254,38 +243,34 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
             {
                 var user = await _repository.User.GetByIdAsync(userId, trackChanges: false);
                 if (user == null)
-                    return ServiceResult<UserDto>.FailureResult("User not found");
+                    return ServiceResult<UserDto>.FailureResult("User not found.");
 
-                // Remove all existing roles first
-                var existingRoles = await _repository.UserRole.FindByCondition(
-                    ur => ur.UserId == userId,
-                    trackChanges: true)
+                // Remove all existing role assignments
+                var existing = await _repository.UserRole
+                    .FindByCondition(ur => ur.UserId == userId, trackChanges: true)
                     .ToListAsync();
 
-                foreach (var existingRole in existingRoles)
-                {
-                    _repository.UserRole.Delete(existingRole);
-                }
+                foreach (var ur in existing)
+                    _repository.UserRole.Delete(ur);
 
-                // Add new roles
-                var roleGuids = roleIds.Select(r => Guid.Parse(r)).ToList();
+                // Assign the new set
+                var roleGuids = roleIds.Select(Guid.Parse).ToList();
                 foreach (var roleId in roleGuids)
                 {
                     var role = await _repository.Role.GetByIdAsync(roleId, trackChanges: false);
                     if (role == null || role.TenantId != user.TenantId)
-                        return ServiceResult<UserDto>.FailureResult($"Role {roleId} not found or doesn't belong to this school");
+                        return ServiceResult<UserDto>.FailureResult(
+                            $"Role {roleId} not found or does not belong to this school.");
 
-                    var userRole = new UserRole
+                    _repository.UserRole.Create(new UserRole
                     {
                         Id = Guid.NewGuid(),
                         UserId = userId,
                         RoleId = roleId
-                    };
-                    _repository.UserRole.Create(userRole);
+                    });
                 }
 
                 await _repository.SaveAsync();
-
                 return await GetUserByIdAsync(userId);
             }
             catch (Exception ex)
@@ -302,13 +287,14 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
             try
             {
                 var roleGuid = Guid.Parse(roleId);
-                var userRole = await _repository.UserRole.FindByCondition(
-                    ur => ur.UserId == userId && ur.RoleId == roleGuid,
-                    trackChanges: true)
+                var userRole = await _repository.UserRole
+                    .FindByCondition(
+                        ur => ur.UserId == userId && ur.RoleId == roleGuid,
+                        trackChanges: true)
                     .FirstOrDefaultAsync();
 
                 if (userRole == null)
-                    return ServiceResult<UserDto>.FailureResult("User role not found");
+                    return ServiceResult<UserDto>.FailureResult("User role assignment not found.");
 
                 _repository.UserRole.Delete(userRole);
                 await _repository.SaveAsync();
@@ -321,13 +307,45 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
             }
         }
 
+        // ── Available roles ────────────────────────────────────────────────
+        public async Task<ServiceResult<List<RoleDto>>> GetAvailableRolesAsync(Guid? schoolId)
+        {
+            try
+            {
+                var query = _repository.Role.FindAll(trackChanges: false);
+
+                if (schoolId.HasValue)
+                    query = query.Where(r => r.TenantId == schoolId.Value);
+
+                var roles = await query
+                    .OrderBy(r => r.Name)
+                    .Select(r => new RoleDto
+                    {
+                        Id = r.Id,
+                        Name = r.Name ?? string.Empty,
+                        Description = r.Description,
+                        IsSystemRole = r.IsSystemRole,
+                        SchoolId = r.TenantId
+                    })
+                    .ToListAsync();
+
+                return ServiceResult<List<RoleDto>>.SuccessResult(roles);
+            }
+            catch (Exception ex)
+            {
+                return ServiceResult<List<RoleDto>>.FailureResult(
+                    $"Error retrieving available roles: {ex.Message}");
+            }
+        }
+
+        // ── Activate / Deactivate ──────────────────────────────────────────
         public async Task<ServiceResult<bool>> ActivateUserAsync(Guid userId, Guid activatedBy)
         {
             try
             {
                 var user = await _repository.User.GetByIdAsync(userId, trackChanges: true);
                 if (user == null)
-                    return ServiceResult<bool>.FailureResult("User not found");
+                    return ServiceResult<bool>.FailureResult("User not found.");
 
                 user.IsActive = true;
                 user.LockedUntil = null;
@@ -350,7 +368,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
             {
                 var user = await _repository.User.GetByIdAsync(userId, trackChanges: true);
                 if (user == null)
-                    return ServiceResult<bool>.FailureResult("User not found");
+                    return ServiceResult<bool>.FailureResult("User not found.");
 
                 user.IsActive = false;
 
@@ -365,19 +383,36 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
             }
         }
 
+        // ── Hard Delete ────────────────────────────────────────────────────
+        /// <summary>
+        /// Permanently removes the user and all their role assignments from the database.
+        /// This action cannot be undone.
+        /// </summary>
         public async Task<ServiceResult<bool>> DeleteUserAsync(Guid userId, Guid deletedBy)
         {
             try
             {
-                var user = await _repository.User.GetByIdAsync(userId, trackChanges: true);
+                // Load with tracking so EF can cascade or we can clean up manually.
+                var user = await _repository.User
+                    .FindByCondition(u => u.Id == userId, trackChanges: true)
+                    .Include(u => u.UserRoles)
+                    .FirstOrDefaultAsync();
+
                 if (user == null)
-                    return ServiceResult<bool>.FailureResult("User not found");
+                    return ServiceResult<bool>.FailureResult("User not found.");
 
-                // Soft delete
-                user.Status = EntityStatus.Deleted;
-                user.IsActive = false;
+                // Remove all role assignments first to avoid FK constraint violations
+                // if your database does not cascade deletes on UserRole → User.
+                if (user.UserRoles?.Count > 0)
+                {
+                    foreach (var ur in user.UserRoles)
+                        _repository.UserRole.Delete(ur);
 
-                _repository.User.Update(user);
+                    await _repository.SaveAsync();
+                }
+
+                // Hard delete — row is gone from the database permanently.
+                _repository.User.Delete(user);
                 await _repository.SaveAsync();
 
                 return ServiceResult<bool>.SuccessResult(true);
@@ -388,13 +423,15 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
             }
         }
 
-        public async Task<ServiceResult<PasswordResetResultDto>> ResetPasswordAsync(Guid userId, Guid resetBy)
+        // ── Password management ────────────────────────────────────────────
+        public async Task<ServiceResult<PasswordResetResultDto>> ResetPasswordAsync(
+            Guid userId,
+            Guid resetBy)
         {
             try
             {
-                var user = await _repository.User.FindByCondition(
-                    u => u.Id == userId,
-                    trackChanges: true)
+                var user = await _repository.User
+                    .FindByCondition(u => u.Id == userId, trackChanges: true)
                     .Include(u => u.Tenant)
                     .Include(u => u.UserRoles)
                         .ThenInclude(ur => ur.Role)
@@ -403,12 +440,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
                     .FirstOrDefaultAsync();
 
                 if (user == null)
-                    return ServiceResult<PasswordResetResultDto>.FailureResult("User not found");
+                    return ServiceResult<PasswordResetResultDto>.FailureResult("User not found.");
 
-                // Generate temporary password
                 var tempPassword = GenerateTemporaryPassword();
 
-                // Update user password
                 user.PasswordHash = _passwordHashingService.HashPassword(tempPassword);
                 user.RequirePasswordChange = true;
                 user.FailedLoginAttempts = 0;
@@ -417,22 +452,22 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
                 _repository.User.Update(user);
                 await _repository.SaveAsync();
 
-                // Create result with user info and temp password
                 var result = new PasswordResetResultDto
                 {
                     User = MapToUserDto(user),
                     TemporaryPassword = tempPassword,
-                    Message = "Password has been reset. User must change password on next login.",
+                    Message = "Password reset. The user must change it on next login.",
                     ResetAt = DateTime.UtcNow,
                     ResetBy = resetBy
                 };
 
-                // TODO: Send email with temp password
+                // TODO: dispatch email with temporary password
                 return ServiceResult<PasswordResetResultDto>.SuccessResult(result);
             }
             catch (Exception ex)
             {
-                return ServiceResult<PasswordResetResultDto>.FailureResult($"Error resetting password: {ex.Message}");
+                return ServiceResult<PasswordResetResultDto>.FailureResult(
+                    $"Error resetting password: {ex.Message}");
             }
         }
 
@@ -442,9 +477,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
             {
                 var user = await _repository.User.GetByIdAsync(userId, trackChanges: false);
                 if (user == null)
-                    return ServiceResult<bool>.FailureResult("User not found");
+                    return ServiceResult<bool>.FailureResult("User not found.");
 
-                // TODO: Implement email sending logic
+                // TODO: implement email dispatch
                 return ServiceResult<bool>.SuccessResult(true);
             }
             catch (Exception ex)
@@ -453,48 +488,46 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
             }
         }
 
-        #region Private Helper Methods
-
-        private async Task AssignRolesInternalAsync(Guid userId, List<Guid> roleIds, Guid tenantId)
+        // ── Private helpers ────────────────────────────────────────────────
+        private async Task AssignRolesInternalAsync(
+            Guid userId,
+            List<Guid> roleIds,
+            Guid tenantId)
         {
-            // Verify all roles exist and belong to the same tenant
+            // Validate all roles belong to the school before writing anything
             foreach (var roleId in roleIds)
             {
                 var role = await _repository.Role.GetByIdAsync(roleId, trackChanges: false);
                 if (role == null || role.TenantId != tenantId)
-                    throw new InvalidOperationException($"Role {roleId} not found or doesn't belong to this school");
+                    throw new InvalidOperationException(
+                        $"Role {roleId} not found or does not belong to school {tenantId}.");
             }
 
-            // Add new roles
             foreach (var roleId in roleIds)
             {
-                var userRole = new UserRole
+                _repository.UserRole.Create(new UserRole
                 {
                     Id = Guid.NewGuid(),
                     UserId = userId,
                     RoleId = roleId
-                };
-                _repository.UserRole.Create(userRole);
+                });
             }
         }
 
         private static UserDto MapToUserDto(User user, string? tempPassword = null)
         {
-            // Get role names safely with null checks
             var roleNames = user.UserRoles?
                 .Where(ur => ur.Role != null)
                 .Select(ur => ur.Role!.Name ?? "Unknown")
-                .ToList() ?? new List<string>();
+                .ToList() ?? [];
 
-            // Get permissions from all roles
             var permissions = user.UserRoles?
                 .Where(ur => ur.Role?.RolePermissions != null)
                 .SelectMany(ur => ur.Role!.RolePermissions!)
-                .Where(rp => rp.Permission != null)
-                .Select(rp => rp.Permission!.Key ?? string.Empty)
+                .Where(rp => rp.Permission?.Key != null)
+                .Select(rp => rp.Permission!.Key!)
                 .Distinct()
-                .Where(key => !string.IsNullOrEmpty(key))
-                .ToList() ?? new List<string>();
+                .ToList() ?? [];
 
             return new UserDto
             {
@@ -506,6 +539,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
                 ProfileImageUrl = user.ProfileImageUrl,
                 SchoolId = user.TenantId,
                 SchoolName = user.Tenant?.Name,
+                TenantId = user.TenantId,
                 IsActive = user.IsActive,
                 IsEmailVerified = user.IsEmailVerified,
                 RequirePasswordChange = user.RequirePasswordChange,
@@ -513,25 +547,45 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
                 RoleNames = roleNames,
                 Permissions = permissions,
                 CreatedOn = user.CreatedOn,
-                UpdatedOn = user.UpdatedOn,
-                TenantId = user.TenantId
+                UpdatedOn = user.UpdatedOn
             };
         }
 
+        /// <summary>
+        /// Generates a cryptographically secure 12-character temporary password
+        /// containing upper, lower, digit, and symbol characters.
+        /// Uses <see cref="RandomNumberGenerator"/> instead of <see cref="Random"/>
+        /// to avoid predictable output.
+        /// </summary>
         private static string GenerateTemporaryPassword()
         {
-            const string validChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
-            var random = new Random();
-            var chars = new char[12];
+            const string upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";  // no I/O (visual ambiguity)
+            const string lower = "abcdefghjkmnpqrstuvwxyz";   // no l/o
+            const string digits = "23456789";                   // no 0/1
+            const string symbols = "!@#$%&*";
+            const string all = upper + lower + digits + symbols;
 
-            for (int i = 0; i < chars.Length; i++)
+            // Guarantee at least one character from each class
+            var password = new char[12];
+            password[0] = Pick(upper);
+            password[1] = Pick(lower);
+            password[2] = Pick(digits);
+            password[3] = Pick(symbols);
+
+            for (int i = 4; i < password.Length; i++)
+                password[i] = Pick(all);
+
+            // Shuffle with Fisher-Yates using cryptographic randomness
+            for (int i = password.Length - 1; i > 0; i--)
             {
-                chars[i] = validChars[random.Next(validChars.Length)];
+                int j = RandomNumberGenerator.GetInt32(i + 1);
+                (password[i], password[j]) = (password[j], password[i]);
             }
 
-            return new string(chars);
+            return new string(password);
         }
 
-        #endregion
+        private static char Pick(string chars) =>
+            chars[RandomNumberGenerator.GetInt32(chars.Length)];
     }
 }
