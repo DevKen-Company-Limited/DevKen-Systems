@@ -90,24 +90,31 @@ isSuperAdmin: any;
 // User Requests
 // ============================================
 
+
 export interface CreateUserRequest {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phoneNumber?: string;
-  password: string;
-  roleIds: string[];
+  firstName:        string;
+  lastName:         string;
+  email:            string;
+  phoneNumber?:     string;
+  password?:        string;
+  roleIds:          string[];
   sendWelcomeEmail?: boolean;
-  schoolId?: string; // Added for SuperAdmin to specify school
+  /**
+   * Required when a SuperAdmin creates a user.
+   * The backend will use this as the new user's TenantId.
+   * Omit (or leave undefined) for regular school-admin requests
+   * — the backend will use the caller's own TenantId instead.
+   */
+  schoolId?:        string;
 }
 
 export interface UpdateUserRequest {
-  firstName: string;
-  lastName: string;
-  email: string;
+  firstName:    string;
+  lastName:     string;
   phoneNumber?: string;
-  isActive: boolean;
-  roleIds: string[];
+  roleIds:      string[];
+  isActive:     boolean;
+  // schoolId intentionally excluded — school cannot be changed after creation
 }
 
 // ============================================

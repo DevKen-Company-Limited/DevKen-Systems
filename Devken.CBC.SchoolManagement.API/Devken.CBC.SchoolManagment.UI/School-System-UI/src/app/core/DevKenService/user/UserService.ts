@@ -16,45 +16,36 @@ interface PaginatedUsersResponse {
   totalPages: number;
 }
 
-@Injectable({
-  providedIn: 'root'
-})
-export class UserService implements 
-  ICrudService<CreateUserRequest, UpdateUserRequest, UserDto>, 
+@Injectable({ providedIn: 'root' })
+export class UserService implements
+  ICrudService<CreateUserRequest, UpdateUserRequest, UserDto>,
   IListService<UserDto> {
-  
-  private _http = inject(HttpClient);
-  private _apiBase = inject(API_BASE_URL);
-  private _url = `${this._apiBase}/api/user-management`;
 
-  /**
-   * Get all users with pagination support
-   * SuperAdmin can filter by schoolId
-   */
+  private _http    = inject(HttpClient);
+  private _apiBase = inject(API_BASE_URL);
+  private _url     = `${this._apiBase}/api/user-management`;
+
   getAll(page = 1, pageSize = 20, schoolId?: string): Observable<ApiResponse<UserDto[]>> {
     let params = new HttpParams()
       .set('page', page.toString())
       .set('pageSize', pageSize.toString());
-    
+
     if (schoolId) {
       params = params.set('schoolId', schoolId);
     }
-    
-    return this._http.get<ApiResponse<PaginatedUsersResponse>>(`${this._url}`, { params })
-      .pipe(
-        map(response => ({
-          ...response,
-          data: response.data.users
-        }))
-      );
+
+    return this._http
+      .get<ApiResponse<PaginatedUsersResponse>>(this._url, { params })
+      .pipe(map(response => ({ ...response, data: response.data.users })));
   }
 
   getById(id: string): Observable<ApiResponse<UserDto>> {
     return this._http.get<ApiResponse<UserDto>>(`${this._url}/${id}`);
   }
 
+  /** Create a user. When called by SuperAdmin, payload must include schoolId. */
   create(payload: CreateUserRequest): Observable<ApiResponse<UserDto>> {
-    return this._http.post<ApiResponse<UserDto>>(`${this._url}`, payload);
+    return this._http.post<ApiResponse<UserDto>>(this._url, payload);
   }
 
   update(id: string, payload: UpdateUserRequest): Observable<ApiResponse<UserDto>> {
@@ -65,79 +56,57 @@ export class UserService implements
     return this._http.delete<ApiResponse<null>>(`${this._url}/${id}`);
   }
 
-  /**
-   * Toggle user active status (activate/deactivate)
-   * Uses the appropriate endpoint based on current status
-   */
   toggleActiveStatus(id: string): Observable<ApiResponse<UserDto>> {
     return this.getById(id).pipe(
-      map(userResponse => {
-        if (!userResponse.success || !userResponse.data) {
-          throw new Error('User not found');
-        }
-        return userResponse.data;
+      map(res => {
+        if (!res.success || !res.data) throw new Error('User not found');
+        return res.data;
       }),
       switchMap(user => {
         const endpoint = user.isActive
           ? `${this._url}/${id}/deactivate`
           : `${this._url}/${id}/activate`;
-
         return this._http.post<ApiResponse<UserDto>>(endpoint, {});
       })
     );
   }
 
-  /**
-   * Activate a user account
-   */
   activateUser(id: string): Observable<ApiResponse<UserDto>> {
     return this._http.post<ApiResponse<UserDto>>(`${this._url}/${id}/activate`, {});
   }
 
-  /**
-   * Deactivate a user account
-   */
   deactivateUser(id: string): Observable<ApiResponse<UserDto>> {
     return this._http.post<ApiResponse<UserDto>>(`${this._url}/${id}/deactivate`, {});
   }
 
-  /**
-   * Resend welcome email to user
-   */
   resendWelcomeEmail(id: string): Observable<ApiResponse<null>> {
     return this._http.post<ApiResponse<null>>(`${this._url}/${id}/resend-welcome`, {});
   }
 
-  /**
-   * Reset user password (admin-initiated)
-   */
   resetPassword(id: string): Observable<ApiResponse<any>> {
     return this._http.post<ApiResponse<any>>(`${this._url}/${id}/reset-password`, {});
   }
 
-  /**
-   * Assign roles to a user
-   */
   assignRoles(userId: string, roleIds: string[]): Observable<ApiResponse<UserDto>> {
-    return this._http.post<ApiResponse<UserDto>>(
-      `${this._url}/${userId}/roles`, 
-      { roleIds }
-    );
+    return this._http.post<ApiResponse<UserDto>>(`${this._url}/${userId}/roles`, { roleIds });
   }
 
-  /**
-   * Remove a role from a user
-   */
   removeRole(userId: string, roleId: string): Observable<ApiResponse<any>> {
-    return this._http.delete<ApiResponse<any>>(
-      `${this._url}/${userId}/roles/${roleId}`
-    );
+    return this._http.delete<ApiResponse<any>>(`${this._url}/${userId}/roles/${roleId}`);
   }
 
-  /**
-   * Get available roles for the current tenant
-   */
+  /** Roles for the current user's own school (used by regular users) */
   getAvailableRoles(): Observable<ApiResponse<RoleDto[]>> {
     return this._http.get<ApiResponse<RoleDto[]>>(`${this._apiBase}/api/roles`);
+  }
+
+  /**
+   * Roles scoped to a specific school.
+   * Called by the dialog when a SuperAdmin selects a school so only
+   * roles that belong to that school are offered.
+   */
+  getAvailableRolesBySchool(schoolId: string): Observable<ApiResponse<RoleDto[]>> {
+    const params = new HttpParams().set('schoolId', schoolId);
+    return this._http.get<ApiResponse<RoleDto[]>>(`${this._apiBase}/api/roles`, { params });
   }
 }
