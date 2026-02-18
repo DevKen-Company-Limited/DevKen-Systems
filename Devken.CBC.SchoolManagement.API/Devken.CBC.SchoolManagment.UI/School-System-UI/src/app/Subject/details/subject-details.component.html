@@ -1,0 +1,254 @@
+<!-- details/subject-details.component.html -->
+<div class="absolute inset-0 flex min-w-0 flex-col overflow-y-auto" cdkScrollable>
+
+  <!-- ── Page Header ───────────────────────────────────────────────────── -->
+  <app-page-header
+    [title]="subject?.name || 'Subject Details'"
+    [description]="subject ? ('Code: ' + subject.code) : 'Loading...'"
+    icon="menu_book"
+    [breadcrumbs]="breadcrumbs"
+    [actionTemplate]="headerActions">
+  </app-page-header>
+
+  <ng-template #headerActions>
+    <button mat-stroked-button
+      class="mr-3 border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300"
+      (click)="goBack()">
+      <mat-icon class="icon-size-5">arrow_back</mat-icon>
+      <span class="ml-2">Back to List</span>
+    </button>
+
+    <button mat-flat-button
+      class="mr-3 bg-indigo-600 text-white hover:bg-indigo-700"
+      [disabled]="!subject"
+      (click)="editSubject()">
+      <mat-icon class="icon-size-5">edit</mat-icon>
+      <span class="ml-2">Edit Subject</span>
+    </button>
+
+    <button mat-icon-button [matMenuTriggerFor]="actionsMenu" [disabled]="!subject"
+      class="text-gray-600 dark:text-gray-400">
+      <mat-icon>more_vert</mat-icon>
+    </button>
+
+    <mat-menu #actionsMenu="matMenu">
+      <button mat-menu-item (click)="toggleActive()">
+        <mat-icon [class.text-green-600]="!subject?.isActive" [class.text-amber-600]="subject?.isActive">
+          {{ subject?.isActive ? 'block' : 'check_circle' }}
+        </mat-icon>
+        <span>{{ subject?.isActive ? 'Deactivate' : 'Activate' }}</span>
+      </button>
+      <mat-divider></mat-divider>
+      <button mat-menu-item (click)="deleteSubject()">
+        <mat-icon class="text-red-600">delete</mat-icon>
+        <span class="text-red-600">Delete Subject</span>
+      </button>
+    </mat-menu>
+  </ng-template>
+
+  <!-- ── Main Content ───────────────────────────────────────────────────── -->
+  <div class="bg-card -mt-10 flex-auto rounded-t-2xl p-6 shadow sm:p-10">
+
+    <!-- Loading -->
+    <div *ngIf="isLoading" class="flex items-center justify-center py-32">
+      <div class="text-center">
+        <mat-spinner diameter="48" class="mx-auto mb-4"></mat-spinner>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Loading subject details...</p>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div *ngIf="!isLoading && subject" class="animate-fade-in">
+
+      <!-- ── Hero Card ─────────────────────────────────────────────────── -->
+      <div class="mb-8 overflow-hidden rounded-2xl border border-gray-200 shadow-lg
+                  dark:border-gray-700">
+        <div class="bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 px-8 py-6">
+          <div class="flex flex-col items-center gap-6 md:flex-row">
+
+            <!-- Icon Badge -->
+            <div class="flex items-center justify-center w-24 h-24 rounded-2xl
+                        bg-white/20 backdrop-blur-sm border-4 border-white/30 shadow-2xl">
+              <mat-icon class="text-white icon-size-12">menu_book</mat-icon>
+            </div>
+
+            <!-- Subject Info -->
+            <div class="flex-1 text-center md:text-left">
+              <h1 class="mb-2 text-3xl font-bold text-white">{{ subject.name }}</h1>
+              <div class="mb-4 flex flex-wrap items-center justify-center gap-3 md:justify-start">
+                <span class="inline-flex items-center gap-1 rounded-lg bg-white/20 px-3 py-1
+                             text-sm font-bold text-white backdrop-blur-sm">
+                  <mat-icon class="icon-size-4">tag</mat-icon>
+                  {{ subject.code }}
+                </span>
+                <span class="inline-flex items-center gap-1 rounded-lg bg-white/20 px-3 py-1
+                             text-sm font-medium text-white backdrop-blur-sm">
+                  <mat-icon class="icon-size-4">category</mat-icon>
+                  {{ getSubjectTypeName(subject.subjectType) }}
+                </span>
+                <span class="inline-flex items-center gap-1 rounded-lg bg-white/20 px-3 py-1
+                             text-sm font-medium text-white backdrop-blur-sm">
+                  <mat-icon class="icon-size-4">stairs</mat-icon>
+                  {{ getCBCLevelName(subject.cbcLevel) }}
+                </span>
+              </div>
+              <p *ngIf="subject.description" class="text-sm text-white/80 max-w-xl">
+                {{ subject.description }}
+              </p>
+            </div>
+
+            <!-- Status Badge -->
+            <div class="flex flex-col items-center gap-2">
+              <span class="flex items-center gap-1 rounded-full px-4 py-2 text-sm font-bold shadow-lg"
+                [ngClass]="{
+                  'bg-green-500 text-white': subject.isActive,
+                  'bg-red-500   text-white': !subject.isActive
+                }">
+                <mat-icon class="icon-size-4">{{ subject.isActive ? 'check_circle' : 'cancel' }}</mat-icon>
+                {{ subject.isActive ? 'Active' : 'Inactive' }}
+              </span>
+              <span *ngIf="subject.isCompulsory"
+                class="flex items-center gap-1 rounded-full bg-amber-400 text-white px-4 py-2
+                       text-sm font-bold shadow-lg">
+                <mat-icon class="icon-size-4">star</mat-icon>
+                Compulsory
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Quick Stats ────────────────────────────────────────────────── -->
+      <div class="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
+        <div class="rounded-xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-white p-4
+                    dark:border-indigo-800 dark:from-indigo-900/20 dark:to-gray-800">
+          <div class="flex items-center gap-3">
+            <div class="rounded-lg bg-indigo-100 p-3 dark:bg-indigo-900/40">
+              <mat-icon class="text-indigo-600 dark:text-indigo-400 icon-size-6">category</mat-icon>
+            </div>
+            <div>
+              <p class="text-xs text-gray-600 dark:text-gray-400">Subject Type</p>
+              <p class="text-sm font-bold text-gray-900 dark:text-white">
+                {{ getSubjectTypeName(subject.subjectType) }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50 to-white p-4
+                    dark:border-violet-800 dark:from-violet-900/20 dark:to-gray-800">
+          <div class="flex items-center gap-3">
+            <div class="rounded-lg bg-violet-100 p-3 dark:bg-violet-900/40">
+              <mat-icon class="text-violet-600 dark:text-violet-400 icon-size-6">stairs</mat-icon>
+            </div>
+            <div>
+              <p class="text-xs text-gray-600 dark:text-gray-400">CBC Level</p>
+              <p class="text-sm font-bold text-gray-900 dark:text-white">
+                {{ getCBCLevelName(subject.cbcLevel) }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-4
+                    dark:border-amber-800 dark:from-amber-900/20 dark:to-gray-800">
+          <div class="flex items-center gap-3">
+            <div class="rounded-lg bg-amber-100 p-3 dark:bg-amber-900/40">
+              <mat-icon class="text-amber-600 dark:text-amber-400 icon-size-6">star</mat-icon>
+            </div>
+            <div>
+              <p class="text-xs text-gray-600 dark:text-gray-400">Compulsory</p>
+              <p class="text-sm font-bold text-gray-900 dark:text-white">
+                {{ subject.isCompulsory ? 'Yes' : 'No' }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-white p-4
+                    dark:border-blue-800 dark:from-blue-900/20 dark:to-gray-800">
+          <div class="flex items-center gap-3">
+            <div class="rounded-lg bg-blue-100 p-3 dark:bg-blue-900/40">
+              <mat-icon class="text-blue-600 dark:text-blue-400 icon-size-6">school</mat-icon>
+            </div>
+            <div>
+              <p class="text-xs text-gray-600 dark:text-gray-400">School</p>
+              <p class="text-sm font-bold text-gray-900 dark:text-white truncate max-w-[120px]">
+                {{ subject.schoolName || 'N/A' }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── Details Grid ───────────────────────────────────────────────── -->
+      <div class="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="bg-gray-50 dark:bg-gray-800/50 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 class="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <mat-icon class="text-indigo-600 icon-size-5">info</mat-icon>
+            Subject Details
+          </h3>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-px bg-gray-200 dark:bg-gray-700">
+          <div *ngFor="let item of detailItems; trackBy: trackByLabel"
+               class="group bg-white dark:bg-gray-800 p-5 transition-all hover:bg-indigo-50 dark:hover:bg-indigo-900/10">
+            <div class="flex items-start justify-between">
+              <div class="flex-1 min-w-0">
+                <div class="mb-1 flex items-center gap-2">
+                  <mat-icon *ngIf="item.icon" class="text-gray-400 icon-size-4">{{ item.icon }}</mat-icon>
+                  <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    {{ item.label }}
+                  </p>
+                </div>
+
+                <!-- Badge type -->
+                <span *ngIf="item.type === 'badge'"
+                  class="inline-flex items-center rounded-lg bg-indigo-100 dark:bg-indigo-900/30
+                         px-3 py-1 text-sm font-bold text-indigo-700 dark:text-indigo-300">
+                  {{ item.value || '—' }}
+                </span>
+
+                <!-- Status type -->
+                <span *ngIf="item.type === 'status'"
+                  class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
+                  [ngClass]="{
+                    'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300': item.value === 'Active',
+                    'bg-red-100   dark:bg-red-900/30   text-red-700   dark:text-red-300':   item.value === 'Inactive'
+                  }">
+                  {{ item.value }}
+                </span>
+
+                <!-- Boolean type -->
+                <span *ngIf="item.type === 'boolean'"
+                  class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
+                  [ngClass]="{
+                    'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300': item.value === 'Yes',
+                    'bg-gray-100  dark:bg-gray-700      text-gray-600  dark:text-gray-400':  item.value === 'No'
+                  }">
+                  <mat-icon class="icon-size-3 mr-1">{{ item.value === 'Yes' ? 'star' : 'star_border' }}</mat-icon>
+                  {{ item.value }}
+                </span>
+
+                <!-- Default / date / text -->
+                <p *ngIf="!item.type || item.type === 'text' || item.type === 'date'"
+                  class="text-sm font-semibold text-gray-900 dark:text-white break-words">
+                  {{ item.value || '—' }}
+                </p>
+              </div>
+
+              <!-- Copy Button -->
+              <button *ngIf="item.copyable && item.value"
+                mat-icon-button class="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                (click)="copyToClipboard(item.value)"
+                matTooltip="Copy to clipboard">
+                <mat-icon class="text-gray-400 hover:text-indigo-600 icon-size-4">content_copy</mat-icon>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

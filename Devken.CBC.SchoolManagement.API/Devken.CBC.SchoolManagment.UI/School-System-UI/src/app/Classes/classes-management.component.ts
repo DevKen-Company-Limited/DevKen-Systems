@@ -10,7 +10,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Subject, forkJoin, of } from 'rxjs';
 import { catchError, takeUntil, finalize } from 'rxjs/operators';
-import { ClassService } from 'app/core/DevKenService/ClassService';
+import { ClassService } from 'app/core/DevKenService/ClassService/ClassService';
 import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
 import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
 import { CreateEditClassDialogComponent } from 'app/dialog-modals/Classes/create-edit-class-dialog.component';
