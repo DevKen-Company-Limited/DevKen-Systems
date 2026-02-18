@@ -1,4 +1,4 @@
-import { Component, OnInit, Inject } from '@angular/core';
+import { Component, OnInit, inject, Inject } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, FormGroup, AbstractControl, ValidationErrors } from '@angular/forms';
@@ -9,12 +9,11 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatSelectModule } from '@angular/material/select';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatIconModule } from '@angular/material/icon';
 import { SchoolDto } from 'app/Tenant/types/school';
 import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
-import { UserService } from 'app/core/user/user.service';
-import { take } from 'rxjs/operators';
+import { AuthService } from 'app/core/auth/auth.service';
+import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
 import { AcademicYearDto, CreateAcademicYearRequest, UpdateAcademicYearRequest } from 'app/Academics/AcademicYear/Types/AcademicYear';
 
 @Component({
@@ -31,35 +30,37 @@ import { AcademicYearDto, CreateAcademicYearRequest, UpdateAcademicYearRequest }
     MatDatepickerModule,
     MatNativeDateModule,
     MatSelectModule,
-    MatSnackBarModule,
-    MatIconModule
+    MatIconModule,
   ],
   templateUrl: './create-edit-academic-year-dialog.component.html',
 })
 export class CreateEditAcademicYearDialogComponent implements OnInit {
   form!: FormGroup;
-  isSuperAdmin = false;
   schools: SchoolDto[] = [];
   isEditMode = false;
+
+  private _authService = inject(AuthService);
+  private _alert = inject(AlertService);
+
+  get isSuperAdmin(): boolean {
+    return this._authService.authUser?.isSuperAdmin ?? false;
+  }
 
   constructor(
     private fb: FormBuilder,
     private dialogRef: MatDialogRef<CreateEditAcademicYearDialogComponent>,
-    private snackBar: MatSnackBar,
     @Inject(MAT_DIALOG_DATA) public data: { mode: 'create' | 'edit'; academicYear?: AcademicYearDto },
     private _schoolService: SchoolService,
-    private _userService: UserService
   ) {
     this.isEditMode = data.mode === 'edit';
-    this.checkUserRole();
-    
+
     // Add custom class to dialog
     this.dialogRef.addPanelClass('academic-year-dialog');
   }
 
   ngOnInit(): void {
     this.buildForm();
-    
+
     if (this.isSuperAdmin) {
       this.loadSchools();
     }
@@ -80,8 +81,8 @@ export class CreateEditAcademicYearDialogComponent implements OnInit {
       endDate: [null, Validators.required],
       isCurrent: [false],
       notes: ['', Validators.maxLength(1000)]
-    }, { 
-      validators: this.dateRangeValidator 
+    }, {
+      validators: this.dateRangeValidator
     });
   }
 
@@ -97,22 +98,6 @@ export class CreateEditAcademicYearDialogComponent implements OnInit {
     });
   }
 
-  private checkUserRole(): void {
-    this._userService.user$.pipe(take(1)).subscribe((user: any) => {
-      if (!user) {
-        this.isSuperAdmin = false;
-        return;
-      }
-      
-      this.isSuperAdmin =
-        user.roles?.some(
-            (role: any) => role.roleName === 'SuperAdmin' || role === 'SuperAdmin'
-        ) ||
-        user.role === 'SuperAdmin' ||
-        false;
-    });
-  }
-
   private loadSchools(): void {
     this._schoolService.getAll().subscribe({
       next: (response) => {
@@ -120,14 +105,17 @@ export class CreateEditAcademicYearDialogComponent implements OnInit {
           this.schools = response.data;
         }
       },
-      error: (err) => console.error('Failed to load schools', err)
+      error: (err) => {
+        console.error('Failed to load schools', err);
+        this._alert.error('Failed to load schools');
+      }
     });
   }
 
   private dateRangeValidator(control: AbstractControl): ValidationErrors | null {
     const start = control.get('startDate')?.value;
     const end = control.get('endDate')?.value;
-    
+
     if (start && end && start >= end) {
       return { dateRange: true };
     }
@@ -137,7 +125,7 @@ export class CreateEditAcademicYearDialogComponent implements OnInit {
   submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
-      this.snackBar.open('Please fix validation errors', 'Close', { duration: 3000 });
+      this._alert.warning('Please fix validation errors before submitting');
       return;
     }
 
@@ -153,11 +141,11 @@ export class CreateEditAcademicYearDialogComponent implements OnInit {
   }
 
   private mapToCreateRequest(raw: any): CreateAcademicYearRequest {
-    const startDate = raw.startDate instanceof Date 
-      ? raw.startDate.toISOString() 
+    const startDate = raw.startDate instanceof Date
+      ? raw.startDate.toISOString()
       : raw.startDate;
-    const endDate = raw.endDate instanceof Date 
-      ? raw.endDate.toISOString() 
+    const endDate = raw.endDate instanceof Date
+      ? raw.endDate.toISOString()
       : raw.endDate;
 
     const payload: CreateAcademicYearRequest = {
@@ -178,11 +166,11 @@ export class CreateEditAcademicYearDialogComponent implements OnInit {
   }
 
   private mapToUpdateRequest(raw: any): UpdateAcademicYearRequest {
-    const startDate = raw.startDate instanceof Date 
-      ? raw.startDate.toISOString() 
+    const startDate = raw.startDate instanceof Date
+      ? raw.startDate.toISOString()
       : raw.startDate;
-    const endDate = raw.endDate instanceof Date 
-      ? raw.endDate.toISOString() 
+    const endDate = raw.endDate instanceof Date
+      ? raw.endDate.toISOString()
       : raw.endDate;
 
     return {
