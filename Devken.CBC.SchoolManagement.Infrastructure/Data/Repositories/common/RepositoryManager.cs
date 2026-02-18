@@ -6,17 +6,19 @@ using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Iden
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.NumberSeries;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Payments;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Tenant;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.UserActivities1;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academic;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academics;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Identity;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSeries;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Payments;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Tenant;
-using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSeries;
+using Devken.CBC.SchoolManagement.Infrastructure.RepositoryManagers.UserActivities;
 using Devken.CBC.SchoolManagement.Infrastructure.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using System;
-using Microsoft.EntityFrameworkCore;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
 {
@@ -32,6 +34,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         private readonly Lazy<IAcademicYearRepository> _academicYearRepository;
         private readonly Lazy<ITermRepository> _termRepository;
         private readonly Lazy<IClassRepository> _classRepository;
+        private readonly Lazy<IUserActivityRepository> _userActivityRepository;
 
         // ── Identity ─────────────────────────────────────────────────────────
         private readonly Lazy<IUserRepository> _userRepository;
@@ -90,6 +93,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
             // Payments
             _mpesaPaymentRepository = new Lazy<IMpesaPaymentRepository>(() =>
                 new MpesaPaymentRepository(_context, _tenantContext));
+            _userActivityRepository = new Lazy<IUserActivityRepository>(() =>
+                new UserActivityRepository(_context, _tenantContext));
+
         }
 
         // ── Properties ───────────────────────────────────────────────────────
@@ -113,6 +119,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         public IDocumentNumberSeriesRepository DocumentNumberSeries => _documentNumberSeriesRepository.Value;
 
         public IMpesaPaymentRepository MpesaPayment => _mpesaPaymentRepository.Value;
+        public IUserActivityRepository UserActivity => _userActivityRepository.Value;
+
 
         // ── Unit of Work ─────────────────────────────────────────────────────
         public async Task SaveAsync() => await _context.SaveChangesAsync();

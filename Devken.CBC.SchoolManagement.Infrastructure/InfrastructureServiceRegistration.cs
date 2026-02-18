@@ -1,4 +1,5 @@
 ﻿using Devken.CBC.SchoolManagement.Application.Authorization;
+using Devken.CBC.SchoolManagement.Application.DTOs.userActivities;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academics;
@@ -8,6 +9,7 @@ using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Numb
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Payments;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Reports;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Tenant;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.UserActivities1;
 using Devken.CBC.SchoolManagement.Application.Service;
 using Devken.CBC.SchoolManagement.Application.Service.Academics;
 using Devken.CBC.SchoolManagement.Application.Service.Activities;
@@ -28,10 +30,10 @@ using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Identity;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSeries;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Payments;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Tenant;
+using Devken.CBC.SchoolManagement.Infrastructure.RepositoryManagers.UserActivities;
 using Devken.CBC.SchoolManagement.Infrastructure.Security;
 using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Academics;
-using Devken.CBC.SchoolManagement.Infrastructure.Services.Activities;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Administration.Students;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Images;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Reports;
@@ -261,7 +263,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IAuthorizationHandler, TenantAccessHandler>();
             services.AddScoped<IPasswordHashingService, BCryptPasswordHashingService>();
             services.AddScoped<IStudentService, StudentService>();
-            
+            services.AddScoped<IUserActivityRepository, UserActivityRepository>(); 
+            services.AddScoped<IUserActivityService1, UserActivityService1>(); 
             // Repositories
             services.AddScoped<IStudentRepository, StudentRepository>();
             services.AddScoped<ISchoolRepository, SchoolRepository>();

@@ -183,39 +183,82 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
-            UpdateAuditableEntities();
+            ApplyAuditInformation();
             UpdateTenantEntities();
             return await base.SaveChangesAsync(cancellationToken);
         }
 
         public override int SaveChanges()
         {
-            UpdateAuditableEntities();
+            ApplyAuditInformation();
             UpdateTenantEntities();
             return base.SaveChanges();
         }
 
-        private void UpdateAuditableEntities()
+        private void ApplyAuditInformation()
         {
-            var entries = ChangeTracker.Entries()
-                .Where(e => e.Entity is IAuditableEntity &&
-                            (e.State == EntityState.Added || e.State == EntityState.Modified));
-
             var now = DateTime.UtcNow;
             var userId = _tenantContext?.ActingUserId;
 
-            foreach (var entry in entries)
+            foreach (var entry in ChangeTracker.Entries())
             {
-                var entity = (IAuditableEntity)entry.Entity;
-                if (entry.State == EntityState.Added)
+                // Handle BaseEntity<Guid>
+                if (entry.Entity is BaseEntity<Guid> baseEntity)
                 {
-                    entity.CreatedOn = now;
-                    entity.CreatedBy = userId;
+                    if (entry.State == EntityState.Added)
+                    {
+                        if (baseEntity.Id == null || baseEntity.Id == Guid.Empty)
+                        {
+                            baseEntity.Id = Guid.NewGuid();
+                        }
+
+                        // Optional: set default timestamps for base entity
+                        baseEntity.CreatedOn = now;
+                        baseEntity.UpdatedOn = now;
+                    }
+                    else if (entry.State == EntityState.Modified)
+                    {
+                        baseEntity.UpdatedOn = now;
+                    }
                 }
-                entity.UpdatedOn = now;
-                entity.UpdatedBy = userId;
+
+                // Handle IAuditableEntity
+                if (entry.Entity is IAuditableEntity auditable &&
+                    (entry.State == EntityState.Added || entry.State == EntityState.Modified))
+                {
+                    if (entry.State == EntityState.Added)
+                    {
+                        auditable.CreatedOn = now;
+                        auditable.CreatedBy = userId;
+                    }
+
+                    auditable.UpdatedOn = now;
+                    auditable.UpdatedBy = userId;
+                }
             }
         }
+
+        //private void UpdateAuditableEntities()
+        //{
+        //    var entries = ChangeTracker.Entries()
+        //        .Where(e => e.Entity is IAuditableEntity &&
+        //                    (e.State == EntityState.Added || e.State == EntityState.Modified));
+
+        //    var now = DateTime.UtcNow;
+        //    var userId = _tenantContext?.ActingUserId;
+
+        //    foreach (var entry in entries)
+        //    {
+        //        var entity = (IAuditableEntity)entry.Entity;
+        //        if (entry.State == EntityState.Added)
+        //        {
+        //            entity.CreatedOn = now;
+        //            entity.CreatedBy = userId;
+        //        }
+        //        entity.UpdatedOn = now;
+        //        entity.UpdatedBy = userId;
+        //    }
+        //}
 
         private void UpdateTenantEntities()
         {

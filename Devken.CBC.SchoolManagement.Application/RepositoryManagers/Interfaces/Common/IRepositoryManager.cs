@@ -4,6 +4,7 @@ using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Iden
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.NumberSeries; // ← Added
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Payments;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Tenant;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.UserActivities1;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using System.Threading.Tasks;
@@ -19,7 +20,7 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
         IAcademicYearRepository AcademicYear { get; }
         ITermRepository Term { get; }
         IClassRepository Class { get; }
-
+        IUserActivityRepository UserActivity { get; }
         /// <summary>
         /// Exposes the underlying DbContext for advanced scenarios like execution strategy
         /// </summary>

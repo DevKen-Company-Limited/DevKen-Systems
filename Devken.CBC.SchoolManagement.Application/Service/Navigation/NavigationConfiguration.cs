@@ -42,7 +42,7 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             Items = new[]
             {
                 new NavItem("schools", "Schools", "heroicons_outline:building-office-2", "/administration/schools", PermissionKeys.SchoolRead),
-                new NavItem("logs", "Activity Logs", "heroicons_outline:document-text", "/superadmin/logs")
+                new NavItem("logs", "Activity Logs", "heroicons_outline:document-text", "/administration/logs")
             }
         };
 
