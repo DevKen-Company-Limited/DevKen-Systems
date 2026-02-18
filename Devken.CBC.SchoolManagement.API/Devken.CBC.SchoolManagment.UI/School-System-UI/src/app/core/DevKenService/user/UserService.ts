@@ -25,6 +25,8 @@ export class UserService implements
   private _apiBase = inject(API_BASE_URL);
   private _url     = `${this._apiBase}/api/user-management`;
 
+  // ── CRUD ───────────────────────────────────────────────────────────────
+
   getAll(page = 1, pageSize = 20, schoolId?: string): Observable<ApiResponse<UserDto[]>> {
     let params = new HttpParams()
       .set('page', page.toString())
@@ -36,14 +38,18 @@ export class UserService implements
 
     return this._http
       .get<ApiResponse<PaginatedUsersResponse>>(this._url, { params })
-      .pipe(map(response => ({ ...response, data: response.data.users })));
+      .pipe(map(response => ({ ...response, data: response.data?.users ?? [] })));
   }
 
   getById(id: string): Observable<ApiResponse<UserDto>> {
     return this._http.get<ApiResponse<UserDto>>(`${this._url}/${id}`);
   }
 
-  /** Create a user. When called by SuperAdmin, payload must include schoolId. */
+  /**
+   * Create a user.
+   * When called by SuperAdmin the payload MUST include `schoolId`.
+   * Regular users leave `schoolId` undefined — the backend substitutes their TenantId.
+   */
   create(payload: CreateUserRequest): Observable<ApiResponse<UserDto>> {
     return this._http.post<ApiResponse<UserDto>>(this._url, payload);
   }
@@ -54,6 +60,16 @@ export class UserService implements
 
   delete(id: string): Observable<ApiResponse<null>> {
     return this._http.delete<ApiResponse<null>>(`${this._url}/${id}`);
+  }
+
+  // ── Status toggles ─────────────────────────────────────────────────────
+
+  activateUser(id: string): Observable<ApiResponse<UserDto>> {
+    return this._http.post<ApiResponse<UserDto>>(`${this._url}/${id}/activate`, {});
+  }
+
+  deactivateUser(id: string): Observable<ApiResponse<UserDto>> {
+    return this._http.post<ApiResponse<UserDto>>(`${this._url}/${id}/deactivate`, {});
   }
 
   toggleActiveStatus(id: string): Observable<ApiResponse<UserDto>> {
@@ -71,13 +87,7 @@ export class UserService implements
     );
   }
 
-  activateUser(id: string): Observable<ApiResponse<UserDto>> {
-    return this._http.post<ApiResponse<UserDto>>(`${this._url}/${id}/activate`, {});
-  }
-
-  deactivateUser(id: string): Observable<ApiResponse<UserDto>> {
-    return this._http.post<ApiResponse<UserDto>>(`${this._url}/${id}/deactivate`, {});
-  }
+  // ── Password / email ────────────────────────────────────────────────────
 
   resendWelcomeEmail(id: string): Observable<ApiResponse<null>> {
     return this._http.post<ApiResponse<null>>(`${this._url}/${id}/resend-welcome`, {});
@@ -87,26 +97,44 @@ export class UserService implements
     return this._http.post<ApiResponse<any>>(`${this._url}/${id}/reset-password`, {});
   }
 
+  // ── Role assignment ─────────────────────────────────────────────────────
+
   assignRoles(userId: string, roleIds: string[]): Observable<ApiResponse<UserDto>> {
-    return this._http.post<ApiResponse<UserDto>>(`${this._url}/${userId}/roles`, { roleIds });
+    return this._http.post<ApiResponse<UserDto>>(
+      `${this._url}/${userId}/roles`,
+      { roleIds }
+    );
   }
 
   removeRole(userId: string, roleId: string): Observable<ApiResponse<any>> {
-    return this._http.delete<ApiResponse<any>>(`${this._url}/${userId}/roles/${roleId}`);
+    return this._http.delete<ApiResponse<any>>(
+      `${this._url}/${userId}/roles/${roleId}`
+    );
   }
 
-  /** Roles for the current user's own school (used by regular users) */
+  // ── Roles for dropdown ──────────────────────────────────────────────────
+
+  /**
+   * Fetch roles for the calling user's own school (used by non-SuperAdmin dialog).
+   * Hits: GET /api/user-management/available-roles
+   */
   getAvailableRoles(): Observable<ApiResponse<RoleDto[]>> {
-    return this._http.get<ApiResponse<RoleDto[]>>(`${this._apiBase}/api/roles`);
+    return this._http.get<ApiResponse<RoleDto[]>>(
+      `${this._url}/available-roles`
+    );
   }
 
   /**
-   * Roles scoped to a specific school.
-   * Called by the dialog when a SuperAdmin selects a school so only
-   * roles that belong to that school are offered.
+   * Fetch roles scoped to a specific school.
+   * Used by the dialog after a SuperAdmin picks a school from the dropdown,
+   * so only roles that belong to that school are offered.
+   * Hits: GET /api/user-management/available-roles?schoolId={schoolId}
    */
   getAvailableRolesBySchool(schoolId: string): Observable<ApiResponse<RoleDto[]>> {
     const params = new HttpParams().set('schoolId', schoolId);
-    return this._http.get<ApiResponse<RoleDto[]>>(`${this._apiBase}/api/roles`, { params });
+    return this._http.get<ApiResponse<RoleDto[]>>(
+      `${this._url}/available-roles`,
+      { params }
+    );
   }
 }

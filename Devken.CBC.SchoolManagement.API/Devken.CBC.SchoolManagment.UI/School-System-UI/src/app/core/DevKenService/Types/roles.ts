@@ -96,7 +96,6 @@ export interface CreateUserRequest {
   lastName:         string;
   email:            string;
   phoneNumber?:     string;
-  password?:        string;
   roleIds:          string[];
   sendWelcomeEmail?: boolean;
   /**

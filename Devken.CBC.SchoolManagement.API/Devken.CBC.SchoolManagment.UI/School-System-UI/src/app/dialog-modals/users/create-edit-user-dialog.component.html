@@ -127,35 +127,6 @@
       </mat-form-field>
     </div>
 
-    <!-- Password Section (Create Mode Only) -->
-    <div class="form-section" *ngIf="!isEditMode">
-      <h3 class="section-title">Security</h3>
-      
-      <mat-form-field appearance="outline" class="form-field full-width">
-        <mat-label>Password</mat-label>
-        <input 
-          matInput 
-          [type]="hidePassword ? 'password' : 'text'"
-          formControlName="password" 
-          placeholder="Enter password"
-          autocomplete="new-password"
-        />
-        <mat-icon matPrefix>lock</mat-icon>
-        <button 
-          mat-icon-button 
-          matSuffix 
-          (click)="hidePassword = !hidePassword"
-          type="button"
-        >
-          <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
-        </button>
-        <mat-error *ngIf="form.get('password')?.invalid">
-          {{ getErrorMessage('password') }}
-        </mat-error>
-        <mat-hint>Must be at least 8 characters</mat-hint>
-      </mat-form-field>
-    </div>
-
     <!-- Roles Section -->
     <div class="form-section">
       <h3 class="section-title">Role Assignment</h3>
