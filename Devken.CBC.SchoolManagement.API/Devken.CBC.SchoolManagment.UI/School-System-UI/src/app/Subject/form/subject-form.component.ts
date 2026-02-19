@@ -1,29 +1,26 @@
 // form/subject-form.component.ts
-import {
-  Component, OnInit, OnDestroy, HostListener, inject,
-} from '@angular/core';
-import { CommonModule }                   from '@angular/common';
-import { Router, ActivatedRoute }         from '@angular/router';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { CommonModule }                          from '@angular/common';
+import { Router, ActivatedRoute }               from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { MatFormFieldModule }             from '@angular/material/form-field';
-import { MatInputModule }                 from '@angular/material/input';
-import { MatSelectModule }                from '@angular/material/select';
-import { MatButtonModule }                from '@angular/material/button';
-import { MatIconModule }                  from '@angular/material/icon';
-import { MatCardModule }                  from '@angular/material/card';
-import { MatSlideToggleModule }           from '@angular/material/slide-toggle';
-import { MatDividerModule }               from '@angular/material/divider';
-import { FuseAlertComponent }             from '@fuse/components/alert';
-import { Subject }                        from 'rxjs';
-import { takeUntil }                      from 'rxjs/operators';
-
-import { AuthService }    from 'app/core/auth/auth.service';
-import { SchoolService }  from 'app/core/DevKenService/Tenant/SchoolService';
-import { AlertService }   from 'app/core/DevKenService/Alert/AlertService';
-import { SchoolDto }      from 'app/Tenant/types/school';
+import { MatFormFieldModule }   from '@angular/material/form-field';
+import { MatInputModule }       from '@angular/material/input';
+import { MatSelectModule }      from '@angular/material/select';
+import { MatButtonModule }      from '@angular/material/button';
+import { MatIconModule }        from '@angular/material/icon';
+import { MatCardModule }        from '@angular/material/card';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatDividerModule }     from '@angular/material/divider';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { FuseAlertComponent }   from '@fuse/components/alert';
+import { Subject }              from 'rxjs';
+import { takeUntil }            from 'rxjs/operators';
+import { AuthService }   from 'app/core/auth/auth.service';
+import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
+import { AlertService }  from 'app/core/DevKenService/Alert/AlertService';
+import { SchoolDto }     from 'app/Tenant/types/school';
 import { PageHeaderComponent, Breadcrumb } from 'app/shared/Page-Header/page-header.component';
 import { SubjectService } from 'app/core/DevKenService/SubjectService/SubjectService';
-import { SubjectDto } from '../Types/subjectdto';
 import { CBCLevelOptions, SubjectTypeOptions, normalizeSubject } from '../Types/SubjectEnums';
 
 
@@ -34,7 +31,7 @@ import { CBCLevelOptions, SubjectTypeOptions, normalizeSubject } from '../Types/
     CommonModule, ReactiveFormsModule,
     MatFormFieldModule, MatInputModule, MatSelectModule,
     MatButtonModule, MatIconModule, MatCardModule,
-    MatSlideToggleModule, MatDividerModule,
+    MatSlideToggleModule, MatDividerModule, MatProgressSpinnerModule,
     FuseAlertComponent, PageHeaderComponent,
   ],
   templateUrl: './subject-form.component.html',
@@ -50,7 +47,6 @@ export class SubjectFormComponent implements OnInit, OnDestroy {
   private _schoolService = inject(SchoolService);
   private _alertService  = inject(AlertService);
 
-  // ─── State ────────────────────────────────────────────────────────────────
   form!:       FormGroup;
   isEditMode   = false;
   subjectId:   string | null = null;
@@ -61,35 +57,33 @@ export class SubjectFormComponent implements OnInit, OnDestroy {
   cbcLevels    = CBCLevelOptions;
   subjectTypes = SubjectTypeOptions;
 
-  // ─── Auth ─────────────────────────────────────────────────────────────────
   get isSuperAdmin(): boolean {
     return this._authService.authUser?.isSuperAdmin ?? false;
   }
 
-  // ─── Breadcrumbs ─────────────────────────────────────────────────────────
   get breadcrumbs(): Breadcrumb[] {
     return [
-      { label: 'Dashboard', url: '/dashboard'          },
-      { label: 'Academic',  url: '/academic'            },
-      { label: 'Subjects',  url: '/academic/subjects'   },
+      { label: 'Dashboard', url: '/dashboard'        },
+      { label: 'Academic',  url: '/academic'          },
+      { label: 'Subjects',  url: '/academic/subjects' },
       { label: this.isEditMode ? 'Edit Subject' : 'Create Subject' },
     ];
   }
 
-  // ─── Lifecycle ────────────────────────────────────────────────────────────
   ngOnInit(): void {
     this.subjectId  = this._route.snapshot.paramMap.get('id');
     this.isEditMode = !!this.subjectId;
-    this._buildForm();
 
     if (this.isSuperAdmin) {
-      this._schoolService.getAll().pipe(takeUntil(this._destroy$)).subscribe(res => {
-        this.schools = (res as any).data ?? [];
-      });
+      this._schoolService.getAll()
+        .pipe(takeUntil(this._destroy$))
+        .subscribe(res => { this.schools = (res as any).data ?? []; });
     }
 
     if (this.isEditMode) {
       this._loadSubject(this.subjectId!);
+    } else {
+      this._buildForm();
     }
   }
 
@@ -98,21 +92,21 @@ export class SubjectFormComponent implements OnInit, OnDestroy {
     this._destroy$.complete();
   }
 
-  // ─── Form ─────────────────────────────────────────────────────────────────
-  private _buildForm(data?: SubjectDto): void {
+  // ─── Build form with optional pre-populated data ──────────────────────────
+  private _buildForm(data?: any): void {
     const d = data ? normalizeSubject(data) : null;
+
     const formConfig: any = {
-      name:         [d?.name        ?? '', [Validators.required, Validators.maxLength(200)]],
-      code:         [d?.code        ?? '', [Validators.required, Validators.maxLength(20)]],
-      description:  [d?.description ?? '', Validators.maxLength(500)],
-      subjectType:  [d?.subjectType ?? '', Validators.required],
-      cbcLevel:     [d?.cbcLevel    ?? '', Validators.required],
-      isCompulsory: [d?.isCompulsory ?? false],
-      isActive:     [d?.isActive    ?? true],
+      name:        [d?.name        ?? '',  [Validators.required, Validators.maxLength(200)]],
+      code:        [{ value: d?.code ?? '', disabled: true }],
+      description: [d?.description ?? '',  Validators.maxLength(500)],
+      subjectType: [d?.subjectType ?? '',  Validators.required],   // string: "Core", "Optional" etc.
+      level:       [d?.level !== '' && d?.level !== null && d?.level !== undefined ? d.level : '', Validators.required],  // number
+      isActive:    [d?.isActive ?? true],
     };
 
     if (this.isSuperAdmin) {
-      formConfig.tenantId = [d?.schoolId ?? '', Validators.required];
+      formConfig.tenantId = [d?.tenantId ?? '', Validators.required];
     }
 
     this.form = this._fb.group(formConfig);
@@ -123,19 +117,9 @@ export class SubjectFormComponent implements OnInit, OnDestroy {
     this._service.getById(id)
       .pipe(takeUntil(this._destroy$))
       .subscribe({
-        next: subject => {
+        next: (subject: any) => {
+          this._buildForm(subject);
           this.isLoading = false;
-          const norm = normalizeSubject(subject);
-          this.form.patchValue({
-            name:         norm.name,
-            code:         norm.code,
-            description:  norm.description,
-            subjectType:  norm.subjectType,
-            cbcLevel:     norm.cbcLevel,
-            isCompulsory: norm.isCompulsory,
-            isActive:     norm.isActive,
-            ...(this.isSuperAdmin ? { tenantId: norm.schoolId } : {}),
-          });
         },
         error: err => {
           this.isLoading = false;
@@ -145,7 +129,6 @@ export class SubjectFormComponent implements OnInit, OnDestroy {
       });
   }
 
-  // ─── Helpers ─────────────────────────────────────────────────────────────
   isInvalid(field: string): boolean {
     const c = this.form.get(field);
     return !!(c && c.invalid && (c.dirty || c.touched));
@@ -154,45 +137,40 @@ export class SubjectFormComponent implements OnInit, OnDestroy {
   getError(field: string): string {
     const c = this.form.get(field);
     if (!c?.errors) return '';
-    if (c.errors['required'])   return `${this._label(field)} is required`;
-    if (c.errors['maxlength'])  return `${this._label(field)} is too long`;
+    if (c.errors['required'])  return `${this._label(field)} is required`;
+    if (c.errors['maxlength']) return `${this._label(field)} is too long`;
     return 'Invalid value';
   }
 
   private _label(field: string): string {
     const map: Record<string, string> = {
-      name: 'Name', code: 'Code', subjectType: 'Subject type',
-      cbcLevel: 'CBC Level', tenantId: 'School',
+      name: 'Name', subjectType: 'Subject type',
+      level: 'CBC Level', tenantId: 'School',
     };
     return map[field] ?? field;
   }
 
-  // ─── Submit ───────────────────────────────────────────────────────────────
   submit(): void {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
-      return;
-    }
+    if (this.form.invalid) { this.form.markAllAsTouched(); return; }
 
     this.isSubmitting = true;
-    const raw     = this.form.getRawValue();
-    const payload = {
+    const raw = this.form.getRawValue();
+
+    const payload: any = {
       name:        raw.name?.trim(),
-      code:        raw.code?.trim().toUpperCase(),
-      description: raw.description?.trim() || undefined,
-      subjectType: Number(raw.subjectType),
-      cbcLevel:    Number(raw.cbcLevel),
-      isCompulsory: raw.isCompulsory,
+      description: raw.description?.trim() || null,
+      subjectType: raw.subjectType,          // string name
+      level:       Number(raw.level),        // number
       isActive:    raw.isActive,
       ...(this.isSuperAdmin ? { tenantId: raw.tenantId } : {}),
     };
 
     const request$ = this.isEditMode
       ? this._service.update(this.subjectId!, payload)
-      : this._service.create(payload as any);
+      : this._service.create(payload);
 
     request$.pipe(takeUntil(this._destroy$)).subscribe({
-      next: res => {
+      next: () => {
         this.isSubmitting = false;
         this._alertService.success(
           this.isEditMode ? 'Subject updated successfully!' : 'Subject created successfully!'

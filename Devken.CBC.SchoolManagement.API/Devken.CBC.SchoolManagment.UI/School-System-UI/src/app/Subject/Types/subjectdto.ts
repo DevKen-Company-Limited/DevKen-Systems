@@ -1,28 +1,33 @@
 // types/subjectdto.ts
 
 export interface SubjectDto {
-  id: string;
-  name: string;
-  code: string;
-  description?: string;
-  subjectType: number | string;
-  cbcLevel: number | string;
-  isCompulsory: boolean;
-  isActive: boolean;
-  schoolId?: string;
-  schoolName?: string;
-  createdAt?: string | Date;
-  updatedAt?: string | Date;
+  id:          string;
+  code:        string;
+  name:        string;
+  description: string | null;
+  level:       string;           // API returns level as string "0", "1" etc.
+  subjectType: string;           // API returns string name: "Core", "Optional", "CoCurricular"
+  isActive:    boolean;
+  status:      string;
+  tenantId:    string;
+  createdOn:   string;
+  updatedOn:   string;
 }
 
 export interface CreateSubjectRequest {
-  name: string;
-  code: string;
+  name:        string;
   description?: string;
-  subjectType: number;
-  cbcLevel: number;
-  isCompulsory: boolean;
-  tenantId?: string;
+  subjectType: string;           // send string name back to API
+  level:       number;
+  isActive:    boolean;
+  tenantId?:   string;
 }
 
-export interface UpdateSubjectRequest extends Partial<CreateSubjectRequest> {}
+export interface UpdateSubjectRequest {
+  name:        string;
+  description?: string;
+  subjectType: string;
+  level:       number;
+  isActive:    boolean;
+  tenantId?:   string;
+}

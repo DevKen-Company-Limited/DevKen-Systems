@@ -14,7 +14,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Devken.CBC.SchoolManagement.Api.Controllers.Academic
 {
-        public class SubjectsController : BaseApiController
+    [Route("api/academic/[controller]")]
+    [ApiController]
+    [Authorize]
+    public class SubjectsController : BaseApiController
         {
             private readonly ISubjectService _subjectService;
 

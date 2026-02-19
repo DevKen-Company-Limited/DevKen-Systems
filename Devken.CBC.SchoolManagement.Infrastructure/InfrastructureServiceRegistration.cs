@@ -23,6 +23,7 @@ using Devken.CBC.SchoolManagement.Application.Services.Interfaces.Images;
 using Devken.CBC.SchoolManagement.Application.Services.UserManagement;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academic;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academics;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Identity;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSeries;
@@ -264,6 +265,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             
             // Repositories
             services.AddScoped<IStudentRepository, StudentRepository>();
+            services.AddScoped<ISubjectRepository, SubjectRepository>();
             services.AddScoped<ISchoolRepository, SchoolRepository>();
             services.AddScoped<IRoleRepository, RoleRepository>();
             services.AddScoped<IPermissionRepository, PermissionRepository>();
@@ -281,6 +283,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IUserManagementService, UserManagementService>();
             services.AddScoped<ITeacherService, TeacherService>();
             services.AddScoped<ITermService, TermService>();
+            services.AddScoped<IStudentService, StudentService>();
+            services.AddScoped<ISubjectService, SubjectService>();
             services.AddScoped<IJwtService, JwtService>();
             services.AddScoped<IPermissionSeedService, PermissionSeedService>();
             services.AddScoped<ISubscriptionSeedService, SubscriptionSeedService>();

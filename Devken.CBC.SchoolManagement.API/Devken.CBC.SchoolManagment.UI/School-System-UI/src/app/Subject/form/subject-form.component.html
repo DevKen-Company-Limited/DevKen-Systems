@@ -1,7 +1,6 @@
 <!-- form/subject-form.component.html -->
 <div class="absolute inset-0 flex min-w-0 flex-col overflow-y-auto" cdkScrollable>
 
-  <!-- ── Page Header ───────────────────────────────────────────────────── -->
   <app-page-header
     [title]="isEditMode ? 'Edit Subject' : 'Create Subject'"
     [description]="isEditMode ? 'Update subject details and curriculum settings' : 'Add a new subject to the CBC curriculum'"
@@ -17,10 +16,9 @@
     </button>
   </ng-template>
 
-  <!-- ── Main Content ───────────────────────────────────────────────────── -->
   <div class="bg-card -mt-10 flex-auto rounded-t-2xl p-6 shadow sm:p-10">
 
-    <!-- Loading -->
+    <!-- Loading spinner -->
     <div *ngIf="isLoading" class="flex items-center justify-center py-32">
       <div class="text-center">
         <mat-spinner diameter="48" class="mx-auto mb-4"></mat-spinner>
@@ -28,9 +26,9 @@
       </div>
     </div>
 
-    <div *ngIf="!isLoading" class="max-w-4xl">
+    <div *ngIf="!isLoading && form" class="max-w-4xl">
 
-      <!-- Section Header -->
+      <!-- Header -->
       <div class="flex items-start gap-4 mb-8">
         <div class="flex items-center justify-center w-14 h-14 rounded-xl
                     bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg">
@@ -41,24 +39,26 @@
             {{ isEditMode ? 'Edit Subject' : 'New Subject' }}
           </h2>
           <p class="text-gray-600 dark:text-gray-400">
-            {{ isEditMode ? 'Update the subject information below.' : 'Fill in the details to create a new CBC subject. Fields marked * are required.' }}
+            {{ isEditMode
+              ? 'Update the subject information below.'
+              : 'Fill in the details to create a new CBC subject. Fields marked * are required.' }}
           </p>
         </div>
       </div>
 
-      <!-- Hint Alert (create only) -->
+      <!-- Info alert (create only) -->
       <fuse-alert *ngIf="!isEditMode" type="info" appearance="soft" [showIcon]="true" class="mb-6">
-        <strong>Getting Started:</strong> Enter the subject name and a unique code. 
-        Subject codes are automatically uppercased (e.g. <em>math</em> → <em>MATH</em>).
+        <strong>Getting Started:</strong> Enter subject details below.
+        The <strong>Subject Code</strong> will be automatically assigned by the number series after saving.
       </fuse-alert>
 
       <form [formGroup]="form" novalidate class="space-y-6">
 
-        <!-- ── School Assignment (SuperAdmin only) ──────────────────────── -->
+        <!-- School Assignment (SuperAdmin only) -->
         <mat-card *ngIf="isSuperAdmin" class="shadow-md">
           <mat-card-header class="!pb-2">
             <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
-              <mat-icon class="text-indigo-600">school</mat-icon>
+              <mat-icon class="text-indigo-600">apartment</mat-icon>
               School Assignment
               <span class="ml-auto text-xs font-medium px-2 py-1 bg-red-100 text-red-700
                            dark:bg-red-900/30 dark:text-red-300 rounded">Required</span>
@@ -80,7 +80,7 @@
           </mat-card-content>
         </mat-card>
 
-        <!-- ── Subject Identity ─────────────────────────────────────────── -->
+        <!-- Subject Identity -->
         <mat-card class="shadow-md">
           <mat-card-header class="!pb-2">
             <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
@@ -91,8 +91,9 @@
             </mat-card-title>
           </mat-card-header>
           <mat-card-content class="!pt-4">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
+            <!-- Name + Code -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <mat-form-field appearance="outline" class="w-full">
                 <mat-label>Subject Name *</mat-label>
                 <input matInput formControlName="name" placeholder="e.g. Mathematics">
@@ -101,16 +102,21 @@
                 <mat-error>{{ getError('name') }}</mat-error>
               </mat-form-field>
 
+              <!-- Code: always disabled — auto-generated or shows existing value -->
               <mat-form-field appearance="outline" class="w-full">
-                <mat-label>Subject Code *</mat-label>
-                <input matInput formControlName="code" placeholder="e.g. MATH" style="text-transform:uppercase">
+                <mat-label>Subject Code</mat-label>
+                <input matInput formControlName="code"
+                  [placeholder]="isEditMode ? '' : 'Auto-generated after saving'">
                 <mat-icon matPrefix class="text-gray-400">tag</mat-icon>
-                <mat-hint>Unique identifier code (auto-uppercased)</mat-hint>
-                <mat-error>{{ getError('code') }}</mat-error>
+                <mat-hint>
+                  {{ isEditMode
+                    ? 'Assigned by number series — read-only'
+                    : 'Will be assigned automatically by the number series' }}
+                </mat-hint>
               </mat-form-field>
-
             </div>
 
+            <!-- Description -->
             <mat-form-field appearance="outline" class="w-full mt-4">
               <mat-label>Description</mat-label>
               <textarea matInput formControlName="description" rows="3"
@@ -118,10 +124,11 @@
               <mat-icon matPrefix class="text-gray-400">description</mat-icon>
               <mat-hint>Optional — up to 500 characters</mat-hint>
             </mat-form-field>
+
           </mat-card-content>
         </mat-card>
 
-        <!-- ── Curriculum Details ───────────────────────────────────────── -->
+        <!-- Curriculum Details -->
         <mat-card class="shadow-md">
           <mat-card-header class="!pb-2">
             <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
@@ -134,6 +141,7 @@
           <mat-card-content class="!pt-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
+              <!-- Subject Type — bound to string values matching API -->
               <mat-form-field appearance="outline" class="w-full">
                 <mat-label>Subject Type *</mat-label>
                 <mat-select formControlName="subjectType">
@@ -147,9 +155,10 @@
                 <mat-error>{{ getError('subjectType') }}</mat-error>
               </mat-form-field>
 
+              <!-- CBC Level — bound to numeric values, field name is "level" -->
               <mat-form-field appearance="outline" class="w-full">
                 <mat-label>CBC Level *</mat-label>
-                <mat-select formControlName="cbcLevel">
+                <mat-select formControlName="level">
                   <mat-option value="">Select level</mat-option>
                   <mat-option *ngFor="let lvl of cbcLevels" [value]="lvl.value">
                     {{ lvl.label }}
@@ -157,14 +166,14 @@
                 </mat-select>
                 <mat-icon matPrefix class="text-gray-400">stairs</mat-icon>
                 <mat-hint>Competency-based curriculum level</mat-hint>
-                <mat-error>{{ getError('cbcLevel') }}</mat-error>
+                <mat-error>{{ getError('level') }}</mat-error>
               </mat-form-field>
 
             </div>
           </mat-card-content>
         </mat-card>
 
-        <!-- ── Settings ─────────────────────────────────────────────────── -->
+        <!-- Settings -->
         <mat-card class="shadow-md">
           <mat-card-header class="!pb-2">
             <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
@@ -172,26 +181,7 @@
               Settings
             </mat-card-title>
           </mat-card-header>
-          <mat-card-content class="!p-6 space-y-4">
-
-            <!-- Compulsory Toggle -->
-            <div class="flex items-center justify-between p-4 rounded-xl
-                        bg-amber-50 dark:bg-amber-900/10
-                        border border-amber-200 dark:border-amber-800">
-              <div class="flex items-center gap-3">
-                <div class="flex items-center justify-center w-10 h-10 rounded-lg
-                            bg-amber-100 dark:bg-amber-900/30">
-                  <mat-icon class="text-amber-600">star</mat-icon>
-                </div>
-                <div>
-                  <div class="font-semibold text-gray-900 dark:text-white">Compulsory Subject</div>
-                  <div class="text-sm text-gray-600 dark:text-gray-400">
-                    All students must take this subject; it cannot be dropped
-                  </div>
-                </div>
-              </div>
-              <mat-slide-toggle formControlName="isCompulsory" color="accent"></mat-slide-toggle>
-            </div>
+          <mat-card-content class="!p-6">
 
             <!-- Active Toggle -->
             <div class="flex items-center justify-between p-4 rounded-xl
@@ -215,16 +205,14 @@
           </mat-card-content>
         </mat-card>
 
-        <!-- ── Form Actions ─────────────────────────────────────────────── -->
+        <!-- Form Actions -->
         <div class="flex items-center justify-end gap-4 pt-2">
           <button mat-stroked-button type="button" (click)="cancel()" [disabled]="isSubmitting">
             <mat-icon class="icon-size-5">close</mat-icon>
             <span class="ml-2">Cancel</span>
           </button>
-
           <button mat-flat-button color="primary" type="button"
-            (click)="submit()"
-            [disabled]="isSubmitting || form.invalid">
+            (click)="submit()" [disabled]="isSubmitting || form.invalid">
             <mat-spinner *ngIf="isSubmitting" diameter="18" class="mr-2"></mat-spinner>
             <mat-icon *ngIf="!isSubmitting" class="icon-size-5">
               {{ isEditMode ? 'save' : 'add_circle' }}
