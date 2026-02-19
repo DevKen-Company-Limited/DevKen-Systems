@@ -1,0 +1,153 @@
+<div class="absolute inset-0 flex min-w-0 flex-col overflow-y-auto" cdkScrollable>
+
+  <!-- ── Page Header ─────────────────────────────────────────────────────── -->
+  <app-page-header
+    title="Assessments"
+    description="Manage formative, summative and competency-based assessments"
+    icon="assignment"
+    [breadcrumbs]="breadcrumbs"
+    [actionTemplate]="headerActions">
+  </app-page-header>
+
+  <!-- Header Action Template -->
+  <ng-template #headerActions>
+    <button mat-flat-button
+      class="bg-white text-indigo-700 hover:bg-yellow-200 hover:text-indigo-900 shadow-lg transition-all hover:shadow-xl font-bold"
+      (click)="openCreate()">
+      <mat-icon class="icon-size-5">add_circle</mat-icon>
+      <span class="ml-2">New Assessment</span>
+    </button>
+  </ng-template>
+
+  <!-- ── Main Content ───────────────────────────────────────────────────── -->
+  <div class="bg-card -mt-10 flex-auto rounded-t-2xl p-6 shadow sm:p-10">
+
+    <!-- Stats Cards -->
+    <app-stats-cards [cards]="statsCards" [columns]="4"></app-stats-cards>
+
+    <!-- Filter Panel -->
+    <div class="mb-6">
+      <app-filter-panel
+        [fields]="filterFields"
+        [showPanel]="showFilterPanel"
+        [columns]="4"
+        (filterChange)="onFilterChange($event)"
+        (clearAll)="onClearFilters()"
+        (togglePanel)="toggleFilterPanel()">
+      </app-filter-panel>
+    </div>
+
+    <!-- Data Table -->
+    <app-data-table
+      [columns]="tableColumns"
+      [data]="paginatedData"
+      [actions]="tableActions"
+      [loading]="isLoading"
+      [header]="tableHeader"
+      [emptyState]="tableEmptyState"
+      [cellTemplates]="cellTemplates">
+    </app-data-table>
+
+    <!-- Pagination -->
+    <app-pagination
+      *ngIf="!isLoading"
+      [currentPage]="currentPage"
+      [totalItems]="filteredData.length"
+      [itemsPerPage]="itemsPerPage"
+      [itemLabel]="'assessments'"
+      [showItemsPerPageSelector]="true"
+      [showPageNumbers]="true"
+      (pageChange)="onPageChange($event)"
+      (itemsPerPageChange)="onItemsPerPageChange($event)">
+    </app-pagination>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- Cell Templates                                                            -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+
+<!-- Title Cell -->
+<ng-template #titleCell let-row>
+  <div class="flex items-center gap-3">
+    <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0
+                bg-gradient-to-br from-indigo-100 to-violet-100 border border-indigo-200 dark:border-indigo-800">
+      <mat-icon class="icon-size-5 text-indigo-600 dark:text-indigo-400">assignment</mat-icon>
+    </div>
+    <div>
+      <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ row.title }}</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-52">
+        {{ row.description || '—' }}
+      </p>
+    </div>
+  </div>
+</ng-template>
+
+<!-- Type Cell -->
+<ng-template #typeCell let-row>
+  <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold border"
+    [ngClass]="{
+      'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800':
+        row.assessmentType === 'Formative',
+      'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800':
+        row.assessmentType === 'Summative',
+      'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800':
+        row.assessmentType === 'Competency'
+    }">
+    {{ row.assessmentType }}
+  </span>
+</ng-template>
+
+<!-- Class / Subject Cell -->
+<ng-template #classSubjectCell let-row>
+  <div>
+    <p class="text-sm text-gray-700 dark:text-gray-300 font-medium">{{ row.className || '—' }}</p>
+    <p class="text-xs text-gray-500 dark:text-gray-400">{{ row.subjectName || '—' }}</p>
+  </div>
+</ng-template>
+
+<!-- Teacher Cell -->
+<ng-template #teacherCell let-row>
+  <div class="flex items-center gap-2">
+    <mat-icon class="icon-size-4 text-indigo-500 shrink-0">person</mat-icon>
+    <span class="text-sm text-gray-700 dark:text-gray-300 truncate max-w-36">
+      {{ row.teacherName || '—' }}
+    </span>
+  </div>
+</ng-template>
+
+<!-- Date / Score Cell -->
+<ng-template #dateScoreCell let-row>
+  <div>
+    <p class="text-sm text-gray-700 dark:text-gray-300">
+      {{ row.assessmentDate | date: 'dd MMM yyyy' }}
+    </p>
+    <p class="text-xs text-gray-500 dark:text-gray-400">
+      Max: <span class="font-semibold text-indigo-600 dark:text-indigo-400">{{ row.maximumScore }}</span>
+    </p>
+  </div>
+</ng-template>
+
+<!-- School Cell (SuperAdmin only) -->
+<ng-template #schoolCell let-row>
+  <div class="flex items-center gap-2">
+    <mat-icon class="icon-size-5 text-blue-600 dark:text-blue-400">school</mat-icon>
+    <span class="text-sm text-gray-700 dark:text-gray-300">{{ row.schoolName || '—' }}</span>
+  </div>
+</ng-template>
+
+<!-- Published Status Cell -->
+<ng-template #publishedCell let-row>
+  <div class="flex flex-col gap-0.5">
+    <span class="px-2.5 py-1 rounded-full text-xs font-semibold w-fit"
+      [ngClass]="{
+        'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400': row.isPublished,
+        'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400': !row.isPublished
+      }">
+      {{ row.isPublished ? 'Published' : 'Draft' }}
+    </span>
+    <span *ngIf="row.isPublished && row.publishedDate" class="text-xs text-gray-400">
+      {{ row.publishedDate | date: 'dd MMM' }}
+    </span>
+  </div>
+</ng-template>

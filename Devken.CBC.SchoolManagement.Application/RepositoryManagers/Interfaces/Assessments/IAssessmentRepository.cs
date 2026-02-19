@@ -2,14 +2,18 @@
 using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
-namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessments
+namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Assessments
 {
     public interface IAssessmentRepository : IRepositoryBase<Assessment1, Guid>
     {
+        /// <summary>Returns all assessments (SuperAdmin use – not tenant-scoped).</summary>
+        Task<IEnumerable<Assessment1>> GetAllAsync(bool trackChanges = false);
+
+        /// <summary>Returns all assessments belonging to a specific school/tenant.</summary>
+        Task<IEnumerable<Assessment1>> GetBySchoolAsync(Guid schoolId, bool trackChanges = false);
+
         /// <summary>Returns all assessments for a given class (no tracking).</summary>
         Task<IEnumerable<Assessment1>> GetByClassAsync(Guid classId, bool trackChanges = false);
 

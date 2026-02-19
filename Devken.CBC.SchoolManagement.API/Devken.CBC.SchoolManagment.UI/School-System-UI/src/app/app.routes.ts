@@ -155,7 +155,7 @@ export const appRoutes: Route[] = [
             {
                 path: 'assessment',
                 children: [
-                    // { path: 'assessments', loadChildren: () => import('app/modules/assessment/assessments/assessments.routes') },
+                    { path: 'assessments', loadChildren: () => import('app/assessment/Assessments/assessments.component.routes') },
                     // { path: 'reports', loadChildren: () => import('app/modules/assessment/reports/reports.routes') }
                 ]
             },
