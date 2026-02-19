@@ -1,49 +1,64 @@
-﻿using Devken.CBC.SchoolManagement.Domain.Entities.Assessment;
-using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
+﻿using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
+using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Assessments
 {
+    /// <summary>
+    /// Configures the "SummativeAssessments" TPT table.
+    /// Only columns exclusive to SummativeAssessment are mapped here.
+    /// </summary>
     public class SummativeAssessmentConfiguration : IEntityTypeConfiguration<SummativeAssessment>
     {
+        private readonly TenantContext _tenantContext;
+
+        public SummativeAssessmentConfiguration(TenantContext tenantContext)
+        {
+            _tenantContext = tenantContext;
+        }
+
         public void Configure(EntityTypeBuilder<SummativeAssessment> builder)
         {
-            // DO NOT call ToTable() for derived types in TPH
-            // DO NOT call HasKey() for derived types in TPH
+            // ── Subtype-only columns ─────────────────────────────────────
 
-            // Derived-specific properties only
-            builder.Property(sa => sa.ExamType)
-                .HasMaxLength(50);
+            builder.Property(s => s.ExamType)
+                   .HasMaxLength(50)
+                   .IsRequired(false);     // EndTerm | MidTerm | Final
 
-            builder.Property(sa => sa.PassMark)
-                .HasDefaultValue(50.0m);
+            builder.Property(s => s.Duration)
+                   .IsRequired(false);     // stored as TIME(7) by SQL Server
 
-            builder.Property(sa => sa.NumberOfQuestions)
-                .HasDefaultValue(0);
+            builder.Property(s => s.NumberOfQuestions)
+                   .HasDefaultValue(0);
 
-            builder.Property(sa => sa.HasPracticalComponent)
-                .HasDefaultValue(false);
+            builder.Property(s => s.PassMark)
+                   .HasColumnType("decimal(5,2)")
+                   .HasDefaultValue(50.0m);
 
-            builder.Property(sa => sa.PracticalWeight)
-                .HasPrecision(5, 2)
-                .HasDefaultValue(0.0m);
+            builder.Property(s => s.HasPracticalComponent)
+                   .HasDefaultValue(false);
 
-            builder.Property(sa => sa.TheoryWeight)
-                .HasPrecision(5, 2)
-                .HasDefaultValue(100.0m);
+            builder.Property(s => s.PracticalWeight)
+                   .HasColumnType("decimal(5,2)")
+                   .HasDefaultValue(0.0m);
 
-            builder.Property(sa => sa.Duration)
-                .HasColumnType("time");
+            builder.Property(s => s.TheoryWeight)
+                   .HasColumnType("decimal(5,2)")
+                   .HasDefaultValue(100.0m);
 
-            builder.Property(sa => sa.Instructions)
-                .HasMaxLength(1000);
+            builder.Property(s => s.Instructions)
+                   .HasMaxLength(1000)
+                   .IsRequired(false);
 
-            // Relationships
-            builder.HasMany(sa => sa.Scores)
-                .WithOne(sas => sas.SummativeAssessment)
-                .HasForeignKey(sas => sas.SummativeAssessmentId)
-                .OnDelete(DeleteBehavior.Cascade);
+            // ── Navigation: Scores ───────────────────────────────────────
+            builder.HasMany(s => s.Scores)
+                   .WithOne(sc => sc.SummativeAssessment)
+                   .HasForeignKey(sc => sc.SummativeAssessmentId)
+                   .OnDelete(DeleteBehavior.Cascade);
+
+            // ── Indexes ──────────────────────────────────────────────────
+            builder.HasIndex(s => s.ExamType);
         }
     }
 }

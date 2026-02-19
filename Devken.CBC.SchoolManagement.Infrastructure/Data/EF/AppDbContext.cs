@@ -1,7 +1,6 @@
 ﻿using Devken.CBC.SchoolManagement.Domain.Common;
 using Devken.CBC.SchoolManagement.Domain.Entities.Academic;
 using Devken.CBC.SchoolManagement.Domain.Entities.Administration;
-using Devken.CBC.SchoolManagement.Domain.Entities.Assessment;
 using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
 using Devken.CBC.SchoolManagement.Domain.Entities.Finance;
 using Devken.CBC.SchoolManagement.Domain.Entities.Helpers;
@@ -70,15 +69,26 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         public DbSet<Parent> Parents => Set<Parent>();
         public DbSet<LearningOutcome> LearningOutcomes => Set<LearningOutcome>();
 
-        // ── Assessments ─────────────────────────────────────────────────
-        // TPH: Assessment1 is the root — FormativeAssessment, SummativeAssessment,
-        // and CompetencyAssessment are all stored in the same Assessments table,
-        // distinguished by the AssessmentType discriminator column.
-        // Do NOT add separate DbSets for derived assessment types.
+        // ── Assessments (TPT) ───────────────────────────────────────────
+        //
+        // TPT strategy: Assessment1 is abstract and maps to the "Assessments" table
+        // containing only shared columns. Each concrete subtype maps to its own
+        // dedicated table (FormativeAssessments, SummativeAssessments,
+        // CompetencyAssessments) holding only subtype-specific columns.
+        // EF Core joins via the shared primary key when you query a derived type.
+        //
+        // Use the concrete DbSets for targeted queries (e.g. formative only),
+        // or the base DbSet when you need cross-type queries.
         public DbSet<Assessment1> Assessments => Set<Assessment1>();
+        public DbSet<FormativeAssessment> FormativeAssessments => Set<FormativeAssessment>();
+        public DbSet<SummativeAssessment> SummativeAssessments => Set<SummativeAssessment>();
+        public DbSet<CompetencyAssessment> CompetencyAssessments => Set<CompetencyAssessment>();
+
         public DbSet<Grade> Grades => Set<Grade>();
 
-        // Score tables are separate entities (not TPH), so each has its own DbSet.
+        // ── Assessment Scores ───────────────────────────────────────────
+        // Each score type is an independent entity (not part of the TPT hierarchy)
+        // with its own table and FK back to the corresponding assessment type.
         public DbSet<FormativeAssessmentScore> FormativeAssessmentScores => Set<FormativeAssessmentScore>();
         public DbSet<SummativeAssessmentScore> SummativeAssessmentScores => Set<SummativeAssessmentScore>();
         public DbSet<CompetencyAssessmentScore> CompetencyAssessmentScores => Set<CompetencyAssessmentScore>();
@@ -108,74 +118,130 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             DecimalPrecisionConvention.Apply(mb);
 
             // ── GENERIC BASE ENTITY KEY CONFIGURATION ───────────────────
+            // Only configure the key on root entities. Derived TPT types share
+            // the root PK — EF Core handles the join automatically.
             foreach (var entityType in mb.Model.GetEntityTypes())
             {
-                if (typeof(BaseEntity<Guid>).IsAssignableFrom(entityType.ClrType))
+                if (typeof(BaseEntity<Guid>).IsAssignableFrom(entityType.ClrType)
+                    && entityType.BaseType == null)
                 {
-                    // Skip derived types in TPH hierarchy (they share the root's key)
-                    if (entityType.BaseType == null)
-                    {
-                        mb.Entity(entityType.ClrType).HasKey("Id");
-                    }
+                    mb.Entity(entityType.ClrType).HasKey("Id");
                 }
             }
 
-            // ── RELATIONSHIPS NOT COVERED BY ENTITY CONFIGURATIONS ───────
-
-            mb.Entity<Teacher>()
-                .HasOne(t => t.CurrentClass)
-                .WithMany()
-                .HasForeignKey(t => t.CurrentClassId)
-                .OnDelete(DeleteBehavior.Restrict);
+            // ── ASSESSMENT TPT MAPPING ───────────────────────────────────
+            //
+            // Declare the TPT hierarchy here so EF Core knows the mapping
+            // strategy before the individual entity configurations are applied.
+            // Table names are explicit for readability and migration stability.
+            mb.Entity<Assessment1>()
+              .UseTptMappingStrategy()
+              .ToTable("Assessments");
 
             mb.Entity<FormativeAssessment>()
-                .HasOne(f => f.LearningOutcome)
-                .WithMany(lo => lo.FormativeAssessments)
-                .HasForeignKey(f => f.LearningOutcomeId)
-                .OnDelete(DeleteBehavior.Restrict);
+              .ToTable("FormativeAssessments");
 
+            mb.Entity<SummativeAssessment>()
+              .ToTable("SummativeAssessments");
+
+            mb.Entity<CompetencyAssessment>()
+              .ToTable("CompetencyAssessments");
+
+            // ── EXPLICIT RELATIONSHIPS ───────────────────────────────────
+
+            // Teacher → current class (self-referencing, restrict delete)
+            mb.Entity<Teacher>()
+              .HasOne(t => t.CurrentClass)
+              .WithMany()
+              .HasForeignKey(t => t.CurrentClassId)
+              .OnDelete(DeleteBehavior.Restrict);
+
+            // FormativeAssessment → LearningOutcome (optional FK)
+            mb.Entity<FormativeAssessment>()
+              .HasOne(f => f.LearningOutcome)
+              .WithMany(lo => lo.FormativeAssessments)
+              .HasForeignKey(f => f.LearningOutcomeId)
+              .OnDelete(DeleteBehavior.Restrict);
+
+            // SuperAdminRefreshToken → SuperAdmin
             mb.Entity<SuperAdminRefreshToken>()
-                .HasOne(t => t.SuperAdmin)
-                .WithMany()
-                .HasForeignKey(t => t.SuperAdminId)
-                .OnDelete(DeleteBehavior.Cascade);
+              .HasOne(t => t.SuperAdmin)
+              .WithMany()
+              .HasForeignKey(t => t.SuperAdminId)
+              .OnDelete(DeleteBehavior.Cascade);
 
-            // ── SUMMATIVE ASSESSMENT SCORE — relationships & computed ────
-            //
-            // The SummativeAssessmentScoreConfiguration handles column mapping,
-            // but we wire the FK relationships here to keep them visible alongside
-            // the other explicit relationship definitions above.
-
-            mb.Entity<SummativeAssessmentScore>(entity =>
+            // ── FORMATIVE ASSESSMENT SCORE RELATIONSHIPS ─────────────────
+            mb.Entity<FormativeAssessmentScore>(entity =>
             {
-                // FK → SummativeAssessment (the TPH-stored parent)
-                entity.HasOne(s => s.SummativeAssessment)
+                entity.HasOne(s => s.FormativeAssessment)
                       .WithMany(a => a.Scores)
-                      .HasForeignKey(s => s.SummativeAssessmentId)
+                      .HasForeignKey(s => s.FormativeAssessmentId)
                       .OnDelete(DeleteBehavior.Cascade);
 
-                // FK → Student
                 entity.HasOne(s => s.Student)
                       .WithMany()
                       .HasForeignKey(s => s.StudentId)
                       .OnDelete(DeleteBehavior.Restrict);
 
-                // FK → Teacher (grader)
                 entity.HasOne(s => s.GradedBy)
                       .WithMany()
                       .HasForeignKey(s => s.GradedById)
                       .OnDelete(DeleteBehavior.Restrict);
 
-                // Computed properties — never mapped to columns
+                // Computed — never persisted
+                entity.Ignore(s => s.Percentage);
+            });
+
+            // ── SUMMATIVE ASSESSMENT SCORE RELATIONSHIPS ─────────────────
+            mb.Entity<SummativeAssessmentScore>(entity =>
+            {
+                entity.HasOne(s => s.SummativeAssessment)
+                      .WithMany(a => a.Scores)
+                      .HasForeignKey(s => s.SummativeAssessmentId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(s => s.Student)
+                      .WithMany()
+                      .HasForeignKey(s => s.StudentId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(s => s.GradedBy)
+                      .WithMany()
+                      .HasForeignKey(s => s.GradedById)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                // Computed — never persisted
                 entity.Ignore(s => s.TotalScore);
                 entity.Ignore(s => s.MaximumTotalScore);
                 entity.Ignore(s => s.Percentage);
                 entity.Ignore(s => s.PerformanceStatus);
             });
 
+            // ── COMPETENCY ASSESSMENT SCORE RELATIONSHIPS ────────────────
+            mb.Entity<CompetencyAssessmentScore>(entity =>
+            {
+                entity.HasOne(s => s.CompetencyAssessment)
+                      .WithMany(a => a.Scores)
+                      .HasForeignKey(s => s.CompetencyAssessmentId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(s => s.Student)
+                      .WithMany()
+                      .HasForeignKey(s => s.StudentId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(s => s.Assessor)
+                      .WithMany()
+                      .HasForeignKey(s => s.AssessorId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                // Computed — never persisted
+                entity.Ignore(s => s.CompetencyLevel);
+            });
+
             // ── APPLY ENTITY CONFIGURATIONS ─────────────────────────────
 
-            // Identity
+            // Identity & School
             mb.ApplyConfiguration(new SchoolConfiguration());
             mb.ApplyConfiguration(new PermissionConfiguration());
             mb.ApplyConfiguration(new RoleConfiguration(_tenantContext));
@@ -198,16 +264,18 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             // Grades
             mb.ApplyConfiguration(new GradeConfiguration(_tenantContext));
 
-            // Assessments — TPH root first, then each discriminated type
+            // Assessments — root first (TPT base), then each subtype
+            // Each configuration only adds column/index mappings for its own
+            // properties; the TPT table routing is already declared above.
             mb.ApplyConfiguration(new AssessmentConfiguration(_tenantContext));
-            mb.ApplyConfiguration(new FormativeAssessmentConfiguration());
-            mb.ApplyConfiguration(new SummativeAssessmentConfiguration());         // ← registers SummativeAssessment TPH columns
-            mb.ApplyConfiguration(new CompetencyAssessmentConfiguration());
+            mb.ApplyConfiguration(new FormativeAssessmentConfiguration(_tenantContext));
+            mb.ApplyConfiguration(new SummativeAssessmentConfiguration(_tenantContext));
+            mb.ApplyConfiguration(new CompetencyAssessmentConfiguration(_tenantContext));
 
-            // Assessment scores
-            mb.ApplyConfiguration(new FormativeAssessmentScoreConfiguration());
-            mb.ApplyConfiguration(new SummativeAssessmentScoreConfiguration(_tenantContext)); // ← registers SummativeAssessmentScore table
-            mb.ApplyConfiguration(new CompetencyAssessmentScoreConfiguration());
+            // Assessment scores — independent tables, wired above
+            mb.ApplyConfiguration(new FormativeAssessmentScoreConfiguration(_tenantContext));
+            mb.ApplyConfiguration(new SummativeAssessmentScoreConfiguration(_tenantContext));
+            mb.ApplyConfiguration(new CompetencyAssessmentScoreConfiguration(_tenantContext));
 
             // Reports
             mb.ApplyConfiguration(new ProgressReportConfiguration(_tenantContext));
@@ -248,12 +316,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
 
             foreach (var entry in ChangeTracker.Entries())
             {
-                // Handle BaseEntity<Guid>
                 if (entry.Entity is BaseEntity<Guid> baseEntity)
                 {
                     if (entry.State == EntityState.Added)
                     {
-                        if (baseEntity.Id == null || baseEntity.Id == Guid.Empty)
+                        if (baseEntity.Id == Guid.Empty)
                             baseEntity.Id = Guid.NewGuid();
 
                         baseEntity.CreatedOn = now;
@@ -265,7 +332,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
                     }
                 }
 
-                // Handle IAuditableEntity
                 if (entry.Entity is IAuditableEntity auditable &&
                     (entry.State == EntityState.Added || entry.State == EntityState.Modified))
                 {
