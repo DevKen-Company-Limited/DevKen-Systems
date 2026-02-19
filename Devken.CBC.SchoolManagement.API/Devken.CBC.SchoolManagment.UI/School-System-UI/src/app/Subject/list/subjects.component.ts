@@ -30,11 +30,15 @@ import {
   DataTableComponent, TableColumn, TableAction,
   TableHeader, TableEmptyState,
 } from 'app/shared/data-table/data-table.component';
+
+
+import {
+  CBCLevelOptions, SubjectTypeOptions,
+  getCBCLevelLabel, getSubjectTypeLabel,
+} from '../Types/SubjectEnums';
 import { SubjectReportService } from 'app/core/DevKenService/SubjectService/SubjectReportService';
 import { SubjectService } from 'app/core/DevKenService/SubjectService/SubjectService';
 import { SubjectDto } from '../Types/subjectdto';
-import { getSubjectTypeLabel, getCBCLevelLabel, SubjectTypeOptions, CBCLevelOptions } from '../Types/SubjectEnums';
-
 
 @Component({
   selector: 'app-subjects',

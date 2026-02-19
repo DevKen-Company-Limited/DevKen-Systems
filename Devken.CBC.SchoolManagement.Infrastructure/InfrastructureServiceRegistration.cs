@@ -174,6 +174,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                 RegisterPermissionPolicy(options, PermissionKeys.TeacherDelete);
                 RegisterPermissionPolicy(options, PermissionKeys.SubjectRead);
                 RegisterPermissionPolicy(options, PermissionKeys.SubjectWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.SubjectDelete);
                 RegisterPermissionPolicy(options, PermissionKeys.ClassRead);
                 RegisterPermissionPolicy(options, PermissionKeys.ClassWrite);
                 RegisterPermissionPolicy(options, PermissionKeys.GradeRead);
@@ -241,6 +242,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                     "Settings.Read", "Settings.Write",
                     "Class.Read", "Class.Write",
                     "AcademicYear.Read", "AcademicYear.Write",
+                    "Subject.Read", "Subject.Write","Subject.Delete",
                     "Grade.Read", "Grade.Write",
                     "ProgressReport.Read", "ProgressReport.Write",
                     "Invoice.Read", "Invoice.Write",

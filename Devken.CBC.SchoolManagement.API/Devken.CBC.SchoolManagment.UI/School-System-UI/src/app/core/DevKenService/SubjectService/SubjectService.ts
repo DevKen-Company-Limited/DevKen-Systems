@@ -4,7 +4,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { API_BASE_URL } from 'app/app.config';
-import { CreateSubjectRequest, SubjectDto, UpdateSubjectRequest } from 'app/Subject/Types/subjectdto';
+import { SubjectDto, CreateSubjectRequest, UpdateSubjectRequest } from 'app/Subject/Types/subjectdto';
 
 interface ApiResponse<T> {
   success: boolean;

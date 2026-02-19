@@ -155,10 +155,10 @@
                 <mat-error>{{ getError('subjectType') }}</mat-error>
               </mat-form-field>
 
-              <!-- CBC Level — bound to numeric values, field name is "level" -->
+              <!-- CBC Level — bound to numeric values, field name is "cbcLevel" -->
               <mat-form-field appearance="outline" class="w-full">
                 <mat-label>CBC Level *</mat-label>
-                <mat-select formControlName="level">
+                <mat-select formControlName="cbcLevel">
                   <mat-option value="">Select level</mat-option>
                   <mat-option *ngFor="let lvl of cbcLevels" [value]="lvl.value">
                     {{ lvl.label }}
@@ -166,7 +166,7 @@
                 </mat-select>
                 <mat-icon matPrefix class="text-gray-400">stairs</mat-icon>
                 <mat-hint>Competency-based curriculum level</mat-hint>
-                <mat-error>{{ getError('level') }}</mat-error>
+                <mat-error>{{ getError('cbcLevel') }}</mat-error>
               </mat-form-field>
 
             </div>
@@ -183,23 +183,46 @@
           </mat-card-header>
           <mat-card-content class="!p-6">
 
-            <!-- Active Toggle -->
-            <div class="flex items-center justify-between p-4 rounded-xl
-                        bg-green-50 dark:bg-green-900/10
-                        border border-green-200 dark:border-green-800">
-              <div class="flex items-center gap-3">
-                <div class="flex items-center justify-center w-10 h-10 rounded-lg
-                            bg-green-100 dark:bg-green-900/30">
-                  <mat-icon class="text-green-600">check_circle</mat-icon>
-                </div>
-                <div>
-                  <div class="font-semibold text-gray-900 dark:text-white">Active</div>
-                  <div class="text-sm text-gray-600 dark:text-gray-400">
-                    Inactive subjects are hidden from class assignments and reports
+            <div class="space-y-4">
+
+              <!-- Compulsory Toggle -->
+              <div class="flex items-center justify-between p-4 rounded-xl
+                          bg-amber-50 dark:bg-amber-900/10
+                          border border-amber-200 dark:border-amber-800">
+                <div class="flex items-center gap-3">
+                  <div class="flex items-center justify-center w-10 h-10 rounded-lg
+                              bg-amber-100 dark:bg-amber-900/30">
+                    <mat-icon class="text-amber-600">star</mat-icon>
+                  </div>
+                  <div>
+                    <div class="font-semibold text-gray-900 dark:text-white">Compulsory Subject</div>
+                    <div class="text-sm text-gray-600 dark:text-gray-400">
+                      All students must take this subject; it cannot be dropped
+                    </div>
                   </div>
                 </div>
+                <mat-slide-toggle formControlName="isCompulsory" color="accent"></mat-slide-toggle>
               </div>
-              <mat-slide-toggle formControlName="isActive" color="primary"></mat-slide-toggle>
+
+              <!-- Active Toggle -->
+              <div class="flex items-center justify-between p-4 rounded-xl
+                          bg-green-50 dark:bg-green-900/10
+                          border border-green-200 dark:border-green-800">
+                <div class="flex items-center gap-3">
+                  <div class="flex items-center justify-center w-10 h-10 rounded-lg
+                              bg-green-100 dark:bg-green-900/30">
+                    <mat-icon class="text-green-600">check_circle</mat-icon>
+                  </div>
+                  <div>
+                    <div class="font-semibold text-gray-900 dark:text-white">Active</div>
+                    <div class="text-sm text-gray-600 dark:text-gray-400">
+                      Inactive subjects are hidden from class assignments and reports
+                    </div>
+                  </div>
+                </div>
+                <mat-slide-toggle formControlName="isActive" color="primary"></mat-slide-toggle>
+              </div>
+
             </div>
 
           </mat-card-content>

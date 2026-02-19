@@ -17,8 +17,8 @@ import { of }                            from 'rxjs';
 import { AlertService }    from 'app/core/DevKenService/Alert/AlertService';
 import { PageHeaderComponent, Breadcrumb } from 'app/shared/Page-Header/page-header.component';
 import { SubjectService } from 'app/core/DevKenService/SubjectService/SubjectService';
+import { getCBCLevelLabel, getSubjectTypeLabel } from '../Types/SubjectEnums';
 import { SubjectDto } from '../Types/subjectdto';
-import { getSubjectTypeLabel, getCBCLevelLabel } from '../Types/SubjectEnums';
 
 interface DetailItem {
   label:     string;
