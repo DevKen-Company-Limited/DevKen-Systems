@@ -1,79 +1,67 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// Assessment Types
-// ─────────────────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+// assessment.types.ts
+// ═══════════════════════════════════════════════════════════════════
 
 export interface AssessmentDto {
   id: string;
   title: string;
   description?: string;
-
-  teacherId: string;
-  teacherName?: string;
-
-  subjectId: string;
-  subjectName?: string;
-
-  classId: string;
-  className?: string;
-
-  termId: string;
-  termName?: string;
-
-  academicYearId: string;
-  academicYearName?: string;
-
-  assessmentDate: string;
-  maximumScore: number;
-
-  /** Formative | Summative | Competency */
   assessmentType: string;
-
+  maximumScore: number;
+  assessmentDate: string;
   isPublished: boolean;
   publishedDate?: string;
+  createdOn: string;
 
+  teacherId?: string;
+  teacherName?: string;
+  subjectId?: string;
+  subjectName?: string;
+  classId?: string;
+  className?: string;
+  termId?: string;
+  termName?: string;
+  academicYearId?: string;
+  academicYearName?: string;
   schoolId: string;
   schoolName?: string;
 
+  grades?: AssessmentGradeDto[];
+}
+
+export interface AssessmentGradeDto {
+  id: string;
+  studentId: string;
+  score: number;
+  remarks?: string;
   createdOn: string;
 }
 
 export interface CreateAssessmentRequest {
   title: string;
-  description?: string | null;
-  teacherId: string;
-  subjectId: string;
-  classId: string;
-  termId: string;
-  academicYearId: string;
-  assessmentDate: string;
-  maximumScore: number;
+  description?: string;
   assessmentType: string;
-  schoolId?: string | null; // SuperAdmin only
+  maximumScore: number;
+  assessmentDate: string;
+  teacherId?: string;
+  subjectId?: string;
+  classId?: string;
+  termId?: string;
+  academicYearId?: string;
+  schoolId?: string;
 }
 
-export interface UpdateAssessmentRequest {
-  title: string;
-  description?: string | null;
-  teacherId: string;
-  subjectId: string;
-  classId: string;
-  termId: string;
-  academicYearId: string;
-  assessmentDate: string;
-  maximumScore: number;
-  assessmentType: string;
-}
+export interface UpdateAssessmentRequest extends CreateAssessmentRequest {}
 
 export interface UpdateAssessmentPublishRequest {
   isPublished: boolean;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Lookup types returned by related endpoints
-// ─────────────────────────────────────────────────────────────────────────────
+export const ASSESSMENT_TYPES = ['Formative', 'Summative', 'Competency'] as const;
+export type AssessmentType = typeof ASSESSMENT_TYPES[number];
 
-export interface TeacherLookup  { id: string; fullName: string; }
-export interface SubjectLookup  { id: string; name: string; }
-export interface ClassLookup    { id: string; name: string; }
-export interface TermLookup     { id: string; name: string; }
-export interface AcademicYearLookup { id: string; name: string; }
+export const ASSESSMENT_TYPE_COLORS: Record<string, string> = {
+  Formative:  'indigo',
+  Summative:  'violet',
+  Competency: 'teal',
+};
