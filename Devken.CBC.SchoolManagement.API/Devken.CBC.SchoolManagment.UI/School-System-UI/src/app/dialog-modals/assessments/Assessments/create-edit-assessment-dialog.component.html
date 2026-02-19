@@ -315,6 +315,22 @@
 
   <!-- ── Footer ────────────────────────────────────────────────────────────── -->
   <div class="dialog-footer">
+
+    <!--
+      Hint row: shows remaining required fields when the form is not yet valid.
+      Replaces the old "submitted + invalid" error since the button is now
+      disabled proactively — users see this hint without having to click submit.
+    -->
+    <div *ngIf="!isLookupsLoading && !isFormReady && !isSaving" class="footer-hint">
+      <mat-icon class="footer-hint-icon">info_outline</mat-icon>
+      <span>
+        {{ invalidFieldCount }} required
+        {{ invalidFieldCount === 1 ? 'field' : 'fields' }} still
+        {{ invalidFieldCount === 1 ? 'needs' : 'need' }} to be filled in
+      </span>
+    </div>
+
+    <!-- Post-submit hard-error fallback (should rarely appear given button guard) -->
     <div *ngIf="formSubmitted && form.invalid" class="footer-error">
       <mat-icon class="footer-error-icon">warning_amber</mat-icon>
       <span>Please fill in all required fields before submitting</span>
@@ -327,16 +343,27 @@
               (click)="close()">
         Cancel
       </button>
+
+      <!--
+        Submit button is disabled until:
+          1. Lookups have loaded (isLookupsLoading = false)
+          2. Every required field is valid (form.valid = true)
+          3. No save is in progress (isSaving = false)
+        isFormReady encapsulates all three conditions.
+      -->
       <button type="button"
               mat-flat-button
               class="submit-btn"
-              [disabled]="isLookupsLoading || isSaving"
+              [disabled]="!isFormReady"
+              [matTooltip]="!isFormReady && !isLookupsLoading
+                ? 'Complete all required fields to enable submit'
+                : ''"
               (click)="onSubmit()">
         <mat-spinner *ngIf="isSaving" diameter="18" class="btn-spinner"></mat-spinner>
         <mat-icon *ngIf="!isSaving" class="submit-icon">
           {{ isEditMode ? 'save' : 'check_circle' }}
         </mat-icon>
-        {{ isSaving ? 'Saving…' : isEditMode ? 'Update Assessment' : 'Create Assessment' }}
+        {{ isSaving ? 'Saving…' : isEditMode ? 'Update' : 'Submit' }}
       </button>
     </div>
   </div>

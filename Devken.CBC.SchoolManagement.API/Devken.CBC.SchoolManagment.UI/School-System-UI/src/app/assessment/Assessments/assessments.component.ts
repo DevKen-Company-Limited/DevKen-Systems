@@ -179,7 +179,7 @@ export class AssessmentsComponent implements OnInit, AfterViewInit, OnDestroy {
     message:     'No assessments found',
     description: 'Adjust your filters or create a new assessment.',
     action: {
-      label:   'Create Assessment',
+      label:   'Add',
       icon:    'add_circle',
       handler: () => this.openCreate(),
     },

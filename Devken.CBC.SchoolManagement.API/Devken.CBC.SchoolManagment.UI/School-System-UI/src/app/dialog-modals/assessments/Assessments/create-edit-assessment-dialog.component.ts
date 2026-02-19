@@ -41,10 +41,6 @@ import { AcademicYearService } from 'app/core/DevKenService/AcademicYearService/
 import { ClassService } from 'app/core/DevKenService/ClassService';
 import { TeacherService } from 'app/core/DevKenService/Teacher/TeacherService';
 
-// ── Service imports ───────────────────────────────────────────────────────────
-
-// import { SubjectService }   from 'app/Subjects/Services/SubjectService';                     // ⚠ uncomment when ready
-
 // ── Tab definition ────────────────────────────────────────────────────────────
 
 type TabId = 'basic' | 'assignment';
@@ -102,7 +98,6 @@ export class CreateEditAssessmentDialogComponent
   private readonly _termSvc          = inject(TermService);
   private readonly _classSvc         = inject(ClassService);
   private readonly _teacherSvc       = inject(TeacherService);
-  // private readonly _subjectSvc    = inject(SubjectService); // ⚠ uncomment when ready
 
   // ── Lookup data ──────────────────────────────────────────────────────────
   teachers:      TeacherLookup[]      = [];
@@ -140,6 +135,26 @@ export class CreateEditAssessmentDialogComponent
   get currentTabIndex(): number { return this.tabs.findIndex(t => t.id === this.activeTabId); }
   get isFirstTab():      boolean { return this.currentTabIndex === 0; }
   get isLastTab():       boolean { return this.currentTabIndex === this.tabs.length - 1; }
+
+  // ── Form readiness — drives the submit button disabled state ─────────────
+  /**
+   * Returns true only when:
+   *  1. Lookups have finished loading (so selects are populated)
+   *  2. The reactive form is valid (all required fields filled, no validation errors)
+   *  3. A save operation is not already in flight
+   */
+  get isFormReady(): boolean {
+    return !this.isLookupsLoading && this.form?.valid === true && !this.isSaving;
+  }
+
+  /**
+   * Count of invalid required fields across ALL tabs so the footer can
+   * display a helpful "X fields remaining" hint.
+   */
+  get invalidFieldCount(): number {
+    if (!this.form) return 0;
+    return Object.keys(this.form.controls).filter(k => this.form.get(k)?.invalid).length;
+  }
 
   // ── Summary card getters ──────────────────────────────────────────────────
   get hasAssignmentSummary(): boolean {
@@ -186,7 +201,7 @@ export class CreateEditAssessmentDialogComponent
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
   ngOnInit(): void {
-    this.init();
+    this.init();          // BaseFormDialog.init() builds the form via buildForm()
     this._loadLookups();
   }
 
@@ -199,41 +214,54 @@ export class CreateEditAssessmentDialogComponent
 
   // ── BaseFormDialog abstract implementations ───────────────────────────────
   protected override buildForm(): FormGroup {
+    // schoolId validator is conditional on isSuperAdmin
+    const schoolIdValidators = this.isSuperAdmin ? [Validators.required] : [];
+
     return this.fb.group({
-      schoolId:       [null, this.isSuperAdmin ? [Validators.required] : []],
-      title:          ['',   [Validators.required, Validators.maxLength(200)]],
-      description:    ['',   [Validators.maxLength(500)]],
-      assessmentType: [null, [Validators.required]],
-      maximumScore:   [null, [Validators.required, Validators.min(0.01)]],
-      assessmentDate: [null, [Validators.required]],
-      academicYearId: [null, [Validators.required]],
-      termId:         [null, [Validators.required]],
-      classId:        [null, [Validators.required]],
-      subjectId:      [null, [Validators.required]],
-      teacherId:      [null, [Validators.required]],
+      schoolId:       [null,  schoolIdValidators],
+      title:          ['',    [Validators.required, Validators.maxLength(200)]],
+      description:    ['',    [Validators.maxLength(500)]],
+      assessmentType: [null,  [Validators.required]],
+      maximumScore:   [null,  [Validators.required, Validators.min(0.01)]],
+      assessmentDate: [null,  [Validators.required]],
+      academicYearId: [null,  [Validators.required]],
+      termId:         [null,  [Validators.required]],
+      classId:        [null,  [Validators.required]],
+      subjectId:      [null,  [Validators.required]],
+      teacherId:      [null,  [Validators.required]],
     });
   }
 
   protected override patchForEdit(item: AssessmentDto): void {
+    // Guard: do not patch before the form exists
+    if (!this.form) return;
+
     this.form.patchValue({
-      schoolId:       item.schoolId       || null,
-      title:          item.title          || '',
-      description:    item.description    || '',
-      assessmentType: item.assessmentType || null,
+      schoolId:       item.schoolId       ?? null,
+      title:          item.title          ?? '',
+      description:    item.description    ?? '',
+      assessmentType: item.assessmentType ?? null,
       maximumScore:   item.maximumScore   ?? null,
+      // Ensure the date is a proper Date object so the datepicker renders correctly
       assessmentDate: item.assessmentDate ? new Date(item.assessmentDate) : null,
-      academicYearId: item.academicYearId || null,
-      termId:         item.termId         || null,
-      classId:        item.classId        || null,
-      subjectId:      item.subjectId      || null,
-      teacherId:      item.teacherId      || null,
+      academicYearId: item.academicYearId ?? null,
+      termId:         item.termId         ?? null,
+      classId:        item.classId        ?? null,
+      subjectId:      item.subjectId      ?? null,
+      teacherId:      item.teacherId      ?? null,
     });
+
+    // Mark the form as pristine after patching so dirty-state logic
+    // (e.g. unsaved-changes guards) reflects the initial loaded state.
+    this.form.markAsPristine();
+    this.form.markAsUntouched();
   }
 
   // ── Lookup loading ────────────────────────────────────────────────────────
   private _loadLookups(): void {
     this.isLookupsLoading = true;
 
+    // For SuperAdmin in edit mode, scope lookups to the assessment's school
     const schoolId = this.isSuperAdmin
       ? (this.data.assessment?.schoolId ?? undefined)
       : undefined;
@@ -254,14 +282,20 @@ export class CreateEditAssessmentDialogComponent
       teachers: this._teacherSvc.getAll(schoolId).pipe(
         map(r => r.data.map(t => ({
           id:       t.id,
-          fullName: t.fullName,           // ⚠ adjust to match your TeacherDto shape
+          fullName: t.fullName,
         } as TeacherLookup))),
         catchError(() => of<TeacherLookup[]>([]))
       ),
       subjects: of<SubjectLookup[]>([]),  // ⚠ replace with _subjectSvc.getAll(schoolId) when ready
     }).pipe(
       takeUntil(this._unsubscribe),
-      catchError(() => of({ academicYears: [], terms: [], classes: [], teachers: [], subjects: [] })),
+      catchError(() => of({
+        academicYears: [] as AcademicYearLookup[],
+        terms:         [] as TermLookup[],
+        classes:       [] as ClassLookup[],
+        teachers:      [] as TeacherLookup[],
+        subjects:      [] as SubjectLookup[],
+      })),
       finalize(() => {
         this.isLookupsLoading = false;
         this._cdr.detectChanges();
@@ -273,33 +307,41 @@ export class CreateEditAssessmentDialogComponent
       this.teachers      = results.teachers;
       this.subjects      = results.subjects;
 
-      // Patch AFTER lookups so select options are populated
+      // ── Patch AFTER lookups so mat-select options are present ──────────
+      // This is critical: patching before options are loaded causes Angular
+      // Material selects to silently discard the value.
       if (this.isEditMode && this.data.assessment) {
         this.patchForEdit(this.data.assessment);
-        this._cdr.detectChanges();
       }
+
+      this._cdr.detectChanges();
     });
 
-    // Safety timeout — release loading state if forkJoin stalls
+    // Safety valve — release loading state after 12 s if forkJoin stalls
     setTimeout(() => {
       if (this.isLookupsLoading) {
         this.isLookupsLoading = false;
         this._cdr.detectChanges();
       }
-    }, 12000);
+    }, 12_000);
   }
 
   // ── Submit ────────────────────────────────────────────────────────────────
   onSubmit(): void {
     this.formSubmitted = true;
 
+    // Touch every control so mat-error messages appear immediately
+    this.form.markAllAsTouched();
+
     if (this.form.invalid) {
+      // Navigate to the first tab that contains an invalid field
       for (const tab of this.tabs) {
         if (tab.fields.some(f => this.form.get(f)?.invalid)) {
           this.activeTabId = tab.id;
           break;
         }
       }
+      this._cdr.detectChanges();
       return;
     }
 
@@ -351,6 +393,10 @@ export class CreateEditAssessmentDialogComponent
     return this.formSubmitted && tab.fields.some(f => this.form.get(f)?.invalid);
   }
 
+  /**
+   * Returns an inline error message for a given field.
+   * Shows after the field is touched OR after the first submit attempt.
+   */
   getFieldError(field: string): string {
     const c = this.form.get(field);
     if (!c || !(this.formSubmitted || c.touched)) return '';
@@ -362,9 +408,9 @@ export class CreateEditAssessmentDialogComponent
   }
 
   // ── Utility ───────────────────────────────────────────────────────────────
-  private _toIso(val: any): string | null {
+  private _toIso(val: unknown): string | null {
     if (!val) return null;
-    const d = val instanceof Date ? val : new Date(val);
+    const d = val instanceof Date ? val : new Date(val as string);
     return isNaN(d.getTime()) ? null : d.toISOString();
   }
 }
