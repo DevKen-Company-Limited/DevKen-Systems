@@ -2,7 +2,6 @@
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Assessments;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
 using Devken.CBC.SchoolManagement.Application.Service.Assessments;
-using Devken.CBC.SchoolManagement.Domain.Entities.Assessment;
 using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
 using System;
 using System.Collections.Generic;
@@ -401,9 +400,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Assessments
             var entity = await GetScoreOrThrowAsync(id, schoolId, trackChanges: true);
 
             // Retrieve assessment to re-check PassMark
-            var assessment = entity.SummativeAssessmentId.HasValue
-                ? await _assessmentRepo.GetByIdAsync(entity.SummativeAssessmentId.Value, trackChanges: false)
-                : null;
+            //var assessment = entity.SummativeAssessmentId
+            //    ? await _assessmentRepo.GetByIdAsync(entity.SummativeAssessmentId.Value, trackChanges: false)
+            //    : null;
 
             var theoryScore = req.TheoryScore;
             var practicalScore = req.PracticalScore ?? 0m;
@@ -421,7 +420,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Assessments
             entity.Remarks = req.Remarks?.Trim();
             entity.PositionInClass = req.PositionInClass;
             entity.PositionInStream = req.PositionInStream;
-            entity.IsPassed = assessment != null && percentage >= assessment.PassMark;
+            //entity.IsPassed = assessment != null && percentage >= assessment.PassMark;
             entity.Comments = req.Comments?.Trim();
             entity.GradedById = gradedById;
             entity.GradedDate = DateTime.UtcNow;

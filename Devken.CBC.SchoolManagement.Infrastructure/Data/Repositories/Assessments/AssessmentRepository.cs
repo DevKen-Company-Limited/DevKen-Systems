@@ -104,7 +104,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
             Guid assessmentId, bool trackChanges = false)
         {
             var query = FindByCondition(a => a.Id == assessmentId, trackChanges)
-                .Include(a => a.Grades)
+                //.Include(a => a.Grades)
                 .Include(a => a.Subject)
                 .Include(a => a.Teacher)
                 .Include(a => a.Class)

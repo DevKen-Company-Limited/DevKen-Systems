@@ -1,5 +1,5 @@
 ﻿using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Assessments;
-using Devken.CBC.SchoolManagement.Domain.Entities.Assessment;
+
 using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF;
 using Microsoft.EntityFrameworkCore;
