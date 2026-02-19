@@ -14,6 +14,13 @@
       <p class="text-white/80 text-sm mt-1">{{ dialogSubtitle }}</p>
     </div>
   </div>
+  <button
+    mat-icon-button
+    class="close-btn absolute top-3 right-3 text-white z-20"
+    (click)="cancel()"
+    matTooltip="Close">
+    <mat-icon>close</mat-icon>
+  </button>
 </div>
 
 <!-- Main form -->
@@ -315,7 +322,7 @@
 </form>
 
 <!-- Dialog Actions -->
-<div mat-dialog-actions class="dialog-actions p-4">
+<div mat-dialog-actions class="flex justify-end gap-3 mt-6">
   <button mat-button type="button" (click)="cancel()" [disabled]="isSaving">Cancel</button>
   <button mat-flat-button color="primary" type="button" (click)="submit()" [disabled]="form.invalid || isSaving">
     <mat-icon *ngIf="isSaving" class="icon-size-5 mr-2">hourglass_empty</mat-icon>

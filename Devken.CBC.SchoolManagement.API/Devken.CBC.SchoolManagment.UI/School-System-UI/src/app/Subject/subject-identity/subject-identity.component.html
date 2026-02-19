@@ -1,0 +1,111 @@
+<!-- subject-identity/subject-identity.component.html -->
+<div class="max-w-6xl">
+
+  <!-- Section Header -->
+  <div class="flex items-start gap-4 mb-8">
+    <div class="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg">
+      <mat-icon class="text-white !w-7 !h-7">badge</mat-icon>
+    </div>
+    <div class="flex-1">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Subject Identity</h2>
+      <p class="text-gray-600 dark:text-gray-400">
+        {{ isEditMode
+          ? 'Update the subject name, code and description.'
+          : 'Enter the basic details for this subject. Fields marked * are required.' }}
+      </p>
+    </div>
+  </div>
+
+  <!-- Info Alert -->
+  <fuse-alert *ngIf="!isEditMode" type="info" appearance="soft" [showIcon]="true" class="mb-6">
+    <strong>Getting Started:</strong> Enter the official subject name. The
+    <strong>Subject Code</strong> is auto-generated after saving and cannot be set manually.
+  </fuse-alert>
+
+  <form [formGroup]="form" novalidate class="space-y-6">
+
+    <!-- School Assignment (SuperAdmin only) -->
+    <mat-card *ngIf="isSuperAdmin" class="shadow-md">
+      <mat-card-header class="!pb-2">
+        <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+          <mat-icon class="text-indigo-600">apartment</mat-icon>
+          School Assignment
+          <span class="ml-auto text-xs font-medium px-2 py-1 bg-red-100 text-red-700
+                       dark:bg-red-900/30 dark:text-red-300 rounded">Required</span>
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>School *</mat-label>
+          <mat-select formControlName="schoolId">
+            <mat-option value="">Select school</mat-option>
+            <mat-option *ngFor="let school of schools" [value]="school.id">
+              {{ school.name }}
+            </mat-option>
+          </mat-select>
+          <mat-icon matPrefix class="text-gray-400">apartment</mat-icon>
+          <mat-hint>The school this subject belongs to</mat-hint>
+          <mat-error>{{ getError('schoolId') }}</mat-error>
+        </mat-form-field>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Subject Name & Code -->
+    <mat-card class="shadow-md">
+      <mat-card-header class="!pb-2">
+        <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+          <mat-icon class="text-indigo-600">menu_book</mat-icon>
+          Subject Name & Code
+          <span class="ml-auto text-xs font-medium px-2 py-1 bg-red-100 text-red-700
+                       dark:bg-red-900/30 dark:text-red-300 rounded">Required</span>
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Subject Name *</mat-label>
+            <input matInput formControlName="name" placeholder="e.g. Mathematics">
+            <mat-icon matPrefix class="text-gray-400">menu_book</mat-icon>
+            <mat-hint>Official name as per CBC curriculum</mat-hint>
+            <mat-error>{{ getError('name') }}</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Subject Code</mat-label>
+            <input matInput formControlName="code"
+              [placeholder]="isEditMode ? 'Assigned by system' : 'Auto-generated after saving'">
+            <mat-icon matPrefix class="text-gray-400">tag</mat-icon>
+            <mat-hint>
+              {{ isEditMode
+                ? 'Read-only — assigned by number series'
+                : 'Will be automatically assigned on save' }}
+            </mat-hint>
+          </mat-form-field>
+
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Description -->
+    <mat-card class="shadow-md">
+      <mat-card-header class="!pb-2">
+        <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+          <mat-icon class="text-indigo-600">description</mat-icon>
+          Description
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>Description</mat-label>
+          <textarea matInput formControlName="description" rows="4"
+            placeholder="Brief description of what this subject covers...">
+          </textarea>
+          <mat-icon matPrefix class="text-gray-400">notes</mat-icon>
+          <mat-hint>Optional — up to 500 characters</mat-hint>
+        </mat-form-field>
+      </mat-card-content>
+    </mat-card>
+
+  </form>
+</div>
