@@ -28,12 +28,12 @@ using Devken.CBC.SchoolManagement.Application.Services.UserManagement;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academic;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academics;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessments;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Identity;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSeries;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Payments;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Tenant;
-using Devken.CBC.SchoolManagement.Infrastructure.Repositories.Assessments;
 using Devken.CBC.SchoolManagement.Infrastructure.RepositoryManagers.UserActivities;
 using Devken.CBC.SchoolManagement.Infrastructure.Security;
 using Devken.CBC.SchoolManagement.Infrastructure.Services;
@@ -287,32 +287,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
 
             services.AddScoped(typeof(Lazy<>), typeof(LazyServiceProvider<>));
 
-            services.AddScoped<IFormativeAssessmentRepository,FormativeAssessmentRepository>();
-
-            services.AddScoped<IFormativeAssessmentScoreRepository,FormativeAssessmentScoreRepository>();
-
-            // ── Services ──────────────────────────────────────────────────────────
-            services.AddScoped<IFormativeAssessmentService, FormativeAssessmentService>();
-
-            services.AddScoped<IFormativeAssessmentScoreService,FormativeAssessmentScoreService>();
-
-            services.AddScoped<ICompetencyAssessmentRepository,CompetencyAssessmentRepository>();
-
-            services.AddScoped<ICompetencyAssessmentScoreRepository,CompetencyAssessmentScoreRepository>();
-
-            // ── Services ──────────────────────────────────────────────────────────
-            services.AddScoped<ICompetencyAssessmentService,CompetencyAssessmentService>();
-
-            services.AddScoped<ISummativeAssessmentRepository, SummativeAssessmentRepository>();
-            services.AddScoped<ISummativeAssessmentScoreRepository, SummativeAssessmentScoreRepository>();
-
-            // ── Services ──────────────────────────────────────────────────────────────────
-            services.AddScoped<ISummativeAssessmentService, SummativeAssessmentService>();
-            services.AddScoped<ISummativeAssessmentScoreService, SummativeAssessmentScoreService>();
-            services.AddScoped<
-                ICompetencyAssessmentScoreService,
-                CompetencyAssessmentScoreService>();
-            // Services
             services.AddScoped<IReportService, ReportService>();
             services.AddScoped<IUserManagementService, UserManagementService>();
             services.AddScoped<ITeacherService, TeacherService>();
@@ -335,6 +309,16 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<ISubscriptionPlanService, SubscriptionPlanService>();
             services.AddScoped<IImageUploadService, ImageUploadService>();
             services.AddScoped<IDocumentNumberSeriesRepository, DocumentNumberService>();
+            services.AddScoped<IAssessmentService, AssessmentService>();
+            services.AddScoped<IAssessmentService, AssessmentService>();
+
+            services.AddScoped<IFormativeAssessmentRepository, FormativeAssessmentRepository>();
+            services.AddScoped<ISummativeAssessmentRepository, SummativeAssessmentRepository>();
+            services.AddScoped<ICompetencyAssessmentRepository, CompetencyAssessmentRepository>();
+
+            services.AddScoped<IFormativeAssessmentScoreRepository, FormativeAssessmentScoreRepository>();
+            services.AddScoped<ISummativeAssessmentScoreRepository, SummativeAssessmentScoreRepository>();
+            services.AddScoped<ICompetencyAssessmentScoreRepository, CompetencyAssessmentScoreRepository>();
             return services;
         }
 

@@ -13,6 +13,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
         [MaxLength(500)]
         public string? Description { get; set; }
 
+        // ── FK properties (no [ForeignKey] attribute — Fluent API handles mapping)
         public Guid TeacherId { get; set; }
         public Teacher Teacher { get; set; } = null!;
 
@@ -29,17 +30,12 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
         public AcademicYear AcademicYear { get; set; } = null!;
 
         public DateTime AssessmentDate { get; set; }
-
         public decimal MaximumScore { get; set; }
 
-        /// <summary>
-        /// Discriminator: Formative | Summative | Competency
-        /// </summary>
         [Required, MaxLength(20)]
         public string AssessmentType { get; set; } = null!;
 
         public bool IsPublished { get; set; } = false;
-
         public DateTime? PublishedDate { get; set; }
     }
 }
