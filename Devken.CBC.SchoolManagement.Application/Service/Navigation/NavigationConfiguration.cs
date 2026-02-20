@@ -42,7 +42,7 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             Items = new[]
             {
                 new NavItem("schools", "Schools", "heroicons_outline:building-office-2", "/administration/schools", PermissionKeys.SchoolRead),
-                new NavItem("logs", "Activity Logs", "heroicons_outline:document-text", "/superadmin/logs")
+                new NavItem("logs", "Activity Logs", "heroicons_outline:document-text", "/administration/logs")
             }
         };
 
@@ -81,10 +81,15 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             Icon = "heroicons_outline:clipboard-document-check",
             Items = new[]
             {
-                new NavItem("assessments", "Assessments", "heroicons_outline:clipboard-document-list", "/assessment/assessments", PermissionKeys.AssessmentRead),
-                new NavItem("reports", "Reports", "heroicons_outline:document-chart-bar", "/assessment/reports", PermissionKeys.ReportRead)
+            new NavItem("formative-assessments", "Formative",           "heroicons_outline:pencil-square",      "/assessment/formative",    PermissionKeys.AssessmentRead),
+            new NavItem("summative-assessments", "Summative",           "heroicons_outline:document-text",      "/assessment/summative",    PermissionKeys.AssessmentRead),
+            new NavItem("competency-tracking",   "Competency Tracking", "heroicons_outline:chart-bar",          "/assessment/competencies", PermissionKeys.AssessmentRead),
+            new NavItem("assessment-reports",    "Reports",             "heroicons_outline:document-chart-bar", "/assessment/reports",      PermissionKeys.ReportRead)
             }
         };
+
+
+
 
         public static NavigationSection Finance => new()
         {

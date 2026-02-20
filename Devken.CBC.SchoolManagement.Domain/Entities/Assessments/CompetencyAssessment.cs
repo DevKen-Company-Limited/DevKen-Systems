@@ -1,6 +1,4 @@
-﻿using Devken.CBC.SchoolManagement.Domain.Common;
-using Devken.CBC.SchoolManagement.Domain.Entities.Assessment;
-using Devken.CBC.SchoolManagement.Domain.Enums;
+﻿using Devken.CBC.SchoolManagement.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
 namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
@@ -23,22 +21,24 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
 
         public AssessmentMethod AssessmentMethod { get; set; }
 
+        /// <summary>
+        /// Exceeds | Meets | Approaching | Below
+        /// </summary>
         [MaxLength(20)]
-        public string? RatingScale { get; set; } // Exceeds, Meets, Approaching, Below
+        public string? RatingScale { get; set; }
 
         public bool IsObservationBased { get; set; } = true;
 
         [MaxLength(500)]
         public string? ToolsRequired { get; set; }
 
-        // ✅ Newly added to match configuration
         [MaxLength(1000)]
         public string? Instructions { get; set; }
 
         [MaxLength(1000)]
         public string? SpecificLearningOutcome { get; set; }
 
-        // Navigation Properties
+        // Navigation
         public ICollection<CompetencyAssessmentScore> Scores { get; set; } = new List<CompetencyAssessmentScore>();
     }
 

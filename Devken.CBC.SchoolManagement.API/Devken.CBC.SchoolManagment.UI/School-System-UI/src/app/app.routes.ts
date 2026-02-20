@@ -123,6 +123,7 @@ export const appRoutes: Route[] = [
                     { path: 'roles', loadChildren: () => import('app/RolesAndPermission/role-assignment.component.routes') },
                      { path: 'permissions', loadChildren: () => import('app/RolesAndPermission/permission/role-permission-management.component.routes') },
                     { path: 'schools', loadChildren: () => import('app/Tenant/schools-management.routes') },
+                     { path: 'logs', loadChildren: () => import('app/logs/userActivities/user-activity.component.routes') },
                     { path: 'users', loadChildren: () => import('app/UserManagement/users-management.component.routes') }
                 ]
             },
@@ -154,8 +155,9 @@ export const appRoutes: Route[] = [
             {
                 path: 'assessment',
                 children: [
-                    // { path: 'assessments', loadChildren: () => import('app/modules/assessment/assessments/assessments.routes') },
-                    // { path: 'reports', loadChildren: () => import('app/modules/assessment/reports/reports.routes') }
+                    { path: 'assessments', loadChildren: () => import('app/assessment/Assessments/assessments.component.routes') },
+                    { path: 'summative',loadChildren: () =>import('app/assessment/summative/summative-assessments.component.routes') },
+
                 ]
             },
 

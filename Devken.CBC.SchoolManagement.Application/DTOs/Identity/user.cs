@@ -122,7 +122,7 @@ namespace Devken.CBC.SchoolManagement.Application.Dtos
 
         public string? PhoneNumber { get; set; }
 
-        public string? TemporaryPassword { get; set; }
+        //public string? TemporaryPassword { get; set; }
 
         public bool RequirePasswordChange { get; set; } = true;
 

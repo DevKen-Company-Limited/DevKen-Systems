@@ -3,7 +3,6 @@ using Devken.CBC.SchoolManagement.Application.Dtos;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
 using Devken.CBC.SchoolManagement.Application.Services.UserManagement;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
-using Devken.CBC.SchoolManagement.Domain.Enums;
 using Devken.CBC.SchoolManagement.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
@@ -45,9 +44,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
                     return ServiceResult<UserDto>.FailureResult(
                         "A user with this email already exists in the selected school.");
 
-                var tempPassword = string.IsNullOrWhiteSpace(request.TemporaryPassword)
-                    ? GenerateTemporaryPassword()
-                    : request.TemporaryPassword;
+                // Always auto-generate — never accept a client-supplied password.
+                var tempPassword = GenerateTemporaryPassword();
 
                 var user = new User
                 {
@@ -60,7 +58,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
                     PasswordHash = _passwordHashingService.HashPassword(tempPassword),
                     IsActive = true,
                     IsEmailVerified = false,
-                    RequirePasswordChange = request.RequirePasswordChange,
+                    RequirePasswordChange = true,   // always force change on first login
                     FailedLoginAttempts = 0
                 };
 
@@ -73,6 +71,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
                     await _repository.SaveAsync();
                 }
 
+                // Pass tempPassword into the DTO so the controller can return it to the admin.
                 return ServiceResult<UserDto>.SuccessResult(MapToUserDto(user, tempPassword));
             }
             catch (Exception ex)
@@ -308,11 +307,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
             }
         }
 
-        // ── Available roles for assignment ─────────────────────────────────
-        /// <summary>
-        /// Returns roles scoped to <paramref name="schoolId"/> when provided,
-        /// or all roles across the system when <c>null</c> (SuperAdmin tooling).
-        /// </summary>
+        // ── Available roles ────────────────────────────────────────────────
         public async Task<ServiceResult<List<RoleDto>>> GetAvailableRolesAsync(Guid? schoolId)
         {
             try
@@ -343,7 +338,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
             }
         }
 
-        // ── Activate / Deactivate / Delete ─────────────────────────────────
+        // ── Activate / Deactivate ──────────────────────────────────────────
         public async Task<ServiceResult<bool>> ActivateUserAsync(Guid userId, Guid activatedBy)
         {
             try
@@ -388,19 +383,36 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
             }
         }
 
+        // ── Hard Delete ────────────────────────────────────────────────────
+        /// <summary>
+        /// Permanently removes the user and all their role assignments from the database.
+        /// This action cannot be undone.
+        /// </summary>
         public async Task<ServiceResult<bool>> DeleteUserAsync(Guid userId, Guid deletedBy)
         {
             try
             {
-                var user = await _repository.User.GetByIdAsync(userId, trackChanges: true);
+                // Load with tracking so EF can cascade or we can clean up manually.
+                var user = await _repository.User
+                    .FindByCondition(u => u.Id == userId, trackChanges: true)
+                    .Include(u => u.UserRoles)
+                    .FirstOrDefaultAsync();
+
                 if (user == null)
                     return ServiceResult<bool>.FailureResult("User not found.");
 
-                // Soft delete — preserves audit trail
-                user.Status = EntityStatus.Deleted;
-                user.IsActive = false;
+                // Remove all role assignments first to avoid FK constraint violations
+                // if your database does not cascade deletes on UserRole → User.
+                if (user.UserRoles?.Count > 0)
+                {
+                    foreach (var ur in user.UserRoles)
+                        _repository.UserRole.Delete(ur);
 
-                _repository.User.Update(user);
+                    await _repository.SaveAsync();
+                }
+
+                // Hard delete — row is gone from the database permanently.
+                _repository.User.Delete(user);
                 await _repository.SaveAsync();
 
                 return ServiceResult<bool>.SuccessResult(true);
@@ -449,7 +461,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
                     ResetBy = resetBy
                 };
 
-                // TODO: send email with temporary password
+                // TODO: dispatch email with temporary password
                 return ServiceResult<PasswordResetResultDto>.SuccessResult(result);
             }
             catch (Exception ex)
@@ -482,6 +494,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
             List<Guid> roleIds,
             Guid tenantId)
         {
+            // Validate all roles belong to the school before writing anything
             foreach (var roleId in roleIds)
             {
                 var role = await _repository.Role.GetByIdAsync(roleId, trackChanges: false);
@@ -546,9 +559,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
         /// </summary>
         private static string GenerateTemporaryPassword()
         {
-            const string upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";   // no I/O to avoid confusion
-            const string lower = "abcdefghjkmnpqrstuvwxyz";    // no l/o
-            const string digits = "23456789";                    // no 0/1
+            const string upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";  // no I/O (visual ambiguity)
+            const string lower = "abcdefghjkmnpqrstuvwxyz";   // no l/o
+            const string digits = "23456789";                   // no 0/1
             const string symbols = "!@#$%&*";
             const string all = upper + lower + digits + symbols;
 
@@ -562,7 +575,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
             for (int i = 4; i < password.Length; i++)
                 password[i] = Pick(all);
 
-            // Shuffle using Fisher-Yates with cryptographic randomness
+            // Shuffle with Fisher-Yates using cryptographic randomness
             for (int i = password.Length - 1; i > 0; i--)
             {
                 int j = RandomNumberGenerator.GetInt32(i + 1);

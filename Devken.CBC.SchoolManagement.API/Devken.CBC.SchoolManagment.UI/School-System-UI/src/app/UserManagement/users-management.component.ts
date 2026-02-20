@@ -1,29 +1,33 @@
-import { Component, OnInit, OnDestroy, ViewChild, AfterViewInit, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, AfterViewInit, ViewChild, TemplateRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MatTableModule, MatTableDataSource } from '@angular/material/table';
-import { MatPaginator, MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatCardModule } from '@angular/material/card';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatDividerModule } from '@angular/material/divider';
-import { MatSelectModule } from '@angular/material/select';
 import { Subject } from 'rxjs';
-import { takeUntil, take } from 'rxjs/operators';
-import { FuseAlertComponent } from '@fuse/components/alert';
-import { BaseListComponent } from 'app/shared/Lists/BaseListComponent';
+import { takeUntil } from 'rxjs/operators';
+import { FuseConfirmationService } from '@fuse/services/confirmation';
+import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
+import { AuthService } from 'app/core/auth/auth.service';
 import { UserService } from 'app/core/DevKenService/user/UserService';
-import { CreateEditUserDialogComponent } from 'app/dialog-modals/users/create-edit-user-dialog.component';
 import { UserDto } from 'app/core/DevKenService/Types/roles';
+import { CreateEditUserDialogComponent } from 'app/dialog-modals/users/create-edit-user-dialog.component';
+
+// Reusable components
+import { PageHeaderComponent, Breadcrumb } from 'app/shared/Page-Header/page-header.component';
+import { FilterPanelComponent, FilterField, FilterChangeEvent } from 'app/shared/Filter/filter-panel.component';
+import { PaginationComponent } from 'app/shared/pagination/pagination.component';
+import { StatsCardsComponent, StatCard } from 'app/shared/stats-cards/stats-cards.component';
+import {
+  DataTableComponent,
+  TableColumn,
+  TableAction,
+  TableHeader,
+  TableEmptyState,
+} from 'app/shared/data-table/data-table.component';
 
 @Component({
   selector: 'app-users-management',
@@ -31,94 +35,237 @@ import { UserDto } from 'app/core/DevKenService/Types/roles';
   imports: [
     CommonModule,
     FormsModule,
-    MatTableModule,
-    MatPaginatorModule,
-    MatSortModule,
     MatIconModule,
     MatButtonModule,
     MatDialogModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatCardModule,
     MatSnackBarModule,
-    MatChipsModule,
     MatTooltipModule,
-    MatMenuModule,
     MatProgressSpinnerModule,
-    MatDividerModule,
-    MatSelectModule,
-    FuseAlertComponent
+    // Reusable components
+    PageHeaderComponent,
+    FilterPanelComponent,
+    PaginationComponent,
+    StatsCardsComponent,
+    DataTableComponent,
   ],
   templateUrl: './users-management.component.html',
-  styleUrls: ['./users-management.component.scss']
 })
-export class UsersManagementComponent 
-  extends BaseListComponent<UserDto> 
-  implements OnInit, OnDestroy, AfterViewInit {
-  
-  @ViewChild(MatPaginator) paginator!: MatPaginator;
-  @ViewChild(MatSort) sort!: MatSort;
+export class UsersManagementComponent implements OnInit, OnDestroy, AfterViewInit {
+
+  // ── Cell template refs ───────────────────────────────────────────────────────
+  @ViewChild('userCell')    userCellTemplate!:    TemplateRef<any>;
+  @ViewChild('emailCell')   emailCellTemplate!:   TemplateRef<any>;
+  @ViewChild('schoolCell')  schoolCellTemplate!:  TemplateRef<any>;
+  @ViewChild('phoneCell')   phoneCellTemplate!:   TemplateRef<any>;
+  @ViewChild('rolesCell')   rolesCellTemplate!:   TemplateRef<any>;
+  @ViewChild('statusCell')  statusCellTemplate!:  TemplateRef<any>;
+  @ViewChild('updatedCell') updatedCellTemplate!: TemplateRef<any>;
 
   private _unsubscribe = new Subject<void>();
+  private _authService  = inject(AuthService);
+  private _alert        = inject(AlertService);
 
-  displayedColumns: string[] = [
-    'user', 
-    'email', 
-    'phone', 
-    'roles', 
-    'status', 
-    'lastLogin', 
-    'actions'
+  // ── Breadcrumbs ──────────────────────────────────────────────────────────────
+  breadcrumbs: Breadcrumb[] = [
+    { label: 'Dashboard',       url: '/dashboard' },
+    { label: 'Administration',  url: '/admin' },
+    { label: 'User Management' },
   ];
 
-  // Responsive columns for different screen sizes
-  mobileColumns: string[] = ['user', 'email', 'actions'];
-  tabletColumns: string[] = ['user', 'email', 'roles', 'status', 'actions'];
-  desktopColumns: string[] = ['user', 'email', 'phone', 'roles', 'status', 'lastLogin', 'actions'];
+  // ── SuperAdmin ───────────────────────────────────────────────────────────────
+  get isSuperAdmin(): boolean {
+    return this._authService.authUser?.isSuperAdmin ?? false;
+  }
 
-  pageSize = 20;
-  currentPage = 1;
-  total = 0;
+  // ── State ────────────────────────────────────────────────────────────────────
+  allData:   UserDto[] = [];
+  isLoading  = false;
+  showFilterPanel = false;
+  cellTemplates: { [key: string]: TemplateRef<any> } = {};
 
-  showAlert = false;
-  alert = { 
-    type: 'success' as 'success' | 'error', 
-    message: '' 
+  // ── Filters ──────────────────────────────────────────────────────────────────
+  private _filterValues = {
+    search:   '',
+    status:   'all',
+    schoolId: 'all',
   };
 
-  filterValue = '';
-  statusFilter: 'all' | 'active' | 'inactive' = 'all';
-  isSuperAdmin = false;
-  isMobile = false;
-  isTablet = false;
+  // ── Pagination ───────────────────────────────────────────────────────────────
+  currentPage  = 1;
+  itemsPerPage = 10;
 
-  // Stats
-  stats = {
-    totalUsers: 0,
-    activeUsers: 0,
-    inactiveUsers: 0
+  // ── Stats ────────────────────────────────────────────────────────────────────
+  get total():         number { return this.allData.length; }
+  get activeCount():   number { return this.allData.filter(u => u.isActive).length; }
+  get inactiveCount(): number { return this.allData.filter(u => !u.isActive).length; }
+  get verifiedCount(): number { return this.allData.filter(u => u.isEmailVerified).length; }
+
+  get statsCards(): StatCard[] {
+    const cards: StatCard[] = [
+      { label: 'Total Users',      value: this.total,         icon: 'group',          iconColor: 'indigo' },
+      { label: 'Active',           value: this.activeCount,   icon: 'check_circle',   iconColor: 'green'  },
+      { label: 'Inactive',         value: this.inactiveCount, icon: 'block',          iconColor: 'red'    },
+      { label: 'Email Verified',   value: this.verifiedCount, icon: 'verified',       iconColor: 'violet' },
+    ];
+    return cards;
+  }
+
+  // ── Filtered + Paginated Data ─────────────────────────────────────────────────
+  get filteredData(): UserDto[] {
+    return this.allData.filter(u => {
+      const q = this._filterValues.search.toLowerCase();
+      const matchText =
+        !q ||
+        u.firstName?.toLowerCase().includes(q) ||
+        u.lastName?.toLowerCase().includes(q)  ||
+        u.email?.toLowerCase().includes(q)     ||
+        u.phoneNumber?.toLowerCase().includes(q);
+
+      const matchStatus =
+        this._filterValues.status === 'all' ||
+        (this._filterValues.status === 'active'   && u.isActive)  ||
+        (this._filterValues.status === 'inactive' && !u.isActive);
+
+      const matchSchool =
+        this._filterValues.schoolId === 'all' ||
+        u.schoolId === this._filterValues.schoolId;
+
+      return matchText && matchStatus && matchSchool;
+    });
+  }
+
+  get paginatedData(): UserDto[] {
+    const start = (this.currentPage - 1) * this.itemsPerPage;
+    return this.filteredData.slice(start, start + this.itemsPerPage);
+  }
+
+  // ── Table Columns ────────────────────────────────────────────────────────────
+  get tableColumns(): TableColumn<UserDto>[] {
+    const cols: TableColumn<UserDto>[] = [
+      { id: 'user',    label: 'User',         align: 'left', sortable: true },
+      { id: 'email',   label: 'Email',        align: 'left', hideOnMobile: true },
+    ];
+
+    if (this.isSuperAdmin) {
+      cols.push({ id: 'school', label: 'School', align: 'left', hideOnMobile: true });
+    }
+
+    cols.push(
+      { id: 'phone',   label: 'Phone',        align: 'left', hideOnMobile: true },
+      { id: 'roles',   label: 'Roles',        align: 'left', hideOnTablet: false },
+      { id: 'status',  label: 'Status',       align: 'center' },
+      { id: 'updated', label: 'Last Updated', align: 'left', hideOnTablet: true },
+    );
+
+    return cols;
+  }
+
+  tableActions: TableAction<UserDto>[] = [
+    {
+      id:      'edit',
+      label:   'Edit',
+      icon:    'edit',
+      color:   'blue',
+      handler: (user) => this.openEdit(user),
+    },
+    {
+      id:      'resetPassword',
+      label:   'Reset Password',
+      icon:    'lock_reset',
+      color:   'violet',
+      handler: (user) => this.resetPassword(user),
+    },
+    {
+      id:      'deactivate',
+      label:   'Deactivate',
+      icon:    'block',
+      color:   'amber',
+      handler: (user) => this.toggleUserStatus(user),
+      visible: (user) => user.isActive,
+    },
+    {
+      id:      'activate',
+      label:   'Activate',
+      icon:    'check_circle',
+      color:   'green',
+      handler: (user) => this.toggleUserStatus(user),
+      visible: (user) => !user.isActive,
+      divider: true,
+    },
+    {
+      id:      'delete',
+      label:   'Delete',
+      icon:    'delete',
+      color:   'red',
+      handler: (user) => this.removeUser(user),
+    },
+  ];
+
+  tableHeader: TableHeader = {
+    title:         'All Users',
+    subtitle:      '',
+    icon:          'table_chart',
+    iconGradient:  'bg-gradient-to-br from-indigo-500 via-violet-600 to-purple-700',
   };
+
+  tableEmptyState: TableEmptyState = {
+    icon:        'person_search',
+    message:     'No users found',
+    description: 'Try adjusting your filters or create a new user',
+    action: {
+      label:   'Add First User',
+      icon:    'person_add',
+      handler: () => this.openCreate(),
+    },
+  };
+
+  // ── Filter Fields ────────────────────────────────────────────────────────────
+  filterFields: FilterField[] = [];
+
+  private initFilterFields(): void {
+    this.filterFields = [
+      {
+        id:          'search',
+        label:       'Search',
+        type:        'text',
+        placeholder: 'Name, email, or phone...',
+        value:       this._filterValues.search,
+      },
+      {
+        id:      'status',
+        label:   'Status',
+        type:    'select',
+        value:   this._filterValues.status,
+        options: [
+          { label: 'All Statuses', value: 'all' },
+          { label: 'Active',       value: 'active' },
+          { label: 'Inactive',     value: 'inactive' },
+        ],
+      },
+    ];
+  }
 
   constructor(
-    protected service: UserService,
-    protected dialog: MatDialog,
-    protected snackBar: MatSnackBar
-  ) {
-    super(service, dialog, snackBar);
-  }
-
-  /**
-   * Listen for window resize to adjust columns
-   */
-  @HostListener('window:resize', ['$event'])
-  onResize(event?: Event): void {
-    this.updateDisplayedColumns();
-  }
+    private _service:      UserService,
+    private _dialog:       MatDialog,
+    private _confirmation: FuseConfirmationService,
+  ) {}
 
   ngOnInit(): void {
-    this.checkSuperAdminStatus();
-    this.updateDisplayedColumns();
-    this.init();
+    this.initFilterFields();
+    this.loadAll();
+  }
+
+  ngAfterViewInit(): void {
+    this.cellTemplates = {
+      user:    this.userCellTemplate,
+      email:   this.emailCellTemplate,
+      school:  this.schoolCellTemplate,
+      phone:   this.phoneCellTemplate,
+      roles:   this.rolesCellTemplate,
+      status:  this.statusCellTemplate,
+      updated: this.updatedCellTemplate,
+    };
   }
 
   ngOnDestroy(): void {
@@ -126,420 +273,209 @@ export class UsersManagementComponent
     this._unsubscribe.complete();
   }
 
-  ngAfterViewInit(): void {
-    if (this.paginator) {
-      this.dataSource.paginator = this.paginator;
-    }
-    if (this.sort) {
-      this.dataSource.sort = this.sort;
-    }
-  }
+loadAll(): void {
+  this.isLoading = true;
 
-  /**
-   * Override loadAll to calculate stats
-   */
-  override loadAll(): void {
-    super.loadAll();
-    // Subscribe to data changes to update stats
-    this.dataSource.connect().pipe(
-      takeUntil(this._unsubscribe)
-    ).subscribe(data => {
-      this.updateStats(data);
+  this._service.getAll()
+    .pipe(takeUntil(this._unsubscribe))
+    .subscribe({
+      next: (res) => {
+        if (res.success) {
+          this.allData = res.data ?? [];
+          this.tableHeader.subtitle =
+            `${this.filteredData.length} users found`;
+        }
+        this.isLoading = false;
+      },
+      error: (err) => {
+        this.isLoading = false;
+        this._alert.error(
+          err?.error?.message || 'Failed to load users'
+        );
+      },
     });
-  }
+}
 
-  /**
-   * Update statistics
-   */
-  private updateStats(users: UserDto[]): void {
-    this.stats.totalUsers = users.length;
-    this.stats.activeUsers = users.filter(u => u.isActive).length;
-    this.stats.inactiveUsers = users.filter(u => !u.isActive).length;
-  }
-
-  /**
-   * Update displayed columns based on screen size
-   */
-  private updateDisplayedColumns(): void {
-    const width = window.innerWidth;
-    
-    this.isMobile = width < 640;
-    this.isTablet = width >= 640 && width < 1024;
-
-    if (this.isSuperAdmin) {
-      // SuperAdmin gets school column
-      if (this.isMobile) {
-        this.displayedColumns = ['user', 'email', 'actions'];
-      } else if (this.isTablet) {
-        this.displayedColumns = ['user', 'email', 'school', 'roles', 'status', 'actions'];
-      } else {
-        this.displayedColumns = ['user', 'email', 'school', 'phone', 'roles', 'status', 'lastLogin', 'actions'];
-      }
-    } else {
-      // Regular users
-      if (this.isMobile) {
-        this.displayedColumns = this.mobileColumns;
-      } else if (this.isTablet) {
-        this.displayedColumns = this.tabletColumns;
-      } else {
-        this.displayedColumns = this.desktopColumns;
-      }
-    }
-  }
-
-  /**
-   * Check if current user is SuperAdmin by decoding JWT token
-   */
-  private checkSuperAdminStatus(): void {
-    try {
-      // Get token from localStorage or your auth service
-      const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
-      
-      if (!token) {
-        this.isSuperAdmin = false;
-        return;
-      }
-
-      // Decode JWT token (simple base64 decode of payload)
-      const payload = this.decodeJwtPayload(token);
-      
-      if (!payload) {
-        this.isSuperAdmin = false;
-        return;
-      }
-
-      // Check if user has SuperAdmin role
-      // JWT includes role claim as either a string or array
-      const roles = payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'];
-      
-      if (Array.isArray(roles)) {
-        this.isSuperAdmin = roles.includes('SuperAdmin');
-      } else if (typeof roles === 'string') {
-        this.isSuperAdmin = roles === 'SuperAdmin';
-      }
-
-      // Also check the is_super_admin claim
-      const isSuperAdminClaim = payload['is_super_admin'];
-      if (isSuperAdminClaim === 'true' || isSuperAdminClaim === true) {
-        this.isSuperAdmin = true;
-      }
-
-      console.log('SuperAdmin status:', this.isSuperAdmin);
-    } catch (error) {
-      console.error('Error checking SuperAdmin status:', error);
-      this.isSuperAdmin = false;
-    }
-  }
-
-  /**
-   * Decode JWT payload
-   */
-  private decodeJwtPayload(token: string): any {
-    try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(
-        atob(base64)
-          .split('')
-          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-          .join('')
-      );
-      return JSON.parse(jsonPayload);
-    } catch (error) {
-      console.error('Error decoding JWT:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Get tooltip for extra roles when using roles array
-   */
-  getExtraRolesTooltip(user: UserDto): string {
-    if (!user?.roles || user.roles.length <= 2) {
-      return '';
-    }
-
-    return user.roles
-      .slice(2)
-      .map(r => r.name)
-      .join(', ');
-  }
-
-  /**
-   * Get tooltip for extra roles when using roleNames array
-   */
-  getExtraRoleNamesTooltip(user: any): string {
-    if (!user?.roleNames || user.roleNames.length <= 2) {
-      return '';
-    }
-
-    return user.roleNames
-      .slice(2)
-      .join(', ');
-  }
-
-  /**
-   * Apply text filter
-   */
-  applyFilter(value: string): void {
-    this.filterValue = value;
-    this.applyAllFilters();
-  }
-
-  /**
-   * Clear text filter
-   */
-  clearFilter(): void {
-    this.filterValue = '';
-    this.applyAllFilters();
-  }
-
-  /**
-   * Apply status filter
-   */
-  applyStatusFilter(): void {
-    this.applyAllFilters();
-  }
-
-  /**
-   * Apply all filters combined
-   */
-  private applyAllFilters(): void {
-    this.dataSource.filterPredicate = (data: UserDto, filter: string) => {
-      // Text filter
-      const searchStr = filter.toLowerCase();
-      const matchesText = !searchStr || 
-        data.firstName?.toLowerCase().includes(searchStr) ||
-        data.lastName?.toLowerCase().includes(searchStr) ||
-        data.email?.toLowerCase().includes(searchStr) ||
-        data.phoneNumber?.toLowerCase().includes(searchStr);
-
-      // Status filter
-      const matchesStatus = this.statusFilter === 'all' ||
-        (this.statusFilter === 'active' && data.isActive) ||
-        (this.statusFilter === 'inactive' && !data.isActive);
-
-      return matchesText && matchesStatus;
-    };
-
-    this.dataSource.filter = this.filterValue.trim().toLowerCase();
-  }
-
-  /**
-   * Open create user dialog
-   */
+  // ── CRUD ──────────────────────────────────────────────────────────────────────
+// ── CRUD ──────────────────────────────────────────────────────────────────────
   openCreate(): void {
-    const dialogWidth = this.isMobile ? '100vw' : this.isTablet ? '90vw' : '700px';
-    const dialogMaxWidth = this.isMobile ? '100vw' : '90vw';
-
-    this.openDialog(CreateEditUserDialogComponent, { 
-      width: dialogWidth,
-      maxWidth: dialogMaxWidth,
-      data: { 
-        mode: 'create',
-        isSuperAdmin: this.isSuperAdmin 
-      } 
+    const dialogRef = this._dialog.open(CreateEditUserDialogComponent, {
+      panelClass: 'user-management-dialog',
+      disableClose: true,
+      data: { mode: 'create', isSuperAdmin: this.isSuperAdmin },
     });
+
+    dialogRef.afterClosed()
+      .pipe(takeUntil(this._unsubscribe))
+      .subscribe(result => {
+        if (result) {
+          //this._alert.success('User created successfully');
+          this.loadAll();
+        }
+      });
   }
 
-  /**
-   * Open edit user dialog
-   */
   openEdit(user: UserDto): void {
-    const dialogWidth = this.isMobile ? '100vw' : this.isTablet ? '90vw' : '700px';
-    const dialogMaxWidth = this.isMobile ? '100vw' : '90vw';
-
-    // Pass userId instead of user object - let dialog fetch fresh data
-    this.openDialog(CreateEditUserDialogComponent, { 
-      width: dialogWidth,
-      maxWidth: dialogMaxWidth,
-      data: { 
-        mode: 'edit', 
-        userId: user.id,
-        isSuperAdmin: this.isSuperAdmin 
-      } 
+    const dialogRef = this._dialog.open(CreateEditUserDialogComponent, {
+      panelClass: 'user-management-dialog',
+      disableClose: true,
+      data: { mode: 'edit', userId: user.id, isSuperAdmin: this.isSuperAdmin },
     });
+
+    dialogRef.afterClosed()
+      .pipe(takeUntil(this._unsubscribe))
+      .subscribe(result => {
+        if (result) {
+         // this._alert.success('User updated successfully');
+          this.loadAll();
+        }
+      });
   }
 
-  /**
-   * Remove user
-   */
   removeUser(user: UserDto): void {
-    if (!confirm(`Are you sure you want to delete ${user.firstName} ${user.lastName}?`)) {
-      return;
-    }
-    this.deleteItem(user.id);
+    const confirmation = this._confirmation.open({
+      title:   'Delete User',
+      message: `Are you sure you want to delete ${user.firstName} ${user.lastName}? This cannot be undone.`,
+      icon:    { name: 'delete', color: 'warn' },
+      actions: {
+        confirm: { label: 'Delete', color: 'warn' },
+        cancel:  { label: 'Cancel' },
+      },
+    });
+
+    confirmation.afterClosed()
+      .pipe(takeUntil(this._unsubscribe))
+      .subscribe(result => {
+        if (result === 'confirmed') {
+          this._service.deleteUser(user.id)
+            .pipe(takeUntil(this._unsubscribe))
+            .subscribe({
+              next: (res) => {
+                if (res.success) {
+                  this._alert.success('User deleted successfully');
+                  if (this.paginatedData.length === 1 && this.currentPage > 1) {
+                    this.currentPage--;
+                  }
+                  this.loadAll();
+                }
+              },
+              error: (err) => {
+                this._alert.error(err?.error?.message || 'Failed to delete user');
+              },
+            });
+        }
+      });
   }
 
-  /**
-   * Toggle user active status
-   */
   toggleUserStatus(user: UserDto): void {
     const action = user.isActive ? 'deactivate' : 'activate';
-    const confirmMessage = user.isActive 
-      ? `Are you sure you want to deactivate ${user.firstName} ${user.lastName}?`
-      : `Are you sure you want to activate ${user.firstName} ${user.lastName}?`;
 
-    if (!confirm(confirmMessage)) {
-      return;
-    }
+    this._alert.confirm({
+      title:       `${user.isActive ? 'Deactivate' : 'Activate'} User`,
+      message:     `Are you sure you want to ${action} ${user.firstName} ${user.lastName}?`,
+      confirmText: user.isActive ? 'Deactivate' : 'Activate',
+      cancelText:  'Cancel',
+      onConfirm: () => {
+        const req$ = user.isActive
+          ? this._service.deactivateUser(user.id)
+          : this._service.activateUser(user.id);
 
-    this.isLoading = true;
-
-    const toggleObservable = user.isActive 
-      ? this.service.deactivateUser(user.id)
-      : this.service.activateUser(user.id);
-
-    toggleObservable
-      .pipe(take(1))
-      .subscribe({
-        next: (res) => {
-          this.isLoading = false;
-          if (res.success) {
-            const status = user.isActive ? 'deactivated' : 'activated';
-            this.showSuccessAlert(`User ${status} successfully`);
-            this.loadAll();
-          } else {
-            this.showErrorAlert(res.message || 'Failed to update status');
-          }
-        },
-        error: (err) => {
-          this.isLoading = false;
-          const errorMsg = err?.error?.message || err.message || 'Failed to update status';
-          this.showErrorAlert(errorMsg);
-        }
-      });
-  }
-
-  /**
-   * Resend welcome email
-   */
-  resendWelcomeEmail(user: UserDto): void {
-    if (!confirm(`Send welcome email to ${user.email}?`)) {
-      return;
-    }
-
-    this.isLoading = true;
-    this.service.resendWelcomeEmail(user.id)
-      .pipe(take(1))
-      .subscribe({
-        next: (res) => {
-          this.isLoading = false;
-          if (res.success) {
-            this.showSuccessAlert('Welcome email sent successfully');
-          } else {
-            this.showErrorAlert(res.message || 'Failed to send email');
-          }
-        },
-        error: (err) => {
-          this.isLoading = false;
-          const errorMsg = err?.error?.message || err.message || 'Failed to send email';
-          this.showErrorAlert(errorMsg);
-        }
-      });
-  }
-
-  /**
-   * Reset user password
-   */
-  resetPassword(user: UserDto): void {
-    if (!confirm(`Send password reset email to ${user.email}?`)) {
-      return;
-    }
-
-    this.isLoading = true;
-    this.service.resetPassword(user.id)
-      .pipe(take(1))
-      .subscribe({
-        next: (res) => {
-          this.isLoading = false;
-          if (res.success) {
-            this.showSuccessAlert('Password reset email sent');
-          } else {
-            this.showErrorAlert(res.message || 'Failed to send reset email');
-          }
-        },
-        error: (err) => {
-          this.isLoading = false;
-          const errorMsg = err?.error?.message || err.message || 'Failed to send reset email';
-          this.showErrorAlert(errorMsg);
-        }
-      });
-  }
-
-  /**
-   * Handle page change
-   */
-  onPageChange(event: PageEvent): void {
-    this.currentPage = event.pageIndex + 1;
-    this.pageSize = event.pageSize;
-    // If using server-side paging, call loadAll() with pagination params
-  }
-
-  /**
-   * Get user initials
-   */
-  getInitials(user: UserDto): string {
-    const firstInitial = user.firstName?.charAt(0) || '';
-    const lastInitial = user.lastName?.charAt(0) || '';
-    return `${firstInitial}${lastInitial}`.toUpperCase();
-  }
-
-  /**
-   * Format date in a user-friendly way
-   */
-  formatDate(date: string | undefined): string {
-    if (!date) return 'Never';
-    
-    const dateObj = new Date(date);
-    const now = new Date();
-    const diffMs = now.getTime() - dateObj.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    // Show relative time for recent dates
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays} days ago`;
-    
-    // Otherwise show formatted date
-    return dateObj.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: dateObj.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+        req$.pipe(takeUntil(this._unsubscribe)).subscribe({
+          next: (res) => {
+            if (res.success) {
+              this._alert.success(`User ${action}d successfully`);
+              this.loadAll();
+            }
+          },
+          error: (err) => {
+            this._alert.error(err?.error?.message || `Failed to ${action} user`);
+          },
+        });
+      },
+      onCancel: () => this._alert.info('Action cancelled'),
     });
   }
 
-  /**
-   * Show success alert
-   */
-  private showSuccessAlert(message: string): void {
-    this.alert = {
-      type: 'success',
-      message: message
-    };
-    this.showAlert = true;
-    this.snackBar.open(message, 'Close', { duration: 2500 });
-    
-    // Auto-hide alert after 5 seconds
-    setTimeout(() => {
-      this.showAlert = false;
-    }, 5000);
+  resetPassword(user: UserDto): void {
+    this._alert.confirm({
+      title:       'Reset Password',
+      message:     `Reset password for ${user.firstName} ${user.lastName}? A new temporary password will be generated.`,
+      confirmText: 'Reset',
+      cancelText:  'Cancel',
+      onConfirm: () => {
+        this._service.resetPassword(user.id)
+          .pipe(takeUntil(this._unsubscribe))
+          .subscribe({
+            next: (res) => {
+              if (res.success) {
+                const tmpPassword = res.data?.temporaryPassword;
+                const msg = tmpPassword
+                  ? `Password reset. Temporary password: ${tmpPassword}`
+                  : 'Password reset successfully';
+                this._alert.success(msg);
+                this.loadAll();
+              }
+            },
+            error: (err) => {
+              this._alert.error(err?.error?.message || 'Failed to reset password');
+            },
+          });
+      },
+      onCancel: () => {},
+    });
   }
 
-  /**
-   * Show error alert
-   */
-  private showErrorAlert(message: string): void {
-    this.alert = {
-      type: 'error',
-      message: message
-    };
-    this.showAlert = true;
-    this.snackBar.open(message, 'Close', { duration: 4000 });
-    
-    // Auto-hide alert after 7 seconds
-    setTimeout(() => {
-      this.showAlert = false;
-    }, 7000);
+  // ── Filter Handlers ──────────────────────────────────────────────────────────
+  toggleFilterPanel(): void {
+    this.showFilterPanel = !this.showFilterPanel;
+  }
+
+  onFilterChange(event: FilterChangeEvent): void {
+    (this._filterValues as any)[event.filterId] = event.value;
+    this.currentPage = 1;
+    this.tableHeader.subtitle = `${this.filteredData.length} users found`;
+  }
+
+  onClearFilters(): void {
+    this._filterValues = { search: '', status: 'all', schoolId: 'all' };
+    this.filterFields.forEach(f => { f.value = (this._filterValues as any)[f.id]; });
+    this.currentPage = 1;
+    this.tableHeader.subtitle = `${this.filteredData.length} users found`;
+  }
+
+  // ── Pagination ───────────────────────────────────────────────────────────────
+  onPageChange(page: number): void {
+    this.currentPage = page;
+  }
+
+  onItemsPerPageChange(itemsPerPage: number): void {
+    this.itemsPerPage = itemsPerPage;
+    this.currentPage  = 1;
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+  getInitials(user: UserDto): string {
+    return `${user.firstName?.charAt(0) ?? ''}${user.lastName?.charAt(0) ?? ''}`.toUpperCase();
+  }
+
+  getRoles(user: UserDto): string[] {
+    if (user.roleNames?.length) return user.roleNames;
+    if ((user as any).roles?.length) return (user as any).roles.map((r: any) => r.name ?? r);
+    return [];
+  }
+
+  formatDate(date: string | undefined): string {
+    if (!date) return 'Never';
+    const d    = new Date(date);
+    const now  = new Date();
+    const days = Math.floor((now.getTime() - d.getTime()) / 86_400_000);
+    if (days === 0) return 'Today';
+    if (days === 1) return 'Yesterday';
+    if (days <  7)  return `${days} days ago`;
+    return d.toLocaleDateString('en-US', {
+      month: 'short',
+      day:   'numeric',
+      year:  d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+    });
   }
 }

@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, Inject, OnInit, OnDestroy, ChangeDetectorRef, HostBinding } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
@@ -10,13 +10,16 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Subject } from 'rxjs';
 import { takeUntil, take } from 'rxjs/operators';
 import { UserService } from 'app/core/DevKenService/user/UserService';
-
 import { CreateUserRequest, UpdateUserRequest, UserDto, RoleDto } from 'app/core/DevKenService/Types/roles';
 import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
+import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
+
+
+// ── Types ──────────────────────────────────────────────────────────────────────
 
 export interface SchoolOption {
   id: string;
@@ -29,6 +32,17 @@ export interface UserDialogData {
   userId?: string;
   isSuperAdmin?: boolean;
 }
+
+type TabId = 'identity' | 'contact' | 'access';
+
+interface TabConfig {
+  id: TabId;
+  label: string;
+  icon: string;
+  fields: string[];
+}
+
+// ── Component ──────────────────────────────────────────────────────────────────
 
 @Component({
   selector: 'app-create-edit-user-dialog',
@@ -45,43 +59,89 @@ export interface UserDialogData {
     MatCheckboxModule,
     MatDividerModule,
     MatProgressSpinnerModule,
-    MatSnackBarModule
+    MatTooltipModule,
   ],
-  templateUrl: './create-edit-user-dialog.component.html'
+  templateUrl: './create-edit-user-dialog.component.html',
+  styleUrl: './create-edit-user-dialog.component.scss'
 })
 export class CreateEditUserDialogComponent implements OnInit, OnDestroy {
 
-  form!: FormGroup;
+  // ── Host Bindings ────────────────────────────────────────────────────────────
+  @HostBinding('class.is-loading')
+  get hostIsLoading(): boolean {
+    return this.isLoadingRoles || this.isLoadingSchools;
+  }
 
+  // ── Form State ───────────────────────────────────────────────────────────────
+  form!: FormGroup;
+  formSubmitted = false;
+
+  // ── Dialog State ─────────────────────────────────────────────────────────────
   isEditMode       = false;
   isSuperAdmin     = false;
   isSaving         = false;
-  hidePassword     = true;
   isLoadingRoles   = false;
   isLoadingSchools = false;
 
-  dialogTitle    = '';
-  availableRoles:   RoleDto[]     = [];
+  dialogTitle      = '';
+  availableRoles:   RoleDto[]      = [];
   availableSchools: SchoolOption[] = [];
+
+  // ── Tab State ────────────────────────────────────────────────────────────────
+  activeTab: TabId = 'identity';
+
+  readonly tabs: TabConfig[] = [
+    {
+      id: 'identity',
+      label: 'Identity',
+      icon: 'badge',
+      fields: ['firstName', 'lastName', 'schoolId']
+    },
+    {
+      id: 'contact',
+      label: 'Contact',
+      icon: 'contact_phone',
+      fields: ['email', 'phoneNumber']
+    },
+    {
+      id: 'access',
+      label: 'Access',
+      icon: 'admin_panel_settings',
+      fields: ['roleIds', 'isActive', 'sendWelcomeEmail']
+    }
+  ];
 
   private _destroy = new Subject<void>();
 
-  // ── Computed ───────────────────────────────────────────────────────────
-  /** Only show the school picker when a SuperAdmin is creating a new user */
+  // ── Computed ──────────────────────────────────────────────────────────────────
+
   get showSchoolSelection(): boolean {
     return this.isSuperAdmin && !this.isEditMode;
   }
+
+  get currentTabIndex(): number {
+    return this.tabs.findIndex(t => t.id === this.activeTab);
+  }
+
+  get isFirstTab(): boolean { return this.currentTabIndex === 0; }
+  get isLastTab():  boolean { return this.currentTabIndex === this.tabs.length - 1; }
+
+  // ── Constructor ───────────────────────────────────────────────────────────────
 
   constructor(
     private _fb:        FormBuilder,
     private _userSvc:   UserService,
     private _schoolSvc: SchoolService,
-    private _snackBar:  MatSnackBar,
+    private _alert:     AlertService,
     private _dialogRef: MatDialogRef<CreateEditUserDialogComponent>,
+    private _cdr:       ChangeDetectorRef,
     @Inject(MAT_DIALOG_DATA) private _data: UserDialogData
-  ) {}
+  ) {
+    _dialogRef.addPanelClass(['user-management-dialog']);
+  }
 
-  // ── Lifecycle ──────────────────────────────────────────────────────────
+  // ── Lifecycle ──────────────────────────────────────────────────────────────────
+
   ngOnInit(): void {
     this.isEditMode   = this._data.mode === 'edit';
     this.isSuperAdmin = this._data.isSuperAdmin ?? false;
@@ -89,14 +149,18 @@ export class CreateEditUserDialogComponent implements OnInit, OnDestroy {
 
     this._buildForm();
 
-    // When SuperAdmin picks a school, reload roles for that school
     if (this.showSchoolSelection) {
       this._loadSchools();
 
       this.form.get('schoolId')!.valueChanges
         .pipe(takeUntil(this._destroy))
         .subscribe(schoolId => {
-          if (schoolId) this._loadRoles(schoolId);
+          if (schoolId) {
+            this._loadRoles(schoolId);
+          } else {
+            this.availableRoles = [];
+            this.form.get('roleIds')?.setValue([]);
+          }
         });
     } else {
       this._loadRoles();
@@ -112,43 +176,23 @@ export class CreateEditUserDialogComponent implements OnInit, OnDestroy {
     this._destroy.complete();
   }
 
-  // ── Form builder ───────────────────────────────────────────────────────
+  // ── Form ───────────────────────────────────────────────────────────────────────
+
   private _buildForm(): void {
     this.form = this._fb.group({
-      // School — required only when SuperAdmin is creating
-      schoolId: [
-        null,
-        this.showSchoolSelection ? [Validators.required] : []
-      ],
-
-      // Personal info
-      firstName: ['', [Validators.required, Validators.minLength(2)]],
-      lastName:  ['', [Validators.required, Validators.minLength(2)]],
-
-      // Contact
-      email:       ['', [Validators.required, Validators.email]],
-      phoneNumber: [''],
-
-      // Security (create only)
-      password: [
-        '',
-        !this.isEditMode
-          ? [Validators.required, Validators.minLength(8)]
-          : []
-      ],
-
-      // Roles
-      roleIds: [[]],
-
-      // Edit-only fields
-      isActive: [true],
-
-      // Create-only options
+      schoolId:         [null, this.showSchoolSelection ? [Validators.required] : []],
+      firstName:        ['', [Validators.required, Validators.minLength(2)]],
+      lastName:         ['', [Validators.required, Validators.minLength(2)]],
+      email:            ['', [Validators.required, Validators.email]],
+      phoneNumber:      [''],
+      roleIds:          [[]],
+      isActive:         [true],
       sendWelcomeEmail: [true]
     });
   }
 
-  // ── Data loaders ───────────────────────────────────────────────────────
+  // ── Loaders ────────────────────────────────────────────────────────────────────
+
   private _loadSchools(): void {
     this.isLoadingSchools = true;
 
@@ -163,22 +207,22 @@ export class CreateEditUserDialogComponent implements OnInit, OnDestroy {
               name:     s.name,
               location: s.county ?? s.address ?? undefined
             }));
+          } else {
+            this._alert.error(res.message || 'Failed to load schools');
           }
+          this._cdr.detectChanges();
         },
-        error: () => {
+        error: err => {
           this.isLoadingSchools = false;
-          this._snackBar.open('Failed to load schools', 'Close', { duration: 3000 });
+          this._alert.error(err?.error?.message || 'Failed to load schools');
+          this._cdr.detectChanges();
         }
       });
   }
 
-  /**
-   * Load roles scoped to a specific school, or load the current tenant's roles
-   * when no schoolId is provided (regular non-SuperAdmin context).
-   */
   private _loadRoles(schoolId?: string): void {
     this.isLoadingRoles = true;
-    this.form.get('roleIds')?.setValue([]);   // clear stale role selection
+    this.form.get('roleIds')?.setValue([]);
 
     const roles$ = schoolId
       ? this._userSvc.getAvailableRolesBySchool(schoolId)
@@ -189,11 +233,23 @@ export class CreateEditUserDialogComponent implements OnInit, OnDestroy {
       .subscribe({
         next: res => {
           this.isLoadingRoles = false;
-          this.availableRoles = res.data ?? [];
+          if (res.success && res.data) {
+            this.availableRoles = res.data;
+            if (this.availableRoles.length === 0) {
+              this._alert.warning('No roles found for this school. Please create roles first.');
+            }
+          } else {
+            this.availableRoles = [];
+            this._alert.error(res.message || 'Failed to load roles');
+          }
+          this._cdr.detectChanges();
         },
         error: () => {
           this.isLoadingRoles = false;
-          this._snackBar.open('Failed to load roles', 'Close', { duration: 3000 });
+          this.availableRoles = [];
+          this._alert.error(err?.error?.message || err?.message || 'Failed to load roles');
+          console.error('[UserDialog] roles load error:', err);
+          this._cdr.detectChanges();
         }
       });
   }
@@ -203,7 +259,11 @@ export class CreateEditUserDialogComponent implements OnInit, OnDestroy {
       .pipe(take(1), takeUntil(this._destroy))
       .subscribe({
         next: res => {
-          if (!res.success || !res.data) return;
+          if (!res.success || !res.data) {
+            this._alert.error('Failed to load user data');
+            return;
+          }
+
           const user = res.data;
 
           this.form.patchValue({
@@ -212,22 +272,48 @@ export class CreateEditUserDialogComponent implements OnInit, OnDestroy {
             email:       user.email,
             phoneNumber: user.phoneNumber ?? '',
             isActive:    user.isActive,
-            // Map role objects or role name strings → ids
-            roleIds: user.roles?.map((r: any) => r.id ?? r) ?? []
+            roleIds:     user.roles?.map((r: any) => r.id ?? r) ?? []
           });
 
-          // Email must not change in edit mode
           this.form.get('email')?.disable();
+          this._cdr.detectChanges();
         },
-        error: () => {
-          this._snackBar.open('Failed to load user data', 'Close', { duration: 3000 });
+        error: err => {
+          this._alert.error(err?.error?.message || 'Failed to load user data');
         }
       });
   }
 
-  // ── Actions ────────────────────────────────────────────────────────────
+  // ── Navigation ─────────────────────────────────────────────────────────────────
+
+  setTab(tabId: TabId): void {
+    this.activeTab = tabId;
+  }
+
+  nextTab(): void {
+    const idx = this.currentTabIndex;
+    if (idx < this.tabs.length - 1) {
+      this.activeTab = this.tabs[idx + 1].id;
+    }
+  }
+
+  prevTab(): void {
+    const idx = this.currentTabIndex;
+    if (idx > 0) this.activeTab = this.tabs[idx - 1].id;
+  }
+
+  // ── Save ───────────────────────────────────────────────────────────────────────
+
   onSave(): void {
+    this.formSubmitted = true;
+
     if (this.form.invalid) {
+      for (const tab of this.tabs) {
+        if (tab.fields.some(f => this.form.get(f)?.invalid)) {
+          this.activeTab = tab.id;
+          break;
+        }
+      }
       this.form.markAllAsTouched();
       return;
     }
@@ -244,13 +330,9 @@ export class CreateEditUserDialogComponent implements OnInit, OnDestroy {
       lastName:         v.lastName.trim(),
       email:            v.email.trim().toLowerCase(),
       phoneNumber:      v.phoneNumber?.trim() || undefined,
-      password:         v.password,
       roleIds:          v.roleIds ?? [],
       sendWelcomeEmail: v.sendWelcomeEmail,
-      // ✅ Key fix: always include schoolId when SuperAdmin picks a school.
-      // For regular users this will be undefined and the backend will use
-      // the calling user's own TenantId instead.
-      schoolId: this.showSchoolSelection ? v.schoolId : undefined
+      schoolId:         this.showSchoolSelection ? v.schoolId : undefined
     };
 
     this._userSvc.create(payload)
@@ -259,16 +341,15 @@ export class CreateEditUserDialogComponent implements OnInit, OnDestroy {
         next: res => {
           this.isSaving = false;
           if (res.success) {
-            this._snackBar.open('User created successfully', 'Close', { duration: 2500 });
+            this._alert.success('User created successfully');
             this._dialogRef.close(true);
           } else {
-            this._snackBar.open(res.message || 'Failed to create user', 'Close', { duration: 4000 });
+            this._alert.error(res.message || 'Failed to create user');
           }
         },
         error: err => {
           this.isSaving = false;
-          const msg = err?.error?.message || err.message || 'Failed to create user';
-          this._snackBar.open(msg, 'Close', { duration: 4000 });
+          this._alert.error(err?.error?.message || err?.message || 'Failed to create user');
         }
       });
   }
@@ -283,7 +364,6 @@ export class CreateEditUserDialogComponent implements OnInit, OnDestroy {
       phoneNumber: v.phoneNumber?.trim() || undefined,
       roleIds:     v.roleIds ?? [],
       isActive:    v.isActive
-      // schoolId deliberately omitted — school cannot change on edit
     };
 
     this._userSvc.update(this._data.userId!, payload)
@@ -292,16 +372,15 @@ export class CreateEditUserDialogComponent implements OnInit, OnDestroy {
         next: res => {
           this.isSaving = false;
           if (res.success) {
-            this._snackBar.open('User updated successfully', 'Close', { duration: 2500 });
+            this._alert.success('User updated successfully');
             this._dialogRef.close(true);
           } else {
-            this._snackBar.open(res.message || 'Failed to update user', 'Close', { duration: 4000 });
+            this._alert.error(res.message || 'Failed to update user');
           }
         },
         error: err => {
           this.isSaving = false;
-          const msg = err?.error?.message || err.message || 'Failed to update user';
-          this._snackBar.open(msg, 'Close', { duration: 4000 });
+          this._alert.error(err?.error?.message || err?.message || 'Failed to update user');
         }
       });
   }
@@ -310,11 +389,15 @@ export class CreateEditUserDialogComponent implements OnInit, OnDestroy {
     this._dialogRef.close(false);
   }
 
-  // ── Validation helpers ─────────────────────────────────────────────────
+  // ── Validation Helpers ──────────────────────────────────────────────────────────
+
+  tabHasErrors(tab: TabConfig): boolean {
+    return this.formSubmitted && tab.fields.some(f => this.form.get(f)?.invalid);
+  }
+
   getErrorMessage(field: string): string {
     const ctrl = this.form.get(field);
     if (!ctrl?.errors) return '';
-
     if (ctrl.hasError('required'))  return 'This field is required';
     if (ctrl.hasError('email'))     return 'Enter a valid email address';
     if (ctrl.hasError('minlength')) {

@@ -11,5 +11,6 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
         Task<School?> GetBySlugAsync(string slugName);
 
         Task<IEnumerable<School>> GetAllAsync(bool trackChanges = false);
+        Task<IEnumerable<School>> GetByIdsAsync(IEnumerable<Guid> ids, bool trackChanges = false);
     }
 }
