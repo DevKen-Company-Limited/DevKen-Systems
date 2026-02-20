@@ -27,6 +27,7 @@ using Devken.CBC.SchoolManagement.Application.Services.Interfaces.Images;
 using Devken.CBC.SchoolManagement.Application.Services.UserManagement;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academic;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academics;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Identity;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSeries;
@@ -179,6 +180,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                 RegisterPermissionPolicy(options, PermissionKeys.TeacherDelete);
                 RegisterPermissionPolicy(options, PermissionKeys.SubjectRead);
                 RegisterPermissionPolicy(options, PermissionKeys.SubjectWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.SubjectDelete);
                 RegisterPermissionPolicy(options, PermissionKeys.ClassRead);
                 RegisterPermissionPolicy(options, PermissionKeys.ClassWrite);
                 RegisterPermissionPolicy(options, PermissionKeys.GradeRead);
@@ -246,6 +248,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                     "Settings.Read", "Settings.Write",
                     "Class.Read", "Class.Write",
                     "AcademicYear.Read", "AcademicYear.Write",
+                    "Subject.Read", "Subject.Write","Subject.Delete",
                     "Grade.Read", "Grade.Write",
                     "ProgressReport.Read", "ProgressReport.Write",
                     "Invoice.Read", "Invoice.Write",
@@ -271,6 +274,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IUserActivityService1, UserActivityService1>(); 
             // Repositories
             services.AddScoped<IStudentRepository, StudentRepository>();
+            services.AddScoped<ISubjectRepository, SubjectRepository>();
             services.AddScoped<ISchoolRepository, SchoolRepository>();
             services.AddScoped<IRoleRepository, RoleRepository>();
             services.AddScoped<IPermissionRepository, PermissionRepository>();
@@ -313,6 +317,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IUserManagementService, UserManagementService>();
             services.AddScoped<ITeacherService, TeacherService>();
             services.AddScoped<ITermService, TermService>();
+            services.AddScoped<IStudentService, StudentService>();
+            services.AddScoped<ISubjectService, SubjectService>();
             services.AddScoped<IJwtService, JwtService>();
             services.AddScoped<IPermissionSeedService, PermissionSeedService>();
             services.AddScoped<ISubscriptionSeedService, SubscriptionSeedService>();

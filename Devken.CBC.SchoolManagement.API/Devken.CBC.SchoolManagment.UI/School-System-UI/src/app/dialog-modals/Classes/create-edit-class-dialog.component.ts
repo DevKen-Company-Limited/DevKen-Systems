@@ -13,7 +13,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Subject, takeUntil, debounceTime, forkJoin, finalize, of, catchError } from 'rxjs';
 
-import { ClassService } from 'app/core/DevKenService/ClassService';
+import { ClassService } from 'app/core/DevKenService/ClassService/ClassService';
 import { AcademicYearService } from 'app/core/DevKenService/AcademicYearService/AcademicYearService';
 import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
 import { AlertService } from 'app/core/DevKenService/Alert/AlertService';

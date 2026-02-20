@@ -45,6 +45,16 @@ export class UserService
     schoolId?: string
   ): Observable<ApiResponse<UserDto[]>> {
 
+  // ─────────────────────────────────────────────────────────────
+  // USERS LIST (Returns ONLY UserDto[] for component simplicity)
+  // ─────────────────────────────────────────────────────────────
+
+  getAll(
+    page = 1,
+    pageSize = 20,
+    schoolId?: string
+  ): Observable<ApiResponse<UserDto[]>> {
+
     let params = new HttpParams()
       .set('page', page.toString())
       .set('pageSize', pageSize.toString());

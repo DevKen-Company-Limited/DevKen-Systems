@@ -1,0 +1,170 @@
+<!-- list/subjects.component.html -->
+<div class="absolute inset-0 flex min-w-0 flex-col overflow-y-auto" cdkScrollable>
+
+  <!-- ── Page Header ───────────────────────────────────────────────────── -->
+  <app-page-header
+    title="Subjects Management"
+    description="Manage all subjects across CBC curriculum levels"
+    icon="menu_book"
+    [breadcrumbs]="breadcrumbs"
+    [actionTemplate]="headerActions">
+  </app-page-header>
+
+  <!-- Header Actions -->
+  <ng-template #headerActions>
+    <!-- Export Dropdown -->
+    <button mat-stroked-button
+      [matMenuTriggerFor]="exportMenu"
+      class="mr-3 border-green-200 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/30">
+      <mat-icon class="icon-size-5">download</mat-icon>
+      <span class="ml-2">Export</span>
+      <mat-icon class="icon-size-4 ml-1">arrow_drop_down</mat-icon>
+    </button>
+
+    <mat-menu #exportMenu="matMenu">
+      <button
+        mat-menu-item
+        (click)="downloadSubjectsReport()"
+        [disabled]="isDownloadingReport"
+        matTooltip="Download a server-generated PDF report"
+        matTooltipPosition="left">
+        <ng-container *ngIf="isDownloadingReport; else reportIcon">
+          <mat-progress-spinner class="inline-block mr-2" mode="indeterminate" diameter="18" strokeWidth="2">
+          </mat-progress-spinner>
+        </ng-container>
+        <ng-template #reportIcon>
+          <mat-icon class="text-teal-600">article</mat-icon>
+        </ng-template>
+        <span>{{ isDownloadingReport ? 'Generating…' : 'Subjects Report (PDF)' }}</span>
+      </button>
+    </mat-menu>
+
+    <!-- Create Subject Button -->
+    <button mat-flat-button
+      class="bg-white text-indigo-700 hover:bg-yellow-200 hover:text-indigo-900 shadow-lg transition-all hover:shadow-xl font-bold"
+      (click)="createSubject()">
+      <mat-icon class="icon-size-5">add</mat-icon>
+      <span class="ml-2">Add</span>
+    </button>
+  </ng-template>
+
+  <!-- ── Main Content ───────────────────────────────────────────────────── -->
+  <div class="bg-card -mt-10 flex-auto rounded-t-2xl p-6 shadow sm:p-10">
+
+    <!-- Stats -->
+    <app-stats-cards [cards]="statsCards" [columns]="isSuperAdmin ? 5 : 4"></app-stats-cards>
+
+    <!-- Filter Panel -->
+    <div class="mb-6">
+      <app-filter-panel
+        [fields]="filterFields"
+        [showPanel]="showFilterPanel"
+        [columns]="4"
+        (filterChange)="onFilterChange($event)"
+        (clearAll)="onClearFilters()"
+        (togglePanel)="toggleFilterPanel()">
+      </app-filter-panel>
+    </div>
+
+    <!-- Data Table -->
+    <app-data-table
+      [columns]="tableColumns"
+      [data]="paginatedData"
+      [actions]="tableActions"
+      [loading]="isLoading"
+      [header]="tableHeader"
+      [emptyState]="tableEmptyState"
+      [cellTemplates]="cellTemplates">
+    </app-data-table>
+
+    <!-- Pagination -->
+    <app-pagination
+      *ngIf="!isLoading"
+      [currentPage]="currentPage"
+      [totalItems]="filteredData.length"
+      [itemsPerPage]="itemsPerPage"
+      [itemLabel]="'subjects'"
+      [showItemsPerPageSelector]="true"
+      [showPageNumbers]="true"
+      (pageChange)="onPageChange($event)"
+      (itemsPerPageChange)="onItemsPerPageChange($event)">
+    </app-pagination>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<!-- Cell Templates                                                     -->
+<!-- ══════════════════════════════════════════════════════════════════ -->
+
+<!-- Name Cell -->
+<ng-template #nameCell let-row>
+  <div class="flex items-center gap-3">
+    <div class="flex items-center justify-center w-10 h-10 rounded-xl shrink-0
+                bg-gradient-to-br from-indigo-100 to-violet-100
+                border border-indigo-200 dark:border-indigo-800">
+      <mat-icon class="text-indigo-600 dark:text-indigo-400 icon-size-5">menu_book</mat-icon>
+    </div>
+    <div>
+      <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ row.name }}</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1 max-w-48">
+        {{ row.description || '—' }}
+      </p>
+    </div>
+  </div>
+</ng-template>
+
+<!-- Code Cell -->
+<ng-template #codeCell let-row>
+  <div>
+    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold
+                 bg-indigo-50 dark:bg-indigo-900/30
+                 text-indigo-700 dark:text-indigo-300
+                 border border-indigo-200 dark:border-indigo-800">
+      {{ row.code }}
+    </span>
+    <p *ngIf="row.isCompulsory"
+       class="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+      <mat-icon class="icon-size-3">star</mat-icon> Compulsory
+    </p>
+  </div>
+</ng-template>
+
+<!-- School Cell (SuperAdmin only) -->
+<ng-template #schoolCell let-row>
+  <div class="flex items-center gap-2">
+    <mat-icon class="icon-size-5 text-blue-600 dark:text-blue-400">school</mat-icon>
+    <span class="text-sm text-gray-700 dark:text-gray-300">{{ row.schoolName || '—' }}</span>
+  </div>
+</ng-template>
+
+<!-- Type Cell -->
+<ng-template #typeCell let-row>
+  <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold"
+    [ngClass]="{
+      'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300':         getSubjectTypeName(row.subjectType) === &quot;Core&quot;,
+      'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300': getSubjectTypeName(row.subjectType) === &quot;Optional&quot;,
+      'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300':     getSubjectTypeName(row.subjectType) === &quot;Elective&quot;,
+      'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300':         getSubjectTypeName(row.subjectType) === &quot;Extracurricular&quot;
+    }">
+    {{ getSubjectTypeName(row.subjectType) }}
+  </span>
+</ng-template>
+
+<!-- Level Cell -->
+<ng-template #levelCell let-row>
+  <span class="inline-flex items-center gap-1 text-sm text-gray-700 dark:text-gray-300">
+    <mat-icon class="icon-size-4 text-indigo-500">stairs</mat-icon>
+    {{ getCBCLevelName(row.cbcLevel) }}
+  </span>
+</ng-template>
+
+<!-- Status Cell -->
+<ng-template #statusCell let-row>
+  <span class="px-3 py-1 rounded-full text-xs font-semibold"
+    [ngClass]="{
+      'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400':  row.isActive,
+      'bg-red-100   dark:bg-red-900/30   text-red-700   dark:text-red-400':   !row.isActive
+    }">
+    {{ row.isActive ? 'Active' : 'Inactive' }}
+  </span>
+</ng-template>

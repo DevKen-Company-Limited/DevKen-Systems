@@ -23,6 +23,8 @@ public class Subject(
 
     public CBCLevel Level { get; private set; } = level;
 
+    public CBCLevel Level { get; private set; } = level;
+
 
     public SubjectType SubjectType { get; private set; } = subjectType;
 

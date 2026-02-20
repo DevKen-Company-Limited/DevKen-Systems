@@ -1,9 +1,11 @@
 ﻿using Devken.CBC.SchoolManagement.Application.DTOs.Academic;
+using Devken.CBC.SchoolManagement.Application.DTOs.Academics;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Reports;
 using Devken.CBC.SchoolManagement.Application.Service.Administration.Student;
 using Devken.CBC.SchoolManagement.Application.Services.Interfaces.Academic;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Reports.Student;
+using Devken.CBC.SchoolManagement.Infrastructure.Services.Reports.Subject;
 using Microsoft.AspNetCore.Hosting;
 using System;
 using System.Collections.Generic;
@@ -129,5 +131,79 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Reports
 
             return await File.ReadAllBytesAsync(logoPath);
         }
+
+        //Subjects report 
+
+        // ── Single-school subject report ───────────────────────────────────────
+        public async Task<byte[]> GenerateSubjectsListReportAsync(
+            Guid? schoolId,
+            Guid? userSchoolId,
+            bool isSuperAdmin)
+        {   
+            var finalSchoolId = isSuperAdmin ? schoolId : userSchoolId;
+            if (finalSchoolId == null)
+                throw new InvalidOperationException("School context not found.");
+
+            var school = await _repositories.School
+                .GetByIdAsync(finalSchoolId.Value, trackChanges: false)
+                ?? throw new KeyNotFoundException($"School {finalSchoolId.Value} not found.");
+
+            byte[]? logoBytes = await ResolveLogoAsync(school.LogoUrl);
+
+            var subjectsData = await _repositories.Subject
+                .GetByTenantIdAsync(finalSchoolId.Value, trackChanges: false);
+
+            var subjects = subjectsData.Select(s => new SubjectReportDto
+            {
+                Code = s.Code,
+                Name = s.Name,
+                Level = s.Level.ToString(),
+                SubjectType = s.SubjectType.ToString(),
+                IsActive = s.IsActive
+                // SchoolName intentionally empty for single-school reports
+            }).ToList();
+
+            var document = new SubjectsListReportDocument(
+                school: school,
+                subjects: subjects,
+                logoBytes: logoBytes,
+                isSuperAdmin: isSuperAdmin);
+
+            return document.ExportToPdfBytes();
+        }
+
+    // ── All-schools subject report (SuperAdmin only) ───────────────────────
+    public async Task<byte[]> GenerateAllSchoolsSubjectsListReportAsync()
+    {
+        var allSchools = await _repositories.School
+            .GetAllAsync(trackChanges: false);
+
+        var schoolMap = allSchools.ToDictionary(s => s.Id, s => s.Name);
+
+        var allSubjects = await _repositories.Subject
+            .GetAllAsync(trackChanges: false);
+
+        var subjects = allSubjects.Select(s => new SubjectReportDto
+        {
+            Code = s.Code,
+            Name = s.Name,
+            Level = s.Level.ToString(),
+            SubjectType = s.SubjectType.ToString(),
+            IsActive = s.IsActive,
+            SchoolId = s.TenantId,
+            SchoolName = schoolMap.TryGetValue(s.TenantId, out var name)
+                            ? name
+                            : string.Empty
+        }).ToList();
+
+        // school = null → triggers "All Schools" header in document
+        var document = new SubjectsListReportDocument(
+            school: null,
+            subjects: subjects,
+            logoBytes: null,
+            isSuperAdmin: true);
+
+        return document.ExportToPdfBytes();
     }
+}
 }
