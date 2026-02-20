@@ -34,6 +34,6 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
         /// Generates a Students List PDF covering ALL schools in the system.
         /// Only callable by a SuperAdmin — the controller enforces this constraint.
         /// </summary>
-        Task<byte[]> GenerateAllSchoolsStudentsListReportAsync();
+
     }
 }

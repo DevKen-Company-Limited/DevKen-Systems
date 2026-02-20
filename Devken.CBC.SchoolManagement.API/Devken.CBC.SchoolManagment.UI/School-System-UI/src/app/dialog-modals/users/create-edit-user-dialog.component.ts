@@ -247,7 +247,7 @@ export class CreateEditUserDialogComponent implements OnInit, OnDestroy {
           }
           this._cdr.detectChanges();
         },
-        error: () => {
+        error: (err) => {
           this.isLoadingRoles = false;
           this.availableRoles = [];
           this._alert.error(err?.error?.message || err?.message || 'Failed to load roles');

@@ -1,9 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { API_BASE_URL } from 'app/app.config';
 import { Observable } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 
+import { API_BASE_URL } from 'app/app.config';
 import { ICrudService } from 'app/shared/Services/ICrudService';
 import { IListService } from 'app/shared/Services/IListService';
 
@@ -33,31 +33,21 @@ export class UserService
 {
   private _http = inject(HttpClient);
   private _apiBase = inject(API_BASE_URL);
-  private _url     = `${this._apiBase}/api/user-management`;
+  private _url = `${this._apiBase}/api/user-management`;
 
-  // ─────────────────────────────────────────────────────────────
-  // USERS LIST (Returns ONLY UserDto[] for component simplicity)
-  // ─────────────────────────────────────────────────────────────
-
-  getAll(
-    page = 1,
-    pageSize = 20,
-    schoolId?: string
-  ): Observable<ApiResponse<UserDto[]>> {
-
-  // ─────────────────────────────────────────────────────────────
-  // USERS LIST (Returns ONLY UserDto[] for component simplicity)
-  // ─────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────
+  // USERS LIST
+  // ─────────────────────────────────────────────
 
   getAll(
-    page = 1,
-    pageSize = 20,
+    page: number = 1,
+    pageSize: number = 20,
     schoolId?: string
   ): Observable<ApiResponse<UserDto[]>> {
 
     let params = new HttpParams()
-      .set('page', page.toString())
-      .set('pageSize', pageSize.toString());
+      .set('page', page)
+      .set('pageSize', pageSize);
 
     if (schoolId) {
       params = params.set('schoolId', schoolId);
@@ -73,15 +63,14 @@ export class UserService
       );
   }
 
-  // ─────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────
   // CRUD
-  // ─────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────
 
   getById(id: string): Observable<ApiResponse<UserDto>> {
     return this._http.get<ApiResponse<UserDto>>(`${this._url}/${id}`);
   }
 
-  /** Create a user. When called by SuperAdmin, payload must include schoolId. */
   create(payload: CreateUserRequest): Observable<ApiResponse<UserDto>> {
     return this._http.post<ApiResponse<UserDto>>(this._url, payload);
   }
@@ -96,21 +85,18 @@ export class UserService
     );
   }
 
-  // ✅ FIXED — matches your component call
   deleteUser(id: string): Observable<ApiResponse<null>> {
-    return this._http.delete<ApiResponse<null>>(
-      `${this._url}/${id}`
-    );
+    return this._http.delete<ApiResponse<null>>(`${this._url}/${id}`);
   }
 
-  // Keep generic delete for interface compatibility
+  // Interface compatibility
   delete(id: string): Observable<ApiResponse<null>> {
     return this.deleteUser(id);
   }
 
-  // ─────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────
   // STATUS MANAGEMENT
-  // ─────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────
 
   activateUser(id: string): Observable<ApiResponse<UserDto>> {
     return this._http.post<ApiResponse<UserDto>>(
@@ -138,14 +124,15 @@ export class UserService
         const endpoint = user.isActive
           ? `${this._url}/${id}/deactivate`
           : `${this._url}/${id}/activate`;
+
         return this._http.post<ApiResponse<UserDto>>(endpoint, {});
       })
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────
   // PASSWORD & EMAIL
-  // ─────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────
 
   resendWelcomeEmail(id: string): Observable<ApiResponse<null>> {
     return this._http.post<ApiResponse<null>>(
@@ -161,9 +148,9 @@ export class UserService
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────
   // ROLE MANAGEMENT
-  // ─────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────
 
   assignRoles(
     userId: string,
@@ -184,9 +171,9 @@ export class UserService
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────
   // ROLES (Dropdown Support)
-  // ─────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────
 
   getAvailableRoles(): Observable<ApiResponse<RoleDto[]>> {
     return this._http.get<ApiResponse<RoleDto[]>>(
@@ -194,24 +181,18 @@ export class UserService
     );
   }
 
+  /**
+   * Roles scoped to a specific school.
+   * Used when SuperAdmin selects a school.
+   */
   getAvailableRolesBySchool(
     schoolId: string
   ): Observable<ApiResponse<RoleDto[]>> {
     const params = new HttpParams().set('schoolId', schoolId);
 
     return this._http.get<ApiResponse<RoleDto[]>>(
-      `${this._url}/available-roles`,
+      `${this._apiBase}/api/roles`,
       { params }
     );
-  }
-
-  /**
-   * Roles scoped to a specific school.
-   * Called by the dialog when a SuperAdmin selects a school so only
-   * roles that belong to that school are offered.
-   */
-  getAvailableRolesBySchool(schoolId: string): Observable<ApiResponse<RoleDto[]>> {
-    const params = new HttpParams().set('schoolId', schoolId);
-    return this._http.get<ApiResponse<RoleDto[]>>(`${this._apiBase}/api/roles`, { params });
   }
 }
