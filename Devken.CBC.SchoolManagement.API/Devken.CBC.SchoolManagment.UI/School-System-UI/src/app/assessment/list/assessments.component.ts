@@ -22,7 +22,7 @@ import { FilterPanelComponent, FilterField, FilterChangeEvent }     from 'app/sh
 import { PaginationComponent }                                      from 'app/shared/pagination/pagination.component';
 import { StatsCardsComponent, StatCard }                            from 'app/shared/stats-cards/stats-cards.component';
 import { DataTableComponent, TableColumn, TableAction, TableHeader, TableEmptyState } from 'app/shared/data-table/data-table.component';
-import { AssessmentService } from 'app/core/DevKenService/assessments/Assessments/AssessmentService';
+import { AssessmentService }       from 'app/core/DevKenService/assessments/Assessments/AssessmentService';
 import {
   getAssessmentTypeLabel,
   getAssessmentTypeColor,
@@ -31,6 +31,7 @@ import {
   AssessmentListItem,
   AssessmentTypeOptions,
 } from '../types/AssessmentDtos';
+import { AssessmentReportService } from 'app/core/DevKenService/assessments/Assessments/AssessmentReportService';
 
 
 @Component({
@@ -52,11 +53,12 @@ export class AssessmentsComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('statusCell')  statusCellTemplate!: TemplateRef<any>;
   @ViewChild('dateCell')    dateCellTemplate!:   TemplateRef<any>;
 
-  private _destroy$  = new Subject<void>();
-  private _router    = inject(Router);
-  private _auth      = inject(AuthService);
-  private _alert     = inject(AlertService);
-  private _service   = inject(AssessmentService);
+  private _destroy$      = new Subject<void>();
+  private _router        = inject(Router);
+  private _auth          = inject(AuthService);
+  private _alert         = inject(AlertService);
+  private _service       = inject(AssessmentService);
+  private _reportService = inject(AssessmentReportService);
 
   breadcrumbs: Breadcrumb[] = [
     { label: 'Dashboard',   url: '/dashboard'   },
@@ -71,6 +73,15 @@ export class AssessmentsComponent implements OnInit, AfterViewInit, OnDestroy {
   getTypeColor = getAssessmentTypeColor;
   getTypeIcon  = getAssessmentTypeIcon;
   readonly AssessmentType = AssessmentType;
+
+  // ── Report download state ─────────────────────────────────────────────
+  /** True while any PDF export is in flight — disables all export menu items. */
+  isDownloadingReport = false;
+  /**
+   * Which type filter is currently downloading, so the right menu item shows
+   * its spinner. null means "All Assessments".
+   */
+  activeReportFilter: 'Formative' | 'Summative' | 'Competency' | null = null;
 
   // ── State ─────────────────────────────────────────────────────────────
   allData:   AssessmentListItem[] = [];
@@ -207,11 +218,6 @@ export class AssessmentsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // ── Data ──────────────────────────────────────────────────────────────
-  /**
-   * Fetch all three assessment types in parallel and merge into one array.
-   * Each individual request fails gracefully so a 404 on one type
-   * doesn't block the other two.
-   */
   loadAll(): void {
     this.isLoading = true;
 
@@ -232,6 +238,40 @@ export class AssessmentsComponent implements OnInit, AfterViewInit, OnDestroy {
         this.isLoading = false;
       },
     });
+  }
+
+  // ── Report Download ───────────────────────────────────────────────────
+  /**
+   * Downloads the Assessments List PDF from the server.
+   *
+   * @param type  'Formative' | 'Summative' | 'Competency' for a filtered report,
+   *              or omit / pass null for all assessment types in one PDF.
+   */
+  downloadAssessmentsReport(
+    type: 'Formative' | 'Summative' | 'Competency' | null = null
+  ): void {
+    if (this.isDownloadingReport) return;
+
+    this.isDownloadingReport = true;
+    this.activeReportFilter  = type;
+
+    this._reportService
+      .downloadAssessmentsList({ assessmentType: type ?? undefined })
+      .pipe(takeUntil(this._destroy$))
+      .subscribe({
+        next: result => {
+          this.isDownloadingReport = false;
+          this.activeReportFilter  = null;
+          if (!result.success) {
+            this._alert.error(result.message ?? 'Failed to generate report.');
+          }
+        },
+        error: () => {
+          this.isDownloadingReport = false;
+          this.activeReportFilter  = null;
+          this._alert.error('Failed to generate report. Please try again.');
+        },
+      });
   }
 
   // ── Filter events ─────────────────────────────────────────────────────

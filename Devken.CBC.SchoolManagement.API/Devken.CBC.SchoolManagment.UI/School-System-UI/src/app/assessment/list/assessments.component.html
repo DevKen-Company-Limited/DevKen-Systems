@@ -10,13 +10,101 @@
     [actionTemplate]="headerActions">
   </app-page-header>
 
+  <!-- ── Header Actions ────────────────────────────────────────────────── -->
   <ng-template #headerActions>
+
+    <!-- Export Button with Dropdown -->
+    <button mat-stroked-button
+      [matMenuTriggerFor]="exportMenu"
+      class="mr-3 border-green-200 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/30">
+      <mat-icon class="icon-size-5">download</mat-icon>
+      <span class="ml-2">Export</span>
+      <mat-icon class="icon-size-4 ml-1">arrow_drop_down</mat-icon>
+    </button>
+
+    <!-- Export Menu -->
+    <mat-menu #exportMenu="matMenu" class="export-menu">
+
+      <!-- All types -->
+      <button
+        mat-menu-item
+        (click)="downloadAssessmentsReport()"
+        [disabled]="isDownloadingReport"
+        matTooltip="Download a PDF report of all assessments"
+        matTooltipPosition="left">
+        <ng-container *ngIf="isDownloadingReport && activeReportFilter === null; else allIcon">
+          <mat-progress-spinner class="inline-block mr-2" mode="indeterminate" diameter="18" strokeWidth="2">
+          </mat-progress-spinner>
+        </ng-container>
+        <ng-template #allIcon>
+          <mat-icon class="text-teal-600">article</mat-icon>
+        </ng-template>
+        <span>{{ isDownloadingReport && activeReportFilter === null ? 'Generating…' : 'All Assessments (PDF)' }}</span>
+      </button>
+
+      <mat-divider></mat-divider>
+
+      <!-- Formative only -->
+      <button
+        mat-menu-item
+        (click)="downloadAssessmentsReport('Formative')"
+        [disabled]="isDownloadingReport"
+        matTooltip="Download Formative assessments only"
+        matTooltipPosition="left">
+        <ng-container *ngIf="isDownloadingReport && activeReportFilter === 'Formative'; else formativeIcon">
+          <mat-progress-spinner class="inline-block mr-2" mode="indeterminate" diameter="18" strokeWidth="2">
+          </mat-progress-spinner>
+        </ng-container>
+        <ng-template #formativeIcon>
+          <mat-icon class="text-indigo-600">assignment</mat-icon>
+        </ng-template>
+        <span>{{ isDownloadingReport && activeReportFilter === 'Formative' ? 'Generating…' : 'Formative Only (PDF)' }}</span>
+      </button>
+
+      <!-- Summative only -->
+      <button
+        mat-menu-item
+        (click)="downloadAssessmentsReport('Summative')"
+        [disabled]="isDownloadingReport"
+        matTooltip="Download Summative assessments only"
+        matTooltipPosition="left">
+        <ng-container *ngIf="isDownloadingReport && activeReportFilter === 'Summative'; else summativeIcon">
+          <mat-progress-spinner class="inline-block mr-2" mode="indeterminate" diameter="18" strokeWidth="2">
+          </mat-progress-spinner>
+        </ng-container>
+        <ng-template #summativeIcon>
+          <mat-icon class="text-violet-600">school</mat-icon>
+        </ng-template>
+        <span>{{ isDownloadingReport && activeReportFilter === 'Summative' ? 'Generating…' : 'Summative Only (PDF)' }}</span>
+      </button>
+
+      <!-- Competency only -->
+      <button
+        mat-menu-item
+        (click)="downloadAssessmentsReport('Competency')"
+        [disabled]="isDownloadingReport"
+        matTooltip="Download Competency assessments only"
+        matTooltipPosition="left">
+        <ng-container *ngIf="isDownloadingReport && activeReportFilter === 'Competency'; else competencyIcon">
+          <mat-progress-spinner class="inline-block mr-2" mode="indeterminate" diameter="18" strokeWidth="2">
+          </mat-progress-spinner>
+        </ng-container>
+        <ng-template #competencyIcon>
+          <mat-icon class="text-teal-600">verified_user</mat-icon>
+        </ng-template>
+        <span>{{ isDownloadingReport && activeReportFilter === 'Competency' ? 'Generating…' : 'Competency Only (PDF)' }}</span>
+      </button>
+
+    </mat-menu>
+
+    <!-- New Assessment Button -->
     <button mat-flat-button
       class="bg-white text-indigo-700 hover:bg-yellow-100 font-bold shadow-lg transition-all"
       (click)="createAssessment()">
       <mat-icon class="icon-size-5">add</mat-icon>
       <span class="ml-2">New Assessment</span>
     </button>
+
   </ng-template>
 
   <!-- Main Content -->
