@@ -1,11 +1,16 @@
-﻿using Devken.CBC.SchoolManagement.Domain.Entities.Assessment;
-using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
+﻿using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
 using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Assessments
 {
+    /// <summary>
+    /// Configures the root TPT table "Assessments" which holds only the columns
+    /// shared by all assessment subtypes. Subtype-specific columns live in their
+    /// own dedicated tables (FormativeAssessments, SummativeAssessments,
+    /// CompetencyAssessments) and are configured in their own IEntityTypeConfiguration.
+    /// </summary>
     public class AssessmentConfiguration : IEntityTypeConfiguration<Assessment1>
     {
         private readonly TenantContext _tenantContext;
@@ -17,41 +22,35 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
 
         public void Configure(EntityTypeBuilder<Assessment1> builder)
         {
-            // Base table for all assessments (TPH)
-            builder.ToTable("Assessments");
+            // Table name is declared in AppDbContext via UseTptMappingStrategy().
+            // We only configure columns and indexes here.
 
-            // Primary Key
-            builder.HasKey(a => a.Id);
-
-            // Tenant Filter
-            builder.HasQueryFilter(a =>
-                _tenantContext.TenantId == null ||
-                a.TenantId == _tenantContext.TenantId);
-
-            // Indexes
-            builder.HasIndex(a => new { a.TenantId, a.SubjectId, a.ClassId, a.AssessmentDate });
-            builder.HasIndex(a => new { a.TenantId, a.AssessmentType });
-
-            // Properties
             builder.Property(a => a.Title)
                    .IsRequired()
                    .HasMaxLength(200);
+
+            builder.Property(a => a.Description)
+                   .HasMaxLength(500);
 
             builder.Property(a => a.AssessmentType)
                    .IsRequired()
                    .HasMaxLength(20);
 
-            builder.Property(a => a.AssessmentDate)
-                   .IsRequired();
-
             builder.Property(a => a.MaximumScore)
-                   .IsRequired();
+                   .HasColumnType("decimal(18,2)");
 
-            // Relationships
+            builder.Property(a => a.IsPublished)
+                   .HasDefaultValue(false);
+
+            builder.Property(a => a.PublishedDate)
+                   .IsRequired(false);
+
+            // ── Foreign Keys ────────────────────────────────────────────
+
             builder.HasOne(a => a.Teacher)
-                   .WithMany(t => t.AssessmentsCreated)
+                   .WithMany()
                    .HasForeignKey(a => a.TeacherId)
-                   .OnDelete(DeleteBehavior.Restrict); // prevent multiple cascade paths
+                   .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne(a => a.Subject)
                    .WithMany()
@@ -64,21 +63,29 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
                    .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne(a => a.Term)
-                   .WithMany(t => t.Assessments)
+                   .WithMany()
                    .HasForeignKey(a => a.TermId)
                    .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne(a => a.AcademicYear)
-                   .WithMany(ay => ay.Assessments)
+                   .WithMany()
                    .HasForeignKey(a => a.AcademicYearId)
                    .OnDelete(DeleteBehavior.Restrict);
 
-            // ── TPH Discriminator ─────────────────────────────────────────────
-            builder.HasDiscriminator<string>("AssessmentCategory")
-                   .HasValue<Assessment1>("Base")
-                   .HasValue<FormativeAssessment>("Formative")
-                   .HasValue<SummativeAssessment>("Summative")
-                   .HasValue<CompetencyAssessment>("Competency");
+            // ── Indexes ──────────────────────────────────────────────────
+
+            builder.HasIndex(a => a.TeacherId);
+            builder.HasIndex(a => a.SubjectId);
+            builder.HasIndex(a => a.ClassId);
+            builder.HasIndex(a => a.TermId);
+            builder.HasIndex(a => a.AcademicYearId);
+            builder.HasIndex(a => a.AssessmentType);
+
+            // ── Global Query Filter (multi-tenant) ───────────────────────
+            if (_tenantContext?.TenantId != null)
+            {
+                builder.HasQueryFilter(a => a.TenantId == _tenantContext.TenantId);
+            }
         }
     }
 }

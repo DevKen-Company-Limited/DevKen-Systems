@@ -54,7 +54,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement
                     FirstName = request.FirstName,
                     LastName = request.LastName,
                     PhoneNumber = request.PhoneNumber,
-                    TenantId = schoolId,
+                    TenantId = schoolId,       // ← school recorded here
                     PasswordHash = _passwordHashingService.HashPassword(tempPassword),
                     IsActive = true,
                     IsEmailVerified = false,

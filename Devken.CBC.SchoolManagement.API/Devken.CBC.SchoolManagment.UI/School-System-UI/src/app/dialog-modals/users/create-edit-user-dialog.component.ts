@@ -142,6 +142,9 @@ export class CreateEditUserDialogComponent implements OnInit, OnDestroy {
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────────
 
+
+  // ── Lifecycle ──────────────────────────────────────────────────────────────────
+
   ngOnInit(): void {
     this.isEditMode   = this._data.mode === 'edit';
     this.isSuperAdmin = this._data.isSuperAdmin ?? false;
@@ -244,7 +247,7 @@ export class CreateEditUserDialogComponent implements OnInit, OnDestroy {
           }
           this._cdr.detectChanges();
         },
-        error: err => {
+        error: () => {
           this.isLoadingRoles = false;
           this.availableRoles = [];
           this._alert.error(err?.error?.message || err?.message || 'Failed to load roles');

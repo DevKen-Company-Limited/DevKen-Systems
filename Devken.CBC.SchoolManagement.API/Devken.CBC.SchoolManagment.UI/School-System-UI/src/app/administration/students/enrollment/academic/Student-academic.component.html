@@ -79,7 +79,8 @@
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="w-full">
-            <mat-label>Class</mat-label>
+          <mat-label>Class *</mat-label>
+
             <mat-select formControlName="currentClassId">
               <mat-option value="">Select class</mat-option>
               <mat-option *ngFor="let class of classes" [value]="class.id">
@@ -87,7 +88,9 @@
               </mat-option>
             </mat-select>
             <mat-icon matPrefix svgIcon="heroicons_outline:users" class="text-gray-400"></mat-icon>
-            <mat-hint>Optional - can assign later</mat-hint>
+            <mat-hint>Select the student's current class</mat-hint>
+            <mat-error>Class is required</mat-error>
+
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="w-full">

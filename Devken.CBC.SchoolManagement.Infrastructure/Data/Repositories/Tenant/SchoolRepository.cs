@@ -37,5 +37,15 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Tenant
             return await FindAll(trackChanges)
                 .ToListAsync();
         }
+
+        public async Task<IEnumerable<School>> GetByIdsAsync(IEnumerable<Guid> ids, bool trackChanges = false)
+        {
+            if (ids == null || !ids.Any())
+                return Enumerable.Empty<School>();
+
+            return await FindByCondition(s => ids.Contains(s.Id), trackChanges)
+                .ToListAsync();
+        }
+
     }
 }
