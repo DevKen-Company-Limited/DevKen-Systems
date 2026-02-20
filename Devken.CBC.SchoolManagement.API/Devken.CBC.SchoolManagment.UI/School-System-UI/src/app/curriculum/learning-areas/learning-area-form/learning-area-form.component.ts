@@ -1,7 +1,6 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, Inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Router, ActivatedRoute } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -9,18 +8,21 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { FuseAlertComponent } from '@fuse/components/alert';
 
 import { AuthService } from 'app/core/auth/auth.service';
 import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
-import { PageHeaderComponent, Breadcrumb } from 'app/shared/Page-Header/page-header.component';
 import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
 import { SchoolDto } from 'app/Tenant/types/school';
 import { LearningAreaService } from 'app/core/DevKenService/curriculum/learning-area.service';
+import { LearningAreaResponseDto } from 'app/curriculum/types/learning-area.dto ';
 import { CBCLevelOptions } from 'app/Subject/Types/SubjectEnums';
 
+export interface LearningAreaDialogData {
+  editId?: string;
+}
 
 @Component({
   selector: 'app-learning-area-form',
@@ -33,10 +35,9 @@ import { CBCLevelOptions } from 'app/Subject/Types/SubjectEnums';
     MatSelectModule,
     MatButtonModule,
     MatIconModule,
-    MatCardModule,
     MatProgressSpinnerModule,
+    MatDialogModule,
     FuseAlertComponent,
-    PageHeaderComponent,
   ],
   templateUrl: './learning-area-form.component.html',
 })
@@ -47,39 +48,24 @@ export class LearningAreaFormComponent implements OnInit, OnDestroy {
   private _authService = inject(AuthService);
   private _alertService = inject(AlertService);
   private _schoolService = inject(SchoolService);
-  private _router = inject(Router);
-  private _route = inject(ActivatedRoute);
+  private _dialogRef = inject(MatDialogRef<LearningAreaFormComponent>);
 
   form!: FormGroup;
-  isEditMode = false;
-  editId: string | null = null;
   isLoading = false;
   isSaving = false;
   schools: SchoolDto[] = [];
-
   cbcLevels = CBCLevelOptions;
+
+  get editId(): string | undefined { return this.data?.editId; }
+  get isEditMode(): boolean { return !!this.editId; }
 
   get isSuperAdmin(): boolean {
     return this._authService.authUser?.isSuperAdmin ?? false;
   }
 
-  get breadcrumbs(): Breadcrumb[] {
-    return [
-      { label: 'Dashboard', url: '/dashboard' },
-      { label: 'Curriculum' },
-      { label: 'Learning Areas', url: '/curriculum/learning-areas' },
-      { label: this.isEditMode ? 'Edit' : 'Create' },
-    ];
-  }
-
-  get title(): string {
-    return this.isEditMode ? 'Edit Learning Area' : 'Create Learning Area';
-  }
+  constructor(@Inject(MAT_DIALOG_DATA) public data: LearningAreaDialogData) {}
 
   ngOnInit(): void {
-    this.editId = this._route.snapshot.paramMap.get('id');
-    this.isEditMode = !!this.editId;
-
     this.buildForm();
 
     if (this.isSuperAdmin) {
@@ -109,11 +95,13 @@ export class LearningAreaFormComponent implements OnInit, OnDestroy {
     this._service.getById(id)
       .pipe(takeUntil(this._destroy$))
       .subscribe({
-        next: area => {
+        next: (area: LearningAreaResponseDto) => {
+          // Find numeric level value from CBCLevelOptions by matching label or value
+          const levelValue = this.resolveLevelValue(area.level);
           this.form.patchValue({
             name:  area.name,
             code:  area.code ?? '',
-            level: area.level,
+            level: levelValue,
             ...(this.isSuperAdmin ? { tenantId: area.tenantId } : {}),
           });
           this.isLoading = false;
@@ -123,6 +111,19 @@ export class LearningAreaFormComponent implements OnInit, OnDestroy {
           this.isLoading = false;
         },
       });
+  }
+
+  /**
+   * Resolve level to numeric value from either numeric string or label string.
+   * The API may return the label (e.g. "Grade 1") or the numeric value (e.g. 3).
+   */
+  private resolveLevelValue(level: string | number): number | string {
+    if (!level) return '';
+    const asNum = Number(level);
+    if (!isNaN(asNum) && asNum > 0) return asNum;
+    // Try matching by label
+    const opt = this.cbcLevels.find(l => l.label === level || l.label.toLowerCase() === String(level).toLowerCase());
+    return opt ? opt.value : '';
   }
 
   save(): void {
@@ -139,7 +140,7 @@ export class LearningAreaFormComponent implements OnInit, OnDestroy {
     obs.pipe(takeUntil(this._destroy$)).subscribe({
       next: () => {
         this._alertService.success(`Learning area ${this.isEditMode ? 'updated' : 'created'} successfully`);
-        this._router.navigate(['/curriculum/learning-areas']);
+        this._dialogRef.close({ success: true });
       },
       error: err => {
         this._alertService.error(err?.error?.message || 'Save failed');
@@ -148,18 +149,13 @@ export class LearningAreaFormComponent implements OnInit, OnDestroy {
     });
   }
 
-  cancel(): void { this._router.navigate(['/curriculum/learning-areas']); }
-
-  isInvalid(field: string): boolean {
-    const c = this.form.get(field);
-    return !!(c && c.invalid && (c.dirty || c.touched));
-  }
+  cancel(): void { this._dialogRef.close(); }
 
   getError(field: string): string {
     const c = this.form.get(field);
     if (!c?.errors) return '';
-    if (c.errors['required']) return `This field is required`;
-    if (c.errors['maxlength']) return `Too long`;
+    if (c.errors['required']) return 'This field is required';
+    if (c.errors['maxlength']) return 'Too long';
     return 'Invalid';
   }
 }

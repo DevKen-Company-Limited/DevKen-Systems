@@ -5,8 +5,8 @@ export interface SubjectDto {
   code:         string;
   name:         string;
   description:  string | null;
-  cbcLevel:     number | string;   // API may return number or string name e.g. "Grade1"
-  subjectType:  number | string;   // API may return number or string name e.g. "Core"
+  level:       string;        // backend sends "3" (numeric string)
+  subjectType: string;        // backend sends "Core" (enum name) subjectType:  number | string;   // API may return number or string name e.g. "Core"
   isCompulsory: boolean;
   isActive:     boolean;
   schoolId:     string;

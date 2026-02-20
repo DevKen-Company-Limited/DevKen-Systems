@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, TemplateRef, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, TemplateRef, ViewChild, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -9,6 +9,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
 import { AuthService } from 'app/core/auth/auth.service';
 import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
@@ -17,31 +18,29 @@ import { FilterPanelComponent, FilterField, FilterChangeEvent } from 'app/shared
 import { PaginationComponent } from 'app/shared/pagination/pagination.component';
 import { StatsCardsComponent, StatCard } from 'app/shared/stats-cards/stats-cards.component';
 import { DataTableComponent, TableColumn, TableAction, TableHeader, TableEmptyState } from 'app/shared/data-table/data-table.component';
-
-
-import { CBCLevelOptions } from '../types/curriculum-enums';
 import { LearningAreaService } from 'app/core/DevKenService/curriculum/learning-area.service';
 import { LearningOutcomeService } from 'app/core/DevKenService/curriculum/learning-outcome.service';
 import { StrandService } from 'app/core/DevKenService/curriculum/strand.service';
 import { SubStrandService } from 'app/core/DevKenService/curriculum/substrand.service ';
+import { CBCLevelOptions } from '../types/curriculum-enums';
 import { LearningAreaResponseDto } from '../types/learning-area.dto ';
 import { LearningOutcomeResponseDto } from '../types/learning-outcome.dto';
 import { StrandResponseDto } from '../types/strand.dto ';
 import { SubStrandResponseDto } from '../types/substrand.dto ';
+import { LearningOutcomeFormComponent } from './learning-outcome-form/learning-outcome-form.component';
 
 @Component({
   selector: 'app-learning-outcomes',
   standalone: true,
   imports: [
     CommonModule, FormsModule, MatIconModule, MatButtonModule,
-    MatProgressSpinnerModule, MatTooltipModule, MatChipsModule,
-    PageHeaderComponent, 
-    // FilterPanelComponent, PaginationComponent,
-    // StatsCardsComponent, DataTableComponent,
+    MatProgressSpinnerModule, MatTooltipModule, MatChipsModule, MatDialogModule,
+    PageHeaderComponent, FilterPanelComponent, PaginationComponent,
+    StatsCardsComponent, DataTableComponent,
   ],
   templateUrl: './learning-outcomes.component.html',
 })
-export class LearningOutcomesComponent implements OnInit, OnDestroy {
+export class LearningOutcomesComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('outcomeCell') outcomeCell!: TemplateRef<any>;
   @ViewChild('codeCell') codeCell!: TemplateRef<any>;
   @ViewChild('hierarchyCell') hierarchyCell!: TemplateRef<any>;
@@ -56,11 +55,9 @@ export class LearningOutcomesComponent implements OnInit, OnDestroy {
   private _laService = inject(LearningAreaService);
   private _authService = inject(AuthService);
   private _alertService = inject(AlertService);
-  private _router = inject(Router);
+  router = inject(Router);
   private _route = inject(ActivatedRoute);
-
-  title: string;
-  isEditMode: boolean;
+  private _dialog = inject(MatDialog);
 
   get isSuperAdmin(): boolean { return this._authService.authUser?.isSuperAdmin ?? false; }
 
@@ -90,10 +87,10 @@ export class LearningOutcomesComponent implements OnInit, OnDestroy {
 
   get statsCards(): StatCard[] {
     return [
-      { label: 'Total Outcomes', value: this.allData.length,                                     icon: 'format_list_bulleted', iconColor: 'violet' },
-      { label: 'Core',           value: this.allData.filter(o => o.isCore).length,               icon: 'star',                 iconColor: 'amber'  },
-      { label: 'Non-Core',       value: this.allData.filter(o => !o.isCore).length,              icon: 'star_outline',         iconColor: 'blue'   },
-      { label: 'Active',         value: this.allData.filter(o => o.status === 'Active').length,  icon: 'check_circle',         iconColor: 'green'  },
+      { label: 'Total Outcomes', value: this.allData.length,                                    icon: 'format_list_bulleted', iconColor: 'violet' },
+      { label: 'Core',           value: this.allData.filter(o => o.isCore).length,              icon: 'star',                 iconColor: 'amber'  },
+      { label: 'Non-Core',       value: this.allData.filter(o => !o.isCore).length,             icon: 'star_outline',         iconColor: 'blue'   },
+      { label: 'Active',         value: this.allData.filter(o => o.status === 'Active').length, icon: 'check_circle',         iconColor: 'green'  },
     ];
   }
 
@@ -144,11 +141,6 @@ export class LearningOutcomesComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-     // Set title and edit mode based on route
-    const id = this._route.snapshot.paramMap.get('id');
-    this.isEditMode = !!id;
-    this.title = this.isEditMode ? 'Edit Learning Outcome' : 'Create Learning Outcome';
-    
     const ssId = this._route.snapshot.queryParamMap.get('subStrandId');
     if (ssId) this._filterValues.subStrandId = ssId;
     this.loadLookups();
@@ -235,8 +227,24 @@ export class LearningOutcomesComponent implements OnInit, OnDestroy {
   onPageChange(page: number): void { this.currentPage = page; }
   onItemsPerPageChange(n: number): void { this.itemsPerPage = n; this.currentPage = 1; }
 
-  create():                                   void { this._router.navigate(['/curriculum/learning-outcomes/create']); }
-  edit(row: LearningOutcomeResponseDto):       void { this._router.navigate(['/curriculum/learning-outcomes/edit', row.id]); }
+  create(): void {
+    const ssId = this._filterValues.subStrandId !== 'all' ? this._filterValues.subStrandId : undefined;
+    const ref = this._dialog.open(LearningOutcomeFormComponent, {
+      width: '700px',
+      maxWidth: '95vw',
+      data: { defaultSubStrandId: ssId },
+    });
+    ref.afterClosed().subscribe(result => { if (result?.success) this.loadAll(); });
+  }
+
+  edit(row: LearningOutcomeResponseDto): void {
+    const ref = this._dialog.open(LearningOutcomeFormComponent, {
+      width: '700px',
+      maxWidth: '95vw',
+      data: { editId: row.id },
+    });
+    ref.afterClosed().subscribe(result => { if (result?.success) this.loadAll(); });
+  }
 
   delete(row: LearningOutcomeResponseDto): void {
     this._alertService.confirm({

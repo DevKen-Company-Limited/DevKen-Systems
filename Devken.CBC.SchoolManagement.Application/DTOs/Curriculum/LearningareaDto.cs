@@ -27,8 +27,7 @@ namespace Devken.CBC.SchoolManagement.Application.DTOs.Curriculum
         [Required, MaxLength(150)]
         public string Name { get; set; } = null!;
 
-        [MaxLength(20)]
-        public string? Code { get; set; }
+        // Code is now auto-generated via number series — not user-entered.
 
         [Required]
         public CBCLevel Level { get; set; }
@@ -43,8 +42,8 @@ namespace Devken.CBC.SchoolManagement.Application.DTOs.Curriculum
         [Required, MaxLength(150)]
         public string Name { get; set; } = null!;
 
-        [MaxLength(20)]
-        public string? Code { get; set; }
+       // Code is now auto-generated via number series — not user-entered.
+
 
         [Required]
         public CBCLevel Level { get; set; }

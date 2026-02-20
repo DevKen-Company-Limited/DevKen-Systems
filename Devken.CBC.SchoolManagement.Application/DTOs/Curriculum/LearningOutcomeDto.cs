@@ -38,9 +38,7 @@ namespace Devken.CBC.SchoolManagement.Application.DTOs.Curriculum
         [Required, MaxLength(250)]
         public string Outcome { get; set; } = null!;
 
-        /// <summary>CBC Code e.g. MA1.1.1 — must be unique per tenant.</summary>
-        [MaxLength(50)]
-        public string? Code { get; set; }
+        // Code is now auto-generated via number series — not user-entered.
 
         [MaxLength(1000)]
         public string? Description { get; set; }
@@ -69,8 +67,7 @@ namespace Devken.CBC.SchoolManagement.Application.DTOs.Curriculum
         [Required, MaxLength(250)]
         public string Outcome { get; set; } = null!;
 
-        [MaxLength(50)]
-        public string? Code { get; set; }
+        // Code is now auto-generated via number series — not user-entered.
 
         [MaxLength(1000)]
         public string? Description { get; set; }

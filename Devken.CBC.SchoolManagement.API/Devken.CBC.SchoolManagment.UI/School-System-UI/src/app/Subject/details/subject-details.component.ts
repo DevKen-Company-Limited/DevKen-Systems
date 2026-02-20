@@ -103,7 +103,7 @@ export class SubjectDetailsComponent implements OnInit, OnDestroy {
       { label: 'Subject Name',   value: this.subject.name,        icon: 'menu_book', type: 'badge' },
       { label: 'Subject Code',   value: this.subject.code,        icon: 'tag',       type: 'badge', copyable: true },
       { label: 'Subject Type',   value: this.getSubjectTypeName(this.subject.subjectType), icon: 'category' },
-      { label: 'CBC Level',      value: this.getCBCLevelName(this.subject.cbcLevel),       icon: 'stairs'   },
+      { label: 'CBC Level',      value: this.getCBCLevelName(this.subject.level),       icon: 'stairs'   },
       { label: 'Compulsory',     value: this.subject.isCompulsory ? 'Yes' : 'No',         icon: 'star',    type: 'boolean' },
       { label: 'Status',         value: this.subject.isActive     ? 'Active' : 'Inactive', icon: 'info',   type: 'status' },
       { label: 'School',         value: this.subject.schoolName,  icon: 'school'   },

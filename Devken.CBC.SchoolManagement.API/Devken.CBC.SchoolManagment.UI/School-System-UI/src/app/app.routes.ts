@@ -176,11 +176,11 @@ export const appRoutes: Route[] = [
             {
                 path: 'curriculum',
                 loadChildren: () => import('./curriculum/curriculum.routes'),
-                children: [
-                    { path: 'learning-areas', loadChildren: () => import('app/curriculum/curriculum.routes') },
-                    { path: 'strands', loadChildren: () => import('app/curriculum/curriculum.routes') },
-                    { path: 'sub-strands', loadChildren: () => import('app/curriculum/curriculum.routes') },
-                    { path: 'learning-outcomes', loadChildren: () => import('app/curriculum/curriculum.routes') },
+                // children: [
+                    // { path: 'learning-areas', loadChildren: () => import('app/curriculum/curriculum.routes') },
+                    // { path: 'strands', loadChildren: () => import('app/curriculum/curriculum.routes') },
+                    // { path: 'sub-strands', loadChildren: () => import('app/curriculum/curriculum.routes') },
+                    // { path: 'learning-outcomes', loadChildren: () => import('app/curriculum/curriculum.routes') },
                     
                     // { path: 'learning-area', loadChildren: () => import('app/curriculum/curriculum.routes') },
                     // { path: 'strand': () => import('app/curriculum/curriculum.routes') },
@@ -189,7 +189,7 @@ export const appRoutes: Route[] = [
 
                     // { path: 'structure', loadChildren: () => import('app/modules/curriculum/structure/structure.routes') },
                     // { path: 'lesson-plans', loadChildren: () => import('app/modules/curriculum/lesson-plans/lesson-plans.routes') }
-                ]
+                // ]
             },
 
             // ================= SUPER ADMIN =================

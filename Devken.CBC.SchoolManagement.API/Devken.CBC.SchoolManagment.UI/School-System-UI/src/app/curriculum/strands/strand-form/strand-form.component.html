@@ -1,96 +1,87 @@
-<!-- Strand Create / Edit Form -->
-<div class="absolute inset-0 flex min-w-0 flex-col overflow-y-auto" cdkScrollable>
+<!-- Strand Create / Edit Dialog -->
+<div class="flex flex-col w-full max-w-lg">
 
-  <app-page-header
-    [title]="title"
-    [description]="isEditMode ? 'Update the strand details below' : 'Create a new strand within a learning area'"
-    icon="account_tree"
-    [breadcrumbs]="breadcrumbs">
-  </app-page-header>
-
-  <div class="bg-card -mt-10 flex-auto rounded-t-2xl p-6 shadow sm:p-10">
-
-    <div *ngIf="isLoading" class="flex items-center justify-center py-32">
-      <mat-spinner diameter="48"></mat-spinner>
+  <!-- Dialog Header -->
+  <div class="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
+        <mat-icon class="text-white">account_tree</mat-icon>
+      </div>
+      <div>
+        <h2 class="text-base font-bold text-white leading-tight">
+          {{ isEditMode ? 'Edit Strand' : 'Create Strand' }}
+        </h2>
+        <p class="text-xs text-white/70">
+          {{ isEditMode ? 'Update the strand details' : 'Create a new strand within a learning area' }}
+        </p>
+      </div>
     </div>
+    <button mat-icon-button (click)="cancel()" class="text-white/80 hover:text-white hover:bg-white/10 rounded-xl">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
 
-    <div *ngIf="!isLoading" class="max-w-3xl">
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="flex items-center justify-center py-16 bg-gray-50 dark:bg-gray-900">
+    <mat-spinner diameter="40"></mat-spinner>
+  </div>
 
-      <fuse-alert *ngIf="!isEditMode" type="info" appearance="soft" [showIcon]="true" class="mb-6">
-        Strands are groupings within a learning area (e.g. under Mathematics: Numbers, Algebra, Geometry). Each strand can contain multiple sub-strands.
+  <!-- Form Body -->
+  <form *ngIf="!isLoading" [formGroup]="form" novalidate (ngSubmit)="save()" class="flex flex-col bg-gray-50 dark:bg-gray-900">
+
+    <div class="p-6 space-y-5 overflow-y-auto max-h-[60vh]">
+
+      <fuse-alert *ngIf="!isEditMode" type="info" appearance="soft" [showIcon]="true">
+        Strands are groupings within a learning area (e.g. under Mathematics: Numbers, Algebra, Geometry).
       </fuse-alert>
 
-      <form [formGroup]="form" novalidate class="space-y-6" (ngSubmit)="save()">
+      <!-- School (SuperAdmin only) -->
+      <div *ngIf="isSuperAdmin">
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>School <span class="text-red-500">*</span></mat-label>
+          <mat-select formControlName="tenantId" placeholder="Select school">
+            <mat-option value="">Select school</mat-option>
+            <mat-option *ngFor="let s of schools" [value]="s.id">{{ s.name }}</mat-option>
+          </mat-select>
+          <mat-error>{{ getError('tenantId') }}</mat-error>
+        </mat-form-field>
+      </div>
 
-        <!-- School (SuperAdmin only) -->
-        <mat-card *ngIf="isSuperAdmin" class="shadow-md">
-          <mat-card-header class="!pb-2">
-            <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
-              <mat-icon svgIcon="heroicons_outline:building-office-2" class="text-blue-600"></mat-icon>
-              School Assignment
-              <span class="ml-auto text-xs font-medium px-2 py-1 bg-red-100 text-red-700 rounded">Required</span>
-            </mat-card-title>
-          </mat-card-header>
-          <mat-card-content class="!pt-4">
-            <mat-form-field appearance="outline" class="w-full">
-              <mat-label>School *</mat-label>
-              <mat-select formControlName="tenantId">
-                <mat-option value="">Select school</mat-option>
-                <mat-option *ngFor="let s of schools" [value]="s.id">{{ s.name }}</mat-option>
-              </mat-select>
-              <mat-error>{{ getError('tenantId') }}</mat-error>
-            </mat-form-field>
-          </mat-card-content>
-        </mat-card>
+      <!-- Strand Name -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Strand Name <span class="text-red-500">*</span></mat-label>
+        <input matInput formControlName="name" placeholder="e.g. Numbers, Algebra, Living Things">
+        <mat-icon matPrefix class="text-gray-400">label</mat-icon>
+        <mat-hint>The name of the strand within the learning area</mat-hint>
+        <mat-error>{{ getError('name') }}</mat-error>
+      </mat-form-field>
 
-        <!-- Strand Details -->
-        <mat-card class="shadow-md">
-          <mat-card-header class="!pb-2">
-            <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
-              <mat-icon svgIcon="heroicons_outline:information-circle" class="text-blue-600"></mat-icon>
-              Strand Details
-              <span class="ml-auto text-xs font-medium px-2 py-1 bg-red-100 text-red-700 rounded">Required</span>
-            </mat-card-title>
-          </mat-card-header>
-          <mat-card-content class="!pt-4">
-            <div class="space-y-4">
+      <!-- Learning Area -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Learning Area <span class="text-red-500">*</span></mat-label>
+        <mat-select formControlName="learningAreaId" placeholder="Select learning area">
+          <mat-option value="">Select learning area</mat-option>
+          <mat-option *ngFor="let la of learningAreas" [value]="la.id">
+            {{ la.name }}{{ la.code ? ' (' + la.code + ')' : '' }}
+          </mat-option>
+        </mat-select>
+        <mat-icon matPrefix class="text-gray-400">menu_book</mat-icon>
+        <mat-hint>The learning area this strand belongs to</mat-hint>
+        <mat-error>{{ getError('learningAreaId') }}</mat-error>
+      </mat-form-field>
 
-              <mat-form-field appearance="outline" class="w-full">
-                <mat-label>Strand Name *</mat-label>
-                <input matInput formControlName="name" placeholder="e.g. Numbers, Algebra, Living Things">
-                <mat-icon matPrefix svgIcon="heroicons_outline:tag" class="text-gray-400"></mat-icon>
-                <mat-hint>The name of the strand within the learning area</mat-hint>
-                <mat-error>{{ getError('name') }}</mat-error>
-              </mat-form-field>
-
-              <mat-form-field appearance="outline" class="w-full">
-                <mat-label>Learning Area *</mat-label>
-                <mat-select formControlName="learningAreaId">
-                  <mat-option value="">Select learning area</mat-option>
-                  <mat-option *ngFor="let la of learningAreas" [value]="la.id">
-                    {{ la.name }}{{ la.code ? ' (' + la.code + ')' : '' }}
-                  </mat-option>
-                </mat-select>
-                <mat-icon matPrefix svgIcon="heroicons_outline:menu_book" class="text-gray-400"></mat-icon>
-                <mat-hint>The learning area this strand belongs to</mat-hint>
-                <mat-error>{{ getError('learningAreaId') }}</mat-error>
-              </mat-form-field>
-
-            </div>
-          </mat-card-content>
-        </mat-card>
-
-        <!-- Actions -->
-        <div class="flex items-center justify-end gap-4 pt-2">
-          <button type="button" mat-stroked-button (click)="cancel()" [disabled]="isSaving">Cancel</button>
-          <button type="submit" mat-flat-button color="primary" [disabled]="isSaving">
-            <mat-spinner *ngIf="isSaving" diameter="18" class="inline-block mr-2"></mat-spinner>
-            <mat-icon *ngIf="!isSaving" svgIcon="heroicons_outline:check"></mat-icon>
-            <span class="ml-2">{{ isSaving ? 'Saving…' : (isEditMode ? 'Update' : 'Create') }}</span>
-          </button>
-        </div>
-
-      </form>
     </div>
-  </div>
+
+    <!-- Footer -->
+    <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0">
+      <button type="button" mat-stroked-button (click)="cancel()" [disabled]="isSaving">Cancel</button>
+      <button type="submit" mat-flat-button color="primary" [disabled]="isSaving"
+        class="bg-gradient-to-r from-blue-600 to-teal-600 text-white min-w-28">
+        <mat-spinner *ngIf="isSaving" diameter="18" class="mr-2 inline-block"></mat-spinner>
+        <mat-icon *ngIf="!isSaving" class="mr-1">{{ isEditMode ? 'save' : 'add' }}</mat-icon>
+        {{ isSaving ? 'Saving…' : (isEditMode ? 'Update' : 'Create') }}
+      </button>
+    </div>
+
+  </form>
 </div>

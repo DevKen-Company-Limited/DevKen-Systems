@@ -136,54 +136,45 @@ export class SubjectFormComponent implements OnInit, OnDestroy {
 
   // ─── Form ─────────────────────────────────────────────────────────────────
   private _buildForm(data?: any): void {
-    // Always resolve to integers — C# expects Core=1, Optional=2, etc.
-    const subjectType = data ? resolveSubjectType(data.subjectType) : null;
-    const cbcLevel    = data ? resolveCBCLevel(data.cbcLevel ?? data.level) : null;
+  const subjectType = data ? resolveSubjectType(data.subjectType) : null;
+  const cbcLevel    = data ? resolveCBCLevel(data.level) : null;   // use data.level not data.cbcLevel
 
-    console.log('[SubjectForm] _buildForm resolved:', {
-      raw_subjectType:      data?.subjectType,
-      raw_cbcLevel:         data?.cbcLevel ?? data?.level,
-      resolved_subjectType: subjectType,
-      resolved_cbcLevel:    cbcLevel,
-    });
+  const formConfig: any = {
+    name:         [data?.name        ?? '', [Validators.required, Validators.maxLength(200)]],
+    code:         [{ value: data?.code ?? '', disabled: true }],
+    description:  [data?.description ?? '', Validators.maxLength(500)],
+    subjectType:  [subjectType, Validators.required],
+    cbcLevel:     [cbcLevel,    Validators.required],
+    isCompulsory: [data?.isCompulsory ?? false],
+    isActive:     [data?.isActive     ?? true],
+  };
 
-    const formConfig: any = {
-      name:         [data?.name        ?? '', [Validators.required, Validators.maxLength(200)]],
-      code:         [{ value: data?.code ?? '', disabled: true }],
-      description:  [data?.description ?? '', Validators.maxLength(500)],
-      subjectType:  [subjectType, Validators.required],
-      cbcLevel:     [cbcLevel,    Validators.required],
-      isCompulsory: [data?.isCompulsory ?? false],
-      isActive:     [data?.isActive     ?? true],
-    };
-
-    if (this.isSuperAdmin) {
-      formConfig.tenantId = [
-        data?.schoolId ?? data?.tenantId ?? '',
-        Validators.required,
-      ];
-    }
-
-    this.form = this._fb.group(formConfig);
+  if (this.isSuperAdmin) {
+    formConfig.tenantId = [
+      data?.tenantId ?? '',   // backend returns tenantId, not schoolId
+      Validators.required,
+    ];
   }
+
+  this.form = this._fb.group(formConfig);
+}
 
   private _loadSubject(id: string): void {
-    this.isLoading = true;
-    this._service.getById(id)
-      .pipe(takeUntil(this._destroy$))
-      .subscribe({
-        next: (subject: any) => {
-          console.log('[SubjectForm] Raw API response:', subject);
-          this._buildForm(subject);
-          this.isLoading = false;
-        },
-        error: err => {
-          this.isLoading = false;
-          this._alertService.error(err.error?.message || 'Failed to load subject');
-          this._router.navigate(['/academic/subjects']);
-        },
-      });
-  }
+  this.isLoading = true;
+  this._service.getById(id)
+    .pipe(takeUntil(this._destroy$))
+    .subscribe({
+      next: (subject: any) => {
+        this._buildForm(subject);
+        this.isLoading = false;
+      },
+      error: err => {
+        this.isLoading = false;
+        this._alertService.error(err.error?.message || 'Failed to load subject');
+        this._router.navigate(['/academic/subjects']);
+      },
+    });
+}
 
   // ─── Validation Helpers ───────────────────────────────────────────────────
   isInvalid(field: string): boolean {

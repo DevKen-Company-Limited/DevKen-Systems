@@ -10,6 +10,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
 import { AuthService } from 'app/core/auth/auth.service';
 import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
@@ -21,6 +22,7 @@ import { DataTableComponent, TableColumn, TableAction, TableHeader, TableEmptySt
 import { CBCLevelOptions } from '../types/curriculum-enums';
 import { LearningAreaService } from 'app/core/DevKenService/curriculum/learning-area.service';
 import { LearningAreaResponseDto } from '../types/learning-area.dto ';
+import { LearningAreaFormComponent } from './learning-area-form/learning-area-form.component';
 
 @Component({
   selector: 'app-learning-areas',
@@ -34,6 +36,7 @@ import { LearningAreaResponseDto } from '../types/learning-area.dto ';
     MatProgressSpinnerModule,
     MatTooltipModule,
     MatChipsModule,
+    MatDialogModule,
     PageHeaderComponent,
     FilterPanelComponent,
     PaginationComponent,
@@ -42,12 +45,13 @@ import { LearningAreaResponseDto } from '../types/learning-area.dto ';
   ],
   templateUrl: './learning-areas.component.html',
 })
-export class LearningAreasComponent implements OnInit, OnDestroy,  AfterViewInit {
+export class LearningAreasComponent implements OnInit, OnDestroy, AfterViewInit {
   private _destroy$ = new Subject<void>();
   private _service = inject(LearningAreaService);
   private _authService = inject(AuthService);
   private _alertService = inject(AlertService);
   private _router = inject(Router);
+  private _dialog = inject(MatDialog);
 
   @ViewChild('nameCell', { static: true }) nameCell!: TemplateRef<any>;
   @ViewChild('codeCell', { static: true }) codeCell!: TemplateRef<any>;
@@ -65,19 +69,16 @@ export class LearningAreasComponent implements OnInit, OnDestroy,  AfterViewInit
     };
   }
 
-  // ─── Auth ──────────────────────────────────────────────────────────
   get isSuperAdmin(): boolean {
     return this._authService.authUser?.isSuperAdmin ?? false;
   }
 
-  // ─── Breadcrumbs ───────────────────────────────────────────────────
   breadcrumbs: Breadcrumb[] = [
     { label: 'Dashboard', url: '/dashboard' },
     { label: 'Curriculum' },
     { label: 'Learning Areas' },
   ];
 
-  // ─── State ─────────────────────────────────────────────────────────
   allData: LearningAreaResponseDto[] = [];
   isLoading = false;
   showFilterPanel = false;
@@ -88,7 +89,6 @@ export class LearningAreasComponent implements OnInit, OnDestroy,  AfterViewInit
 
   cbcLevelOptions = CBCLevelOptions;
 
-  // ─── Stats ─────────────────────────────────────────────────────────
   get statsCards(): StatCard[] {
     return [
       { label: 'Total Areas',  value: this.allData.length,                                       icon: 'menu_book',     iconColor: 'indigo' },
@@ -97,18 +97,17 @@ export class LearningAreasComponent implements OnInit, OnDestroy,  AfterViewInit
     ];
   }
 
-  // ─── Table ─────────────────────────────────────────────────────────
   tableColumns: TableColumn<LearningAreaResponseDto>[] = [
-    { id: 'name',   label: 'Name',     align: 'left',   sortable: true },
-    { id: 'code',   label: 'Code',     align: 'left',   hideOnMobile: true },
-    { id: 'level',  label: 'CBC Level', align: 'left',  hideOnMobile: true },
-    { id: 'status', label: 'Status',   align: 'center' },
+    { id: 'name',   label: 'Name',      align: 'left',   sortable: true },
+    { id: 'code',   label: 'Code',      align: 'left',   hideOnMobile: true },
+    { id: 'level',  label: 'CBC Level', align: 'left',   hideOnMobile: true },
+    { id: 'status', label: 'Status',    align: 'center' },
   ];
 
   tableActions: TableAction<LearningAreaResponseDto>[] = [
-    { id: 'edit',    label: 'Edit',    icon: 'edit',   color: 'indigo', handler: r => this.edit(r)   },
-    { id: 'strands', label: 'View Strands', icon: 'account_tree', color: 'blue', handler: r => this.viewStrands(r) },
-    { id: 'delete',  label: 'Delete',  icon: 'delete', color: 'red',    handler: r => this.delete(r) },
+    { id: 'edit',    label: 'Edit',         icon: 'edit',         color: 'indigo', handler: r => this.edit(r)        },
+    { id: 'strands', label: 'View Strands', icon: 'account_tree', color: 'blue',   handler: r => this.viewStrands(r) },
+    { id: 'delete',  label: 'Delete',       icon: 'delete',       color: 'red',    handler: r => this.delete(r)      },
   ];
 
   tableHeader: TableHeader = {
@@ -125,7 +124,6 @@ export class LearningAreasComponent implements OnInit, OnDestroy,  AfterViewInit
     action: { label: 'Add Learning Area', icon: 'add', handler: () => this.create() },
   };
 
-  // ─── Filter Fields ─────────────────────────────────────────────────
   filterFields: FilterField[] = [
     {
       id: 'search', label: 'Search', type: 'text',
@@ -148,7 +146,6 @@ export class LearningAreasComponent implements OnInit, OnDestroy,  AfterViewInit
     },
   ];
 
-  // ─── Computed ──────────────────────────────────────────────────────
   get filteredData(): LearningAreaResponseDto[] {
     const q = this._filterValues.search.toLowerCase();
     return this.allData.filter(a =>
@@ -164,11 +161,9 @@ export class LearningAreasComponent implements OnInit, OnDestroy,  AfterViewInit
     return this.filteredData.slice(start, start + this.itemsPerPage);
   }
 
-  // ─── Lifecycle ─────────────────────────────────────────────────────
   ngOnInit(): void { this.loadAll(); }
   ngOnDestroy(): void { this._destroy$.next(); this._destroy$.complete(); }
 
-  // ─── Data ──────────────────────────────────────────────────────────
   loadAll(): void {
     this.isLoading = true;
     this._service.getAll()
@@ -186,7 +181,6 @@ export class LearningAreasComponent implements OnInit, OnDestroy,  AfterViewInit
       });
   }
 
-  // ─── Filter events ─────────────────────────────────────────────────
   toggleFilterPanel(): void { this.showFilterPanel = !this.showFilterPanel; }
 
   onFilterChange(event: FilterChangeEvent): void {
@@ -204,9 +198,26 @@ export class LearningAreasComponent implements OnInit, OnDestroy,  AfterViewInit
   onPageChange(page: number): void { this.currentPage = page; }
   onItemsPerPageChange(n: number): void { this.itemsPerPage = n; this.currentPage = 1; }
 
-  // ─── Actions ───────────────────────────────────────────────────────
-  create():                              void { this._router.navigate(['/curriculum/learning-areas/create']); }
-  edit(row: LearningAreaResponseDto):    void { this._router.navigate(['/curriculum/learning-areas/edit', row.id]); }
+  create(): void {
+    const ref = this._dialog.open(LearningAreaFormComponent, {
+      width: '560px',
+      maxWidth: '95vw',
+      disableClose: false,
+      data: {},
+    });
+    ref.afterClosed().subscribe(result => { if (result?.success) this.loadAll(); });
+  }
+
+  edit(row: LearningAreaResponseDto): void {
+    const ref = this._dialog.open(LearningAreaFormComponent, {
+      width: '560px',
+      maxWidth: '95vw',
+      disableClose: false,
+      data: { editId: row.id },
+    });
+    ref.afterClosed().subscribe(result => { if (result?.success) this.loadAll(); });
+  }
+
   viewStrands(row: LearningAreaResponseDto): void {
     this._router.navigate(['/curriculum/strands'], { queryParams: { learningAreaId: row.id } });
   }

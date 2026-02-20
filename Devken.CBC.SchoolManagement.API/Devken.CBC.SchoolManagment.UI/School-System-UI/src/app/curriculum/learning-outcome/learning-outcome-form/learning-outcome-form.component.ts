@@ -1,7 +1,6 @@
-import { Component, OnInit, OnDestroy, inject, TemplateRef, AfterViewInit, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, Inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Router, ActivatedRoute } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -9,14 +8,13 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { FuseAlertComponent } from '@fuse/components/alert';
 
 import { AuthService } from 'app/core/auth/auth.service';
 import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
-import { PageHeaderComponent, Breadcrumb } from 'app/shared/Page-Header/page-header.component';
 import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
 import { SchoolDto } from 'app/Tenant/types/school';
 import { LearningAreaService } from 'app/core/DevKenService/curriculum/learning-area.service';
@@ -26,7 +24,14 @@ import { SubStrandService } from 'app/core/DevKenService/curriculum/substrand.se
 import { LearningAreaResponseDto } from 'app/curriculum/types/learning-area.dto ';
 import { StrandResponseDto } from 'app/curriculum/types/strand.dto ';
 import { SubStrandResponseDto } from 'app/curriculum/types/substrand.dto ';
-import { CBCLevelOptions } from 'app/Subject/Types/SubjectEnums';
+import { CBCLevelOptions } from 'app/curriculum/types/curriculum-enums';
+
+export interface LearningOutcomeDialogData {
+  editId?: string;
+  defaultSubStrandId?: string;
+  defaultStrandId?: string;
+  defaultLearningAreaId?: string;
+}
 
 @Component({
   selector: 'app-learning-outcome-form',
@@ -34,13 +39,12 @@ import { CBCLevelOptions } from 'app/Subject/Types/SubjectEnums';
   imports: [
     CommonModule, ReactiveFormsModule,
     MatFormFieldModule, MatInputModule, MatSelectModule,
-    MatButtonModule, MatIconModule, MatCardModule,
-    MatProgressSpinnerModule, MatSlideToggleModule,
-    FuseAlertComponent, PageHeaderComponent,
+    MatButtonModule, MatIconModule, MatProgressSpinnerModule, MatSlideToggleModule,
+    MatDialogModule, FuseAlertComponent,
   ],
   templateUrl: './learning-outcome-form.component.html',
 })
-export class LearningOutcomeFormComponent implements OnInit, OnDestroy, AfterViewInit  {
+export class LearningOutcomeFormComponent implements OnInit, OnDestroy {
   private _destroy$ = new Subject<void>();
   private fb = inject(FormBuilder);
   private _service = inject(LearningOutcomeService);
@@ -50,26 +54,9 @@ export class LearningOutcomeFormComponent implements OnInit, OnDestroy, AfterVie
   private _authService = inject(AuthService);
   private _alertService = inject(AlertService);
   private _schoolService = inject(SchoolService);
-  private _router = inject(Router);
-  private _route = inject(ActivatedRoute);
+  private _dialogRef = inject(MatDialogRef<LearningOutcomeFormComponent>);
 
-   @ViewChild('nameCell', { static: true }) nameCell!: TemplateRef<any>;
-  @ViewChild('learningAreaCell', { static: true }) learningAreaCell!: TemplateRef<any>;
-  @ViewChild('statusCell', { static: true }) statusCell!: TemplateRef<any>;
-
-  cellTemplates!: Record<string, TemplateRef<any>>;
-
-  ngAfterViewInit(): void {
-    this.cellTemplates = {
-      name: this.nameCell,
-      learningArea: this.learningAreaCell,
-      status: this.statusCell,
-    };
-  }
-  
   form!: FormGroup;
-  isEditMode = false;
-  editId: string | null = null;
   isLoading = false;
   isSaving = false;
   schools: SchoolDto[] = [];
@@ -81,22 +68,13 @@ export class LearningOutcomeFormComponent implements OnInit, OnDestroy, AfterVie
 
   cbcLevels = CBCLevelOptions;
 
+  get editId(): string | undefined { return this.data?.editId; }
+  get isEditMode(): boolean { return !!this.editId; }
   get isSuperAdmin(): boolean { return this._authService.authUser?.isSuperAdmin ?? false; }
 
-  get breadcrumbs(): Breadcrumb[] {
-    return [
-      { label: 'Dashboard', url: '/dashboard' },
-      { label: 'Curriculum' },
-      { label: 'Learning Outcomes', url: '/curriculum/learning-outcomes' },
-      { label: this.isEditMode ? 'Edit' : 'Create' },
-    ];
-  }
-
-  get title(): string { return this.isEditMode ? 'Edit Learning Outcome' : 'Create Learning Outcome'; }
+  constructor(@Inject(MAT_DIALOG_DATA) public data: LearningOutcomeDialogData) {}
 
   ngOnInit(): void {
-    this.editId = this._route.snapshot.paramMap.get('id');
-    this.isEditMode = !!this.editId;
     this.buildForm();
     this.loadLookups();
     if (this.isSuperAdmin) {
@@ -108,13 +86,22 @@ export class LearningOutcomeFormComponent implements OnInit, OnDestroy, AfterVie
 
   ngOnDestroy(): void { this._destroy$.next(); this._destroy$.complete(); }
 
+  /**
+   * Resolve level to numeric value from either numeric string or label string.
+   */
+  private resolveLevelValue(level: string | number): number | string {
+    if (!level) return '';
+    const asNum = Number(level);
+    if (!isNaN(asNum) && asNum > 0) return asNum;
+    const opt = this.cbcLevels.find(l => l.label === level || l.label.toLowerCase() === String(level).toLowerCase());
+    return opt ? opt.value : '';
+  }
+
   private buildForm(): void {
     this.form = this.fb.group({
-      // Hierarchy (cascading)
-      learningAreaId: ['', Validators.required],
-      strandId:       ['', Validators.required],
-      subStrandId:    ['', Validators.required],
-      // Core fields
+      learningAreaId: [this.data?.defaultLearningAreaId ?? '', Validators.required],
+      strandId:       [this.data?.defaultStrandId ?? '',       Validators.required],
+      subStrandId:    [this.data?.defaultSubStrandId ?? '',    Validators.required],
       outcome:        ['', [Validators.required, Validators.maxLength(250)]],
       code:           ['', Validators.maxLength(50)],
       description:    ['', Validators.maxLength(1000)],
@@ -142,9 +129,18 @@ export class LearningOutcomeFormComponent implements OnInit, OnDestroy, AfterVie
     this._laService.getAll().pipe(takeUntil(this._destroy$))
       .subscribe(d => { this.learningAreas = Array.isArray(d) ? d : []; });
     this._strandService.getAll().pipe(takeUntil(this._destroy$))
-      .subscribe(d => { this.allStrands = Array.isArray(d) ? d : []; this.filteredStrands = this.allStrands; });
+      .subscribe(d => {
+        this.allStrands = Array.isArray(d) ? d : [];
+        // Apply initial filter if default LA provided
+        const laId = this.form.get('learningAreaId')?.value;
+        this.filteredStrands = laId ? this.allStrands.filter(s => s.learningAreaId === laId) : this.allStrands;
+      });
     this._ssService.getAll().pipe(takeUntil(this._destroy$))
-      .subscribe(d => { this.allSubStrands = Array.isArray(d) ? d : []; this.filteredSubStrands = this.allSubStrands; });
+      .subscribe(d => {
+        this.allSubStrands = Array.isArray(d) ? d : [];
+        const strandId = this.form.get('strandId')?.value;
+        this.filteredSubStrands = strandId ? this.allSubStrands.filter(ss => ss.strandId === strandId) : this.allSubStrands;
+      });
   }
 
   private loadExisting(id: string): void {
@@ -157,6 +153,8 @@ export class LearningOutcomeFormComponent implements OnInit, OnDestroy, AfterVie
         this.filteredStrands    = laId ? this.allStrands.filter(s => s.learningAreaId === laId) : this.allStrands;
         this.filteredSubStrands = o.strandId ? this.allSubStrands.filter(ss => ss.strandId === o.strandId) : this.allSubStrands;
 
+        const levelValue = this.resolveLevelValue(o.level);
+
         this.form.patchValue({
           learningAreaId: laId,
           strandId:       o.strandId,
@@ -164,10 +162,15 @@ export class LearningOutcomeFormComponent implements OnInit, OnDestroy, AfterVie
           outcome:        o.outcome,
           code:           o.code ?? '',
           description:    o.description ?? '',
-          level:          o.level,
+          level:          levelValue,
           isCore:         o.isCore,
           ...(this.isSuperAdmin ? { tenantId: o.tenantId } : {}),
         }, { emitEvent: false });
+
+        // Manually reset cascade after patchValue with emitEvent:false
+        this.filteredStrands    = laId ? this.allStrands.filter(s => s.learningAreaId === laId) : this.allStrands;
+        this.filteredSubStrands = o.strandId ? this.allSubStrands.filter(ss => ss.strandId === o.strandId) : this.allSubStrands;
+
         this.isLoading = false;
       },
       error: err => { this._alertService.error(err?.error?.message || 'Failed to load'); this.isLoading = false; },
@@ -179,11 +182,11 @@ export class LearningOutcomeFormComponent implements OnInit, OnDestroy, AfterVie
     this.isSaving = true;
     const val = this.form.value;
     const dto = {
-      outcome:     val.outcome,
-      code:        val.code || undefined,
-      description: val.description || undefined,
-      level:       Number(val.level),
-      isCore:      val.isCore,
+      outcome:        val.outcome,
+      code:           val.code || undefined,
+      description:    val.description || undefined,
+      level:          Number(val.level),
+      isCore:         val.isCore,
       learningAreaId: val.learningAreaId,
       strandId:       val.strandId,
       subStrandId:    val.subStrandId,
@@ -196,15 +199,14 @@ export class LearningOutcomeFormComponent implements OnInit, OnDestroy, AfterVie
     obs.pipe(takeUntil(this._destroy$)).subscribe({
       next: () => {
         this._alertService.success(`Learning outcome ${this.isEditMode ? 'updated' : 'created'} successfully`);
-        this._router.navigate(['/curriculum/learning-outcomes']);
+        this._dialogRef.close({ success: true });
       },
       error: err => { this._alertService.error(err?.error?.message || 'Save failed'); this.isSaving = false; },
     });
   }
 
-  cancel(): void { this._router.navigate(['/curriculum/learning-outcomes']); }
+  cancel(): void { this._dialogRef.close(); }
 
-  isInvalid(f: string): boolean { const c = this.form.get(f); return !!(c && c.invalid && (c.dirty || c.touched)); }
   getError(f: string): string {
     const c = this.form.get(f);
     if (!c?.errors) return '';

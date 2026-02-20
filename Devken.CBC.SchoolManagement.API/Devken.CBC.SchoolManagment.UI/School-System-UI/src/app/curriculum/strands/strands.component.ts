@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
 import { AuthService } from 'app/core/auth/auth.service';
 import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
@@ -20,22 +21,16 @@ import { LearningAreaService } from 'app/core/DevKenService/curriculum/learning-
 import { StrandService } from 'app/core/DevKenService/curriculum/strand.service';
 import { LearningAreaResponseDto } from '../types/learning-area.dto ';
 import { StrandResponseDto } from '../types/strand.dto ';
+import { StrandFormComponent } from './strand-form/strand-form.component';
 
 @Component({
   selector: 'app-strands',
   standalone: true,
   imports: [
-    CommonModule,
-    FormsModule,
-    MatIconModule,
-    MatButtonModule,
-    MatProgressSpinnerModule,
-    MatTooltipModule,
-    PageHeaderComponent,
-    FilterPanelComponent,
-    PaginationComponent,
-    StatsCardsComponent,
-    DataTableComponent,
+    CommonModule, FormsModule, MatIconModule, MatButtonModule,
+    MatProgressSpinnerModule, MatTooltipModule, MatDialogModule,
+    PageHeaderComponent, FilterPanelComponent, PaginationComponent,
+    StatsCardsComponent, DataTableComponent,
   ],
   templateUrl: './strands.component.html',
 })
@@ -45,24 +40,24 @@ export class StrandsComponent implements OnInit, OnDestroy, AfterViewInit {
   private _learningAreaService = inject(LearningAreaService);
   private _authService = inject(AuthService);
   private _alertService = inject(AlertService);
-  private _router = inject(Router);
+  router = inject(Router);
   private _route = inject(ActivatedRoute);
+  private _dialog = inject(MatDialog);
 
   @ViewChild('nameCell', { static: true }) nameCell!: TemplateRef<any>;
   @ViewChild('learningAreaCell', { static: true }) learningAreaCell!: TemplateRef<any>;
   @ViewChild('statusCell', { static: true }) statusCell!: TemplateRef<any>;
 
-  // Property bound to [cellTemplates] in the template
   cellTemplates!: Record<string, TemplateRef<any>>;
 
   ngAfterViewInit(): void {
-    // Build the mapping after the templates are available
     this.cellTemplates = {
       name: this.nameCell,
       learningArea: this.learningAreaCell,
       status: this.statusCell,
     };
   }
+
   get isSuperAdmin(): boolean { return this._authService.authUser?.isSuperAdmin ?? false; }
 
   breadcrumbs: Breadcrumb[] = [
@@ -72,38 +67,34 @@ export class StrandsComponent implements OnInit, OnDestroy, AfterViewInit {
     { label: 'Strands' },
   ];
 
-  // ─── State ─────────────────────────────────────────────────────────
   allData: StrandResponseDto[] = [];
   learningAreas: LearningAreaResponseDto[] = [];
   isLoading = false;
   showFilterPanel = false;
   currentPage = 1;
   itemsPerPage = 10;
-
   preselectedLearningAreaId: string | null = null;
 
   private _filterValues = { search: '', learningAreaId: 'all', status: 'all' };
 
-  // ─── Stats ─────────────────────────────────────────────────────────
   get statsCards(): StatCard[] {
     return [
-      { label: 'Total Strands', value: this.allData.length,                                     icon: 'account_tree', iconColor: 'blue'  },
-      { label: 'Active',        value: this.allData.filter(s => s.status === 'Active').length,  icon: 'check_circle', iconColor: 'green' },
+      { label: 'Total Strands',  value: this.allData.length,                                    icon: 'account_tree', iconColor: 'blue'  },
+      { label: 'Active',         value: this.allData.filter(s => s.status === 'Active').length, icon: 'check_circle', iconColor: 'green' },
       { label: 'Learning Areas', value: new Set(this.allData.map(s => s.learningAreaId)).size,  icon: 'menu_book',    iconColor: 'indigo'},
     ];
   }
 
-  // ─── Table ─────────────────────────────────────────────────────────
   tableColumns: TableColumn<StrandResponseDto>[] = [
-    { id: 'name',         label: 'Strand Name',    align: 'left', sortable: true },
-    { id: 'learningArea', label: 'Learning Area',  align: 'left', hideOnMobile: true },
-    { id: 'status',       label: 'Status',         align: 'center' },
+    { id: 'name',         label: 'Strand Name',   align: 'left', sortable: true },
+    { id: 'learningArea', label: 'Learning Area', align: 'left', hideOnMobile: true },
+    { id: 'status',       label: 'Status',        align: 'center' },
   ];
 
   tableActions: TableAction<StrandResponseDto>[] = [
-    { id: 'edit',       label: 'Edit',           icon: 'edit',         color: 'indigo', handler: r => this.edit(r)       },
-    { id: 'substrands', label: 'View Sub-Strands',icon: 'account_tree', color: 'blue',   handler: r => this.viewSubStrands(r) },
-    { id: 'delete',     label: 'Delete',          icon: 'delete',       color: 'red',    handler: r => this.delete(r)     },
+    { id: 'edit',       label: 'Edit',             icon: 'edit',          color: 'indigo', handler: r => this.edit(r)           },
+    { id: 'substrands', label: 'View Sub-Strands', icon: 'account_tree',  color: 'blue',   handler: r => this.viewSubStrands(r) },
+    { id: 'delete',     label: 'Delete',           icon: 'delete',        color: 'red',    handler: r => this.delete(r)         },
   ];
 
   tableHeader: TableHeader = {
@@ -119,7 +110,6 @@ export class StrandsComponent implements OnInit, OnDestroy, AfterViewInit {
 
   filterFields: FilterField[] = [];
 
-  // ─── Computed ──────────────────────────────────────────────────────
   get filteredData(): StrandResponseDto[] {
     const q = this._filterValues.search.toLowerCase();
     return this.allData.filter(s =>
@@ -134,7 +124,6 @@ export class StrandsComponent implements OnInit, OnDestroy, AfterViewInit {
     return this.filteredData.slice(start, start + this.itemsPerPage);
   }
 
-  // ─── Lifecycle ─────────────────────────────────────────────────────
   ngOnInit(): void {
     this.preselectedLearningAreaId = this._route.snapshot.queryParamMap.get('learningAreaId');
     if (this.preselectedLearningAreaId) {
@@ -169,8 +158,8 @@ export class StrandsComponent implements OnInit, OnDestroy, AfterViewInit {
       {
         id: 'status', label: 'Status', type: 'select', value: 'all',
         options: [
-          { label: 'All', value: 'all' },
-          { label: 'Active', value: 'Active' },
+          { label: 'All',      value: 'all' },
+          { label: 'Active',   value: 'Active' },
           { label: 'Inactive', value: 'Inactive' },
         ],
       },
@@ -213,10 +202,28 @@ export class StrandsComponent implements OnInit, OnDestroy, AfterViewInit {
   onPageChange(page: number): void { this.currentPage = page; }
   onItemsPerPageChange(n: number): void { this.itemsPerPage = n; this.currentPage = 1; }
 
-  create():                           void { this._router.navigate(['/curriculum/strands/create']); }
-  edit(row: StrandResponseDto):       void { this._router.navigate(['/curriculum/strands/edit', row.id]); }
+  create(): void {
+    const ref = this._dialog.open(StrandFormComponent, {
+      width: '520px',
+      maxWidth: '95vw',
+      data: {
+        defaultLearningAreaId: this.preselectedLearningAreaId ?? undefined,
+      },
+    });
+    ref.afterClosed().subscribe(result => { if (result?.success) this.loadAll(); });
+  }
+
+  edit(row: StrandResponseDto): void {
+    const ref = this._dialog.open(StrandFormComponent, {
+      width: '520px',
+      maxWidth: '95vw',
+      data: { editId: row.id },
+    });
+    ref.afterClosed().subscribe(result => { if (result?.success) this.loadAll(); });
+  }
+
   viewSubStrands(row: StrandResponseDto): void {
-    this._router.navigate(['/curriculum/sub-strands'], { queryParams: { strandId: row.id } });
+    this.router.navigate(['/curriculum/sub-strands'], { queryParams: { strandId: row.id } });
   }
 
   delete(row: StrandResponseDto): void {

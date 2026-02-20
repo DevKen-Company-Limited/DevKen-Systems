@@ -208,12 +208,12 @@ export class SubjectEnrollmentComponent implements OnInit, OnDestroy {
       name:        s.name        ?? '',
       code:        s.code        ?? '',
       description: s.description ?? '',
-      schoolId:    s.schoolId    ?? s.tenantId ?? '',
+      schoolId:    s.tenantId ?? '',
     };
 
     this.formSections['curriculum'] = {
       subjectType: resolveSubjectType(s.subjectType),
-      cbcLevel:    resolveCBCLevel(s.cbcLevel ?? s.level),
+      cbcLevel:    resolveCBCLevel(s.level),
     };
 
     this.formSections['settings'] = {
@@ -221,6 +221,8 @@ export class SubjectEnrollmentComponent implements OnInit, OnDestroy {
       isActive:     s.isActive     ?? true,
     };
 
+    // Spread to new object so Angular detects the reference change
+    this.formSections = { ...this.formSections };
     console.log('[SubjectEnrollment] Hydrated sections:', this.formSections);
   }
 

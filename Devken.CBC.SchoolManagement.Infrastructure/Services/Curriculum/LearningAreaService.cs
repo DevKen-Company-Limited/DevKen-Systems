@@ -2,6 +2,7 @@
 using Devken.CBC.SchoolManagement.Application.DTOs.Curriculum;
 using Devken.CBC.SchoolManagement.Application.Exceptions;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.NumberSeries;
 using Devken.CBC.SchoolManagement.Application.Service.Academics;
 using Devken.CBC.SchoolManagement.Application.Service.Curriculum;
 using Devken.CBC.SchoolManagement.Domain.Entities.Helpers;
@@ -16,10 +17,17 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Academics
     public class LearningAreaService : ILearningAreaService
     {
         private readonly IRepositoryManager _repositories;
+        private readonly IDocumentNumberSeriesRepository _documentNumberService;
 
-        public LearningAreaService(IRepositoryManager repositories)
+        private const string LA_NUMBER_SERIES = "LearningArea";
+        private const string LA_PREFIX = "LA";
+
+        public LearningAreaService(
+            IRepositoryManager repositories,
+            IDocumentNumberSeriesRepository documentNumberService)
         {
             _repositories = repositories ?? throw new ArgumentNullException(nameof(repositories));
+            _documentNumberService = documentNumberService ?? throw new ArgumentNullException(nameof(documentNumberService));
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -96,15 +104,15 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Academics
             if (await _repositories.LearningArea.ExistsByNameAsync(dto.Name, tenantId))
                 throw new ConflictException($"A learning area named '{dto.Name}' already exists for this school.");
 
-            if (dto.Code != null && await _repositories.LearningArea.GetByCodeAsync(dto.Code, tenantId) != null)
-                throw new ConflictException($"A learning area with code '{dto.Code}' already exists for this school.");
+            // Auto-generate code via number series
+            var code = await ResolveLearningAreaCodeAsync(tenantId);
 
             var area = new LearningArea
             {
                 Id = Guid.NewGuid(),
                 TenantId = tenantId,
                 Name = dto.Name,
-                Code = dto.Code,
+                Code = code,
                 Level = dto.Level
             };
 
@@ -131,15 +139,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Academics
             if (await _repositories.LearningArea.ExistsByNameAsync(dto.Name, existing.TenantId, excludeId: id))
                 throw new ConflictException($"A learning area named '{dto.Name}' already exists for this school.");
 
-            if (dto.Code != null)
-            {
-                var codeConflict = await _repositories.LearningArea.GetByCodeAsync(dto.Code, existing.TenantId);
-                if (codeConflict != null && codeConflict.Id != id)
-                    throw new ConflictException($"A learning area with code '{dto.Code}' already exists for this school.");
-            }
-
             existing.Name = dto.Name;
-            existing.Code = dto.Code;
+            // Code is immutable after creation — do not update
             existing.Level = dto.Level;
 
             _repositories.LearningArea.Update(existing);
@@ -188,12 +189,32 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Academics
                 throw new UnauthorizedException("You do not have access to this learning area.");
         }
 
+        private async Task<string> ResolveLearningAreaCodeAsync(Guid tenantId)
+        {
+            var seriesExists = await _documentNumberService.SeriesExistsAsync(LA_NUMBER_SERIES, tenantId);
+
+            if (!seriesExists)
+            {
+                await _documentNumberService.CreateSeriesAsync(
+                    entityName: LA_NUMBER_SERIES,
+                    tenantId: tenantId,
+                    prefix: LA_PREFIX,
+                    padding: 4,
+                    resetEveryYear: false,
+                    description: "Learning area codes");
+            }
+
+            return await _documentNumberService.GenerateAsync(LA_NUMBER_SERIES, tenantId);
+        }
+
+        // Returns level as its integer value so the Angular mat-select can bind
+        // directly by numeric value (avoids C# enum name vs label mismatch).
         private static LearningAreaResponseDto MapToDto(LearningArea la) => new()
         {
             Id = (Guid)la.Id!,
             Name = la.Name,
             Code = la.Code,
-            Level = la.Level.ToString(),
+            Level = ((int)la.Level).ToString(),   // ← integer, not enum name
             TenantId = la.TenantId,
             Status = la.Status.ToString(),
             CreatedOn = la.CreatedOn,

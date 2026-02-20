@@ -1,7 +1,6 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, Inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Router, ActivatedRoute } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -9,19 +8,23 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { FuseAlertComponent } from '@fuse/components/alert';
 
 import { AuthService } from 'app/core/auth/auth.service';
 import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
-import { PageHeaderComponent, Breadcrumb } from 'app/shared/Page-Header/page-header.component';
 import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
 import { SchoolDto } from 'app/Tenant/types/school';
 import { LearningAreaService } from 'app/core/DevKenService/curriculum/learning-area.service';
 import { StrandService } from 'app/core/DevKenService/curriculum/strand.service';
 import { LearningAreaResponseDto } from 'app/curriculum/types/learning-area.dto ';
 
+export interface StrandDialogData {
+  editId?: string;
+  /** Pre-select a learning area when opening from strands list filtered by LA */
+  defaultLearningAreaId?: string;
+}
 
 @Component({
   selector: 'app-strand-form',
@@ -29,8 +32,8 @@ import { LearningAreaResponseDto } from 'app/curriculum/types/learning-area.dto 
   imports: [
     CommonModule, ReactiveFormsModule,
     MatFormFieldModule, MatInputModule, MatSelectModule,
-    MatButtonModule, MatIconModule, MatCardModule, MatProgressSpinnerModule,
-    FuseAlertComponent, PageHeaderComponent,
+    MatButtonModule, MatIconModule, MatProgressSpinnerModule,
+    MatDialogModule, FuseAlertComponent,
   ],
   templateUrl: './strand-form.component.html',
 })
@@ -42,33 +45,21 @@ export class StrandFormComponent implements OnInit, OnDestroy {
   private _authService = inject(AuthService);
   private _alertService = inject(AlertService);
   private _schoolService = inject(SchoolService);
-  private _router = inject(Router);
-  private _route = inject(ActivatedRoute);
+  private _dialogRef = inject(MatDialogRef<StrandFormComponent>);
 
   form!: FormGroup;
-  isEditMode = false;
-  editId: string | null = null;
   isLoading = false;
   isSaving = false;
   schools: SchoolDto[] = [];
   learningAreas: LearningAreaResponseDto[] = [];
 
+  get editId(): string | undefined { return this.data?.editId; }
+  get isEditMode(): boolean { return !!this.editId; }
   get isSuperAdmin(): boolean { return this._authService.authUser?.isSuperAdmin ?? false; }
 
-  get breadcrumbs(): Breadcrumb[] {
-    return [
-      { label: 'Dashboard', url: '/dashboard' },
-      { label: 'Curriculum' },
-      { label: 'Strands', url: '/curriculum/strands' },
-      { label: this.isEditMode ? 'Edit' : 'Create' },
-    ];
-  }
-
-  get title(): string { return this.isEditMode ? 'Edit Strand' : 'Create Strand'; }
+  constructor(@Inject(MAT_DIALOG_DATA) public data: StrandDialogData) {}
 
   ngOnInit(): void {
-    this.editId = this._route.snapshot.paramMap.get('id');
-    this.isEditMode = !!this.editId;
     this.buildForm();
     this.loadLearningAreas();
     if (this.isSuperAdmin) {
@@ -83,7 +74,7 @@ export class StrandFormComponent implements OnInit, OnDestroy {
   private buildForm(): void {
     this.form = this.fb.group({
       name:           ['', [Validators.required, Validators.maxLength(150)]],
-      learningAreaId: ['', Validators.required],
+      learningAreaId: [this.data?.defaultLearningAreaId ?? '', Validators.required],
       ...(this.isSuperAdmin ? { tenantId: ['', Validators.required] } : {}),
     });
   }
@@ -120,18 +111,14 @@ export class StrandFormComponent implements OnInit, OnDestroy {
     obs.pipe(takeUntil(this._destroy$)).subscribe({
       next: () => {
         this._alertService.success(`Strand ${this.isEditMode ? 'updated' : 'created'} successfully`);
-        this._router.navigate(['/curriculum/strands']);
+        this._dialogRef.close({ success: true });
       },
       error: err => { this._alertService.error(err?.error?.message || 'Save failed'); this.isSaving = false; },
     });
   }
 
-  cancel(): void { this._router.navigate(['/curriculum/strands']); }
+  cancel(): void { this._dialogRef.close(); }
 
-  isInvalid(field: string): boolean {
-    const c = this.form.get(field);
-    return !!(c && c.invalid && (c.dirty || c.touched));
-  }
   getError(field: string): string {
     const c = this.form.get(field);
     if (!c?.errors) return '';

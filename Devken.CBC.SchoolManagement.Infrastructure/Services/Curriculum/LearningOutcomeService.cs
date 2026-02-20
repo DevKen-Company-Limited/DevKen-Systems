@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Devken.CBC.SchoolManagement.Application.DTOs.Curriculum;
 using Devken.CBC.SchoolManagement.Application.Exceptions;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.NumberSeries;
 using Devken.CBC.SchoolManagement.Application.Service.Curriculum;
 using Devken.CBC.SchoolManagement.Domain.Entities.Helpers;
 using Devken.CBC.SchoolManagement.Domain.Enums;
@@ -15,10 +15,17 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Curriculum
     public class LearningOutcomeService : ILearningOutcomeService
     {
         private readonly IRepositoryManager _repositories;
+        private readonly IDocumentNumberSeriesRepository _documentNumberService;
 
-        public LearningOutcomeService(IRepositoryManager repositories)
+        private const string LO_NUMBER_SERIES = "LearningOutcome";
+        private const string LO_PREFIX = "LO";
+
+        public LearningOutcomeService(
+            IRepositoryManager repositories,
+            IDocumentNumberSeriesRepository documentNumberService)
         {
             _repositories = repositories ?? throw new ArgumentNullException(nameof(repositories));
+            _documentNumberService = documentNumberService ?? throw new ArgumentNullException(nameof(documentNumberService));
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -66,7 +73,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Curriculum
                             : await _repositories.LearningOutcome.GetByTenantIdAsync(userSchoolId.Value, trackChanges: false);
             }
 
-            // Apply optional filters
             if (level.HasValue)
                 outcomes = outcomes.Where(lo => lo.Level == level.Value);
             if (isCore.HasValue)
@@ -111,7 +117,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Curriculum
         {
             var tenantId = ResolveTenantId(dto.TenantId, userSchoolId, isSuperAdmin);
 
-            // Validate hierarchy — all must belong to same tenant
+            // Validate hierarchy
             var learningArea = await _repositories.LearningArea.GetByIdAsync(dto.LearningAreaId, trackChanges: false)
                 ?? throw new NotFoundException($"Learning area with ID '{dto.LearningAreaId}' not found.");
             if (learningArea.TenantId != tenantId)
@@ -131,17 +137,15 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Curriculum
             if (subStrand.StrandId != dto.StrandId)
                 throw new ValidationException("The specified sub-strand does not belong to the given strand.");
 
-            // Unique code check
-            if (!string.IsNullOrWhiteSpace(dto.Code) &&
-                await _repositories.LearningOutcome.ExistsByCodeAsync(dto.Code, tenantId))
-                throw new ConflictException($"A learning outcome with code '{dto.Code}' already exists for this school.");
+            // Auto-generate code via number series
+            var code = await ResolveLearningOutcomeCodeAsync(tenantId);
 
             var outcome = new LearningOutcome
             {
                 Id = Guid.NewGuid(),
                 TenantId = tenantId,
                 Outcome = dto.Outcome,
-                Code = dto.Code,
+                Code = code,
                 Description = dto.Description,
                 Level = dto.Level,
                 IsCore = dto.IsCore,
@@ -153,7 +157,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Curriculum
             _repositories.LearningOutcome.Create(outcome);
             await _repositories.SaveAsync();
 
-            // Attach nav properties for the response DTO
             outcome.LearningArea = learningArea;
             outcome.Strand = strand;
             outcome.SubStrand = subStrand;
@@ -191,13 +194,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Curriculum
             if (subStrand.StrandId != dto.StrandId)
                 throw new ValidationException("The specified sub-strand does not belong to the given strand.");
 
-            // Unique code check (exclude self)
-            if (!string.IsNullOrWhiteSpace(dto.Code) &&
-                await _repositories.LearningOutcome.ExistsByCodeAsync(dto.Code, existing.TenantId, excludeId: id))
-                throw new ConflictException($"A learning outcome with code '{dto.Code}' already exists for this school.");
-
             existing.Outcome = dto.Outcome;
-            existing.Code = dto.Code;
+            // Code is immutable after creation — do not update
             existing.Description = dto.Description;
             existing.Level = dto.Level;
             existing.IsCore = dto.IsCore;
@@ -255,13 +253,33 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Curriculum
                 throw new UnauthorizedException("You do not have access to this learning outcome.");
         }
 
+        private async Task<string> ResolveLearningOutcomeCodeAsync(Guid tenantId)
+        {
+            var seriesExists = await _documentNumberService.SeriesExistsAsync(LO_NUMBER_SERIES, tenantId);
+
+            if (!seriesExists)
+            {
+                await _documentNumberService.CreateSeriesAsync(
+                    entityName: LO_NUMBER_SERIES,
+                    tenantId: tenantId,
+                    prefix: LO_PREFIX,
+                    padding: 5,
+                    resetEveryYear: false,
+                    description: "Learning outcome codes");
+            }
+
+            return await _documentNumberService.GenerateAsync(LO_NUMBER_SERIES, tenantId);
+        }
+
+        // Returns level as its integer value so the Angular mat-select can bind
+        // directly by numeric value (avoids C# enum name vs label mismatch).
         private static LearningOutcomeResponseDto MapToDto(LearningOutcome lo) => new()
         {
             Id = (Guid)lo.Id!,
             Outcome = lo.Outcome,
             Code = lo.Code,
             Description = lo.Description,
-            Level = lo.Level.ToString(),
+            Level = ((int)lo.Level).ToString(),    // ← integer, not enum name
             IsCore = lo.IsCore,
             LearningAreaId = lo.LearningAreaId,
             LearningAreaName = lo.LearningArea?.Name,

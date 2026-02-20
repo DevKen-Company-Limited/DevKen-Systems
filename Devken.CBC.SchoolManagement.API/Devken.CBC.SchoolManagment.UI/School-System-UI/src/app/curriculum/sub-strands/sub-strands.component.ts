@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
 import { AuthService } from 'app/core/auth/auth.service';
 import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
@@ -22,13 +23,14 @@ import { SubStrandService } from 'app/core/DevKenService/curriculum/substrand.se
 import { LearningAreaResponseDto } from '../types/learning-area.dto ';
 import { StrandResponseDto } from '../types/strand.dto ';
 import { SubStrandResponseDto } from '../types/substrand.dto ';
+import { SubStrandFormComponent } from './sub-strand-form/sub-strand-form.component';
 
 @Component({
   selector: 'app-sub-strands',
   standalone: true,
   imports: [
     CommonModule, FormsModule, MatIconModule, MatButtonModule,
-    MatProgressSpinnerModule, MatTooltipModule,
+    MatProgressSpinnerModule, MatTooltipModule, MatDialogModule,
     PageHeaderComponent, FilterPanelComponent, PaginationComponent,
     StatsCardsComponent, DataTableComponent,
   ],
@@ -41,20 +43,18 @@ export class SubStrandsComponent implements OnInit, OnDestroy, AfterViewInit {
   private _laService = inject(LearningAreaService);
   private _authService = inject(AuthService);
   private _alertService = inject(AlertService);
-  private _router = inject(Router);
+  router = inject(Router);
   private _route = inject(ActivatedRoute);
+  private _dialog = inject(MatDialog);
 
-   // ViewChild queries for the cell templates defined in the HTML
   @ViewChild('nameCell', { static: true }) nameCell!: TemplateRef<any>;
   @ViewChild('strandCell', { static: true }) strandCell!: TemplateRef<any>;
   @ViewChild('learningAreaCell', { static: true }) learningAreaCell!: TemplateRef<any>;
   @ViewChild('statusCell', { static: true }) statusCell!: TemplateRef<any>;
 
-  // Property bound to [cellTemplates] in the template
   cellTemplates!: Record<string, TemplateRef<any>>;
 
-   ngAfterViewInit(): void {
-    // Build the mapping after the templates are available
+  ngAfterViewInit(): void {
     this.cellTemplates = {
       name: this.nameCell,
       strand: this.strandCell,
@@ -62,7 +62,7 @@ export class SubStrandsComponent implements OnInit, OnDestroy, AfterViewInit {
       status: this.statusCell,
     };
   }
-  
+
   get isSuperAdmin(): boolean { return this._authService.authUser?.isSuperAdmin ?? false; }
 
   breadcrumbs: Breadcrumb[] = [
@@ -79,15 +79,15 @@ export class SubStrandsComponent implements OnInit, OnDestroy, AfterViewInit {
   showFilterPanel = false;
   currentPage = 1;
   itemsPerPage = 10;
-
   preselectedStrandId: string | null = null;
+
   private _filterValues = { search: '', strandId: 'all', learningAreaId: 'all', status: 'all' };
 
   get statsCards(): StatCard[] {
     return [
-      { label: 'Total Sub-Strands', value: this.allData.length,                                    icon: 'format_list_bulleted', iconColor: 'indigo'  },
-      { label: 'Active',            value: this.allData.filter(s => s.status === 'Active').length,  icon: 'check_circle',         iconColor: 'green' },
-      { label: 'Strands',           value: new Set(this.allData.map(s => s.strandId)).size,         icon: 'account_tree',         iconColor: 'blue'  },
+      { label: 'Total Sub-Strands', value: this.allData.length,                                   icon: 'format_list_bulleted', iconColor: 'indigo' },
+      { label: 'Active',            value: this.allData.filter(s => s.status === 'Active').length, icon: 'check_circle',         iconColor: 'green'  },
+      { label: 'Strands',           value: new Set(this.allData.map(s => s.strandId)).size,        icon: 'account_tree',         iconColor: 'blue'   },
     ];
   }
 
@@ -99,9 +99,9 @@ export class SubStrandsComponent implements OnInit, OnDestroy, AfterViewInit {
   ];
 
   tableActions: TableAction<SubStrandResponseDto>[] = [
-    { id: 'edit',     label: 'Edit',            icon: 'edit',              color: 'indigo', handler: r => this.edit(r)          },
-    { id: 'outcomes', label: 'View Outcomes',   icon: 'format_list_bulleted', color: 'teal', handler: r => this.viewOutcomes(r) },
-    { id: 'delete',   label: 'Delete',          icon: 'delete',            color: 'red',    handler: r => this.delete(r)         },
+    { id: 'edit',     label: 'Edit',          icon: 'edit',                 color: 'indigo', handler: r => this.edit(r)          },
+    { id: 'outcomes', label: 'View Outcomes', icon: 'format_list_bulleted', color: 'teal',   handler: r => this.viewOutcomes(r)  },
+    { id: 'delete',   label: 'Delete',        icon: 'delete',               color: 'red',    handler: r => this.delete(r)        },
   ];
 
   tableHeader: TableHeader = {
@@ -197,10 +197,28 @@ export class SubStrandsComponent implements OnInit, OnDestroy, AfterViewInit {
   onPageChange(page: number): void { this.currentPage = page; }
   onItemsPerPageChange(n: number): void { this.itemsPerPage = n; this.currentPage = 1; }
 
-  create():                              void { this._router.navigate(['/curriculum/sub-strands/create']); }
-  edit(row: SubStrandResponseDto):       void { this._router.navigate(['/curriculum/sub-strands/edit', row.id]); }
+  create(): void {
+    const ref = this._dialog.open(SubStrandFormComponent, {
+      width: '540px',
+      maxWidth: '95vw',
+      data: {
+        defaultStrandId: this.preselectedStrandId ?? undefined,
+      },
+    });
+    ref.afterClosed().subscribe(result => { if (result?.success) this.loadAll(); });
+  }
+
+  edit(row: SubStrandResponseDto): void {
+    const ref = this._dialog.open(SubStrandFormComponent, {
+      width: '540px',
+      maxWidth: '95vw',
+      data: { editId: row.id },
+    });
+    ref.afterClosed().subscribe(result => { if (result?.success) this.loadAll(); });
+  }
+
   viewOutcomes(row: SubStrandResponseDto): void {
-    this._router.navigate(['/curriculum/learning-outcomes'], { queryParams: { subStrandId: row.id } });
+    this.router.navigate(['/curriculum/learning-outcomes'], { queryParams: { subStrandId: row.id } });
   }
 
   delete(row: SubStrandResponseDto): void {
