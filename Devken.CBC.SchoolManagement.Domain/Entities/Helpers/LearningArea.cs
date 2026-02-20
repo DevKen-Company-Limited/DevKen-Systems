@@ -3,7 +3,6 @@ using Devken.CBC.SchoolManagement.Domain.Enums;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Devken.CBC.SchoolManagement.Domain.Entities.Helpers
 {
@@ -14,11 +13,11 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Helpers
         public string Name { get; set; } = null!;   // e.g. Mathematics
 
         [MaxLength(20)]
-        public string? Code { get; set; }           // e.g. "MA"
+        public string? Code { get; set; }            // e.g. "MA"
 
         public CBCLevel Level { get; set; }
 
-        public ICollection<Strand> Strands { get; set; }
-            = new List<Strand>();
+        // 🔗 Relationships
+        public ICollection<Strand> Strands { get; set; } = new List<Strand>();
     }
 }

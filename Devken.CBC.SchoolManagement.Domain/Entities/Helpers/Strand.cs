@@ -11,11 +11,11 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Helpers
         [MaxLength(150)]
         public string Name { get; set; } = null!;   // e.g. Numbers
 
+        // 🔗 Relationships
         [Required]
         public Guid LearningAreaId { get; set; }
         public LearningArea LearningArea { get; set; } = null!;
 
-        public ICollection<SubStrand> SubStrands { get; set; }
-            = new List<SubStrand>();
+        public ICollection<SubStrand> SubStrands { get; set; } = new List<SubStrand>();
     }
 }

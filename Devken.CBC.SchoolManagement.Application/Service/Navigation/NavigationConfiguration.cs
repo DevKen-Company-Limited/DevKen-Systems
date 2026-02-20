@@ -112,7 +112,10 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             Icon = "heroicons_outline:book-open",
             Items = new[]
             {
-                new NavItem("structure", "Structure", "heroicons_outline:squares-2x2", "/curriculum/structure", PermissionKeys.CurriculumRead),
+                new NavItem("learning-areas", "Learning Areas", "heroicons_outline:rectangle-stack", "/curriculum/learning-areas", PermissionKeys.CurriculumRead),
+                new NavItem("strands", "Strands", "heroicons_outline:squares-2x2", "/curriculum/strands", PermissionKeys.CurriculumRead),
+                new NavItem("substrands", "Sub-Strands", "heroicons_outline:view-columns", "/curriculum/sub-strands", PermissionKeys.CurriculumRead),
+                new NavItem("learning-outcomes", "Learning Outcomes", "heroicons_outline:clipboard-document", "/curriculum/learning-outcomes", PermissionKeys.CurriculumRead),
                 new NavItem("lessonplans", "Lesson Plans", "heroicons_outline:document-duplicate", "/curriculum/lesson-plans", PermissionKeys.LessonPlanRead)
             }
         };

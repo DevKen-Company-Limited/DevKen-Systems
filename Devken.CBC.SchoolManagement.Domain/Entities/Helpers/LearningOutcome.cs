@@ -15,8 +15,16 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Helpers
 
         public CBCLevel Level { get; set; }
 
-        // 🔗 Relationships
+        // CBC Code (e.g., MA1.1.1)
+        [MaxLength(50)]
+        public string? Code { get; set; }
 
+        [MaxLength(1000)]
+        public string? Description { get; set; }
+
+        public bool IsCore { get; set; } = true;
+
+        // 🔗 Relationships
         [Required]
         public Guid LearningAreaId { get; set; }
         public LearningArea LearningArea { get; set; } = null!;
@@ -28,15 +36,6 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Helpers
         [Required]
         public Guid SubStrandId { get; set; }
         public SubStrand SubStrand { get; set; } = null!;
-
-        // CBC Code (e.g., MA1.1.1)
-        [MaxLength(50)]
-        public string? Code { get; set; }
-
-        [MaxLength(1000)]
-        public string? Description { get; set; }
-
-        public bool IsCore { get; set; } = true;
 
         // 🔗 Assessments mapped to this outcome
         public ICollection<FormativeAssessment> FormativeAssessments { get; set; }

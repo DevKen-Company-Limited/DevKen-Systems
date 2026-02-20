@@ -19,6 +19,7 @@ using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Reports;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.SchoolConf;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Subscription;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Conventions;
+using Devken.CBC.SchoolManagement.Infrastructure.Persistence.Configurations;
 using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -67,6 +68,14 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         public DbSet<Term> Terms => Set<Term>();
         public DbSet<Subject> Subjects => Set<Subject>();
         public DbSet<Parent> Parents => Set<Parent>();
+
+        // ── CBC Curriculum Helpers ───────────────────────────────────────
+        // These form the LearningArea → Strand → SubStrand → LearningOutcome
+        // hierarchy used to structure the CBC curriculum. LearningOutcome links
+        // back to FormativeAssessments via a one-to-many relationship.
+        public DbSet<LearningArea> LearningAreas => Set<LearningArea>();
+        public DbSet<Strand> Strands => Set<Strand>();
+        public DbSet<SubStrand> SubStrands => Set<SubStrand>();
         public DbSet<LearningOutcome> LearningOutcomes => Set<LearningOutcome>();
 
         // ── Assessments (TPT) ───────────────────────────────────────────
@@ -259,10 +268,20 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             mb.ApplyConfiguration(new TermConfiguration(_tenantContext));
             mb.ApplyConfiguration(new SubjectConfiguration(_tenantContext));
             mb.ApplyConfiguration(new ParentConfiguration(_tenantContext));
-            mb.ApplyConfiguration(new LearningOutcomeConfiguration(_tenantContext));
 
             // Grades
             mb.ApplyConfiguration(new GradeConfiguration(_tenantContext));
+
+            // ── CBC Curriculum Helpers ───────────────────────────────────
+            // Order matters: configure parent tables before children so that
+            // FK references are resolved correctly during migration generation.
+            // LearningArea has no FK dependencies, so it goes first.
+            // Strand depends on LearningArea, SubStrand on Strand, and
+            // LearningOutcome on all three — hence the bottom-up order below.
+            mb.ApplyConfiguration(new LearningAreaConfiguration());
+            mb.ApplyConfiguration(new StrandConfiguration());
+            mb.ApplyConfiguration(new SubStrandConfiguration());
+            mb.ApplyConfiguration(new LearningOutcomeConfiguration());
 
             // Assessments — root first (TPT base), then each subtype
             // Each configuration only adds column/index mappings for its own
