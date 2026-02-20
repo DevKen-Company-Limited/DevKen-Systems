@@ -33,7 +33,7 @@ export class UserService
 {
   private _http = inject(HttpClient);
   private _apiBase = inject(API_BASE_URL);
-  private _url = `${this._apiBase}/api/user-management`;
+  private _url     = `${this._apiBase}/api/user-management`;
 
   // ─────────────────────────────────────────────────────────────
   // USERS LIST (Returns ONLY UserDto[] for component simplicity)
@@ -71,6 +71,7 @@ export class UserService
     return this._http.get<ApiResponse<UserDto>>(`${this._url}/${id}`);
   }
 
+  /** Create a user. When called by SuperAdmin, payload must include schoolId. */
   create(payload: CreateUserRequest): Observable<ApiResponse<UserDto>> {
     return this._http.post<ApiResponse<UserDto>>(this._url, payload);
   }
@@ -127,7 +128,6 @@ export class UserService
         const endpoint = user.isActive
           ? `${this._url}/${id}/deactivate`
           : `${this._url}/${id}/activate`;
-
         return this._http.post<ApiResponse<UserDto>>(endpoint, {});
       })
     );
@@ -193,5 +193,15 @@ export class UserService
       `${this._url}/available-roles`,
       { params }
     );
+  }
+
+  /**
+   * Roles scoped to a specific school.
+   * Called by the dialog when a SuperAdmin selects a school so only
+   * roles that belong to that school are offered.
+   */
+  getAvailableRolesBySchool(schoolId: string): Observable<ApiResponse<RoleDto[]>> {
+    const params = new HttpParams().set('schoolId', schoolId);
+    return this._http.get<ApiResponse<RoleDto[]>>(`${this._apiBase}/api/roles`, { params });
   }
 }
