@@ -1,68 +1,98 @@
 ﻿using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
+using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Assessments
 {
-    public class FormativeAssessmentScoreConfiguration
-        : IEntityTypeConfiguration<FormativeAssessmentScore>
+    /// <summary>
+    /// Configures the "FormativeAssessmentScores" table.
+    /// This is a standalone entity — not part of the assessment TPT hierarchy.
+    /// </summary>
+    public class FormativeAssessmentScoreConfiguration : IEntityTypeConfiguration<FormativeAssessmentScore>
     {
+        private readonly TenantContext _tenantContext;
+
+        public FormativeAssessmentScoreConfiguration(TenantContext tenantContext)
+        {
+            _tenantContext = tenantContext;
+        }
+
         public void Configure(EntityTypeBuilder<FormativeAssessmentScore> builder)
         {
             builder.ToTable("FormativeAssessmentScores");
 
-            builder.HasKey(fas => fas.Id);
+            // ── Columns ──────────────────────────────────────────────────
 
-            // Indexes
-            builder.HasIndex(fas => new { fas.FormativeAssessmentId, fas.StudentId })
-                   .IsUnique();
+            builder.Property(s => s.FormativeAssessmentId)
+                   .IsRequired();
 
-            builder.HasIndex(fas => fas.StudentId);
+            builder.Property(s => s.StudentId)
+                   .IsRequired();
 
-            // Properties
-            builder.Property(fas => fas.Score)
-                   .HasPrecision(6, 2);
+            builder.Property(s => s.Score)
+                   .HasColumnType("decimal(8,2)");
 
-            builder.Property(fas => fas.MaximumScore)
-                   .HasPrecision(6, 2);
+            builder.Property(s => s.MaximumScore)
+                   .HasColumnType("decimal(8,2)");
 
-            builder.Property(fas => fas.Grade)
-                   .HasMaxLength(10);
+            // Computed property — never write to DB
+            builder.Ignore(s => s.Percentage);
 
-            builder.Property(fas => fas.PerformanceLevel)
-                   .HasMaxLength(20);
+            builder.Property(s => s.Grade)
+                   .HasMaxLength(10)
+                   .IsRequired(false);
 
-            builder.Property(fas => fas.Feedback)
-                   .HasMaxLength(2000);
+            builder.Property(s => s.PerformanceLevel)
+                   .HasMaxLength(20)
+                   .IsRequired(false);   // Excellent | Good | Satisfactory | Needs Improvement
 
-            builder.Property(fas => fas.Strengths)
-                   .HasMaxLength(500);
+            builder.Property(s => s.Feedback)
+                   .HasMaxLength(2000)
+                   .IsRequired(false);
 
-            builder.Property(fas => fas.AreasForImprovement)
-                   .HasMaxLength(500);
+            builder.Property(s => s.Strengths)
+                   .HasMaxLength(500)
+                   .IsRequired(false);
 
-            builder.Property(fas => fas.CompetencyArea)
-                   .HasMaxLength(100);
+            builder.Property(s => s.AreasForImprovement)
+                   .HasMaxLength(500)
+                   .IsRequired(false);
 
-            // Ignore computed properties
-            builder.Ignore(fas => fas.Percentage);
+            builder.Property(s => s.IsSubmitted)
+                   .HasDefaultValue(false);
 
-            // Relationships
-            builder.HasOne(fas => fas.FormativeAssessment)
-                   .WithMany(fa => fa.Scores)
-                   .HasForeignKey(fas => fas.FormativeAssessmentId)
-                   .OnDelete(DeleteBehavior.Cascade);
+            builder.Property(s => s.SubmissionDate)
+                   .IsRequired(false);
 
-            builder.HasOne(fas => fas.Student)
-                .WithMany(s => s.FormativeAssessmentScores)
-                .HasForeignKey(fas => fas.StudentId)
-                .IsRequired(false)  // ✅ Make optional to match query filter warning
-                .OnDelete(DeleteBehavior.Cascade);
+            builder.Property(s => s.GradedDate)
+                   .IsRequired(false);
 
-            builder.HasOne(fas => fas.GradedBy)
-                   .WithMany()
-                   .HasForeignKey(fas => fas.GradedById)
-                   .OnDelete(DeleteBehavior.SetNull);
+            builder.Property(s => s.GradedById)
+                   .IsRequired(false);
+
+            builder.Property(s => s.CompetencyArea)
+                   .HasMaxLength(100)
+                   .IsRequired(false);
+
+            builder.Property(s => s.CompetencyAchieved)
+                   .HasDefaultValue(false);
+
+            // ── Relationships ────────────────────────────────────────────
+            // Declared in AppDbContext to keep all score relationships visible.
+
+            // ── Indexes ──────────────────────────────────────────────────
+            builder.HasIndex(s => s.FormativeAssessmentId);
+            builder.HasIndex(s => s.StudentId);
+            builder.HasIndex(s => new { s.FormativeAssessmentId, s.StudentId })
+                   .IsUnique()
+                   .HasDatabaseName("IX_FormativeAssessmentScores_Assessment_Student");
+
+            // ── Global Query Filter ───────────────────────────────────────
+            if (_tenantContext?.TenantId != null)
+            {
+                builder.HasQueryFilter(s => s.TenantId == _tenantContext.TenantId);
+            }
         }
     }
 }

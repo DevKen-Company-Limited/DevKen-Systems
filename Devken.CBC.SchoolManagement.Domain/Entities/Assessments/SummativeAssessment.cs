@@ -1,13 +1,11 @@
-﻿using Devken.CBC.SchoolManagement.Domain.Common;
-using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
-namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessment
+namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
 {
     public class SummativeAssessment : Assessment1
     {
         [MaxLength(50)]
-        public string? ExamType { get; set; } // EndTerm, MidTerm, Final
+        public string? ExamType { get; set; }               // EndTerm, MidTerm, Final
 
         public TimeSpan? Duration { get; set; }
 
@@ -24,7 +22,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessment
         [MaxLength(1000)]
         public string? Instructions { get; set; }
 
-        // Navigation Properties
+        // Navigation
         public ICollection<SummativeAssessmentScore> Scores { get; set; } = new List<SummativeAssessmentScore>();
     }
 }

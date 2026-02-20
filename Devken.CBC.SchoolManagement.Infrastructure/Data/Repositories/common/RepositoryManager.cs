@@ -1,22 +1,29 @@
 ﻿using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces;
-using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
-using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academics;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Assessments;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Curriculum;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Identity;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.NumberSeries;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Payments;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Tenant;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.UserActivities1;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF;
-using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academic;
-using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academics;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Curriculum;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessments;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Identity;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSeries;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Payments;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Tenant;
-using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSeries;
+using Devken.CBC.SchoolManagement.Infrastructure.RepositoryManagers.UserActivities;
 using Devken.CBC.SchoolManagement.Infrastructure.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using System;
-using Microsoft.EntityFrameworkCore;
+using System.Threading.Tasks;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academic;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academics;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academics;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
 {
@@ -32,6 +39,17 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         private readonly Lazy<IAcademicYearRepository> _academicYearRepository;
         private readonly Lazy<ITermRepository> _termRepository;
         private readonly Lazy<IClassRepository> _classRepository;
+        private readonly Lazy<ISubjectRepository> _subjectRepository;
+        private readonly Lazy<IUserActivityRepository> _userActivityRepository;
+
+        // ── CBC Curriculum ───────────────────────────────────────────────────
+        private readonly Lazy<ILearningAreaRepository> _learningAreaRepository;
+        private readonly Lazy<IStrandRepository> _strandRepository;
+        private readonly Lazy<ISubStrandRepository> _subStrandRepository;
+        private readonly Lazy<ILearningOutcomeRepository> _learningOutcomeRepository;
+
+        // ── Assessments ──────────────────────────────────────────────────────
+        private readonly Lazy<IAssessmentRepository> _assessmentRepository;
 
         // ── Identity ─────────────────────────────────────────────────────────
         private readonly Lazy<IUserRepository> _userRepository;
@@ -42,7 +60,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         private readonly Lazy<IRefreshTokenRepository> _refreshTokenRepository;
         private readonly Lazy<ISuperAdminRepository> _superAdminRepository;
 
-        // ── Number Series ───────────────────────────────────────────────────
+        // ── Number Series ────────────────────────────────────────────────────
         private readonly Lazy<IDocumentNumberSeriesRepository> _documentNumberSeriesRepository;
 
         // ── Payments ─────────────────────────────────────────────────────────
@@ -66,6 +84,22 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
                 new TermRepository(_context, _tenantContext));
             _classRepository = new Lazy<IClassRepository>(() =>
                 new ClassRepository(_context, _tenantContext));
+            _subjectRepository = new Lazy<ISubjectRepository>(() =>
+                new SubjectRepository(_context, _tenantContext));
+
+            // CBC Curriculum
+            _learningAreaRepository = new Lazy<ILearningAreaRepository>(() =>
+                new LearningAreaRepository(_context, _tenantContext));
+            _strandRepository = new Lazy<IStrandRepository>(() =>
+                new StrandRepository(_context, _tenantContext));
+            _subStrandRepository = new Lazy<ISubStrandRepository>(() =>
+                new SubStrandRepository(_context, _tenantContext));
+            _learningOutcomeRepository = new Lazy<ILearningOutcomeRepository>(() =>
+                new LearningOutcomeRepository(_context, _tenantContext));
+
+            // Assessments
+            _assessmentRepository = new Lazy<IAssessmentRepository>(() =>
+                new AssessmentRepository(_context, _tenantContext));
 
             // Identity
             _userRepository = new Lazy<IUserRepository>(() =>
@@ -90,18 +124,33 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
             // Payments
             _mpesaPaymentRepository = new Lazy<IMpesaPaymentRepository>(() =>
                 new MpesaPaymentRepository(_context, _tenantContext));
+            _userActivityRepository = new Lazy<IUserActivityRepository>(() =>
+                new UserActivityRepository(_context, _tenantContext));
         }
 
         // ── Properties ───────────────────────────────────────────────────────
+
+        // Academic
         public IStudentRepository Student => _studentRepository.Value;
-        public DbContext Context => _context;
         public ITeacherRepository Teacher => _teacherRepository.Value;
         public ISchoolRepository School => _schoolRepository.Value;
         public IAcademicYearRepository AcademicYear => _academicYearRepository.Value;
-
         public ITermRepository Term => _termRepository.Value;
         public IClassRepository Class => _classRepository.Value;
+        public ISubjectRepository Subject => _subjectRepository.Value;
+        public IUserActivityRepository UserActivity => _userActivityRepository.Value;
+        public DbContext Context => _context;
 
+        // CBC Curriculum
+        public ILearningAreaRepository LearningArea => _learningAreaRepository.Value;
+        public IStrandRepository Strand => _strandRepository.Value;
+        public ISubStrandRepository SubStrand => _subStrandRepository.Value;
+        public ILearningOutcomeRepository LearningOutcome => _learningOutcomeRepository.Value;
+       
+        // Assessments
+        public IAssessmentRepository Assessment => _assessmentRepository.Value;
+
+        // Identity
         public IUserRepository User => _userRepository.Value;
         public IRoleRepository Role => _roleRepository.Value;
         public IPermissionRepository Permission => _permissionRepository.Value;
@@ -110,9 +159,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         public IRefreshTokenRepository RefreshToken => _refreshTokenRepository.Value;
         public ISuperAdminRepository SuperAdmin => _superAdminRepository.Value;
 
-        public IDocumentNumberSeriesRepository DocumentNumberSeries => _documentNumberSeriesRepository.Value;
-
+        // Payments
         public IMpesaPaymentRepository MpesaPayment => _mpesaPaymentRepository.Value;
+
+        // Number Series
+        public IDocumentNumberSeriesRepository DocumentNumberSeries => _documentNumberSeriesRepository.Value;
 
         // ── Unit of Work ─────────────────────────────────────────────────────
         public async Task SaveAsync() => await _context.SaveChangesAsync();

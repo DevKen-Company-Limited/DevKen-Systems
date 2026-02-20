@@ -6,25 +6,22 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
 {
     public class CompetencyAssessmentScore : TenantBaseEntity<Guid>
     {
-        public Guid? CompetencyAssessmentId { get; set; }
-
+        public Guid CompetencyAssessmentId { get; set; }   // Non-nullable
         public Guid StudentId { get; set; }
+        public Guid? AssessorId { get; set; }
 
-        public Guid? AssessorId { get; set; } // Teacher/Assessor who evaluated
+        [Required, MaxLength(50)]
+        public string Rating { get; set; } = null!;        // Exceeds | Meets | Approaching | Below
 
-        [Required]
-        [MaxLength(50)]
-        public string Rating { get; set; } = null!; // Exceeds, Meets, Approaching, Below
-
-        public int? ScoreValue { get; set; } // Numeric score if applicable
+        public int? ScoreValue { get; set; }
 
         [MaxLength(1000)]
-        public string? Evidence { get; set; } // Evidence of competency
+        public string? Evidence { get; set; }
 
         public DateTime AssessmentDate { get; set; }
 
         [MaxLength(20)]
-        public string? AssessmentMethod { get; set; } // Observation, Oral, Written, Practical
+        public string? AssessmentMethod { get; set; }      // Observation | Oral | Written | Practical
 
         [MaxLength(500)]
         public string? ToolsUsed { get; set; }
@@ -47,12 +44,11 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
         [MaxLength(100)]
         public string? SpecificLearningOutcome { get; set; }
 
-        // Navigation Properties
-        public CompetencyAssessment? CompetencyAssessment { get; set; } = null!;
+        // Navigation
+        public CompetencyAssessment CompetencyAssessment { get; set; } = null!;
         public Student Student { get; set; } = null!;
         public Teacher? Assessor { get; set; }
 
-        // Computed Properties
         public string CompetencyLevel => Rating switch
         {
             "Exceeds" => "Excellent",

@@ -16,6 +16,12 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Identity
             : base(context, tenantContext)
         {
         }
+        public async Task<IEnumerable<User>> GetByIdsAsync(
+            IEnumerable<Guid> ids)
+                {
+                    return await FindByCondition(u => ids.Contains(u.Id), false)
+                        .ToListAsync();
+                }
 
         public async Task<User?> GetByEmailAsync(string email, Guid tenantId)
         {

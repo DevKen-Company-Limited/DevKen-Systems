@@ -36,6 +36,20 @@ namespace Devken.CBC.SchoolManagement.Domain.Enums
         Mixed = 3
     }
 
+    public enum SubjectType
+    {
+        [Description("Core Subject (Compulsory for all learners)")]
+        Core = 1,
+
+        [Description("Optional Subject (School-based choice)")]
+        Optional = 2,
+
+        [Description("Elective Subject (Learner selected subject)")]
+        Elective = 3,
+
+        [Description("Co-Curricular Activity (Non-examinable activity)")]
+        CoCurricular = 4
+    }
 
 
 

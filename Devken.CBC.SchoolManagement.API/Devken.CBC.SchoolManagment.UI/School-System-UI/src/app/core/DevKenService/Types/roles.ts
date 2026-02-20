@@ -32,13 +32,14 @@ export interface RoleDto {
   name: string;
   description?: string;
   isSystemRole: boolean;
+  schoolId?: string;
 }
 
 export interface UserRole {
   id: string;
   roleName: any;
   roleId: string;
-  name: string; // Changed from roleName to name for consistency
+  name: string;
   description?: string;
   isSystemRole: boolean;
   userCount?: number;
@@ -48,7 +49,7 @@ export interface UserRole {
 
 export interface UserRoleDto {
   roleId: string;
-  name: string; // Changed from roleName to name to match API
+  name: string;
   assignedAt?: string;
 }
 
@@ -62,19 +63,31 @@ export interface UserDto {
   lastName: string;
   email: string;
   phoneNumber?: string;
-  isActive: boolean;
-  isEmailVerified: boolean; // Changed from emailConfirmed
-  createdOn: string; // Changed from createdAt
-  updatedOn?: string; // Changed from lastLoginAt
   profileImageUrl?: string;
-  roles: UserRoleDto[];
-  tenantId?: string; // Added for multi-tenant support
-  schoolId?: string; // Added for SuperAdmin to see school assignment
-  schoolName?: string; // Added for displaying school name
+
+  isActive: boolean;
+  isEmailVerified: boolean;
+  requirePasswordChange: boolean;
+
+  createdOn: string;
+  updatedOn?: string;
+
+  // Multi-tenant / school
+  tenantId?: string;
+  schoolId?: string;
+  schoolName?: string;
+
+  // Roles — backend may return either shape; component handles both via getRoles()
+  roles?: UserRoleDto[];       // object array: [{ roleId, name }]
+  roleNames?: string[];        // string array: ['Admin', 'Teacher']
+  permissions?: string[];
+
+  // Populated only on creation / password reset responses
+  temporaryPassword?: string;
 }
 
 export interface UserWithRoles {
-isSuperAdmin: any;
+  isSuperAdmin: any;
   userId: string;
   email: string;
   userName: string;
@@ -87,27 +100,57 @@ isSuperAdmin: any;
 }
 
 // ============================================
+// Paginated Users Response
+// ============================================
+
+export interface PaginatedUsersResponse {
+  users: UserDto[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+// ============================================
+// Password Reset Response
+// ============================================
+
+export interface PasswordResetResponse {
+  user: UserDto;
+  temporaryPassword: string;
+  message: string;
+  resetAt: string;
+  resetBy: string;
+}
+
+// ============================================
 // User Requests
 // ============================================
 
+
 export interface CreateUserRequest {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phoneNumber?: string;
-  password: string;
-  roleIds: string[];
+  firstName:         string;
+  lastName:          string;
+  email:             string;
+  phoneNumber?:      string;
+  roleIds:           string[];
   sendWelcomeEmail?: boolean;
-  schoolId?: string; // Added for SuperAdmin to specify school
+  /**
+   * Required when a SuperAdmin creates a user.
+   * The backend uses this as the new user's TenantId.
+   * Omit for regular school-admin requests — the backend
+   * uses the caller's own TenantId instead.
+   */
+  schoolId?:         string;
 }
 
 export interface UpdateUserRequest {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phoneNumber?: string;
-  isActive: boolean;
-  roleIds: string[];
+  firstName:     string;
+  lastName:      string;
+  phoneNumber?:  string;
+  roleIds:       string[];
+  isActive:      boolean;
+  // schoolId intentionally excluded — school cannot be changed after creation
 }
 
 // ============================================
@@ -143,7 +186,7 @@ export interface UpdateUserRolesRequest {
 // ============================================
 
 export interface UserSearchRequest {
-  searchTerm: string; // email, name, or username
+  searchTerm: string;
 }
 
 export interface UserSearchResult {

@@ -1,0 +1,185 @@
+<!-- Learning Outcome Create / Edit Form -->
+<div class="absolute inset-0 flex min-w-0 flex-col overflow-y-auto" cdkScrollable>
+
+  <app-page-header
+    [title]="title"
+    [description]="isEditMode ? 'Update this learning outcome' : 'Define a specific learning outcome for a sub-strand'"
+    icon="format_list_bulleted"
+    [breadcrumbs]="breadcrumbs">
+  </app-page-header>
+
+  <div class="bg-card -mt-10 flex-auto rounded-t-2xl p-6 shadow sm:p-10">
+
+    <div *ngIf="isLoading" class="flex items-center justify-center py-32">
+      <mat-spinner diameter="48"></mat-spinner>
+    </div>
+
+    <div *ngIf="!isLoading" class="max-w-4xl">
+
+      <fuse-alert *ngIf="!isEditMode" type="info" appearance="soft" [showIcon]="true" class="mb-6">
+        Learning outcomes are the measurable competencies students should achieve (e.g. "The learner should be able to count objects from 1 to 100"). Use a CBC code (e.g. MA1.1.1) for curriculum mapping.
+      </fuse-alert>
+
+      <form [formGroup]="form" novalidate class="space-y-6" (ngSubmit)="save()">
+
+        <!-- School (SuperAdmin only) -->
+        <mat-card *ngIf="isSuperAdmin" class="shadow-md">
+          <mat-card-header class="!pb-2">
+            <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+              <mat-icon svgIcon="heroicons_outline:building-office-2" class="text-violet-600"></mat-icon>
+              School Assignment
+              <span class="ml-auto text-xs font-medium px-2 py-1 bg-red-100 text-red-700 rounded">Required</span>
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content class="!pt-4">
+            <mat-form-field appearance="outline" class="w-full">
+              <mat-label>School *</mat-label>
+              <mat-select formControlName="tenantId">
+                <mat-option value="">Select school</mat-option>
+                <mat-option *ngFor="let s of schools" [value]="s.id">{{ s.name }}</mat-option>
+              </mat-select>
+              <mat-error>{{ getError('tenantId') }}</mat-error>
+            </mat-form-field>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Curriculum Hierarchy (Cascading) -->
+        <mat-card class="shadow-md">
+          <mat-card-header class="!pb-2">
+            <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+              <mat-icon svgIcon="heroicons_outline:squares-plus" class="text-violet-600"></mat-icon>
+              Curriculum Hierarchy
+              <span class="ml-auto text-xs font-medium px-2 py-1 bg-red-100 text-red-700 rounded">Required</span>
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content class="!pt-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+              <!-- Step 1: Learning Area -->
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Learning Area *</mat-label>
+                <mat-select formControlName="learningAreaId">
+                  <mat-option value="">Select learning area</mat-option>
+                  <mat-option *ngFor="let la of learningAreas" [value]="la.id">
+                    {{ la.name }}{{ la.code ? ' (' + la.code + ')' : '' }}
+                  </mat-option>
+                </mat-select>
+                <mat-icon matPrefix svgIcon="heroicons_outline:menu_book" class="text-gray-400"></mat-icon>
+                <mat-hint>Step 1: Choose learning area</mat-hint>
+                <mat-error>{{ getError('learningAreaId') }}</mat-error>
+              </mat-form-field>
+
+              <!-- Step 2: Strand (filtered by LA) -->
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Strand *</mat-label>
+                <mat-select formControlName="strandId" [disabled]="!form.get('learningAreaId')?.value">
+                  <mat-option value="">Select strand</mat-option>
+                  <mat-option *ngFor="let s of filteredStrands" [value]="s.id">{{ s.name }}</mat-option>
+                </mat-select>
+                <mat-icon matPrefix svgIcon="heroicons_outline:account_tree" class="text-gray-400"></mat-icon>
+                <mat-hint>Step 2: Choose strand</mat-hint>
+                <mat-error>{{ getError('strandId') }}</mat-error>
+              </mat-form-field>
+
+              <!-- Step 3: Sub-Strand (filtered by Strand) -->
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Sub-Strand *</mat-label>
+                <mat-select formControlName="subStrandId" [disabled]="!form.get('strandId')?.value">
+                  <mat-option value="">Select sub-strand</mat-option>
+                  <mat-option *ngFor="let ss of filteredSubStrands" [value]="ss.id">{{ ss.name }}</mat-option>
+                </mat-select>
+                <mat-icon matPrefix svgIcon="heroicons_outline:format_list_bulleted" class="text-gray-400"></mat-icon>
+                <mat-hint>Step 3: Choose sub-strand</mat-hint>
+                <mat-error>{{ getError('subStrandId') }}</mat-error>
+              </mat-form-field>
+
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Outcome Details -->
+        <mat-card class="shadow-md">
+          <mat-card-header class="!pb-2">
+            <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+              <mat-icon svgIcon="heroicons_outline:document-text" class="text-violet-600"></mat-icon>
+              Outcome Details
+              <span class="ml-auto text-xs font-medium px-2 py-1 bg-red-100 text-red-700 rounded">Required</span>
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content class="!pt-4">
+            <div class="space-y-4">
+
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Learning Outcome *</mat-label>
+                <textarea matInput formControlName="outcome" rows="3"
+                  placeholder="e.g. The learner should be able to count objects from 1 to 100 correctly"></textarea>
+                <mat-icon matPrefix svgIcon="heroicons_outline:pencil" class="text-gray-400"></mat-icon>
+                <mat-hint>Clear, measurable statement of what the learner should achieve</mat-hint>
+                <mat-error>{{ getError('outcome') }}</mat-error>
+              </mat-form-field>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                <mat-form-field appearance="outline" class="w-full">
+                  <mat-label>CBC Code</mat-label>
+                  <input matInput formControlName="code" placeholder="e.g. MA1.1.1, EN2.3.4">
+                  <mat-icon matPrefix svgIcon="heroicons_outline:hashtag" class="text-gray-400"></mat-icon>
+                  <mat-hint>Unique curriculum code (optional)</mat-hint>
+                  <mat-error>{{ getError('code') }}</mat-error>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="w-full">
+                  <mat-label>CBC Level *</mat-label>
+                  <mat-select formControlName="level">
+                    <mat-option value="">Select level</mat-option>
+                    <mat-option *ngFor="let l of cbcLevels" [value]="l.value">{{ l.label }}</mat-option>
+                  </mat-select>
+                  <mat-icon matPrefix svgIcon="heroicons_outline:chart-bar" class="text-gray-400"></mat-icon>
+                  <mat-error>{{ getError('level') }}</mat-error>
+                </mat-form-field>
+
+              </div>
+
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Description</mat-label>
+                <textarea matInput formControlName="description" rows="2"
+                  placeholder="Additional notes or elaboration on this outcome..."></textarea>
+                <mat-hint>Optional additional context</mat-hint>
+              </mat-form-field>
+
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Core Toggle -->
+        <mat-card class="shadow-md">
+          <mat-card-content class="!p-6">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-4">
+                <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/20">
+                  <mat-icon class="text-amber-600" svgIcon="heroicons_outline:star"></mat-icon>
+                </div>
+                <div>
+                  <div class="font-semibold text-gray-900 dark:text-white">Core Learning Outcome</div>
+                  <div class="text-sm text-gray-600 dark:text-gray-400">Mark as a core (mandatory) outcome in the CBC curriculum</div>
+                </div>
+              </div>
+              <mat-slide-toggle formControlName="isCore" color="accent"></mat-slide-toggle>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Actions -->
+        <div class="flex items-center justify-end gap-4 pt-2">
+          <button type="button" mat-stroked-button (click)="cancel()" [disabled]="isSaving">Cancel</button>
+          <button type="submit" mat-flat-button color="primary" [disabled]="isSaving">
+            <mat-spinner *ngIf="isSaving" diameter="18" class="inline-block mr-2"></mat-spinner>
+            <mat-icon *ngIf="!isSaving" svgIcon="heroicons_outline:check"></mat-icon>
+            <span class="ml-2">{{ isSaving ? 'Saving…' : (isEditMode ? 'Update' : 'Create') }}</span>
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+</div>

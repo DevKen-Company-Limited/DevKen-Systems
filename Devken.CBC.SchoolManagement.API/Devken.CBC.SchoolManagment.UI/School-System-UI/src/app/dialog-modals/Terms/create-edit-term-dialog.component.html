@@ -1,19 +1,27 @@
 <!-- Dialog Header with Gradient -->
-<div class="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 -m-6 mb-0 p-6 relative overflow-hidden">
+<div class="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 relative overflow-hidden rounded-t-xl px-6 py-5">
   <div class="absolute inset-0 opacity-10">
     <div class="absolute top-0 right-0 w-32 h-32 bg-yellow-200 rounded-full blur-2xl"></div>
     <div class="absolute bottom-0 left-0 w-40 h-40 bg-cyan-300 rounded-full blur-2xl"></div>
   </div>
   
-  <div class="relative z-10 flex items-center gap-3">
-    <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+  <div class="relative z-10 flex items-center gap-3 pr-10">
+    <div class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center shrink-0">
       <mat-icon class="text-white icon-size-6">{{ isEditMode ? 'edit' : 'event_note' }}</mat-icon>
     </div>
     <div>
-      <h2 class="text-2xl font-bold text-white m-0">{{ dialogTitle }}</h2>
-      <p class="text-white/80 text-sm mt-1">{{ dialogSubtitle }}</p>
+      <h2 class="text-xl font-bold text-white m-0 leading-tight">{{ dialogTitle }}</h2>
+      <p class="text-white/80 text-sm mt-0.5 mb-0">{{ dialogSubtitle }}</p>
     </div>
   </div>
+
+  <button
+    mat-icon-button
+    class="close-btn absolute top-3 right-3 text-white z-20"
+    (click)="onCancel()"
+    matTooltip="Close">
+    <mat-icon>close</mat-icon>
+  </button>
 </div>
 
 <!-- Loading Overlay -->
@@ -189,7 +197,7 @@
 </form>
 
 <!-- Dialog Actions -->
-<div mat-dialog-actions class="dialog-actions p-4">
+<div mat-dialog-actions class="flex justify-end gap-3 mt-6">
   <button mat-button type="button" (click)="onCancel()" [disabled]="isLoading">Cancel</button>
   <button mat-flat-button color="primary" type="button" (click)="onSubmit()" [disabled]="form.invalid || isLoading">
     <mat-icon *ngIf="isLoading" class="icon-size-5 mr-2">hourglass_empty</mat-icon>

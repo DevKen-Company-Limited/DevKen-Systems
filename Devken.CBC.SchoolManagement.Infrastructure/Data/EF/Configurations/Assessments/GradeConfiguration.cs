@@ -66,11 +66,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
                    .HasForeignKey(g => g.TermId)
                    .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasOne(g => g.Assessment)
-                   .WithMany(a => a.Grades)
-                   .HasForeignKey(g => g.AssessmentId)
-                   .IsRequired(false)
-                   .OnDelete(DeleteBehavior.Restrict);
+            //builder.HasOne(g => g.Assessment)
+            //       //.WithMany(a => a.Grades)
+            //       .HasForeignKey(g => g.AssessmentId)
+            //       .IsRequired(false)
+            //       .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }
