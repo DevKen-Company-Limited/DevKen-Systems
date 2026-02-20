@@ -20,41 +20,6 @@
 
   <form [formGroup]="form" novalidate class="space-y-6">
 
-    <!-- Compulsory Setting -->
-    <mat-card class="shadow-md overflow-hidden">
-      <mat-card-content class="!p-0">
-        <div class="flex items-start gap-4 p-6
-                    bg-amber-50 dark:bg-amber-900/10
-                    border border-amber-200 dark:border-amber-800 rounded-xl">
-          <div class="flex items-center justify-center w-14 h-14 rounded-xl
-                      bg-amber-100 dark:bg-amber-900/30 flex-shrink-0">
-            <mat-icon class="text-amber-600 dark:text-amber-400 !w-7 !h-7">star</mat-icon>
-          </div>
-          <div class="flex-1">
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <h3 class="text-base font-bold text-gray-900 dark:text-white mb-1">Compulsory Subject</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  When enabled, all students at the assigned CBC level <strong>must</strong> take this subject.
-                  It cannot be dropped or swapped for another.
-                </p>
-                <div
-                  class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold"
-                  [ngClass]="{
-                    'bg-amber-200 text-amber-800 dark:bg-amber-800/40 dark:text-amber-300': isCompulsory,
-                    'bg-gray-100  text-gray-600  dark:bg-gray-700      dark:text-gray-400':  !isCompulsory
-                  }">
-                  <mat-icon class="icon-size-3">{{ isCompulsory ? 'check_circle' : 'remove_circle' }}</mat-icon>
-                  {{ isCompulsory ? 'Marked as compulsory' : 'Optional (default)' }}
-                </div>
-              </div>
-              <mat-slide-toggle formControlName="isCompulsory" color="accent" class="flex-shrink-0"></mat-slide-toggle>
-            </div>
-          </div>
-        </div>
-      </mat-card-content>
-    </mat-card>
-
     <!-- Active Setting -->
     <mat-card class="shadow-md overflow-hidden">
       <mat-card-content class="!p-0">
@@ -98,15 +63,6 @@
           Current Settings Summary
         </h4>
         <div class="grid grid-cols-2 gap-4">
-          <div class="flex items-center gap-2 text-sm">
-            <mat-icon class="icon-size-4" [ngClass]="isCompulsory ? 'text-amber-500' : 'text-gray-400'">
-              {{ isCompulsory ? 'star' : 'star_border' }}
-            </mat-icon>
-            <span class="text-gray-600 dark:text-gray-400">Compulsory:</span>
-            <span class="font-semibold" [ngClass]="isCompulsory ? 'text-amber-600' : 'text-gray-500'">
-              {{ isCompulsory ? 'Yes' : 'No' }}
-            </span>
-          </div>
           <div class="flex items-center gap-2 text-sm">
             <mat-icon class="icon-size-4" [ngClass]="isActive ? 'text-green-500' : 'text-red-400'">
               {{ isActive ? 'check_circle' : 'cancel' }}

@@ -32,8 +32,7 @@ export class SubjectSettingsComponent implements OnInit, OnChanges {
 
   ngOnInit(): void {
     this.form = this.fb.group({
-      isCompulsory: [this.formData?.isCompulsory ?? false],
-      isActive:     [this.formData?.isActive     ?? true],
+     isActive:     [this.formData?.isActive     ?? true],
     });
 
     this.form.valueChanges.subscribe(value => {
@@ -47,12 +46,10 @@ export class SubjectSettingsComponent implements OnInit, OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['formData'] && this.form) {
       this.form.patchValue({
-        isCompulsory: this.formData?.isCompulsory ?? false,
-        isActive:     this.formData?.isActive     ?? true,
+       isActive:     this.formData?.isActive     ?? true,
       }, { emitEvent: false });
     }
   }
 
-  get isCompulsory(): boolean { return !!this.form?.get('isCompulsory')?.value; }
   get isActive():     boolean { return !!this.form?.get('isActive')?.value; }
 }

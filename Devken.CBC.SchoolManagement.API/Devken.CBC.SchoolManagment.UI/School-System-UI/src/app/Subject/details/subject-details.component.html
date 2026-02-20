@@ -89,7 +89,7 @@
                 <span class="inline-flex items-center gap-1 rounded-lg bg-white/20 px-3 py-1
                              text-sm font-medium text-white backdrop-blur-sm">
                   <mat-icon class="icon-size-4">stairs</mat-icon>
-                  {{ getCBCLevelName(subject.cbcLevel) }}
+                  {{ getCBCLevelName(subject.level) }}
                 </span>
               </div>
               <p *ngIf="subject.description" class="text-sm text-white/80 max-w-xl">
@@ -106,12 +106,6 @@
                 }">
                 <mat-icon class="icon-size-4">{{ subject.isActive ? 'check_circle' : 'cancel' }}</mat-icon>
                 {{ subject.isActive ? 'Active' : 'Inactive' }}
-              </span>
-              <span *ngIf="subject.isCompulsory"
-                class="flex items-center gap-1 rounded-full bg-amber-400 text-white px-4 py-2
-                       text-sm font-bold shadow-lg">
-                <mat-icon class="icon-size-4">star</mat-icon>
-                Compulsory
               </span>
             </div>
           </div>
@@ -145,7 +139,7 @@
             <div>
               <p class="text-xs text-gray-600 dark:text-gray-400">CBC Level</p>
               <p class="text-sm font-bold text-gray-900 dark:text-white">
-                {{ getCBCLevelName(subject.cbcLevel) }}
+                {{ getCBCLevelName(subject.level) }}
               </p>
             </div>
           </div>

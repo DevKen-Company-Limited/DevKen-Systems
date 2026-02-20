@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Devken.CBC.SchoolManagement.Domain.Enums;
 
@@ -19,8 +20,20 @@ namespace Devken.CBC.SchoolManagement.Application.DTOs.Academics
         /// </summary>
         public string? Code { get; set; }
 
+        /// <summary>
+        /// Frontend sends { cbcLevel: 3 }. [JsonPropertyName] binds it here.
+        /// The Level alias lets existing service code (dto.Level) work unchanged.
+        /// </summary>
+        [JsonPropertyName("cbcLevel")]
         [Required(ErrorMessage = "CBC Level is required.")]
-        public CBCLevel Level { get; set; }
+        public CBCLevel CbcLevel { get; set; }
+
+        [JsonIgnore]
+        public CBCLevel Level
+        {
+            get => CbcLevel;
+            set => CbcLevel = value;
+        }
 
         [Required(ErrorMessage = "Subject type is required.")]
         public SubjectType SubjectType { get; set; }
@@ -40,8 +53,16 @@ namespace Devken.CBC.SchoolManagement.Application.DTOs.Academics
         [MaxLength(100)]
         public string Name { get; set; } = default!;
 
+        [JsonPropertyName("cbcLevel")]
         [Required]
-        public CBCLevel Level { get; set; }
+        public CBCLevel CbcLevel { get; set; }
+
+        [JsonIgnore]
+        public CBCLevel Level
+        {
+            get => CbcLevel;
+            set => CbcLevel = value;
+        }
 
         [Required]
         public SubjectType SubjectType { get; set; }
@@ -62,6 +83,8 @@ namespace Devken.CBC.SchoolManagement.Application.DTOs.Academics
         public string SubjectType { get; set; } = default!;
         public bool IsActive { get; set; }
         public Guid TenantId { get; set; }
+        public Guid SchoolId => TenantId;
+        public string? SchoolName { get; set; }   // ← ADD THIS
         public string Status { get; set; } = default!;
         public DateTime CreatedOn { get; set; }
         public DateTime UpdatedOn { get; set; }
