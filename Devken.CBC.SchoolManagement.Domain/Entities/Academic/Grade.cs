@@ -4,7 +4,7 @@ using Devken.CBC.SchoolManagement.Domain.Entities.Helpers;
 using Devken.CBC.SchoolManagement.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
-namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
+namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments.Academic
 {
     public class Grade : TenantBaseEntity<Guid>
     {
