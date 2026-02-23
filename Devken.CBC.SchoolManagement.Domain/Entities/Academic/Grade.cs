@@ -1,6 +1,7 @@
 ﻿using Devken.CBC.SchoolManagement.Domain.Common;
 using Devken.CBC.SchoolManagement.Domain.Entities.Academic;
 using Devken.CBC.SchoolManagement.Domain.Entities.Helpers;
+using Devken.CBC.SchoolManagement.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
 namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
@@ -15,15 +16,13 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
 
         public Guid? AssessmentId { get; set; }
 
-        [MaxLength(10)]
-        public string? GradeLetter { get; set; } // A, B, C, D, E, F
+        public GradeLetter? GradeLetter { get; set; }
 
-        public decimal? Score { get; set; } // Percentage or points
+        public decimal? Score { get; set; }
 
         public decimal? MaximumScore { get; set; }
 
-        [MaxLength(20)]
-        public string? GradeType { get; set; } // Formative, Summative, Competency
+        public AssessmentType? GradeType { get; set; }
 
         public DateTime AssessmentDate { get; set; }
 

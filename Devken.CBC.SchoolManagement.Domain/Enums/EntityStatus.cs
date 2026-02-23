@@ -438,6 +438,29 @@ namespace Devken.CBC.SchoolManagement.Domain.Enums
         [Description("Other")]
         Other = 22
     }
+    /// <summary>
+    /// Academic grading letters
+    /// </summary>
+    public enum GradeLetter
+    {
+        [Description("Excellent")]
+        A = 1,
+
+        [Description("Very Good")]
+        B = 2,
+
+        [Description("Good")]
+        C = 3,
+
+        [Description("Satisfactory")]
+        D = 4,
+
+        [Description("Needs Improvement")]
+        E = 5,
+
+        [Description("Fail")]
+        F = 6
+    }
 
     /// <summary>
     /// Mpesa Result Codes
