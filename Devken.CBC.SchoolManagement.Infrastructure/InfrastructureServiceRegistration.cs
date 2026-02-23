@@ -16,6 +16,7 @@ using Devken.CBC.SchoolManagement.Application.Service.Academics;
 using Devken.CBC.SchoolManagement.Application.Service.Activities;
 using Devken.CBC.SchoolManagement.Application.Service.Administration.Student;
 using Devken.CBC.SchoolManagement.Application.Service.Assessments;
+using Devken.CBC.SchoolManagement.Application.Service.Curriculum;
 using Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment;
 using Devken.CBC.SchoolManagement.Application.Service.Isubscription;
 using Devken.CBC.SchoolManagement.Application.Service.ISubscription;
@@ -40,6 +41,8 @@ using Devken.CBC.SchoolManagement.Infrastructure.Security;
 using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Academics;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Administration.Students;
+
+using Devken.CBC.SchoolManagement.Infrastructure.Services.Curriculum;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Images;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Reports;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.RoleAssignment;
@@ -286,13 +289,62 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddMemoryCache();
 
             services.AddScoped(typeof(Lazy<>), typeof(LazyServiceProvider<>));
+            services.AddScoped<IAssessmentService, AssessmentService>();
 
+            services.AddScoped<IFormativeAssessmentRepository,FormativeAssessmentRepository>();
+
+            services.AddScoped<IFormativeAssessmentScoreRepository,FormativeAssessmentScoreRepository>();
+
+
+
+            services.AddScoped<ICompetencyAssessmentRepository,CompetencyAssessmentRepository>();
+
+            services.AddScoped<ICompetencyAssessmentScoreRepository,CompetencyAssessmentScoreRepository>();
+
+
+
+            services.AddScoped<ISummativeAssessmentRepository, SummativeAssessmentRepository>();
+            services.AddScoped<ISummativeAssessmentScoreRepository, SummativeAssessmentScoreRepository>();
+
+
+
+            // ─────────────────────────────────────────────────────────────────────────────
+            // IRepositoryManager — add these properties to your existing interface
+            // ─────────────────────────────────────────────────────────────────────────────
+            //
+            // namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common
+            // {
+            //     public interface IRepositoryManager
+            //     {
+            //         // ... existing properties (School, User, Role, UserRole, etc.) ...
+            //
+            //         IFormativeAssessmentRepository          FormativeAssessment          { get; }
+            //         ISummativeAssessmentRepository          SummativeAssessment          { get; }
+            //         ICompetencyAssessmentRepository         CompetencyAssessment         { get; }
+            //         IFormativeAssessmentScoreRepository     FormativeAssessmentScore     { get; }
+            //         ISummativeAssessmentScoreRepository     SummativeAssessmentScore     { get; }
+            //         ICompetencyAssessmentScoreRepository    CompetencyAssessmentScore    { get; }
+            //
+            //         Task SaveAsync();
+            //     }
+            // }
+            //
+            // ─────────────────────────────────────────────────────────────────────────────
+            // DI Registration (Program.cs / ServiceCollectionExtensions.cs)
+            // ─────────────────────────────────────────────────────────────────────────────
+            //
+            // services.AddScoped<IAssessmentService, AssessmentService>();
+            // (repositories are already registered via IRepositoryManager)
             services.AddScoped<IReportService, ReportService>();
             services.AddScoped<IUserManagementService, UserManagementService>();
             services.AddScoped<ITeacherService, TeacherService>();
             services.AddScoped<ITermService, TermService>();
             services.AddScoped<IStudentService, StudentService>();
             services.AddScoped<ISubjectService, SubjectService>();
+            services.AddScoped<ILearningAreaService, LearningAreaService>();
+            services.AddScoped<IStrandService, StrandService>();
+            services.AddScoped<ISubStrandService, SubStrandService>();
+            services.AddScoped<ILearningOutcomeService, LearningOutcomeService>();
             services.AddScoped<IJwtService, JwtService>();
             services.AddScoped<IPermissionSeedService, PermissionSeedService>();
             services.AddScoped<ISubscriptionSeedService, SubscriptionSeedService>();
@@ -309,8 +361,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<ISubscriptionPlanService, SubscriptionPlanService>();
             services.AddScoped<IImageUploadService, ImageUploadService>();
             services.AddScoped<IDocumentNumberSeriesRepository, DocumentNumberService>();
-            //services.AddScoped<IAssessmentService, AssessmentService>();
-            //services.AddScoped<IAssessmentService, AssessmentService>();
+            services.AddScoped<IAssessmentService, AssessmentService>();
+            services.AddScoped<IAssessmentService, AssessmentService>();
 
             services.AddScoped<IFormativeAssessmentRepository, FormativeAssessmentRepository>();
             services.AddScoped<ISummativeAssessmentRepository, SummativeAssessmentRepository>();

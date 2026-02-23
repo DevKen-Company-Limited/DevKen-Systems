@@ -45,45 +45,39 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
 
             // ── CBC Curriculum Relationships ──────────────────────────────────
             //
-            // Strand, SubStrand and LearningOutcome are all optional FKs that let
-            // a teacher tag the assessment to the correct node in the CBC hierarchy:
+            // FIX: Changed from SetNull → NoAction on all three CBC FKs.
             //
-            //   LearningArea → Strand → SubStrand → LearningOutcome
-            //                     ↑          ↑             ↑
-            //               StrandId    SubStrandId  LearningOutcomeId
+            // SQL Server rejects SetNull here because it creates multiple cascade
+            // paths to the same table:
+            //   Path 1: Strand → (SET NULL) → FormativeAssessment
+            //   Path 2: Assessment → (CASCADE) → FormativeAssessment
+            // Both paths terminate at FormativeAssessments, which SQL Server
+            // error 1785 disallows.
             //
-            // WithMany() with no argument (no inverse collection on Strand/SubStrand)
-            // keeps these as unidirectional relationships. The LearningOutcome side
-            // uses the inverse collection WithMany(lo => lo.FormativeAssessments)
-            // because LearningOutcome owns that navigation property.
-            //
-            // SetNull: removing a curriculum node un-tags the assessment without
-            // blocking the delete or removing the assessment itself.
+            // With NoAction, deleting a Strand/SubStrand/LearningOutcome will
+            // fail at the DB level if any FormativeAssessment still references it.
+            // Your application service layer must null-out these FKs before
+            // deleting any curriculum node (see ICurriculumService).
 
-            // FormativeAssessment → Strand (optional, no inverse collection on Strand)
             builder.HasOne(f => f.Strand)
                    .WithMany()
                    .HasForeignKey(f => f.StrandId)
                    .IsRequired(false)
-                   .OnDelete(DeleteBehavior.SetNull);
+                   .OnDelete(DeleteBehavior.NoAction);   // ← was SetNull
 
-            // FormativeAssessment → SubStrand (optional, no inverse collection on SubStrand)
             builder.HasOne(f => f.SubStrand)
                    .WithMany()
                    .HasForeignKey(f => f.SubStrandId)
                    .IsRequired(false)
-                   .OnDelete(DeleteBehavior.SetNull);
+                   .OnDelete(DeleteBehavior.NoAction);   // ← was SetNull
 
-            // FormativeAssessment → LearningOutcome (optional)
-            // Inverse: LearningOutcome.FormativeAssessments
             builder.HasOne(f => f.LearningOutcome)
                    .WithMany(lo => lo.FormativeAssessments)
                    .HasForeignKey(f => f.LearningOutcomeId)
                    .IsRequired(false)
-                   .OnDelete(DeleteBehavior.SetNull);
+                   .OnDelete(DeleteBehavior.NoAction);   // ← was SetNull
 
             // ── Scores relationship ───────────────────────────────────────────
-            // Cascade: deleting a FormativeAssessment removes all its scores.
             builder.HasMany(f => f.Scores)
                    .WithOne(s => s.FormativeAssessment)
                    .HasForeignKey(s => s.FormativeAssessmentId)
