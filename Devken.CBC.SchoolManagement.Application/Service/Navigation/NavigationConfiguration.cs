@@ -82,23 +82,15 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             Icon = "heroicons_outline:clipboard-document-check",
             Items = new[]
             {
-<<<<<<< HEAD
             new NavItem("formative-assessments", "Formative",           "heroicons_outline:pencil-square",      "/assessment/formative",    PermissionKeys.AssessmentRead),
             new NavItem("summative-assessments", "Summative",           "heroicons_outline:document-text",      "/assessment/summative",    PermissionKeys.AssessmentRead),
             new NavItem("competency-tracking",   "Competency Tracking", "heroicons_outline:chart-bar",          "/assessment/competencies", PermissionKeys.AssessmentRead),
             new NavItem("assessment-reports",    "Reports",             "heroicons_outline:document-chart-bar", "/assessment/reports",      PermissionKeys.ReportRead)
-=======
-                new NavItem("assessments", "Assessments", "heroicons_outline:clipboard-document-check", "/assessment/assessments", PermissionKeys.AssessmentRead)
->>>>>>> upstream/main
             }
         };
 
 
 
-<<<<<<< HEAD
-
-=======
->>>>>>> upstream/main
         public static NavigationSection Finance => new()
         {
             Id = "finance",

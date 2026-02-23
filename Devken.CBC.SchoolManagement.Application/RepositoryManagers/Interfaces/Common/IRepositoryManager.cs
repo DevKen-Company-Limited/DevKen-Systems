@@ -1,10 +1,7 @@
 ﻿using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academics;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Assessments;
-<<<<<<< HEAD
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Curriculum;
-=======
->>>>>>> upstream/main
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Identity;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.NumberSeries;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Payments;
@@ -39,16 +36,13 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
         DbContext Context { get; }
 
         // ================= ASSESSMENTS =================
-<<<<<<< HEAD
         IAssessmentRepository Assessment { get; }
-=======
         IFormativeAssessmentRepository FormativeAssessment { get; }
         ISummativeAssessmentRepository SummativeAssessment { get; }
         ICompetencyAssessmentRepository CompetencyAssessment { get; }
         IFormativeAssessmentScoreRepository FormativeAssessmentScore { get; }
         ISummativeAssessmentScoreRepository SummativeAssessmentScore { get; }
         ICompetencyAssessmentScoreRepository CompetencyAssessmentScore { get; }
->>>>>>> upstream/main
 
         // ================= IDENTITY =================
         IUserRepository User { get; }

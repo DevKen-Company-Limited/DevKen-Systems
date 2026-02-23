@@ -1,9 +1,6 @@
-<<<<<<< HEAD
 ﻿using System;
-=======
 ﻿using Devken.CBC.SchoolManagement.Application.DTOs.Assessments;
 using System;
->>>>>>> upstream/main
 using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Reports
@@ -40,8 +37,6 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
         /// Only callable by a SuperAdmin — the controller enforces this constraint.
         /// </summary>
 
-<<<<<<< HEAD
-=======
         /// <summary>
         /// Generates a PDF assessments list report scoped to a single school.
         /// Pass <paramref name="type"/> to filter by Formative / Summative / Competency,
@@ -60,6 +55,5 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
         /// </summary>
         Task<byte[]> GenerateAllSchoolsAssessmentsListReportAsync(
             AssessmentTypeDto? type = null);
->>>>>>> upstream/main
     }
 }
