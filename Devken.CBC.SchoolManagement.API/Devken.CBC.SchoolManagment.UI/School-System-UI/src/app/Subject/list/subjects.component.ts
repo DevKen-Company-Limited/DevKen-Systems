@@ -175,11 +175,7 @@ export class SubjectsComponent implements OnInit, OnDestroy {
     return this.allData.filter(s => {
       const q         = this._filterValues.search.toLowerCase();
       const typeName  = getSubjectTypeLabel(s.subjectType);
-<<<<<<< HEAD
-      const levelName = getCBCLevelLabel(s.level);
-=======
       const levelName = getCBCLevelLabel(s.cbcLevel);
->>>>>>> upstream/main
 
       return (
         (!q || s.name?.toLowerCase().includes(q) ||

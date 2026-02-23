@@ -156,14 +156,8 @@ export const appRoutes: Route[] = [
             {
                 path: 'assessment',
                 children: [
-<<<<<<< HEAD
-                    { path: 'assessments', loadChildren: () => import('app/assessment/Assessments/assessments.component.routes') },
-                    { path: 'summative',loadChildren: () =>import('app/assessment/summative/summative-assessments.component.routes') },
-
-=======
                     { path: 'assessments', loadChildren: () => import('app/assessment/assessments.routes') },
               
->>>>>>> upstream/main
                 ]
             },
 

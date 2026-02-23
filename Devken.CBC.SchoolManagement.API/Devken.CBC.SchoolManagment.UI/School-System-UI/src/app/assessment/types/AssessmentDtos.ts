@@ -1,75 +1,8 @@
-<<<<<<< HEAD
 // ═══════════════════════════════════════════════════════════════════
-// assessment.types.ts
+// AssessmentDtos.ts
 // ═══════════════════════════════════════════════════════════════════
 
-export interface AssessmentDto {
-  id: string;
-  title: string;
-  description?: string;
-  assessmentType: string;
-  maximumScore: number;
-  assessmentDate: string;
-  isPublished: boolean;
-  publishedDate?: string;
-  createdOn: string;
-
-  teacherId?: string;
-  teacherName?: string;
-  subjectId?: string;
-  subjectName?: string;
-  classId?: string;
-  className?: string;
-  termId?: string;
-  termName?: string;
-  academicYearId?: string;
-  academicYearName?: string;
-  schoolId: string;
-  schoolName?: string;
-
-  grades?: AssessmentGradeDto[];
-}
-
-export interface AssessmentGradeDto {
-  id: string;
-  studentId: string;
-  score: number;
-  remarks?: string;
-  createdOn: string;
-}
-
-export interface CreateAssessmentRequest {
-  title: string;
-  description?: string;
-  assessmentType: string;
-  maximumScore: number;
-  assessmentDate: string;
-  teacherId?: string;
-  subjectId?: string;
-  classId?: string;
-  termId?: string;
-  academicYearId?: string;
-  schoolId?: string;
-}
-
-export interface UpdateAssessmentRequest extends CreateAssessmentRequest {}
-
-export interface UpdateAssessmentPublishRequest {
-  isPublished: boolean;
-}
-
-export const ASSESSMENT_TYPES = ['Formative', 'Summative', 'Competency'] as const;
-export type AssessmentType = typeof ASSESSMENT_TYPES[number];
-
-export const ASSESSMENT_TYPE_COLORS: Record<string, string> = {
-  Formative:  'indigo',
-  Summative:  'violet',
-  Competency: 'teal',
-};
-=======
-// ─────────────────────────────────────────────────────────────────────────────
-// ENUMS matching C# backend
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Enums ─────────────────────────────────────────────────────────
 
 export enum AssessmentType {
   Formative  = 1,
@@ -77,224 +10,225 @@ export enum AssessmentType {
   Competency = 3,
 }
 
-export enum CBCLevel {
-  PP1     = 1,  PP2     = 2,
-  Grade1  = 3,  Grade2  = 4,  Grade3  = 5,
-  Grade4  = 6,  Grade5  = 7,  Grade6  = 8,
-  Grade7  = 9,  Grade8  = 10, Grade9  = 11,
-  Grade10 = 12, Grade11 = 13, Grade12 = 14,
-}
-
 export enum AssessmentMethod {
-  Observation    = 1,
-  OralQuestioning = 2,
-  WrittenTask    = 3,
-  PracticalTask  = 4,
-  Portfolio      = 5,
-  Project        = 6,
-  Other          = 7,
+  Observation    = 'Observation',
+  Portfolio      = 'Portfolio',
+  Project        = 'Project',
+  Practical      = 'Practical',
+  Written        = 'Written',
+  Oral           = 'Oral',
+  PeerAssessment = 'PeerAssessment',
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// OPTION ARRAYS for dropdowns
-// ─────────────────────────────────────────────────────────────────────────────
+export enum CBCLevel {
+  Below      = 'Below',
+  Approaching= 'Approaching',
+  MeetingExpectations = 'MeetingExpectations',
+  Exceeding  = 'Exceeding',
+}
 
-export const AssessmentTypeOptions = [
-  { value: AssessmentType.Formative,  label: 'Formative',  icon: 'assignment',      color: 'indigo',
-    description: 'Ongoing, low-stakes assessments to monitor day-to-day learning progress.' },
-  { value: AssessmentType.Summative,  label: 'Summative',  icon: 'school',          color: 'violet',
-    description: 'End-of-unit or term exams that evaluate cumulative learning.' },
-  { value: AssessmentType.Competency, label: 'Competency', icon: 'verified_user',   color: 'teal',
-    description: 'Observation-based assessments evaluating CBC competency strands.' },
+// ── Label / colour / icon helpers ─────────────────────────────────
+
+export function getAssessmentTypeLabel(type: AssessmentType): string {
+  switch (type) {
+    case AssessmentType.Formative:  return 'Formative';
+    case AssessmentType.Summative:  return 'Summative';
+    case AssessmentType.Competency: return 'Competency';
+    default: return 'Unknown';
+  }
+}
+
+export function getAssessmentTypeColor(type: AssessmentType): string {
+  switch (type) {
+    case AssessmentType.Formative:  return 'blue';
+    case AssessmentType.Summative:  return 'violet';
+    case AssessmentType.Competency: return 'pink';
+    default: return 'gray';
+  }
+}
+
+export function getAssessmentTypeIcon(type: AssessmentType): string {
+  switch (type) {
+    case AssessmentType.Formative:  return 'assignment';
+    case AssessmentType.Summative:  return 'school';
+    case AssessmentType.Competency: return 'verified_user';
+    default: return 'help';
+  }
+}
+
+// ── Option lists ──────────────────────────────────────────────────
+
+export interface SelectOption { label: string; value: string | number; }
+
+export const AssessmentTypeOptions: SelectOption[] = [
+  { label: 'Formative',  value: AssessmentType.Formative  },
+  { label: 'Summative',  value: AssessmentType.Summative  },
+  { label: 'Competency', value: AssessmentType.Competency },
 ];
 
-export const AssessmentMethodOptions = [
-  { value: AssessmentMethod.Observation,     label: 'Observation',      icon: 'visibility'   },
-  { value: AssessmentMethod.OralQuestioning, label: 'Oral Questioning', icon: 'record_voice_over' },
-  { value: AssessmentMethod.WrittenTask,     label: 'Written Task',     icon: 'edit_note'    },
-  { value: AssessmentMethod.PracticalTask,   label: 'Practical Task',   icon: 'science'      },
-  { value: AssessmentMethod.Portfolio,       label: 'Portfolio',        icon: 'collections_bookmark' },
-  { value: AssessmentMethod.Project,         label: 'Project',          icon: 'folder_special' },
-  { value: AssessmentMethod.Other,           label: 'Other',            icon: 'more_horiz'   },
+/** Alias kept for components that import ASSESSMENT_TYPES */
+export const ASSESSMENT_TYPES = AssessmentTypeOptions;
+
+export const FormativeTypeOptions: SelectOption[] = [
+  { label: 'Quiz',              value: 'Quiz'              },
+  { label: 'Assignment',        value: 'Assignment'        },
+  { label: 'Class Work',        value: 'ClassWork'         },
+  { label: 'Homework',          value: 'Homework'          },
+  { label: 'Project',           value: 'Project'           },
+  { label: 'Practical',         value: 'Practical'         },
+  { label: 'Oral Assessment',   value: 'OralAssessment'    },
+  { label: 'Portfolio',         value: 'Portfolio'         },
+  { label: 'Observation',       value: 'Observation'       },
 ];
 
-export const FormativeTypeOptions = [
-  { value: 'Quiz',        label: 'Quiz',        icon: 'quiz'         },
-  { value: 'Homework',    label: 'Homework',    icon: 'home_work'    },
-  { value: 'Observation', label: 'Observation', icon: 'visibility'   },
-  { value: 'Classwork',   label: 'Classwork',   icon: 'class'        },
-  { value: 'Portfolio',   label: 'Portfolio',   icon: 'collections_bookmark' },
-  { value: 'Project',     label: 'Project',     icon: 'folder_special' },
-  { value: 'Other',       label: 'Other',       icon: 'more_horiz'   },
+export const ExamTypeOptions: SelectOption[] = [
+  { label: 'End of Term Exam',  value: 'EndOfTermExam'     },
+  { label: 'Mid Term Exam',     value: 'MidTermExam'       },
+  { label: 'Mock Exam',         value: 'MockExam'          },
+  { label: 'National Exam',     value: 'NationalExam'      },
+  { label: 'Standardised Test', value: 'StandardisedTest'  },
+  { label: 'Opening Exam',      value: 'OpeningExam'       },
 ];
 
-export const ExamTypeOptions = [
-  { value: 'MidTerm',  label: 'Mid-Term Exam',  icon: 'assignment_late' },
-  { value: 'EndTerm',  label: 'End-Term Exam',  icon: 'assignment_turned_in' },
-  { value: 'Final',    label: 'Final Exam',     icon: 'workspace_premium' },
-  { value: 'Opening',  label: 'Opening Exam',   icon: 'assignment'       },
-  { value: 'Mock',     label: 'Mock Exam',      icon: 'assignment_return' },
+export const RatingScaleOptions: SelectOption[] = [
+  { label: 'Exceeds Expectations (EE)', value: 'EE'  },
+  { label: 'Meets Expectations (ME)',   value: 'ME'  },
+  { label: 'Approaching Expectations (AE)', value: 'AE' },
+  { label: 'Below Expectations (BE)',   value: 'BE'  },
 ];
 
-export const RatingScaleOptions = [
-  { value: 'Exceeds|Meets|Approaching|Below',    label: 'Exceeds / Meets / Approaching / Below' },
-  { value: 'Excellent|Good|Fair|Poor',           label: 'Excellent / Good / Fair / Poor' },
-  { value: 'Advanced|Proficient|Developing|Beginning', label: 'Advanced / Proficient / Developing / Beginning' },
-];
+// ── DTOs ──────────────────────────────────────────────────────────
 
-// ─────────────────────────────────────────────────────────────────────────────
-// LABEL HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
-
-export function getAssessmentTypeLabel(val: any): string {
-  const n = Number(val);
-  const opt = AssessmentTypeOptions.find(o => o.value === n);
-  return opt?.label ?? String(val ?? '—');
-}
-
-export function getAssessmentTypeColor(val: any): string {
-  const n = Number(val);
-  const opt = AssessmentTypeOptions.find(o => o.value === n);
-  return opt?.color ?? 'gray';
-}
-
-export function getAssessmentTypeIcon(val: any): string {
-  const n = Number(val);
-  const opt = AssessmentTypeOptions.find(o => o.value === n);
-  return opt?.icon ?? 'assignment';
-}
-
-export function getAssessmentMethodLabel(val: any): string {
-  const n = Number(val);
-  const opt = AssessmentMethodOptions.find(o => o.value === n);
-  return opt?.label ?? String(val ?? '—');
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// DTOs (matching API AssessmentDtos.cs)
-// ─────────────────────────────────────────────────────────────────────────────
-
-export interface AssessmentListItem {
-  id:              string;
-  title:           string;
-  assessmentType:  AssessmentType;
-  assessmentTypeLabel: string;
-  teacherName:     string;
-  subjectName:     string;
-  className:       string;
-  termName:        string;
-  assessmentDate:  string;
-  maximumScore:    number;
-  isPublished:     boolean;
-  scoreCount:      number;
-}
-
-export interface AssessmentResponse {
-  id:              string;
-  assessmentType:  AssessmentType;
-  title:           string;
-  description?:    string;
-  teacherId:       string;
-  teacherName:     string;
-  subjectId:       string;
-  subjectName:     string;
-  classId:         string;
-  className:       string;
-  termId:          string;
-  termName:        string;
-  academicYearId:  string;
-  academicYearName:string;
-  assessmentDate:  string;
-  maximumScore:    number;
-  isPublished:     boolean;
-  publishedDate?:  string;
-  createdOn:       string;
-  scoreCount:      number;
+/** Full assessment response — mirrors C# AssessmentResponse */
+export interface AssessmentDto {
+  id:               string;
+  assessmentType:   AssessmentType;
+  title:            string;
+  description?:     string;
+  teacherId:        string;
+  teacherName:      string;
+  subjectId:        string;
+  subjectName:      string;
+  classId:          string;
+   schoolId?:        string; 
+  className:        string;
+  termId:           string;
+  termName:         string;
+  academicYearId:   string;
+  academicYearName: string;
+  assessmentDate:   string;
+  maximumScore:     number;
+  isPublished:      boolean;
+  publishedDate?:   string;
+  createdOn:        string;
+  scoreCount:       number;
 
   // Formative
-  formativeType?:       string;
-  competencyArea?:      string;
-  learningOutcomeId?:   string;
-  learningOutcomeName?: string;
-  formativeStrand?:     string;
-  formativeSubStrand?:  string;
-  criteria?:            string;
-  feedbackTemplate?:    string;
-  requiresRubric?:      boolean;
-  assessmentWeight?:    number;
+  formativeType?:        string;
+  competencyArea?:       string;
+  strandId?:             string;
+  strandName?:           string;
+  subStrandId?:          string;
+  subStrandName?:        string;
+  learningOutcomeId?:    string;
+  learningOutcomeName?:  string;
+  criteria?:             string;
+  feedbackTemplate?:     string;
+  requiresRubric?:       boolean;
+  assessmentWeight?:     number;
   formativeInstructions?: string;
 
   // Summative
-  examType?:               string;
-  duration?:               string;
-  numberOfQuestions?:      number;
-  passMark?:               number;
-  hasPracticalComponent?:  boolean;
-  practicalWeight?:        number;
-  theoryWeight?:           number;
-  summativeInstructions?:  string;
+  examType?:             string;
+  duration?:             string;
+  numberOfQuestions?:    number;
+  passMark?:             number;
+  hasPracticalComponent?: boolean;
+  practicalWeight?:      number;
+  theoryWeight?:         number;
+  summativeInstructions?: string;
 
   // Competency
-  competencyName?:         string;
-  competencyStrand?:       string;
-  competencySubStrand?:    string;
-  targetLevel?:            CBCLevel;
-  performanceIndicators?:  string;
-  assessmentMethod?:       AssessmentMethod;
-  ratingScale?:            string;
-  isObservationBased?:     boolean;
-  toolsRequired?:          string;
-  competencyInstructions?: string;
+  competencyName?:          string;
+  competencyStrand?:        string;
+  competencySubStrand?:     string;
+  targetLevel?:             string;
+  performanceIndicators?:   string;
+  assessmentMethod?:        string;
+  ratingScale?:             string;
+  isObservationBased?:      boolean;
+  toolsRequired?:           string;
+  competencyInstructions?:  string;
   specificLearningOutcome?: string;
 }
 
+/** Lightweight item for list/grid — mirrors C# AssessmentListItem */
+export interface AssessmentListItem {
+  id:               string;
+  title:            string;
+  assessmentType:   AssessmentType;
+  assessmentTypeLabel: string;
+  teacherName:      string;
+  subjectName:      string;
+  className:        string;
+  termName:         string;
+  assessmentDate:   string;
+  maximumScore:     number;
+  isPublished:      boolean;
+  scoreCount:       number;
+  strandName?:      string;
+  subStrandName?:   string;
+}
+
+// ── Request DTOs ──────────────────────────────────────────────────
+
 export interface CreateAssessmentRequest {
-  assessmentType:  AssessmentType;
-  title:           string;
-  description?:    string;
-  teacherId:       string;
-  subjectId:       string;
-  classId:         string;
-  termId:          string;
-  academicYearId:  string;
-  assessmentDate:  string;
-  maximumScore:    number;
-  isPublished:     boolean;
-  tenantId?:       string;
+  assessmentType:   AssessmentType;
+  title:            string;
+  description?:     string;
+  teacherId:        string;
+  subjectId:        string;
+  classId:          string;
+  termId:           string;
+  academicYearId:   string;
+  assessmentDate:   string;
+  maximumScore:     number;
+  isPublished?:     boolean;
+  schoolId?:        string;   // frontend alias → backend resolves to tenantId
 
   // Formative
-  formativeType?:       string;
-  competencyArea?:      string;
-  learningOutcomeId?:   string;
-  formativeStrand?:     string;
-  formativeSubStrand?:  string;
-  criteria?:            string;
-  feedbackTemplate?:    string;
-  requiresRubric?:      boolean;
-  assessmentWeight?:    number;
+  formativeType?:        string;
+  competencyArea?:       string;
+  strandId?:             string;
+  subStrandId?:          string;
+  learningOutcomeId?:    string;
+  criteria?:             string;
+  feedbackTemplate?:     string;
+  requiresRubric?:       boolean;
+  assessmentWeight?:     number;
   formativeInstructions?: string;
 
   // Summative
-  examType?:               string;
-  duration?:               string;
-  numberOfQuestions?:      number;
-  passMark?:               number;
-  hasPracticalComponent?:  boolean;
-  practicalWeight?:        number;
-  theoryWeight?:           number;
-  summativeInstructions?:  string;
+  examType?:             string;
+  duration?:             string;
+  numberOfQuestions?:    number;
+  passMark?:             number;
+  hasPracticalComponent?: boolean;
+  practicalWeight?:      number;
+  theoryWeight?:         number;
+  summativeInstructions?: string;
 
   // Competency
-  competencyName?:         string;
-  competencyStrand?:       string;
-  competencySubStrand?:    string;
-  targetLevel?:            CBCLevel;
-  performanceIndicators?:  string;
-  assessmentMethod?:       AssessmentMethod;
-  ratingScale?:            string;
-  isObservationBased?:     boolean;
-  toolsRequired?:          string;
-  competencyInstructions?: string;
+  competencyName?:          string;
+  competencyStrand?:        string;
+  competencySubStrand?:     string;
+  targetLevel?:             string;
+  performanceIndicators?:   string;
+  assessmentMethod?:        string;
+  ratingScale?:             string;
+  isObservationBased?:      boolean;
+  toolsRequired?:           string;
+  competencyInstructions?:  string;
   specificLearningOutcome?: string;
 }
 
@@ -302,13 +236,22 @@ export interface UpdateAssessmentRequest extends CreateAssessmentRequest {
   id: string;
 }
 
-export interface UpsertScoreRequest {
-  scoreId?:        string;
-  assessmentType:  AssessmentType;
-  assessmentId:    string;
-  studentId:       string;
+export interface PublishAssessmentRequest {
+  assessmentType: AssessmentType;
+}
+export const ASSESSMENT_TYPE_COLORS: Record<string, string> = {
+  Formative:  'blue',
+  Summative:  'violet',
+  Competency: 'pink',
+};
 
-  // Formative
+// ── Score DTOs ────────────────────────────────────────────────────
+
+export interface UpsertScoreRequest {
+  scoreId?:          string;
+  assessmentType:    AssessmentType;
+  assessmentId:      string;
+  studentId:         string;
   score?:            number;
   maximumScore?:     number;
   grade?:            string;
@@ -317,72 +260,74 @@ export interface UpsertScoreRequest {
   strengths?:        string;
   areasForImprovement?: string;
   isSubmitted?:      boolean;
+  submissionDate?:   string;
   competencyArea?:   string;
   competencyAchieved?: boolean;
   gradedById?:       string;
-
-  // Summative
-  theoryScore?:           number;
-  practicalScore?:        number;
-  maximumTheoryScore?:    number;
+  theoryScore?:      number;
+  practicalScore?:   number;
+  maximumTheoryScore?: number;
   maximumPracticalScore?: number;
-  remarks?:               string;
-  positionInClass?:       number;
-  isPassed?:              boolean;
-  comments?:              string;
-
-  // Competency
-  rating?:               string;
-  evidence?:             string;
-  isFinalized?:          boolean;
-  strand?:               string;
-  subStrand?:            string;
+  remarks?:          string;
+  positionInClass?:  number;
+  positionInStream?: number;
+  isPassed?:         boolean;
+  comments?:         string;
+  rating?:           string;
+  scoreValue?:       number;
+  evidence?:         string;
+  toolsUsed?:        string;
+  isFinalized?:      boolean;
+  strand?:           string;
+  subStrand?:        string;
   specificLearningOutcome?: string;
-  assessorId?:           string;
+  assessorId?:       string;
 }
 
 export interface AssessmentScoreResponse {
-  id:              string;
-  assessmentType:  AssessmentType;
-  assessmentId:    string;
-  assessmentTitle: string;
-  studentId:       string;
-  studentName:     string;
-  studentAdmissionNo: string;
-  assessmentDate:  string;
-
-  score?:          number;
-  maximumScore?:   number;
-  percentage?:     number;
-  grade?:          string;
-  performanceLevel?: string;
-  feedback?:       string;
-  strengths?:      string;
+  id:                  string;
+  assessmentType:      AssessmentType;
+  assessmentId:        string;
+  assessmentTitle:     string;
+  studentId:           string;
+  studentName:         string;
+  studentAdmissionNo:  string;
+  assessmentDate:      string;
+  score?:              number;
+  maximumScore?:       number;
+  percentage?:         number;
+  grade?:              string;
+  performanceLevel?:   string;
+  feedback?:           string;
+  strengths?:          string;
   competencyAchieved?: boolean;
-  isSubmitted?:    boolean;
-  gradedByName?:   string;
-
-  theoryScore?:    number;
-  practicalScore?: number;
-  totalScore?:     number;
-  maximumTotalScore?: number;
-  remarks?:        string;
-  positionInClass?: number;
-  isPassed?:       boolean;
-  performanceStatus?: string;
-
-  rating?:         string;
-  competencyLevel?: string;
-  evidence?:       string;
-  isFinalized?:    boolean;
-  assessorName?:   string;
+  isSubmitted?:        boolean;
+  gradedByName?:       string;
+  theoryScore?:        number;
+  practicalScore?:     number;
+  totalScore?:         number;
+  maximumTotalScore?:  number;
+  remarks?:            string;
+  positionInClass?:    number;
+  isPassed?:           boolean;
+  performanceStatus?:  string;
+  comments?:           string;
+  rating?:             string;
+  competencyLevel?:    string;
+  evidence?:           string;
+  isFinalized?:        boolean;
+  assessorName?:       string;
+  strand?:             string;
+  subStrand?:          string;
 }
 
-// Lookup DTOs — shapes from your existing API endpoints
-export interface TeacherLookup { id: string; firstName: string; lastName: string; }
-export interface SubjectLookup { id: string; name: string; code: string; }
-export interface ClassLookup   { id: string; name: string; }
-export interface TermLookup    { id: string; name: string; }
-export interface AcademicYearLookup { id: string; name: string; }
-export interface LearningOutcomeLookup { id: string; outcome: string; code?: string; }
->>>>>>> upstream/main
+// After AssessmentMethod enum
+export const AssessmentMethodOptions: SelectOption[] = [
+  { label: 'Observation',      value: AssessmentMethod.Observation    },
+  { label: 'Portfolio',        value: AssessmentMethod.Portfolio       },
+  { label: 'Project',          value: AssessmentMethod.Project         },
+  { label: 'Practical',        value: AssessmentMethod.Practical       },
+  { label: 'Written',          value: AssessmentMethod.Written         },
+  { label: 'Oral',             value: AssessmentMethod.Oral            },
+  { label: 'Peer Assessment',  value: AssessmentMethod.PeerAssessment  },
+];

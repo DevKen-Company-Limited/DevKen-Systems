@@ -16,11 +16,12 @@ import { trigger, transition, style, animate, query, group } from '@angular/anim
 
 import { AlertService }       from 'app/core/DevKenService/Alert/AlertService';
 import { AuthService }        from 'app/core/auth/auth.service';
-import { ASSESSMENT_TYPES, CreateAssessmentRequest } from 'app/assessment/types/AssessmentDtos';
+
 import { AssessmentService } from 'app/core/DevKenService/assessments/Assessments/AssessmentService';
 import {  AssessmentInfoStepComponent,  } from '../steps/assessment-info-step.component';
 import { AssessmentReviewStepComponent } from '../steps/assessment-review-step.component';
 import { AssessmentDetailsStepComponent } from '../steps/assessment-details-step.component';
+import { ASSESSMENT_TYPES, AssessmentType, CreateAssessmentRequest } from 'app/assessment/types/AssessmentDtos';
 
 
 interface FormStep { label: string; icon: string; sectionKey: string; }
@@ -151,34 +152,36 @@ export class AssessmentFormComponent implements OnInit, OnDestroy {
   }
 
   // ─── Load existing ─────────────────────────────────────────────────
-  private loadExisting(): void {
-    this._service.getById(this.assessmentId!)
-      .pipe(takeUntil(this._destroy$))
-      .subscribe({
-        next: a => {
-          this.formSections.info = {
-            title:          a.title,
-            description:    a.description,
-            assessmentDate: a.assessmentDate?.split('T')[0],
-            teacherId:      a.teacherId,
-            subjectId:      a.subjectId,
-            classId:        a.classId,
-            termId:         a.termId,
-            academicYearId: a.academicYearId,
-            schoolId:       a.schoolId,
-          };
-          this.formSections.details = {
-            assessmentType: a.assessmentType,
-            maximumScore:   a.maximumScore,
-          };
-          this.steps.slice(0, 2).forEach((_, i) => this.completedSteps.add(i));
-          Object.keys(this.sectionValid).forEach(k => this.sectionValid[k] = true);
-          this._alertService.info('Editing existing assessment.');
-        },
-        error: () => this._alertService.error('Could not load assessment data.'),
-      });
-  }
+private loadExisting(): void {
+  const typeParam = this._route.snapshot.queryParamMap.get('type');
+  const assessmentType = typeParam ? Number(typeParam) as AssessmentType : AssessmentType.Formative;
 
+  this._service.getById(this.assessmentId!, assessmentType)
+    .pipe(takeUntil(this._destroy$))
+    .subscribe({
+      next: a => {
+        this.formSections.info = {
+          title:          a.title,
+          description:    a.description,
+          assessmentDate: a.assessmentDate?.split('T')[0],
+          teacherId:      a.teacherId,
+          subjectId:      a.subjectId,
+          classId:        a.classId,
+          termId:         a.termId,
+          academicYearId: a.academicYearId,
+          schoolId:       a.schoolId,
+        };
+        this.formSections.details = {
+          assessmentType: a.assessmentType,
+          maximumScore:   a.maximumScore,
+        };
+        this.steps.slice(0, 2).forEach((_, i) => this.completedSteps.add(i));
+        Object.keys(this.sectionValid).forEach(k => this.sectionValid[k] = true);
+        this._alertService.info('Editing existing assessment.');
+      },
+      error: () => this._alertService.error('Could not load assessment data.'),
+    });
+}
   // ─── Draft ────────────────────────────────────────────────────────
   private readonly DRAFT_KEY = 'assessment_form_draft';
 
@@ -260,26 +263,26 @@ export class AssessmentFormComponent implements OnInit, OnDestroy {
   }
 
   // ─── Submit ───────────────────────────────────────────────────────
-  async submitForm(): Promise<void> {
-    if (!this.allStepsCompleted()) return;
-    this.isSubmitting = true;
-    try {
-      const payload = this.buildPayload();
-      if (this.isEditMode) {
-        await this._service.update(this.assessmentId!, payload).toPromise();
-        this._alertService.success('Assessment updated successfully!');
-      } else {
-        await this._service.create(payload).toPromise();
-        this._alertService.success('Assessment created successfully!');
-      }
-      this.clearDraft();
-      setTimeout(() => this._router.navigate(['/assessment/assessments']), 1200);
-    } catch (err: any) {
-      this._alertService.error(err?.error?.message || 'Submission failed. Please try again.');
-    } finally {
-      this.isSubmitting = false;
+async submitForm(): Promise<void> {
+  if (!this.allStepsCompleted()) return;
+  this.isSubmitting = true;
+  try {
+    const payload = this.buildPayload();
+    if (this.isEditMode) {
+      await this._service.update(this.assessmentId!, { id: this.assessmentId!, ...payload }).toPromise();
+      this._alertService.success('Assessment updated successfully!');
+    } else {
+      await this._service.create(payload).toPromise();
+      this._alertService.success('Assessment created successfully!');
     }
+    this.clearDraft();
+    setTimeout(() => this._router.navigate(['/assessment/assessments']), 1200);
+  } catch (err: any) {
+    this._alertService.error(err?.error?.message || 'Submission failed. Please try again.');
+  } finally {
+    this.isSubmitting = false;
   }
+}
 
   private buildPayload(): CreateAssessmentRequest {
     const { info, details } = this.formSections;
