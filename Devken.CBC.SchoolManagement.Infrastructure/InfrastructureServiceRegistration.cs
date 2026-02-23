@@ -307,34 +307,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<ISummativeAssessmentScoreRepository, SummativeAssessmentScoreRepository>();
 
 
-
-            // ─────────────────────────────────────────────────────────────────────────────
-            // IRepositoryManager — add these properties to your existing interface
-            // ─────────────────────────────────────────────────────────────────────────────
-            //
-            // namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common
-            // {
-            //     public interface IRepositoryManager
-            //     {
-            //         // ... existing properties (School, User, Role, UserRole, etc.) ...
-            //
-            //         IFormativeAssessmentRepository          FormativeAssessment          { get; }
-            //         ISummativeAssessmentRepository          SummativeAssessment          { get; }
-            //         ICompetencyAssessmentRepository         CompetencyAssessment         { get; }
-            //         IFormativeAssessmentScoreRepository     FormativeAssessmentScore     { get; }
-            //         ISummativeAssessmentScoreRepository     SummativeAssessmentScore     { get; }
-            //         ICompetencyAssessmentScoreRepository    CompetencyAssessmentScore    { get; }
-            //
-            //         Task SaveAsync();
-            //     }
-            // }
-            //
-            // ─────────────────────────────────────────────────────────────────────────────
-            // DI Registration (Program.cs / ServiceCollectionExtensions.cs)
-            // ─────────────────────────────────────────────────────────────────────────────
-            //
-            // services.AddScoped<IAssessmentService, AssessmentService>();
-            // (repositories are already registered via IRepositoryManager)
             services.AddScoped<IReportService, ReportService>();
             services.AddScoped<IUserManagementService, UserManagementService>();
             services.AddScoped<ITeacherService, TeacherService>();
