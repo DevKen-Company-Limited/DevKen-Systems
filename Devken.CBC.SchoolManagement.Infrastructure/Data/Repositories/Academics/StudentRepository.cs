@@ -10,7 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Curriculum
+namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academic
 {
     public class StudentRepository : RepositoryBase<Student, Guid>, IStudentRepository
     {
