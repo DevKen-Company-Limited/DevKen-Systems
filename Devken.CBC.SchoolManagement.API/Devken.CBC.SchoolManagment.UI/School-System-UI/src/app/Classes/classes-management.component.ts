@@ -4,16 +4,15 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { FuseConfirmationService } from '@fuse/services/confirmation';
 import { Subject, forkJoin, of } from 'rxjs';
 import { catchError, takeUntil, finalize } from 'rxjs/operators';
-import { ClassService } from 'app/core/DevKenService/ClassService';
+import { ClassService } from 'app/core/DevKenService/ClassService/ClassService';
 import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
+import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
 import { CreateEditClassDialogComponent } from 'app/dialog-modals/Classes/create-edit-class-dialog.component';
 import { ClassDto } from './Types/Class';
 import { SchoolDto } from 'app/Tenant/types/school';
@@ -24,12 +23,12 @@ import { PageHeaderComponent, Breadcrumb } from 'app/shared/Page-Header/page-hea
 import { FilterPanelComponent, FilterField, FilterChangeEvent } from 'app/shared/Filter/filter-panel.component';
 import { PaginationComponent } from 'app/shared/pagination/pagination.component';
 import { StatsCardsComponent, StatCard } from 'app/shared/stats-cards/stats-cards.component';
-import { 
-  DataTableComponent, 
-  TableColumn, 
-  TableAction, 
-  TableHeader, 
-  TableEmptyState 
+import {
+  DataTableComponent,
+  TableColumn,
+  TableAction,
+  TableHeader,
+  TableEmptyState
 } from 'app/shared/data-table/data-table.component';
 
 @Component({
@@ -41,7 +40,6 @@ import {
     MatIconModule,
     MatButtonModule,
     MatDialogModule,
-    MatSnackBarModule,
     MatMenuModule,
     MatProgressSpinnerModule,
     MatDividerModule,
@@ -67,6 +65,7 @@ export class ClassesManagementComponent implements OnInit, OnDestroy, AfterViewI
   private _unsubscribe = new Subject<void>();
   private _authService = inject(AuthService);
   private _schoolService = inject(SchoolService);
+  private _alert = inject(AlertService);
 
   // ── Breadcrumbs ──────────────────────────────────────────────────────────────
   breadcrumbs: Breadcrumb[] = [
@@ -229,11 +228,11 @@ export class ClassesManagementComponent implements OnInit, OnDestroy, AfterViewI
 
   cellTemplates: { [key: string]: TemplateRef<any> } = {};
 
-  // ── Filter Fields Configuration ──────────────────────────────────────────────
+  // ── Filter Fields ─────────────────────────────────────────────────────────────
   filterFields: FilterField[] = [];
   showFilterPanel = false;
 
-  // ── CBC Levels ──────────────────────────────────────────────────────────────
+  // ── CBC Levels ───────────────────────────────────────────────────────────────
   cbcLevels: { value: number; label: string }[] = [];
 
   // ── State ────────────────────────────────────────────────────────────────────
@@ -253,30 +252,18 @@ export class ClassesManagementComponent implements OnInit, OnDestroy, AfterViewI
   itemsPerPage = 20;
 
   // ── Computed Stats ───────────────────────────────────────────────────────────
-  get total(): number {
-    return this.allData.length;
-  }
-
-  get activeCount(): number {
-    return this.allData.filter(c => c.isActive).length;
-  }
-
-  get totalCapacity(): number {
-    return this.allData.reduce((sum, c) => sum + c.capacity, 0);
-  }
-
-  get totalEnrollment(): number {
-    return this.allData.reduce((sum, c) => sum + c.currentEnrollment, 0);
-  }
+  get total(): number { return this.allData.length; }
+  get activeCount(): number { return this.allData.filter(c => c.isActive).length; }
+  get totalCapacity(): number { return this.allData.reduce((sum, c) => sum + c.capacity, 0); }
+  get totalEnrollment(): number { return this.allData.reduce((sum, c) => sum + c.currentEnrollment, 0); }
 
   // ── Filtered Data ─────────────────────────────────────────────────────────────
   get filteredData(): ClassDto[] {
     return this.allData.filter(c => {
       const q = this._filterValues.search.toLowerCase();
-
       return (
-        (!q || 
-          c.name?.toLowerCase().includes(q) || 
+        (!q ||
+          c.name?.toLowerCase().includes(q) ||
           c.code?.toLowerCase().includes(q) ||
           c.levelName?.toLowerCase().includes(q) ||
           c.teacherName?.toLowerCase().includes(q)) &&
@@ -299,8 +286,6 @@ export class ClassesManagementComponent implements OnInit, OnDestroy, AfterViewI
   constructor(
     private _service: ClassService,
     private _dialog: MatDialog,
-    private _snackBar: MatSnackBar,
-    private _confirmation: FuseConfirmationService,
   ) {}
 
   ngOnInit(): void {
@@ -353,7 +338,7 @@ export class ClassesManagementComponent implements OnInit, OnDestroy, AfterViewI
         },
         error: (error) => {
           console.error('Failed to load configuration:', error);
-          this._showError('Failed to load configuration data');
+          this._alert.error('Failed to load configuration data');
         }
       });
     } else {
@@ -382,9 +367,9 @@ export class ClassesManagementComponent implements OnInit, OnDestroy, AfterViewI
         value: this._filterValues.schoolId,
         options: [
           { label: 'All Schools', value: 'all' },
-          ...this.schools.map(s => ({ 
-            label: `${s.name}${s.slugName ? ' (' + s.slugName + ')' : ''}`, 
-            value: s.id 
+          ...this.schools.map(s => ({
+            label: `${s.name}${s.slugName ? ' (' + s.slugName + ')' : ''}`,
+            value: s.id
           })),
         ],
       });
@@ -450,10 +435,7 @@ export class ClassesManagementComponent implements OnInit, OnDestroy, AfterViewI
   }
 
   // ── Pagination Handlers ──────────────────────────────────────────────────────
-  onPageChange(page: number): void {
-    this.currentPage = page;
-  }
-
+  onPageChange(page: number): void { this.currentPage = page; }
   onItemsPerPageChange(itemsPerPage: number): void {
     this.itemsPerPage = itemsPerPage;
     this.currentPage = 1;
@@ -475,7 +457,7 @@ export class ClassesManagementComponent implements OnInit, OnDestroy, AfterViewI
         error: (err) => {
           console.error('Failed to load classes:', err);
           this.isLoading = false;
-          this._showError(err.error?.message || 'Failed to load classes');
+          this._alert.error(err.error?.message || 'Failed to load classes');
         }
       });
   }
@@ -493,7 +475,7 @@ export class ClassesManagementComponent implements OnInit, OnDestroy, AfterViewI
       .pipe(takeUntil(this._unsubscribe))
       .subscribe((result) => {
         if (result?.success) {
-          this._showSuccess(result.message || 'Class created successfully');
+          this._alert.success(result.message || 'Class created successfully');
           this.loadAll();
         }
       });
@@ -509,7 +491,7 @@ export class ClassesManagementComponent implements OnInit, OnDestroy, AfterViewI
       .pipe(takeUntil(this._unsubscribe))
       .subscribe((result) => {
         if (result?.success) {
-          this._showSuccess(result.message || 'Class updated successfully');
+          this._alert.success(result.message || 'Class updated successfully');
           this.loadAll();
         }
       });
@@ -517,52 +499,36 @@ export class ClassesManagementComponent implements OnInit, OnDestroy, AfterViewI
 
   removeClass(classItem: ClassDto): void {
     if (classItem.currentEnrollment > 0) {
-      this._showError(
-        `Cannot delete "${classItem.name}" - it has ${classItem.currentEnrollment} enrolled students. Please reassign students first.`
+      this._alert.error(
+        `Cannot delete "${classItem.name}" — it has ${classItem.currentEnrollment} enrolled students. Please reassign students first.`
       );
       return;
     }
 
-    const confirmation = this._confirmation.open({
+    this._alert.confirm({
       title: 'Delete Class',
       message: `Are you sure you want to delete "${classItem.name}"? This action cannot be undone.`,
-      icon: {
-        name: 'delete',
-        color: 'warn',
-      },
-      actions: {
-        confirm: {
-          label: 'Delete',
-          color: 'warn',
-        },
-        cancel: {
-          label: 'Cancel',
-        },
-      },
-    });
-
-    confirmation.afterClosed().pipe(takeUntil(this._unsubscribe)).subscribe(result => {
-      if (result === 'confirmed') {
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      onConfirm: () => {
         this._service.delete(classItem.id)
           .pipe(takeUntil(this._unsubscribe))
           .subscribe({
             next: (res) => {
               if (res?.success) {
-                this._showSuccess('Class deleted successfully');
-                
+                this._alert.success('Class deleted successfully');
                 if (this.paginatedData.length === 0 && this.currentPage > 1) {
                   this.currentPage--;
                 }
-                
                 this.loadAll();
               }
             },
             error: (err) => {
               console.error('Failed to delete class:', err);
-              this._showError(err.error?.message || 'Failed to delete class');
+              this._alert.error(err.error?.message || 'Failed to delete class');
             }
           });
-      }
+      },
     });
   }
 
@@ -572,12 +538,12 @@ export class ClassesManagementComponent implements OnInit, OnDestroy, AfterViewI
       .subscribe({
         next: (response) => {
           if (response?.success && response.data) {
-            this._showSuccess(`Viewing details for ${classItem.name}`);
+            this._alert.info(`Viewing details for ${classItem.name}`);
           }
         },
         error: (error) => {
           console.error('Error loading class details:', error);
-          this._showError('Failed to load class details');
+          this._alert.error('Failed to load class details');
         }
       });
   }
@@ -595,20 +561,5 @@ export class ClassesManagementComponent implements OnInit, OnDestroy, AfterViewI
 
   getCapacityUtilization(classItem: ClassDto): number {
     return this._service.getCapacityUtilization(classItem.currentEnrollment, classItem.capacity);
-  }
-
-  // ── Notifications ────────────────────────────────────────────────────────────
-  private _showSuccess(message: string): void {
-    this._snackBar.open(message, 'Close', {
-      duration: 3000,
-      panelClass: ['bg-green-600', 'text-white']
-    });
-  }
-
-  private _showError(message: string): void {
-    this._snackBar.open(message, 'Close', {
-      duration: 5000,
-      panelClass: ['bg-red-600', 'text-white']
-    });
   }
 }

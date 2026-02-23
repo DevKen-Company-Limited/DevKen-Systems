@@ -1,20 +1,22 @@
-﻿using Devken.CBC.SchoolManagement.Domain.Common;
-using Devken.CBC.SchoolManagement.Domain.Entities.Assessment;
+﻿// Devken.CBC.SchoolManagement.Domain/Entities/Assessments/CompetencyAssessment.cs
 using Devken.CBC.SchoolManagement.Domain.Enums;
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
 {
     public class CompetencyAssessment : Assessment1
     {
-        [MaxLength(100)]
+        [Required, MaxLength(100)]
         public string CompetencyName { get; set; } = null!;
 
-        [MaxLength(50)]
-        public string? Strand { get; set; }
+        // Stored as strings for Competency — no FK constraint; can be ad-hoc labels
+        [MaxLength(100)]
+        public string? CompetencyStrand { get; set; }
 
-        [MaxLength(50)]
-        public string? SubStrand { get; set; }
+        [MaxLength(100)]
+        public string? CompetencySubStrand { get; set; }
 
         public CBCLevel TargetLevel { get; set; }
 
@@ -23,23 +25,23 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
 
         public AssessmentMethod AssessmentMethod { get; set; }
 
+        /// <summary>Exceeds | Meets | Approaching | Below</summary>
         [MaxLength(20)]
-        public string? RatingScale { get; set; } // Exceeds, Meets, Approaching, Below
+        public string? RatingScale { get; set; }
 
         public bool IsObservationBased { get; set; } = true;
 
         [MaxLength(500)]
         public string? ToolsRequired { get; set; }
 
-        // ✅ Newly added to match configuration
         [MaxLength(1000)]
         public string? Instructions { get; set; }
 
         [MaxLength(1000)]
         public string? SpecificLearningOutcome { get; set; }
 
-        // Navigation Properties
-        public ICollection<CompetencyAssessmentScore> Scores { get; set; } = new List<CompetencyAssessmentScore>();
+        public ICollection<CompetencyAssessmentScore> Scores { get; set; }
+            = new List<CompetencyAssessmentScore>();
     }
 
     public enum AssessmentMethod

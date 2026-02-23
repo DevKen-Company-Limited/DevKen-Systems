@@ -110,43 +110,38 @@ namespace Devken.CBC.SchoolManagement.Application.Dtos
     {
         [Required]
         [EmailAddress]
-        [MaxLength(256)]
         public string Email { get; set; } = null!;
 
         [Required]
         [MinLength(2)]
-        [MaxLength(100)]
         public string FirstName { get; set; } = null!;
 
         [Required]
         [MinLength(2)]
-        [MaxLength(100)]
         public string LastName { get; set; } = null!;
 
-        [Phone]
-        [MaxLength(20)]
         public string? PhoneNumber { get; set; }
 
-        /// <summary>
-        /// Required for SuperAdmin, ignored for regular admins
-        /// </summary>
-        public Guid? SchoolId { get; set; }
+        //public string? TemporaryPassword { get; set; }
 
-        /// <summary>
-        /// List of role IDs to assign to the user
-        /// </summary>
-        public List<Guid>? RoleIds { get; set; }
-
-        /// <summary>
-        /// If true, user must change password on first login
-        /// </summary>
         public bool RequirePasswordChange { get; set; } = true;
 
+        public bool SendWelcomeEmail { get; set; } = true;
+
+        [Required]
+        [MinLength(1, ErrorMessage = "At least one role must be assigned.")]
+        public List<Guid> RoleIds { get; set; } = [];
+
         /// <summary>
-        /// If not provided, a temporary password will be generated
+        /// Required when the request is made by a SuperAdmin.
+        /// The controller validates this is non-null/non-empty for SuperAdmin callers
+        /// and uses it as the new user's TenantId.
+        ///
+        /// For regular school-admin callers this field is ignored entirely —
+        /// the controller always substitutes their own TenantId to prevent
+        /// cross-school user creation.
         /// </summary>
-        [MinLength(8)]
-        public string? TemporaryPassword { get; set; }
+        public Guid? SchoolId { get; set; }
     }
 
     // Alternative CreateUserDto (record version - simpler, for backward compatibility)
@@ -227,6 +222,8 @@ namespace Devken.CBC.SchoolManagement.Application.Dtos
         public Guid Id { get; set; }
         public string Name { get; set; } = null!;
         public string? Description { get; set; }
+        public bool? IsSystemRole { get; set; }
+        public Guid? SchoolId { get; set; }
     }
 
     public class CreateUserResponseDto

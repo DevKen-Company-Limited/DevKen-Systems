@@ -1,0 +1,176 @@
+<!-- list/grades.component.html -->
+<div class="absolute inset-0 flex min-w-0 flex-col overflow-y-auto" cdkScrollable>
+
+  <!-- ── Page Header ───────────────────────────────────────────────────── -->
+  <app-page-header
+    title="Grades Management"
+    description="Manage student grades across all subjects and terms"
+    icon="grade"
+    [breadcrumbs]="breadcrumbs"
+    [actionTemplate]="headerActions">
+  </app-page-header>
+
+  <ng-template #headerActions>
+    <button mat-flat-button
+      class="bg-white text-indigo-700 hover:bg-yellow-200 hover:text-indigo-900 shadow-lg transition-all hover:shadow-xl font-bold"
+      (click)="createGrade()">
+      <mat-icon class="icon-size-5">add</mat-icon>
+      <span class="ml-2">Add Grade</span>
+    </button>
+  </ng-template>
+
+  <!-- ── Main Content ───────────────────────────────────────────────────── -->
+  <div class="bg-card -mt-10 flex-auto rounded-t-2xl p-6 shadow sm:p-10">
+
+    <!-- Stats -->
+    <app-stats-cards [cards]="statsCards" [columns]="isSuperAdmin ? 5 : 4"></app-stats-cards>
+
+    <!-- Filter Panel -->
+    <div class="mb-6">
+      <app-filter-panel
+        [fields]="filterFields"
+        [showPanel]="showFilterPanel"
+        [columns]="4"
+        (filterChange)="onFilterChange($event)"
+        (clearAll)="onClearFilters()"
+        (togglePanel)="toggleFilterPanel()">
+      </app-filter-panel>
+    </div>
+
+    <!-- Data Table -->
+    <app-data-table
+      [columns]="tableColumns"
+      [data]="paginatedData"
+      [actions]="tableActions"
+      [loading]="isLoading"
+      [header]="tableHeader"
+      [emptyState]="tableEmptyState"
+      [cellTemplates]="cellTemplates">
+    </app-data-table>
+
+    <!-- Pagination -->
+    <app-pagination
+      *ngIf="!isLoading"
+      [currentPage]="currentPage"
+      [totalItems]="filteredData.length"
+      [itemsPerPage]="itemsPerPage"
+      [itemLabel]="'grades'"
+      [showItemsPerPageSelector]="true"
+      [showPageNumbers]="true"
+      (pageChange)="onPageChange($event)"
+      (itemsPerPageChange)="onItemsPerPageChange($event)">
+    </app-pagination>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<!-- Cell Templates                                                       -->
+<!-- ════════════════════════════════════════════════════════════════════ -->
+
+<!-- Student Cell -->
+<ng-template #studentCell let-row>
+  <div class="flex items-center gap-3">
+    <div class="flex items-center justify-center w-10 h-10 rounded-xl shrink-0
+                bg-gradient-to-br from-indigo-100 to-violet-100
+                border border-indigo-200 dark:border-indigo-800">
+      <mat-icon class="text-indigo-600 dark:text-indigo-400 icon-size-5">person</mat-icon>
+    </div>
+    <div>
+      <p class="text-sm font-semibold text-gray-900 dark:text-white">
+        {{ row.studentName || '—' }}
+      </p>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+        {{ row.termName || 'No term' }}
+      </p>
+    </div>
+  </div>
+</ng-template>
+
+<!-- Subject Cell -->
+<ng-template #subjectCell let-row>
+  <div class="flex items-center gap-2">
+    <mat-icon class="icon-size-5 text-violet-600 dark:text-violet-400">menu_book</mat-icon>
+    <span class="text-sm text-gray-700 dark:text-gray-300">{{ row.subjectName || '—' }}</span>
+  </div>
+</ng-template>
+
+<!-- School Cell (SuperAdmin only) -->
+<ng-template #schoolCell let-row>
+  <div class="flex items-center gap-2">
+    <mat-icon class="icon-size-5 text-blue-600 dark:text-blue-400">school</mat-icon>
+    <span class="text-sm text-gray-700 dark:text-gray-300">{{ row.schoolName || '—' }}</span>
+  </div>
+</ng-template>
+
+<!-- Score Cell -->
+<ng-template #scoreCell let-row>
+  <div class="text-center">
+    <p class="text-sm font-bold"
+       [ngClass]="{
+         'text-green-600':  (row.percentage ?? 0) >= 80,
+         'text-blue-600':   (row.percentage ?? 0) >= 70 && (row.percentage ?? 0) < 80,
+         'text-amber-600':  (row.percentage ?? 0) >= 50 && (row.percentage ?? 0) < 70,
+         'text-red-600':    (row.percentage ?? 0) < 50 && row.percentage !== null,
+         'text-gray-400':   row.percentage === null
+       }">
+      {{ row.score !== null ? row.score : '—' }}
+      <span *ngIf="row.maximumScore !== null" class="text-xs font-normal text-gray-400">
+        / {{ row.maximumScore }}
+      </span>
+    </p>
+    <p *ngIf="row.percentage !== null"
+       class="text-xs mt-0.5 font-semibold"
+       [ngClass]="{
+         'text-green-500': (row.percentage ?? 0) >= 80,
+         'text-blue-500':  (row.percentage ?? 0) >= 70 && (row.percentage ?? 0) < 80,
+         'text-amber-500': (row.percentage ?? 0) >= 50 && (row.percentage ?? 0) < 70,
+         'text-red-500':   (row.percentage ?? 0) < 50
+       }">
+      {{ row.percentage }}%
+    </p>
+  </div>
+</ng-template>
+
+<!-- Grade Letter Cell -->
+<ng-template #gradeCell let-row>
+  <div class="flex justify-center">
+    <span *ngIf="row.gradeLetter; else noGrade"
+      class="inline-flex items-center justify-center w-10 h-10 rounded-full text-sm font-bold shadow-sm"
+      [ngClass]="{
+        'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300':  row.gradeLetter?.startsWith('A'),
+        'bg-blue-100  text-blue-700  dark:bg-blue-900/30  dark:text-blue-300':   row.gradeLetter?.startsWith('B'),
+        'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300':  row.gradeLetter?.startsWith('C'),
+        'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300': row.gradeLetter?.startsWith('D'),
+        'bg-red-100   text-red-700   dark:bg-red-900/30   dark:text-red-300':    row.gradeLetter === 'E' || row.gradeLetter === 'F'
+      }">
+      {{ row.gradeLetter }}
+    </span>
+    <ng-template #noGrade>
+      <span class="text-gray-400 text-sm">—</span>
+    </ng-template>
+  </div>
+</ng-template>
+
+<!-- Grade Type Cell -->
+<ng-template #typeCell let-row>
+  <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold"
+    [ngClass]="{
+      'bg-blue-100   dark:bg-blue-900/30   text-blue-700   dark:text-blue-300':   getGradeTypeLabel(row.gradeType) === 'Formative',
+      'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300': getGradeTypeLabel(row.gradeType) === 'Summative',
+      'bg-teal-100   dark:bg-teal-900/30   text-teal-700   dark:text-teal-300':   getGradeTypeLabel(row.gradeType) === 'Competency',
+      'bg-gray-100   dark:bg-gray-700      text-gray-600   dark:text-gray-400':  !row.gradeType
+    }">
+    {{ row.gradeType ? getGradeTypeLabel(row.gradeType) : '—' }}
+  </span>
+</ng-template>
+
+<!-- Status Cell -->
+<ng-template #statusCell let-row>
+  <span class="px-3 py-1 rounded-full text-xs font-semibold"
+    [ngClass]="{
+      'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400':  row.isFinalized,
+      'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400': !row.isFinalized
+    }">
+    {{ row.isFinalized ? 'Finalized' : 'Pending' }}
+  </span>
+</ng-template>

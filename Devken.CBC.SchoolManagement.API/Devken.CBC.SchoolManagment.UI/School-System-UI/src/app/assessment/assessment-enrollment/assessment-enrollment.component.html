@@ -1,0 +1,271 @@
+<!-- assessment-enrollment/assessment-enrollment.component.html -->
+<div class="w-full min-h-screen bg-gray-50 dark:bg-gray-900">
+  <div class="flex h-screen max-w-[1920px] mx-auto">
+
+    <!-- ─── Left Sidebar ────────────────────────────────────────────── -->
+    <aside
+      class="relative flex flex-col bg-white dark:bg-gray-800 shadow-xl transition-all duration-300 z-30"
+      [class.w-80]="!isSidebarCollapsed"
+      [class.w-20]="isSidebarCollapsed"
+      [class.hidden]="isMobileView && !showMobileSidebar"
+      [class.fixed]="isMobileView && showMobileSidebar"
+      [class.inset-0]="isMobileView && showMobileSidebar">
+
+      <!-- Mobile overlay -->
+      <div
+        *ngIf="isMobileView && showMobileSidebar"
+        class="fixed inset-0 bg-black/50 -z-10"
+        (click)="showMobileSidebar = false">
+      </div>
+
+      <!-- Collapse button -->
+      <button
+        mat-icon-button
+        class="absolute -right-3 top-6 z-10 bg-white dark:bg-gray-800 shadow-md rounded-full border border-gray-200 dark:border-gray-700"
+        [class.hidden]="isMobileView"
+        (click)="toggleSidebar()">
+        <mat-icon>{{ isSidebarCollapsed ? 'chevron_right' : 'chevron_left' }}</mat-icon>
+      </button>
+
+      <!-- Close mobile -->
+      <button
+        *ngIf="isMobileView && showMobileSidebar"
+        mat-icon-button
+        class="absolute right-4 top-4 z-20"
+        (click)="showMobileSidebar = false">
+        <mat-icon>close</mat-icon>
+      </button>
+
+      <!-- Brand -->
+      <div class="flex items-center gap-3 px-5 py-7 border-b border-gray-200 dark:border-gray-700">
+        <div
+          class="flex items-center justify-center w-12 h-12 rounded-xl shadow-lg flex-shrink-0 bg-gradient-to-br"
+          [ngClass]="stepGradient">
+          <mat-icon class="text-white">assignment</mat-icon>
+        </div>
+        <div *ngIf="!isSidebarCollapsed || isMobileView" class="flex flex-col min-w-0">
+          <span class="text-base font-bold text-gray-900 dark:text-white truncate">
+            {{ isEditMode ? 'Edit Assessment' : 'Create Assessment' }}
+          </span>
+          <span class="text-xs text-gray-500 dark:text-gray-400">CBC Assessment Manager</span>
+        </div>
+      </div>
+
+      <!-- Progress Ring -->
+      <div *ngIf="!isSidebarCollapsed || isMobileView" class="flex flex-col items-center py-7 px-5">
+        <div class="relative w-28 h-28">
+          <svg class="w-28 h-28 transform -rotate-90" viewBox="0 0 128 128">
+            <circle class="text-gray-200 dark:text-gray-700"
+              stroke="currentColor" stroke-width="8" fill="transparent" r="56" cx="64" cy="64"/>
+            <circle
+              class="transition-all duration-500"
+              [ngClass]="{
+                'text-indigo-500': currentAssessmentType === 1 || !currentAssessmentType,
+                'text-violet-500': currentAssessmentType === 2,
+                'text-teal-500':   currentAssessmentType === 3
+              }"
+              stroke="currentColor" stroke-width="8" fill="transparent" r="56" cx="64" cy="64"
+              stroke-linecap="round"
+              [style.strokeDasharray]="'352'"
+              [style.strokeDashoffset]="getRingOffset()"/>
+          </svg>
+          <div class="absolute inset-0 flex flex-col items-center justify-center">
+            <span class="text-xl font-bold text-gray-900 dark:text-white">{{ getProgressPercent() }}%</span>
+            <span class="text-xs text-gray-500 dark:text-gray-400">Done</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Steps nav -->
+      <nav class="flex-1 px-3 pb-4 overflow-y-auto space-y-1">
+        <button
+          *ngFor="let step of steps; let i = index"
+          mat-button
+          class="w-full !justify-start !h-auto !py-3 !px-3 rounded-xl transition-all"
+          [ngClass]="{
+            'bg-indigo-50  dark:bg-indigo-900/20':  currentStep === i && currentAssessmentType !== 2 && currentAssessmentType !== 3,
+            'bg-violet-50  dark:bg-violet-900/20':  currentStep === i && currentAssessmentType === 2,
+            'bg-teal-50    dark:bg-teal-900/20':    currentStep === i && currentAssessmentType === 3,
+            'bg-green-50   dark:bg-green-900/20':   isStepCompleted(i) && currentStep !== i,
+            '!justify-center': isSidebarCollapsed && !isMobileView
+          }"
+          [disabled]="!canNavigateTo(i)"
+          (click)="navigateToStep(i)">
+
+          <div class="flex items-center gap-3 w-full">
+            <div
+              class="flex items-center justify-center w-8 h-8 rounded-full flex-shrink-0 transition-all"
+              [ngClass]="{
+                'bg-indigo-600 text-white': currentStep === i && currentAssessmentType !== 2 && currentAssessmentType !== 3,
+                'bg-violet-600 text-white': currentStep === i && currentAssessmentType === 2,
+                'bg-teal-600   text-white': currentStep === i && currentAssessmentType === 3,
+                'bg-green-600  text-white': isStepCompleted(i) && currentStep !== i,
+                'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400': !isStepCompleted(i) && currentStep !== i
+              }">
+              <mat-icon *ngIf="isStepCompleted(i) && currentStep !== i" class="!text-base !w-5 !h-5">check</mat-icon>
+              <mat-icon *ngIf="!(isStepCompleted(i) && currentStep !== i)" class="!text-base !w-5 !h-5">
+                {{ step.icon }}
+              </mat-icon>
+            </div>
+
+            <div *ngIf="!isSidebarCollapsed || isMobileView" class="flex flex-col items-start flex-1 min-w-0">
+              <span class="text-sm font-semibold text-gray-900 dark:text-white truncate w-full">{{ step.label }}</span>
+              <span
+                class="text-xs"
+                [ngClass]="{
+                  'text-indigo-500': currentStep === i && currentAssessmentType !== 2 && currentAssessmentType !== 3,
+                  'text-violet-500': currentStep === i && currentAssessmentType === 2,
+                  'text-teal-500':   currentStep === i && currentAssessmentType === 3,
+                  'text-green-500':  isStepCompleted(i) && currentStep !== i,
+                  'text-gray-400':   !isStepCompleted(i) && currentStep !== i
+                }">
+                {{ isStepCompleted(i) ? 'Saved ✓' : currentStep === i ? 'In progress' : 'Pending' }}
+              </span>
+            </div>
+          </div>
+        </button>
+      </nav>
+
+      <!-- Last saved -->
+      <div *ngIf="(!isSidebarCollapsed || isMobileView) && lastSaved"
+           class="px-5 py-4 border-t border-gray-200 dark:border-gray-700">
+        <p class="text-xs text-gray-400 flex items-center gap-1">
+          <mat-icon class="!text-xs !w-3 !h-3 text-green-500">cloud_done</mat-icon>
+          Draft saved {{ lastSaved | date:'shortTime' }}
+        </p>
+      </div>
+
+    </aside>
+
+    <!-- ─── Main Content ────────────────────────────────────────────── -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+
+      <!-- Top Bar -->
+      <header class="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-4
+                     bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+        <div class="flex items-center gap-2">
+          <button *ngIf="isMobileView" mat-icon-button (click)="showMobileSidebar = true">
+            <mat-icon>menu</mat-icon>
+          </button>
+          <button mat-button class="!-ml-2 text-gray-700 dark:text-gray-300" (click)="goBack()">
+            <mat-icon>arrow_back</mat-icon>
+            <span class="ml-1 hidden sm:inline">Back to Assessments</span>
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+          <span>Step {{ currentStep + 1 }} of {{ steps.length }}</span>
+          <span class="hidden sm:inline">·</span>
+          <span class="font-semibold text-gray-900 dark:text-white hidden sm:inline">{{ steps[currentStep]?.label }}</span>
+        </div>
+
+        <button mat-stroked-button [disabled]="isSaving" (click)="saveDraft()"
+                class="text-sm">
+          <mat-spinner *ngIf="isSaving" diameter="16" class="mr-1.5"></mat-spinner>
+          <mat-icon *ngIf="!isSaving">bookmark_border</mat-icon>
+          <span class="ml-1.5 hidden sm:inline">{{ isSaving ? 'Saving…' : 'Save Draft' }}</span>
+        </button>
+      </header>
+
+      <!-- Step Content -->
+      <div
+        class="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-8"
+        [@stepTransition]="currentStep">
+
+        <app-assessment-type-step
+          *ngIf="currentStep === 0"
+          [formData]="formSections['type']"
+          [isEditMode]="isEditMode"
+          (formChanged)="onSectionChanged('type', $event)"
+          (formValid)="onSectionValidChanged('type', $event)">
+        </app-assessment-type-step>
+
+        <app-assessment-identity-step
+          *ngIf="currentStep === 1"
+          [formData]="formSections['identity']"
+          [assessmentType]="currentAssessmentType"
+          [isEditMode]="isEditMode"
+          [isSuperAdmin]="isSuperAdmin"
+          (formChanged)="onSectionChanged('identity', $event)"
+          (formValid)="onSectionValidChanged('identity', $event)">
+        </app-assessment-identity-step>
+
+        <app-assessment-details-step
+          *ngIf="currentStep === 2"
+          [formData]="formSections['details']"
+          [assessmentType]="currentAssessmentType"
+          [isEditMode]="isEditMode"
+          (formChanged)="onSectionChanged('details', $event)"
+          (formValid)="onSectionValidChanged('details', $event)">
+        </app-assessment-details-step>
+
+        <app-assessment-review-step
+          *ngIf="currentStep === 3"
+          [formSections]="formSections"
+          [steps]="steps"
+          [completedSteps]="completedSteps"
+          [isSuperAdmin]="isSuperAdmin"
+          (editSection)="navigateToStep($event)">
+        </app-assessment-review-step>
+
+      </div>
+
+      <!-- Bottom Navigation -->
+      <footer class="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-4
+                     bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-lg">
+
+        <button mat-stroked-button (click)="prevStep()" [disabled]="currentStep === 0">
+          <mat-icon>chevron_left</mat-icon>
+          <span class="ml-1 hidden sm:inline">Previous</span>
+        </button>
+
+        <!-- Progress dots -->
+        <div class="flex items-center gap-1.5">
+          <span
+            *ngFor="let step of steps; let i = index"
+            class="rounded-full transition-all duration-300"
+            [ngClass]="{
+              'h-2 w-8':  currentStep === i,
+              'h-2 w-2':  currentStep !== i,
+              'bg-indigo-500': (currentStep === i || isStepCompleted(i)) && currentAssessmentType !== 2 && currentAssessmentType !== 3,
+              'bg-violet-500': (currentStep === i || isStepCompleted(i)) && currentAssessmentType === 2,
+              'bg-teal-500':   (currentStep === i || isStepCompleted(i)) && currentAssessmentType === 3,
+              'bg-gray-300 dark:bg-gray-600': !isStepCompleted(i) && currentStep !== i
+            }">
+          </span>
+        </div>
+
+        <!-- Next -->
+        <button
+          *ngIf="currentStep < steps.length - 1"
+          mat-flat-button
+          [ngClass]="{
+            'bg-indigo-600 text-white hover:bg-indigo-700': currentAssessmentType !== 2 && currentAssessmentType !== 3,
+            'bg-violet-600 text-white hover:bg-violet-700': currentAssessmentType === 2,
+            'bg-teal-600   text-white hover:bg-teal-700':   currentAssessmentType === 3
+          }"
+          (click)="nextStep()"
+          [disabled]="!canProceed()">
+          <span class="mr-1 hidden sm:inline">Next</span>
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+
+        <!-- Submit -->
+        <button
+          *ngIf="currentStep === steps.length - 1"
+          mat-flat-button
+          [ngClass]="{
+            'bg-green-600 text-white hover:bg-green-700': allStepsCompleted(),
+            'bg-gray-300  text-gray-500 cursor-not-allowed': !allStepsCompleted()
+          }"
+          (click)="submitForm()"
+          [disabled]="!allStepsCompleted() || isSubmitting">
+          <mat-spinner *ngIf="isSubmitting" diameter="18" class="mr-2"></mat-spinner>
+          <mat-icon *ngIf="!isSubmitting">{{ isEditMode ? 'save' : 'check_circle' }}</mat-icon>
+          <span class="ml-1.5">{{ isSubmitting ? 'Saving…' : isEditMode ? 'Update' : 'Create Assessment' }}</span>
+        </button>
+
+      </footer>
+    </main>
+  </div>
+</div>

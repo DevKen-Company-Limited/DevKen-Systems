@@ -1,90 +1,85 @@
 ﻿using System;
 using System.Drawing;
 using System.IO;
-using DevExpress.Drawing;                  // DXFont, DXFontStyle
-using DevExpress.Drawing.Printing;         // DXPaperKind, DXMargins
-using DevExpress.XtraPrinting;             // BorderSide, TextAlignment, ImageSizeMode, PageInfo, PaddingInfo
-using DevExpress.XtraPrinting.Drawing;     // ImageSource, WatermarkPosition, DirectionMode
-using DevExpress.XtraReports.UI;           // XtraReport, all bands and XR controls
+using DevExpress.Drawing;
+using DevExpress.Drawing.Printing;
+using DevExpress.XtraPrinting;
+using DevExpress.XtraPrinting.Drawing;
+using DevExpress.XtraReports.UI;
 using Devken.CBC.SchoolManagement.Domain.Entities.Administration;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Reports
 {
-    public abstract class BaseSchoolReportDocument(
-        School school,
-        byte[]? logoBytes,
-        string reportTitle,
-        bool showWatermark = false) : XtraReport
+    public abstract class BaseSchoolReportDocument : XtraReport
     {
-        // ── Fields ─────────────────────────────────────────────────────────
-        protected School School = school ?? throw new ArgumentNullException(nameof(school));
-        protected byte[]? LogoBytes = logoBytes;
-        protected string ReportTitle = reportTitle ?? throw new ArgumentNullException(nameof(reportTitle));
-        protected bool ShowWatermark = showWatermark;
+        protected readonly School? School;
+        protected readonly byte[]? LogoBytes;
+        protected readonly string ReportTitle;
+        protected readonly bool IsSuperAdmin;
 
-        // ── Layout constants ───────────────────────────────────────────────
         protected const float PageWidth = 750f;
-        protected const float HeaderHeight = 110f;
-        protected const float FooterHeight = 28f;
-        protected const float AccentBarH = 5f;
-        protected const float LogoSize = 72f;
+        protected const float HeaderHeight = 120f;
+        protected const float FooterHeight = 30f;
+        protected const float AccentBarH = 6f;
+        protected const float LogoSize = 70f;
         protected const float LogoX = 0f;
-        protected const float InfoX = LogoSize + 12f;
+        protected const float InfoX = LogoSize + 14f;
         protected const float InfoW = PageWidth - InfoX;
 
-        // ── Brand colours ──────────────────────────────────────────────────
-        protected static Color AccentColor => Color.FromArgb(30, 80, 160);
-        protected static Color AccentLight => Color.FromArgb(235, 240, 250);
-        protected static Color DividerColor => Color.FromArgb(180, 195, 220);
-        protected static Color TitleColor => Color.FromArgb(20, 55, 120);
-        protected static Color SubTextColor => Color.FromArgb(90, 100, 115);
-        protected static Color HeaderBg => Color.FromArgb(30, 80, 160);
+        protected static Color AccentColor => Color.FromArgb(24, 72, 152);
+        protected static Color AccentDark => Color.FromArgb(16, 50, 110);
+        protected static Color AccentLight => Color.FromArgb(232, 239, 252);
+        protected static Color DividerColor => Color.FromArgb(185, 200, 225);
+        protected static Color TitleColor => Color.FromArgb(16, 50, 110);
+        protected static Color SubTextColor => Color.FromArgb(95, 108, 126);
+        protected static Color HeaderBg => Color.FromArgb(24, 72, 152);
         protected static Color HeaderFg => Color.White;
         protected static Color EvenRowBg => Color.White;
-        protected static Color OddRowBg => Color.FromArgb(245, 248, 253);
-        protected static Color BorderClr => Color.FromArgb(210, 220, 235);
+        protected static Color OddRowBg => Color.FromArgb(243, 247, 254);
+        protected static Color BorderClr => Color.FromArgb(210, 222, 238);
 
-        // ── Called last in every subclass constructor ──────────────────────
+        protected BaseSchoolReportDocument(
+            School? school,
+            byte[]? logoBytes,
+            string reportTitle,
+            bool isSuperAdmin = false)
+        {
+            School = school;
+            LogoBytes = logoBytes;
+            ReportTitle = reportTitle ?? throw new ArgumentNullException(nameof(reportTitle));
+            IsSuperAdmin = isSuperAdmin;
+        }
+
         protected void Build()
         {
             Margins = new DXMargins(36, 36, 36, 36);
             PaperKind = DXPaperKind.A4;
             Font = new DXFont("Segoe UI", 9);
 
-            ApplyOverlay();
+            ApplyDiagonalWatermark();
             BuildHeader();
             BuildBody();
             BuildFooter();
         }
 
-        // ── Overlay watermark ──────────────────────────────────────────────
-        private void ApplyOverlay()
+        // ── Watermark ──────────────────────────────────────────────────────
+        private void ApplyDiagonalWatermark()
         {
-            var overlay = new XRWatermark { ShowBehind = true };
+            var watermarkText = (IsSuperAdmin && School == null)
+                ? "SYSTEM REPORT"
+                : School?.Name?.ToUpperInvariant() ?? "CONFIDENTIAL";
 
-            if (LogoBytes != null)
+            Watermarks.Add(new XRWatermark
             {
-                // ✅ Correct: convert byte[] → System.Drawing.Image → new ImageSource(image)
-                //    ImageSource has NO FromStream method — constructor takes Image directly
-                var img = Image.FromStream(new MemoryStream(LogoBytes));
-                overlay.ImageSource = new ImageSource(img);
-                overlay.ImageAlign = ContentAlignment.MiddleCenter;
-                overlay.ImageTiling = false;
-                overlay.ImageTransparency = 210;   // 0 = opaque, 255 = invisible
-                overlay.ImagePosition = WatermarkPosition.Behind;
-            }
-            else
-            {
-                // Text overlay when no logo
-                overlay.Text = School.Name.ToUpperInvariant();
-                overlay.Font = new DXFont("Segoe UI", 52, DXFontStyle.Bold);
-                overlay.ForeColor = AccentColor;
-                overlay.TextTransparency = 225;
-                overlay.TextDirection = DirectionMode.ForwardDiagonal;
-                overlay.TextPosition = WatermarkPosition.Behind;
-            }
+                ShowBehind = true,
+                Text = watermarkText,
+                Font = new DXFont("Segoe UI", 56, DXFontStyle.Bold),
+                ForeColor = AccentColor,
+                TextTransparency = 228,
+                TextDirection = DirectionMode.ForwardDiagonal,
+                TextPosition = WatermarkPosition.Behind
+            });
 
-            Watermarks.Add(overlay);
             DrawWatermark = true;
         }
 
@@ -93,98 +88,142 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Reports
         {
             var header = new PageHeaderBand { HeightF = HeaderHeight };
 
-            // Accent bar
+            // Two-tone top accent bar
             header.Controls.Add(new XRLabel
             {
                 LocationF = new PointF(0, 0),
-                SizeF = new SizeF(PageWidth, AccentBarH),
+                SizeF = new SizeF(PageWidth * 0.65f, AccentBarH),
                 BackColor = AccentColor,
                 Borders = BorderSide.None
             });
+            header.Controls.Add(new XRLabel
+            {
+                LocationF = new PointF(PageWidth * 0.65f, 0),
+                SizeF = new SizeF(PageWidth * 0.35f, AccentBarH),
+                BackColor = AccentDark,
+                Borders = BorderSide.None
+            });
 
-            // Logo / monogram
+            // Logo / initials
             if (LogoBytes != null)
             {
-                // ✅ Same pattern: byte[] → Image → new ImageSource(image)
-                var img = Image.FromStream(new MemoryStream(LogoBytes));
                 header.Controls.Add(new XRPictureBox
                 {
-                    LocationF = new PointF(LogoX, AccentBarH + 8f),
+                    LocationF = new PointF(LogoX, AccentBarH + 10f),
                     SizeF = new SizeF(LogoSize, LogoSize),
                     Sizing = ImageSizeMode.Squeeze,
-                    ImageSource = new ImageSource(img)
+                    ImageSource = new ImageSource(Image.FromStream(new MemoryStream(LogoBytes)))
                 });
             }
             else
             {
-                // Monogram fallback
+                var initials = BuildInitials(School?.Name);
                 header.Controls.Add(new XRLabel
                 {
-                    Text = School.Name.Length > 0
-                                        ? School.Name[0].ToString().ToUpperInvariant()
-                                        : "S",
-                    LocationF = new PointF(LogoX, AccentBarH + 8f),
+                    Text = initials,
+                    LocationF = new PointF(LogoX, AccentBarH + 10f),
                     SizeF = new SizeF(LogoSize, LogoSize),
                     BackColor = AccentLight,
                     ForeColor = AccentColor,
-                    Font = new DXFont("Segoe UI", 30, DXFontStyle.Bold),
+                    Font = new DXFont("Segoe UI", initials.Length > 1 ? 22 : 30, DXFontStyle.Bold),
                     TextAlignment = TextAlignment.MiddleCenter,
                     Borders = BorderSide.All,
                     BorderColor = DividerColor,
-                    BorderWidth = 1
+                    BorderWidth = 1.5f
                 });
             }
 
-            // School name
+            // ── School / system name — auto-scale font for long names ──────
+            var headingText = (IsSuperAdmin && School == null)
+                ? "All Schools — System Report"
+                : School?.Name ?? string.Empty;
+
+            // Scale font down gracefully:
+            //  ≤ 40 chars  →  14pt (standard)
+            //  41-55 chars →  11pt
+            //  56-70 chars →   9pt
+            //  > 70 chars  →   8pt (+ word-wrap so it never clips)
+            float headingFontSize = headingText.Length switch
+            {
+                <= 40 => 14f,
+                <= 55 => 11f,
+                <= 70 => 9f,
+                _ => 8f
+            };
+
+            // Taller label when text wraps (two-line names get 40px, single-line 24px)
+            float headingHeight = headingText.Length > 55 ? 40f : 24f;
+
             header.Controls.Add(new XRLabel
             {
-                Text = School.Name,
-                LocationF = new PointF(InfoX, AccentBarH + 6f),
-                SizeF = new SizeF(InfoW, 22f),
-                Font = new DXFont("Segoe UI", 14, DXFontStyle.Bold),
+                Text = headingText,
+                LocationF = new PointF(InfoX, AccentBarH + 8f),
+                SizeF = new SizeF(InfoW, headingHeight),
+                Font = new DXFont("Segoe UI", headingFontSize, DXFontStyle.Bold),
                 ForeColor = TitleColor,
                 TextAlignment = TextAlignment.MiddleLeft,
-                Borders = BorderSide.None
+                Borders = BorderSide.None,
+                CanGrow = true,
+                WordWrap = headingText.Length > 40   // wrap only when needed
             });
 
-            // Address lines
-            float y = AccentBarH + 30f;
-            foreach (var line in new[]
+            // Contact / address lines — start below the heading box
+            float y = AccentBarH + 8f + headingHeight;
+
+            if (School != null)
             {
-                School.Address ?? "",
-                School.County + "  •  " + School.SubCounty,
-                "Tel: " + School.PhoneNumber + "   |   " + School.Email
-            })
+                foreach (var line in new[]
+                {
+                    School.Address ?? string.Empty,
+                    $"{School.County}  •  {School.SubCounty}",
+                    $"Tel: {School.PhoneNumber}   |   {School.Email}"
+                })
+                {
+                    header.Controls.Add(new XRLabel
+                    {
+                        Text = line,
+                        LocationF = new PointF(InfoX, y),
+                        SizeF = new SizeF(InfoW, 15f),
+                        Font = new DXFont("Segoe UI", 8),
+                        ForeColor = SubTextColor,
+                        TextAlignment = TextAlignment.MiddleLeft,
+                        Borders = BorderSide.None,
+                        CanGrow = false,
+                        WordWrap = false
+                    });
+                    y += 16f;
+                }
+            }
+            else
             {
                 header.Controls.Add(new XRLabel
                 {
-                    Text = line,
+                    Text = "Generated by System Administrator  •  Covers all schools in the system",
                     LocationF = new PointF(InfoX, y),
                     SizeF = new SizeF(InfoW, 15f),
-                    Font = new DXFont("Segoe UI", 8),
+                    Font = new DXFont("Segoe UI", 8, DXFontStyle.Italic),
                     ForeColor = SubTextColor,
                     TextAlignment = TextAlignment.MiddleLeft,
                     Borders = BorderSide.None
                 });
-                y += 16f;
             }
 
-            // Divider line
+            // Divider
+            float divY = AccentBarH + LogoSize + 16f;
             header.Controls.Add(new XRLabel
             {
-                LocationF = new PointF(0, AccentBarH + LogoSize + 12f),
+                LocationF = new PointF(0, divY),
                 SizeF = new SizeF(PageWidth, 1.5f),
                 BackColor = DividerColor,
                 Borders = BorderSide.None
             });
 
-            // Report title band
-            float titleY = AccentBarH + LogoSize + 16f;
+            // Report title banner
             header.Controls.Add(new XRLabel
             {
                 Text = ReportTitle,
-                LocationF = new PointF(0, titleY),
-                SizeF = new SizeF(PageWidth, 20f),
+                LocationF = new PointF(0, divY + 3f),
+                SizeF = new SizeF(PageWidth, 22f),
                 Font = new DXFont("Segoe UI", 11, DXFontStyle.Bold),
                 ForeColor = TitleColor,
                 BackColor = AccentLight,
@@ -201,7 +240,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Reports
         {
             var footer = new PageFooterBand { HeightF = FooterHeight };
 
-            // Top rule
+            // Rule
             footer.Controls.Add(new XRLabel
             {
                 LocationF = new PointF(0, 0),
@@ -210,34 +249,43 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Reports
                 Borders = BorderSide.None
             });
 
-            // Date — left
+            // Left — timestamp
             footer.Controls.Add(new XRLabel
             {
-                Text = "Generated: " + DateTime.Now.ToString("dd MMM yyyy  HH:mm"),
-                LocationF = new PointF(0, 5f),
-                SizeF = new SizeF(300f, 18f),
+                Text = $"Generated: {DateTime.Now:dd MMM yyyy  HH:mm}",
+                LocationF = new PointF(0, 6f),
+                SizeF = new SizeF(250f, 18f),
                 Font = new DXFont("Segoe UI", 8),
                 ForeColor = SubTextColor,
                 TextAlignment = TextAlignment.MiddleLeft,
                 Borders = BorderSide.None
             });
 
-            // School name — centre (subtle)
+            // Centre — school name, truncated so it never overlaps left/right slots
+            // Safe zone for centre label: 250 px left margin, 130 px right → 370 px wide
+            const float footerCentreX = 250f;
+            const float footerCentreW = 250f;   // generous but bounded
+
+            var footerName = School?.Name ?? "System Report";
+            footerName = TruncateForFooter(footerName, maxChars: 40);
+
             footer.Controls.Add(new XRLabel
             {
-                Text = School.Name,
-                LocationF = new PointF(200f, 5f),
-                SizeF = new SizeF(350f, 18f),
+                Text = footerName,
+                LocationF = new PointF(footerCentreX, 6f),
+                SizeF = new SizeF(footerCentreW, 18f),
                 Font = new DXFont("Segoe UI", 8, DXFontStyle.Italic),
                 ForeColor = DividerColor,
                 TextAlignment = TextAlignment.MiddleCenter,
-                Borders = BorderSide.None
+                Borders = BorderSide.None,
+                CanGrow = false,
+                WordWrap = false
             });
 
-            // Page N of M — right
+            // Right — page N of M
             footer.Controls.Add(new XRPageInfo
             {
-                LocationF = new PointF(PageWidth - 130f, 5f),
+                LocationF = new PointF(PageWidth - 130f, 6f),
                 SizeF = new SizeF(130f, 18f),
                 PageInfo = PageInfo.NumberOfTotal,
                 Format = "Page {0} of {1}",
@@ -250,9 +298,30 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Reports
             Bands.Add(footer);
         }
 
+        // ── Abstract ───────────────────────────────────────────────────────
         protected abstract void BuildBody();
 
-        // ── Shared label helper ────────────────────────────────────────────
+        // ── Helpers ────────────────────────────────────────────────────────
+        private static string BuildInitials(string? name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return "SM";
+            var parts = name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            return parts.Length >= 2
+                ? $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant()
+                : parts[0][0].ToString().ToUpperInvariant();
+        }
+
+        /// <summary>
+        /// Truncates <paramref name="name"/> to <paramref name="maxChars"/> characters,
+        /// appending "…" when truncation occurs. Used in space-constrained areas like
+        /// the footer where layout is fixed-width.
+        /// </summary>
+        private static string TruncateForFooter(string name, int maxChars)
+        {
+            if (name.Length <= maxChars) return name;
+            return string.Concat(name.AsSpan(0, maxChars - 1), "…");
+        }
+
         protected static XRLabel MakeLabel(
             string text,
             float x, float y,
@@ -275,7 +344,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Reports
                 WordWrap = false
             };
 
-        // ── Export ─────────────────────────────────────────────────────────
         public byte[] ExportToPdfBytes()
         {
             using var stream = new MemoryStream();

@@ -1,0 +1,33 @@
+export enum CBCLevel {
+  PP1 = 1,
+  PP2 = 2,
+  Grade1 = 3,
+  Grade2 = 4,
+  Grade3 = 5,
+  Grade4 = 6,
+  Grade5 = 7,
+  Grade6 = 8,
+  Grade7 = 9,
+  Grade8 = 10,
+  Grade9 = 11,
+  Grade10 = 12,
+  Grade11 = 13,
+  Grade12 = 14,
+}
+
+export const CBCLevelOptions = [
+  { value: CBCLevel.PP1,    label: 'Pre-Primary 1 (PP1)' },
+  { value: CBCLevel.PP2,    label: 'Pre-Primary 2 (PP2)' },
+  { value: CBCLevel.Grade1, label: 'Grade 1' },
+  { value: CBCLevel.Grade2, label: 'Grade 2' },
+  { value: CBCLevel.Grade3, label: 'Grade 3' },
+  { value: CBCLevel.Grade4, label: 'Grade 4' },
+  { value: CBCLevel.Grade5, label: 'Grade 5' },
+  { value: CBCLevel.Grade6, label: 'Grade 6' },
+  { value: CBCLevel.Grade7, label: 'Grade 7' },
+  { value: CBCLevel.Grade8, label: 'Grade 8' },
+  { value: CBCLevel.Grade9, label: 'Grade 9' },
+  { value: CBCLevel.Grade10, label: 'Grade 10' },
+  { value: CBCLevel.Grade11, label: 'Grade 11' },
+  { value: CBCLevel.Grade12, label: 'Grade 12' },
+];

@@ -1,6 +1,7 @@
 ﻿using Devken.CBC.SchoolManagement.Domain.Common;
 using Devken.CBC.SchoolManagement.Domain.Entities.Administration;
 using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
+using Devken.CBC.SchoolManagement.Domain.Entities.Assessments.Academic;
 using Devken.CBC.SchoolManagement.Domain.Entities.Finance;
 using Devken.CBC.SchoolManagement.Domain.Entities.Helpers;
 using Devken.CBC.SchoolManagement.Domain.Entities.Reports;

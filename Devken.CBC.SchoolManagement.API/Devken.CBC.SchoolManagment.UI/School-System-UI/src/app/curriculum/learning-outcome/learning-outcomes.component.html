@@ -1,0 +1,130 @@
+<!-- Learning Outcomes List -->
+<div class="absolute inset-0 flex min-w-0 flex-col overflow-y-auto" cdkScrollable>
+
+  <app-page-header
+    title="Learning Outcomes"
+    description="Manage CBC curriculum learning outcomes across all levels"
+    icon="format_list_bulleted"
+    [breadcrumbs]="breadcrumbs"
+    [actionTemplate]="headerActions">
+  </app-page-header>
+
+  <ng-template #headerActions>
+    <button mat-stroked-button
+      class="mr-3 border-teal-200 text-teal-700 hover:bg-teal-50 dark:border-teal-700 dark:text-teal-400"
+      (click)="router.navigate(['/curriculum/sub-strands'])">
+      <mat-icon class="icon-size-5">arrow_back</mat-icon>
+      <span class="ml-2">Sub-Strands</span>
+    </button>
+    <button mat-flat-button
+      class="bg-white text-violet-700 hover:bg-yellow-200 hover:text-violet-900 shadow-lg font-bold"
+      (click)="create()">
+      <mat-icon class="icon-size-5">add</mat-icon>
+      <span class="ml-2">Add</span>
+    </button>
+  </ng-template>
+
+  <div class="bg-card -mt-10 flex-auto rounded-t-2xl p-6 shadow sm:p-10">
+
+    <app-stats-cards [cards]="statsCards" [columns]="4"></app-stats-cards>
+
+    <div class="mb-6">
+      <app-filter-panel
+        [fields]="filterFields"
+        [showPanel]="showFilterPanel"
+        [columns]="4"
+        (filterChange)="onFilterChange($event)"
+        (clearAll)="onClearFilters()"
+        (togglePanel)="toggleFilterPanel()">
+      </app-filter-panel>
+    </div>
+
+    <app-data-table
+      [columns]="tableColumns"
+      [data]="paginatedData"
+      [actions]="tableActions"
+      [loading]="isLoading"
+      [header]="tableHeader"
+      [emptyState]="tableEmptyState"
+      [cellTemplates]="cellTemplates">
+    </app-data-table>
+
+    <app-pagination
+      *ngIf="!isLoading"
+      [currentPage]="currentPage"
+      [totalItems]="filteredData.length"
+      [itemsPerPage]="itemsPerPage"
+      [itemLabel]="'outcomes'"
+      [showItemsPerPageSelector]="true"
+      [showPageNumbers]="true"
+      (pageChange)="onPageChange($event)"
+      (itemsPerPageChange)="onItemsPerPageChange($event)">
+    </app-pagination>
+  </div>
+</div>
+
+<!-- Cell Templates -->
+
+<ng-template #outcomeCell let-row>
+  <div class="flex items-start gap-3">
+    <div class="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900/30 dark:to-purple-900/30 flex-shrink-0 mt-0.5">
+      <mat-icon class="text-violet-600 dark:text-violet-400 icon-size-5">format_list_bulleted</mat-icon>
+    </div>
+    <div class="flex-1 min-w-0">
+      <p class="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2">{{ row.outcome }}</p>
+      <p *ngIf="row.description" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{{ row.description }}</p>
+    </div>
+  </div>
+</ng-template>
+
+<ng-template #codeCell let-row>
+  <span *ngIf="row.code"
+    class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800">
+    {{ row.code }}
+  </span>
+  <span *ngIf="!row.code" class="text-gray-400 text-xs">—</span>
+</ng-template>
+
+<ng-template #hierarchyCell let-row>
+  <div class="flex flex-col gap-1">
+    <span class="inline-flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400">
+      <mat-icon class="icon-size-3">menu_book</mat-icon>
+      {{ row.learningAreaName || '—' }}
+    </span>
+    <span class="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
+      <mat-icon class="icon-size-3">account_tree</mat-icon>
+      {{ row.strandName || '—' }}
+    </span>
+    <span class="inline-flex items-center gap-1 text-xs text-teal-600 dark:text-teal-400">
+      <mat-icon class="icon-size-3">format_list_bulleted</mat-icon>
+      {{ row.subStrandName || '—' }}
+    </span>
+  </div>
+</ng-template>
+
+<ng-template #levelCell let-row>
+  <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+    {{ getLevelLabel(row.level) }}
+  </span>
+</ng-template>
+
+<ng-template #coreCell let-row>
+  <span class="px-3 py-1 rounded-full text-xs font-semibold"
+    [ngClass]="{
+      'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400':  row.isCore,
+      'bg-gray-100  dark:bg-gray-800     text-gray-600  dark:text-gray-400':  !row.isCore
+    }">
+    <mat-icon class="icon-size-3 mr-1">{{ row.isCore ? 'star' : 'star_outline' }}</mat-icon>
+    {{ row.isCore ? 'Core' : 'Non-Core' }}
+  </span>
+</ng-template>
+
+<ng-template #statusCell let-row>
+  <span class="px-3 py-1 rounded-full text-xs font-semibold"
+    [ngClass]="{
+      'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400': row.status === 'Active',
+      'bg-red-100   dark:bg-red-900/30   text-red-700   dark:text-red-400':  row.status !== 'Active'
+    }">
+    {{ row.status }}
+  </span>
+</ng-template>

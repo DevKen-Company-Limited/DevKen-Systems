@@ -1,0 +1,122 @@
+<!-- grade-subject-step/grade-subject-step.component.html -->
+<div class="max-w-6xl">
+
+  <!-- Section Header -->
+  <div class="flex items-start gap-4 mb-8">
+    <div class="flex items-center justify-center w-14 h-14 rounded-xl
+                bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg">
+      <mat-icon class="text-white !w-7 !h-7">person</mat-icon>
+    </div>
+    <div class="flex-1">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Student & Subject</h2>
+      <p class="text-gray-600 dark:text-gray-400">
+        {{ isEditMode
+          ? 'Student and subject are read-only after creation.'
+          : 'Select the student, subject, and optionally the term for this grade. Fields marked * are required.' }}
+      </p>
+    </div>
+  </div>
+
+  <!-- Info Alert -->
+  <fuse-alert *ngIf="isEditMode" type="info" appearance="soft" [showIcon]="true" class="mb-6">
+    <strong>Note:</strong> Student and Subject cannot be changed after the grade has been recorded.
+    Delete and recreate the grade if you need to correct these fields.
+  </fuse-alert>
+
+  <fuse-alert *ngIf="!isEditMode" type="info" appearance="soft" [showIcon]="true" class="mb-6">
+    <strong>Getting Started:</strong> Enter the student and subject UUIDs from the system.
+    Term and Assessment fields are optional — link them if this grade belongs to a specific term or assessment.
+  </fuse-alert>
+
+  <form [formGroup]="form" novalidate class="space-y-6">
+
+    <!-- School Assignment (SuperAdmin only) -->
+    <mat-card *ngIf="isSuperAdmin && !isEditMode" class="shadow-md">
+      <mat-card-header class="!pb-2">
+        <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+          <mat-icon class="text-indigo-600">apartment</mat-icon>
+          School Assignment
+          <span class="ml-auto text-xs font-medium px-2 py-1 bg-red-100 text-red-700
+                       dark:bg-red-900/30 dark:text-red-300 rounded">Required</span>
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>School *</mat-label>
+          <mat-select formControlName="tenantId">
+            <mat-option value="">Select school</mat-option>
+            <mat-option *ngFor="let school of schools" [value]="school.id">
+              {{ school.name }}
+            </mat-option>
+          </mat-select>
+          <mat-icon matPrefix class="text-gray-400">apartment</mat-icon>
+          <mat-hint>The school this grade belongs to</mat-hint>
+          <mat-error>{{ getError('tenantId') }}</mat-error>
+        </mat-form-field>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Student & Subject -->
+    <mat-card class="shadow-md">
+      <mat-card-header class="!pb-2">
+        <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+          <mat-icon class="text-indigo-600">badge</mat-icon>
+          Student & Subject IDs
+          <span class="ml-auto text-xs font-medium px-2 py-1 bg-red-100 text-red-700
+                       dark:bg-red-900/30 dark:text-red-300 rounded">Required</span>
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Student ID *</mat-label>
+            <input matInput formControlName="studentId" placeholder="e.g. 3fa85f64-5717-4562-b3fc-2c963f66afa6">
+            <mat-icon matPrefix class="text-gray-400">person</mat-icon>
+            <mat-hint>{{ isEditMode ? 'Read-only — defined at creation' : 'UUID of the student' }}</mat-hint>
+            <mat-error>{{ getError('studentId') }}</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Subject ID *</mat-label>
+            <input matInput formControlName="subjectId" placeholder="e.g. 3fa85f64-5717-4562-b3fc-2c963f66afa6">
+            <mat-icon matPrefix class="text-gray-400">menu_book</mat-icon>
+            <mat-hint>{{ isEditMode ? 'Read-only — defined at creation' : 'UUID of the subject' }}</mat-hint>
+            <mat-error>{{ getError('subjectId') }}</mat-error>
+          </mat-form-field>
+
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Optional Linking -->
+    <mat-card class="shadow-md">
+      <mat-card-header class="!pb-2">
+        <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+          <mat-icon class="text-indigo-600">link</mat-icon>
+          Term & Assessment (Optional)
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Term ID</mat-label>
+            <input matInput formControlName="termId" placeholder="Term UUID (optional)">
+            <mat-icon matPrefix class="text-gray-400">date_range</mat-icon>
+            <mat-hint>Link to an academic term</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Assessment ID</mat-label>
+            <input matInput formControlName="assessmentId" placeholder="Assessment UUID (optional)">
+            <mat-icon matPrefix class="text-gray-400">assignment</mat-icon>
+            <mat-hint>Link to a specific assessment</mat-hint>
+          </mat-form-field>
+
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+  </form>
+</div>

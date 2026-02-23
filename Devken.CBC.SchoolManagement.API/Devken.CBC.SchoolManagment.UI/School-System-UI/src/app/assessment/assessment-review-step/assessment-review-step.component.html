@@ -1,0 +1,379 @@
+<!-- assessment-review-step/assessment-review-step.component.html -->
+<div class="max-w-6xl">
+
+  <!-- Section Header -->
+  <div class="flex items-start gap-4 mb-8">
+    <div class="flex items-center justify-center w-14 h-14 rounded-xl
+                bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg">
+      <mat-icon class="text-white !w-7 !h-7">check_circle</mat-icon>
+    </div>
+    <div class="flex-1">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Review & Submit</h2>
+      <p class="text-gray-600 dark:text-gray-400">
+        Review all assessment information below. Click any card to edit that section.
+      </p>
+    </div>
+  </div>
+
+  <!-- Progress bar -->
+  <div class="mb-6">
+    <div class="flex items-center justify-between mb-1">
+      <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+        {{ completedCount() }} of {{ steps.length - 1 }} sections complete
+      </span>
+      <span class="text-sm font-bold"
+        [ngClass]="allComplete() ? 'text-green-600' : 'text-amber-600'">
+        {{ getCompletionPct() }}%
+      </span>
+    </div>
+    <div class="h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+      <div
+        class="h-full rounded-full transition-all duration-700"
+        [ngClass]="allComplete()
+          ? 'bg-gradient-to-r from-green-500 to-emerald-500'
+          : 'bg-gradient-to-r from-amber-400 to-orange-500'"
+        [style.width.%]="getCompletionPct()">
+      </div>
+    </div>
+  </div>
+
+  <!-- Incomplete warning -->
+  <fuse-alert
+    *ngIf="!allComplete()"
+    type="warning" appearance="soft" [showIcon]="true" class="mb-6">
+    <strong>Not ready:</strong> Please complete all required sections before submitting.
+  </fuse-alert>
+
+  <!-- All done -->
+  <fuse-alert
+    *ngIf="allComplete()"
+    type="success" appearance="soft" [showIcon]="true" class="mb-6">
+    <strong>Ready to submit!</strong> All sections are complete. Review the summary below then submit.
+  </fuse-alert>
+
+  <div class="space-y-5">
+
+    <!-- ── Step 1: Assessment Type ──────────────────────────────────── -->
+    <mat-card
+      class="shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+      (click)="editSection.emit(0)">
+      <mat-card-header class="!pb-2">
+        <div class="flex items-center justify-between w-full">
+          <div class="flex items-center gap-3">
+            <div
+              class="flex items-center justify-center w-10 h-10 rounded-lg"
+              [ngClass]="{
+                'bg-blue-100   dark:bg-blue-900/20':   getTypeColor(assessmentType) === 'blue',
+                'bg-violet-100 dark:bg-violet-900/20': getTypeColor(assessmentType) === 'violet',
+                'bg-pink-100   dark:bg-pink-900/20':   getTypeColor(assessmentType) === 'pink'
+              }">
+              <mat-icon
+                [ngClass]="{
+                  'text-blue-600':   getTypeColor(assessmentType) === 'blue',
+                  'text-violet-600': getTypeColor(assessmentType) === 'violet',
+                  'text-pink-600':   getTypeColor(assessmentType) === 'pink'
+                }">assignment</mat-icon>
+            </div>
+            <mat-card-title class="!text-base !font-semibold !mb-0">Assessment Type</mat-card-title>
+          </div>
+          <div class="flex items-center gap-2">
+            <span
+              class="text-xs font-medium px-2 py-1 rounded"
+              [ngClass]="{
+                'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300': isComplete(0),
+                'bg-gray-100  text-gray-600  dark:bg-gray-700     dark:text-gray-400':  !isComplete(0)
+              }">
+              {{ isComplete(0) ? '✓ Complete' : 'Incomplete' }}
+            </span>
+            <mat-icon class="text-gray-400 !text-base">edit</mat-icon>
+          </div>
+        </div>
+      </mat-card-header>
+
+      <mat-card-content class="!pt-3">
+        <div class="flex items-center gap-3">
+          <span
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-bold shadow-sm text-white"
+            [ngClass]="{
+              'bg-blue-600':   getTypeColor(assessmentType) === 'blue',
+              'bg-violet-600': getTypeColor(assessmentType) === 'violet',
+              'bg-pink-600':   getTypeColor(assessmentType) === 'pink'
+            }">
+            <mat-icon class="!w-4 !h-4">
+              {{ isFormative ? 'assignment' : isSummative ? 'school' : 'verified_user' }}
+            </mat-icon>
+            {{ getTypeName(assessmentType) }}
+          </span>
+          <span class="text-sm text-gray-500 dark:text-gray-400">
+            {{ isFormative  ? 'Ongoing classroom assessment'         :
+               isSummative  ? 'End-of-period formal examination'     :
+                              'CBC competency-based assessment' }}
+          </span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- ── Step 2: Core Details ─────────────────────────────────────── -->
+    <mat-card
+      class="shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+      (click)="editSection.emit(1)">
+      <mat-card-header class="!pb-2">
+        <div class="flex items-center justify-between w-full">
+          <div class="flex items-center gap-3">
+            <div class="flex items-center justify-center w-10 h-10 rounded-lg
+                        bg-blue-100 dark:bg-blue-900/20">
+              <mat-icon class="text-blue-600">info</mat-icon>
+            </div>
+            <mat-card-title class="!text-base !font-semibold !mb-0">Core Details</mat-card-title>
+          </div>
+          <div class="flex items-center gap-2">
+            <span
+              class="text-xs font-medium px-2 py-1 rounded"
+              [ngClass]="{
+                'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300': isComplete(1),
+                'bg-gray-100  text-gray-600  dark:bg-gray-700     dark:text-gray-400':  !isComplete(1)
+              }">
+              {{ isComplete(1) ? '✓ Complete' : 'Incomplete' }}
+            </span>
+            <mat-icon class="text-gray-400 !text-base">edit</mat-icon>
+          </div>
+        </div>
+      </mat-card-header>
+
+      <mat-card-content class="!pt-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
+
+          <!-- SuperAdmin school field -->
+          <div *ngIf="isSuperAdmin && identity.schoolId"
+               class="flex justify-between text-sm border-b border-gray-100 dark:border-gray-800 pb-1">
+            <span class="text-gray-500 dark:text-gray-400">School</span>
+            <span class="font-semibold text-gray-900 dark:text-white truncate max-w-48">
+              {{ field(identity, 'schoolId') }}
+            </span>
+          </div>
+
+          <div class="flex justify-between text-sm border-b border-gray-100 dark:border-gray-800 pb-1">
+            <span class="text-gray-500 dark:text-gray-400">Title</span>
+            <span class="font-semibold text-gray-900 dark:text-white text-right max-w-48 truncate">
+              {{ field(identity, 'title') }}
+            </span>
+          </div>
+
+          <div class="flex justify-between text-sm border-b border-gray-100 dark:border-gray-800 pb-1">
+            <span class="text-gray-500 dark:text-gray-400">Max Score</span>
+            <span class="font-semibold text-gray-900 dark:text-white">
+              {{ field(identity, 'maximumScore') }}
+            </span>
+          </div>
+
+          <div class="flex justify-between text-sm border-b border-gray-100 dark:border-gray-800 pb-1">
+            <span class="text-gray-500 dark:text-gray-400">Date</span>
+            <span class="font-semibold text-gray-900 dark:text-white">
+              {{ formatDate(identity.assessmentDate) }}
+            </span>
+          </div>
+
+          <div class="flex justify-between text-sm border-b border-gray-100 dark:border-gray-800 pb-1">
+            <span class="text-gray-500 dark:text-gray-400">Status</span>
+            <span
+              class="px-2 py-0.5 rounded-full text-xs font-semibold"
+              [ngClass]="identity.isPublished
+                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                : 'bg-gray-100  text-gray-600  dark:bg-gray-700 dark:text-gray-400'">
+              {{ identity.isPublished ? 'Published' : 'Draft' }}
+            </span>
+          </div>
+
+          <div *ngIf="identity.termId"
+               class="flex justify-between text-sm border-b border-gray-100 dark:border-gray-800 pb-1">
+            <span class="text-gray-500 dark:text-gray-400">Class / Term</span>
+            <span class="text-green-600 font-semibold flex items-center gap-1">
+              <mat-icon class="!text-base">check_circle</mat-icon> Set
+            </span>
+          </div>
+
+          <div *ngIf="identity.teacherId"
+               class="flex justify-between text-sm border-b border-gray-100 dark:border-gray-800 pb-1">
+            <span class="text-gray-500 dark:text-gray-400">Teacher</span>
+            <span class="text-green-600 font-semibold flex items-center gap-1">
+              <mat-icon class="!text-base">check_circle</mat-icon> Set
+            </span>
+          </div>
+
+          <div *ngIf="identity.subjectId"
+               class="flex justify-between text-sm border-b border-gray-100 dark:border-gray-800 pb-1">
+            <span class="text-gray-500 dark:text-gray-400">Subject</span>
+            <span class="text-green-600 font-semibold flex items-center gap-1">
+              <mat-icon class="!text-base">check_circle</mat-icon> Set
+            </span>
+          </div>
+
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- ── Step 3: Type-Specific Details ───────────────────────────── -->
+    <mat-card
+      class="shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+      (click)="editSection.emit(2)">
+      <mat-card-header class="!pb-2">
+        <div class="flex items-center justify-between w-full">
+          <div class="flex items-center gap-3">
+            <div
+              class="flex items-center justify-center w-10 h-10 rounded-lg"
+              [ngClass]="{
+                'bg-blue-100   dark:bg-blue-900/20':   getTypeColor(assessmentType) === 'blue',
+                'bg-violet-100 dark:bg-violet-900/20': getTypeColor(assessmentType) === 'violet',
+                'bg-pink-100   dark:bg-pink-900/20':   getTypeColor(assessmentType) === 'pink'
+              }">
+              <mat-icon
+                [ngClass]="{
+                  'text-blue-600':   getTypeColor(assessmentType) === 'blue',
+                  'text-violet-600': getTypeColor(assessmentType) === 'violet',
+                  'text-pink-600':   getTypeColor(assessmentType) === 'pink'
+                }">tune</mat-icon>
+            </div>
+            <mat-card-title class="!text-base !font-semibold !mb-0">
+              {{ getTypeName(assessmentType) }} Settings
+            </mat-card-title>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-medium px-2 py-1 rounded
+                         bg-green-100 text-green-700
+                         dark:bg-green-900/30 dark:text-green-300">
+              ✓ Optional
+            </span>
+            <mat-icon class="text-gray-400 !text-base">edit</mat-icon>
+          </div>
+        </div>
+      </mat-card-header>
+
+      <mat-card-content class="!pt-3">
+
+        <!-- ── Formative ──────────────────────────────────────────── -->
+        <div *ngIf="isFormative"
+             class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2">
+          <div *ngIf="details.formativeType"
+               class="flex justify-between text-sm border-b border-gray-100 dark:border-gray-800 pb-1">
+            <span class="text-gray-500 dark:text-gray-400">Type</span>
+            <span class="font-semibold text-gray-900 dark:text-white">{{ details.formativeType }}</span>
+          </div>
+          <div *ngIf="details.competencyArea"
+               class="flex justify-between text-sm border-b border-gray-100 dark:border-gray-800 pb-1">
+            <span class="text-gray-500 dark:text-gray-400">Competency</span>
+            <span class="font-semibold text-gray-900 dark:text-white truncate max-w-32">
+              {{ details.competencyArea }}
+            </span>
+          </div>
+          <div class="flex justify-between text-sm border-b border-gray-100 dark:border-gray-800 pb-1">
+            <span class="text-gray-500 dark:text-gray-400">Weight</span>
+            <span class="font-semibold text-gray-900 dark:text-white">
+              {{ details.assessmentWeight ?? 100 }}%
+            </span>
+          </div>
+          <div class="flex justify-between text-sm border-b border-gray-100 dark:border-gray-800 pb-1">
+            <span class="text-gray-500 dark:text-gray-400">Requires Rubric</span>
+            <span class="font-semibold"
+              [ngClass]="details.requiresRubric ? 'text-blue-600' : 'text-gray-500'">
+              {{ details.requiresRubric ? 'Yes' : 'No' }}
+            </span>
+          </div>
+          <div *ngIf="details.criteria"
+               class="flex justify-between text-sm border-b border-gray-100 dark:border-gray-800 pb-1 sm:col-span-2">
+            <span class="text-gray-500 dark:text-gray-400">Criteria</span>
+            <span class="font-semibold text-gray-900 dark:text-white text-right max-w-64 line-clamp-2">
+              {{ details.criteria }}
+            </span>
+          </div>
+        </div>
+
+        <!-- ── Summative ──────────────────────────────────────────── -->
+        <div *ngIf="isSummative"
+             class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2">
+          <div *ngIf="details.examType"
+               class="flex justify-between text-sm border-b border-gray-100 dark:border-gray-800 pb-1">
+            <span class="text-gray-500 dark:text-gray-400">Exam Type</span>
+            <span class="font-semibold text-gray-900 dark:text-white">{{ details.examType }}</span>
+          </div>
+          <div *ngIf="details.duration"
+               class="flex justify-between text-sm border-b border-gray-100 dark:border-gray-800 pb-1">
+            <span class="text-gray-500 dark:text-gray-400">Duration</span>
+            <span class="font-semibold text-gray-900 dark:text-white">{{ details.duration }}</span>
+          </div>
+          <div *ngIf="details.numberOfQuestions"
+               class="flex justify-between text-sm border-b border-gray-100 dark:border-gray-800 pb-1">
+            <span class="text-gray-500 dark:text-gray-400">Questions</span>
+            <span class="font-semibold text-gray-900 dark:text-white">{{ details.numberOfQuestions }}</span>
+          </div>
+          <div class="flex justify-between text-sm border-b border-gray-100 dark:border-gray-800 pb-1">
+            <span class="text-gray-500 dark:text-gray-400">Pass Mark</span>
+            <span class="font-semibold text-gray-900 dark:text-white">
+              {{ details.passMark ?? 50 }}%
+            </span>
+          </div>
+          <div class="flex justify-between text-sm border-b border-gray-100 dark:border-gray-800 pb-1">
+            <span class="text-gray-500 dark:text-gray-400">Has Practical</span>
+            <span class="font-semibold"
+              [ngClass]="details.hasPracticalComponent ? 'text-violet-600' : 'text-gray-500'">
+              {{ details.hasPracticalComponent
+                 ? 'Yes — ' + details.practicalWeight + '%'
+                 : 'No' }}
+            </span>
+          </div>
+          <div *ngIf="details.hasPracticalComponent"
+               class="flex justify-between text-sm border-b border-gray-100 dark:border-gray-800 pb-1">
+            <span class="text-gray-500 dark:text-gray-400">Theory Weight</span>
+            <span class="font-semibold text-gray-900 dark:text-white">
+              {{ details.theoryWeight }}%
+            </span>
+          </div>
+        </div>
+
+        <!-- ── Competency ─────────────────────────────────────────── -->
+        <div *ngIf="isCompetency"
+             class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2">
+          <div *ngIf="details.competencyName"
+               class="flex justify-between text-sm border-b border-gray-100 dark:border-gray-800 pb-1 sm:col-span-2">
+            <span class="text-gray-500 dark:text-gray-400">Competency</span>
+            <span class="font-semibold text-gray-900 dark:text-white">{{ details.competencyName }}</span>
+          </div>
+          <div *ngIf="details.assessmentMethod"
+               class="flex justify-between text-sm border-b border-gray-100 dark:border-gray-800 pb-1">
+            <span class="text-gray-500 dark:text-gray-400">Method</span>
+            <span class="font-semibold text-gray-900 dark:text-white">
+              {{ getMethodName(details.assessmentMethod) }}
+            </span>
+          </div>
+          <div class="flex justify-between text-sm border-b border-gray-100 dark:border-gray-800 pb-1">
+            <span class="text-gray-500 dark:text-gray-400">Observation</span>
+            <span class="font-semibold"
+              [ngClass]="details.isObservationBased ? 'text-pink-600' : 'text-gray-500'">
+              {{ details.isObservationBased ? 'Yes' : 'No' }}
+            </span>
+          </div>
+          <div *ngIf="details.ratingScale"
+               class="flex justify-between text-sm border-b border-gray-100 dark:border-gray-800 pb-1 sm:col-span-2">
+            <span class="text-gray-500 dark:text-gray-400">Rating Scale</span>
+            <span class="font-semibold text-gray-900 dark:text-white text-right">
+              {{ details.ratingScale }}
+            </span>
+          </div>
+          <div *ngIf="details.competencyStrand"
+               class="flex justify-between text-sm border-b border-gray-100 dark:border-gray-800 pb-1">
+            <span class="text-gray-500 dark:text-gray-400">Strand</span>
+            <span class="font-semibold text-gray-900 dark:text-white">{{ details.competencyStrand }}</span>
+          </div>
+        </div>
+
+        <!-- Fallback: nothing configured -->
+        <p *ngIf="!details.formativeType  && !details.examType      && !details.competencyName
+                  && !details.competencyArea && !details.assessmentMethod && !details.examType"
+           class="text-sm text-gray-400 dark:text-gray-500 italic">
+          No optional settings configured — defaults will be used.
+        </p>
+
+      </mat-card-content>
+    </mat-card>
+
+  </div>
+</div>

@@ -123,6 +123,7 @@ export const appRoutes: Route[] = [
                     { path: 'roles', loadChildren: () => import('app/RolesAndPermission/role-assignment.component.routes') },
                      { path: 'permissions', loadChildren: () => import('app/RolesAndPermission/permission/role-permission-management.component.routes') },
                     { path: 'schools', loadChildren: () => import('app/Tenant/schools-management.routes') },
+                     { path: 'logs', loadChildren: () => import('app/logs/userActivities/user-activity.component.routes') },
                     { path: 'users', loadChildren: () => import('app/UserManagement/users-management.component.routes') }
                 ]
             },
@@ -135,6 +136,7 @@ export const appRoutes: Route[] = [
                     { path: 'terms', loadChildren: () => import('app/Academics/Terms/terms.routes') },
                     // { path: 'students', loadChildren: () => import('app/modules/academic/students/students.routes') },
                     { path: 'students', loadChildren: () => import('app/administration/students/student.component.routes') },
+                    { path: 'subjects',       loadChildren: () => import('app/Subject/subjects.routes').then(m => m.default) },  // ← ADD THIS
                     { path: 'teachers', loadChildren: () => import('app/Academics/Teachers/teachers.component.routes') },
                     { path: 'classes', loadChildren: () => import('app/Classes/classes-management.component.routes') },
                   //  { path: 'details', loadChildren: () => import('app/administration/students/details/student-details.component.routes') },
@@ -154,8 +156,8 @@ export const appRoutes: Route[] = [
             {
                 path: 'assessment',
                 children: [
-                    // { path: 'assessments', loadChildren: () => import('app/modules/assessment/assessments/assessments.routes') },
-                    // { path: 'reports', loadChildren: () => import('app/modules/assessment/reports/reports.routes') }
+                    { path: 'assessments', loadChildren: () => import('app/assessment/assessments.routes') },
+              
                 ]
             },
 
@@ -172,10 +174,21 @@ export const appRoutes: Route[] = [
             // ================= CURRICULUM =================
             {
                 path: 'curriculum',
-                children: [
+                loadChildren: () => import('./curriculum/curriculum.routes'),
+                // children: [
+                    // { path: 'learning-areas', loadChildren: () => import('app/curriculum/curriculum.routes') },
+                    // { path: 'strands', loadChildren: () => import('app/curriculum/curriculum.routes') },
+                    // { path: 'sub-strands', loadChildren: () => import('app/curriculum/curriculum.routes') },
+                    // { path: 'learning-outcomes', loadChildren: () => import('app/curriculum/curriculum.routes') },
+                    
+                    // { path: 'learning-area', loadChildren: () => import('app/curriculum/curriculum.routes') },
+                    // { path: 'strand': () => import('app/curriculum/curriculum.routes') },
+                    // { path: 'substrand', loadChildren: () => import(app/curriculum/curriculum.routes') },
+                    // { path: 'learning-outcome', loadChildren: () => import('app/curriculum/curriculum.routes'}
+
                     // { path: 'structure', loadChildren: () => import('app/modules/curriculum/structure/structure.routes') },
                     // { path: 'lesson-plans', loadChildren: () => import('app/modules/curriculum/lesson-plans/lesson-plans.routes') }
-                ]
+                // ]
             },
 
             // ================= SUPER ADMIN =================
