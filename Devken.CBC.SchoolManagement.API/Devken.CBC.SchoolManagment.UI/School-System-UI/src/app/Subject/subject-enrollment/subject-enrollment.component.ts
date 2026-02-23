@@ -1,4 +1,10 @@
 // subject-enrollment/subject-enrollment.component.ts
+<<<<<<< HEAD
+// KEY FIX in hydrateFromSubject():
+//   cbcLevel: resolveCBCLevel(s.level)   ← was s.cbcLevel which is undefined on SubjectDto
+
+=======
+>>>>>>> upstream/main
 import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -17,6 +23,16 @@ import { SubjectCurriculumComponent } from '../subject-curriculum/subject-curric
 import { SubjectReviewStepComponent } from '../subject-review-step/subject-review-step.component';
 import { SubjectSettingsComponent } from '../subject-settings/subject-settings.component';
 import { SubjectIdentityComponent } from '../subject-identity/subject-identity.component';
+<<<<<<< HEAD
+import { resolveCBCLevel, resolveSubjectType } from '../Types/SubjectEnums';
+
+export interface SubjectEnrollmentStep {
+  label:      string;
+  icon:       string;
+  sectionKey: string;
+}
+
+=======
 
 export interface SubjectEnrollmentStep {
   label: string;
@@ -54,10 +70,16 @@ function resolveCBCLevel(val: any): number | null {
   return map[String(val).toLowerCase()] ?? null;
 }
 
+>>>>>>> upstream/main
 @Component({
   selector: 'app-subject-enrollment',
   standalone: true,
   imports: [
+<<<<<<< HEAD
+    CommonModule, MatButtonModule, MatIconModule,
+    SubjectIdentityComponent, SubjectCurriculumComponent,
+    SubjectSettingsComponent, SubjectReviewStepComponent,
+=======
     CommonModule,
     MatButtonModule,
     MatIconModule,
@@ -65,6 +87,7 @@ function resolveCBCLevel(val: any): number | null {
     SubjectCurriculumComponent,
     SubjectSettingsComponent,
     SubjectReviewStepComponent,
+>>>>>>> upstream/main
   ],
   templateUrl: './subject-enrollment.component.html',
   animations: [
@@ -88,6 +111,22 @@ function resolveCBCLevel(val: any): number | null {
 })
 export class SubjectEnrollmentComponent implements OnInit, OnDestroy {
 
+<<<<<<< HEAD
+  currentStep    = 0;
+  completedSteps = new Set<number>();
+  subjectId:     string | null = null;
+  isEditMode     = false;
+  isSaving       = false;
+  isSubmitting   = false;
+  lastSaved:     Date | null = null;
+
+  schools: SchoolDto[] = [];
+  private destroy$ = new Subject<void>();
+
+  isSidebarCollapsed = false;
+  showMobileSidebar  = false;
+  isMobileView       = false;
+=======
   // ─── State ──────────────────────────────────────────────────────────────
   currentStep = 0;
   completedSteps = new Set<number>();
@@ -106,6 +145,7 @@ export class SubjectEnrollmentComponent implements OnInit, OnDestroy {
   isSidebarCollapsed = false;
   showMobileSidebar = false;
   isMobileView = false;
+>>>>>>> upstream/main
 
   @HostListener('window:resize')
   onResize(): void { this.checkViewport(); }
@@ -118,6 +158,35 @@ export class SubjectEnrollmentComponent implements OnInit, OnDestroy {
   }
 
   toggleSidebar(): void {
+<<<<<<< HEAD
+    if (this.isMobileView) this.showMobileSidebar = !this.showMobileSidebar;
+    else                   this.isSidebarCollapsed = !this.isSidebarCollapsed;
+  }
+
+  steps: SubjectEnrollmentStep[] = [
+    { label: 'Subject Identity',   icon: 'badge',        sectionKey: 'identity'   },
+    { label: 'Curriculum Details', icon: 'school',       sectionKey: 'curriculum' },
+    { label: 'Settings',           icon: 'settings',     sectionKey: 'settings'   },
+    { label: 'Review & Submit',    icon: 'check_circle', sectionKey: 'review'     },
+  ];
+
+  sectionValid: Record<string, boolean> = {
+    identity: false, curriculum: false, settings: true,
+  };
+
+  formSections: Record<string, any> = {
+    identity:   {},
+    curriculum: {},
+ };
+
+  constructor(
+    private alertService:   AlertService,
+    private subjectService: SubjectService,
+    private authService:    AuthService,
+    private schoolService:  SchoolService,
+    private router:         Router,
+    private route:          ActivatedRoute,
+=======
     if (this.isMobileView) {
       this.showMobileSidebar = !this.showMobileSidebar;
     } else {
@@ -154,13 +223,17 @@ export class SubjectEnrollmentComponent implements OnInit, OnDestroy {
     private schoolService: SchoolService,
     private router: Router,
     private route: ActivatedRoute,
+>>>>>>> upstream/main
   ) {}
 
   get isSuperAdmin(): boolean {
     return this.authService.authUser?.isSuperAdmin ?? false;
   }
 
+<<<<<<< HEAD
+=======
   // ─── Lifecycle ───────────────────────────────────────────────────────────
+>>>>>>> upstream/main
   ngOnInit(): void {
     this.subjectId  = this.route.snapshot.paramMap.get('id');
     this.isEditMode = !!this.subjectId;
@@ -171,26 +244,44 @@ export class SubjectEnrollmentComponent implements OnInit, OnDestroy {
         .subscribe(res => { this.schools = (res as any).data ?? []; });
     }
 
+<<<<<<< HEAD
+    if (this.subjectId) this.loadExistingSubject(this.subjectId);
+    else                this.loadDraft();
+=======
     if (this.subjectId) {
       this.loadExistingSubject(this.subjectId);
     } else {
       this.loadDraft();
     }
+>>>>>>> upstream/main
 
     this.checkViewport();
   }
 
+<<<<<<< HEAD
+  ngOnDestroy(): void { this.destroy$.next(); this.destroy$.complete(); }
+
+=======
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
   }
 
   // ─── Load existing subject ───────────────────────────────────────────────
+>>>>>>> upstream/main
   private loadExistingSubject(id: string): void {
     this.subjectService.getById(id)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (subject: any) => {
+<<<<<<< HEAD
+          this.hydrateFromSubject(subject);
+          this.steps.slice(0, 3).forEach((_, i) => this.completedSteps.add(i));
+          Object.keys(this.sectionValid).forEach(k => { this.sectionValid[k] = true; });
+          this.alertService.info('Editing existing subject record');
+        },
+        error: err => this.alertService.error(err?.error?.message || 'Could not load subject data.'),
+=======
           console.log('[SubjectEnrollment] Raw API data:', subject);
           this.hydrateFromSubject(subject);
           this.steps.slice(0, 3).forEach((_, i) => this.completedSteps.add(i));
@@ -200,6 +291,7 @@ export class SubjectEnrollmentComponent implements OnInit, OnDestroy {
         error: (err) => {
           this.alertService.error(err?.error?.message || 'Could not load subject data.');
         },
+>>>>>>> upstream/main
       });
   }
 
@@ -208,12 +300,23 @@ export class SubjectEnrollmentComponent implements OnInit, OnDestroy {
       name:        s.name        ?? '',
       code:        s.code        ?? '',
       description: s.description ?? '',
+<<<<<<< HEAD
+      schoolId:    s.tenantId    ?? '',
+    };
+
+    this.formSections['curriculum'] = {
+      subjectType: resolveSubjectType(s.subjectType),  // handles "1", 1, "Core"
+
+      // FIX: use s.level (SubjectDto field) — NOT s.cbcLevel (which is undefined)
+      cbcLevel: resolveCBCLevel(s.level),              // handles "3", 3, "Grade1"
+=======
       schoolId:    s.schoolId    ?? s.tenantId ?? '',
     };
 
     this.formSections['curriculum'] = {
       subjectType: resolveSubjectType(s.subjectType),
       cbcLevel:    resolveCBCLevel(s.cbcLevel ?? s.level),
+>>>>>>> upstream/main
     };
 
     this.formSections['settings'] = {
@@ -221,10 +324,17 @@ export class SubjectEnrollmentComponent implements OnInit, OnDestroy {
       isActive:     s.isActive     ?? true,
     };
 
+<<<<<<< HEAD
+    this.formSections = { ...this.formSections };
+  }
+
+  // ─── Draft ───────────────────────────────────────────────────────────────
+=======
     console.log('[SubjectEnrollment] Hydrated sections:', this.formSections);
   }
 
   // ─── Draft persistence ───────────────────────────────────────────────────
+>>>>>>> upstream/main
   private readonly DRAFT_KEY = 'subject_enrollment_draft';
 
   private loadDraft(): void {
@@ -233,20 +343,39 @@ export class SubjectEnrollmentComponent implements OnInit, OnDestroy {
     if (!raw) return;
     try {
       const draft = JSON.parse(raw);
+<<<<<<< HEAD
+      this.formSections   = { ...this.formSections, ...draft.formSections };
+=======
       this.formSections   = { ...this.formSections,   ...draft.formSections };
+>>>>>>> upstream/main
       this.completedSteps = new Set(draft.completedSteps ?? []);
       this.currentStep    = draft.currentStep ?? 0;
       this.lastSaved      = draft.savedAt ? new Date(draft.savedAt) : null;
       this.alertService.info('Draft loaded. You can continue where you left off.');
+<<<<<<< HEAD
+    } catch { /* ignore malformed draft */ }
+  }
+
+  private persistDraft(): void {
+    localStorage.setItem(this.DRAFT_KEY, JSON.stringify({
+=======
     } catch { /* malformed draft */ }
   }
 
   private persistDraft(): void {
     const draft = {
+>>>>>>> upstream/main
       formSections:   this.formSections,
       completedSteps: Array.from(this.completedSteps),
       currentStep:    this.currentStep,
       savedAt:        new Date().toISOString(),
+<<<<<<< HEAD
+    }));
+    this.lastSaved = new Date();
+  }
+
+  private clearDraft(): void { localStorage.removeItem(this.DRAFT_KEY); }
+=======
     };
     localStorage.setItem(this.DRAFT_KEY, JSON.stringify(draft));
     this.lastSaved = new Date();
@@ -255,6 +384,7 @@ export class SubjectEnrollmentComponent implements OnInit, OnDestroy {
   private clearDraft(): void {
     localStorage.removeItem(this.DRAFT_KEY);
   }
+>>>>>>> upstream/main
 
   // ─── Section events ──────────────────────────────────────────────────────
   onSectionChanged(section: string, data: any): void {
@@ -273,9 +403,13 @@ export class SubjectEnrollmentComponent implements OnInit, OnDestroy {
     }
   }
 
+<<<<<<< HEAD
+  prevStep(): void { if (this.currentStep > 0) this.currentStep--; }
+=======
   prevStep(): void {
     if (this.currentStep > 0) this.currentStep--;
   }
+>>>>>>> upstream/main
 
   nextStep(): void {
     if (!this.canProceed()) return;
@@ -287,21 +421,31 @@ export class SubjectEnrollmentComponent implements OnInit, OnDestroy {
   saveDraft(): void {
     this.isSaving = true;
     this.persistDraft();
+<<<<<<< HEAD
+    setTimeout(() => { this.isSaving = false; this.alertService.success('Draft saved locally.'); }, 500);
+=======
     setTimeout(() => {
       this.isSaving = false;
       this.alertService.success('Draft saved locally. You can continue later.');
     }, 500);
+>>>>>>> upstream/main
   }
 
   // ─── Submit ──────────────────────────────────────────────────────────────
   async submitForm(): Promise<void> {
     if (!this.allStepsCompleted()) return;
+<<<<<<< HEAD
+    this.isSubmitting = true;
+    try {
+      const payload = this.buildPayload();
+=======
 
     this.isSubmitting = true;
     try {
       const payload = this.buildPayload();
       console.log('[SubjectEnrollment] Submitting payload:', payload);
 
+>>>>>>> upstream/main
       if (this.subjectId) {
         await this.subjectService.update(this.subjectId, payload).toPromise();
         this.alertService.success('Subject updated successfully!');
@@ -309,28 +453,46 @@ export class SubjectEnrollmentComponent implements OnInit, OnDestroy {
         await this.subjectService.create(payload).toPromise();
         this.alertService.success('Subject created successfully!');
       }
+<<<<<<< HEAD
+      this.clearDraft();
+      setTimeout(() => this.router.navigate(['/academic/subjects']), 1500);
+    } catch (err: any) {
+      this.alertService.error(err?.error?.message || err?.error?.title || 'Submission failed.');
+=======
 
       this.clearDraft();
       setTimeout(() => this.router.navigate(['/academic/subjects']), 1500);
     } catch (err: any) {
       console.error('[SubjectEnrollment] Submission error:', err);
       this.alertService.error(err?.error?.message || err?.error?.title || 'Submission failed. Please review and try again.');
+>>>>>>> upstream/main
     } finally {
       this.isSubmitting = false;
     }
   }
 
   private buildPayload(): any {
+<<<<<<< HEAD
+    const { identity, curriculum, settings } = {
+      identity:   this.formSections['identity'],
+      curriculum: this.formSections['curriculum'],
+      settings:   this.formSections['settings'],
+    };
+=======
     const identity   = this.formSections['identity'];
     const curriculum = this.formSections['curriculum'];
     const settings   = this.formSections['settings'];
+>>>>>>> upstream/main
 
     const payload: any = {
       name:         identity.name?.trim(),
       description:  identity.description?.trim() || null,
       subjectType:  Number(curriculum.subjectType),
       cbcLevel:     Number(curriculum.cbcLevel),
+<<<<<<< HEAD
+=======
       isCompulsory: settings.isCompulsory ?? false,
+>>>>>>> upstream/main
       isActive:     settings.isActive     ?? true,
     };
 
@@ -349,6 +511,13 @@ export class SubjectEnrollmentComponent implements OnInit, OnDestroy {
   }
 
   canNavigateTo(index: number): boolean {
+<<<<<<< HEAD
+    if (index === 0 || index <= this.currentStep || this.isEditMode) return true;
+    return this.completedSteps.has(index - 1);
+  }
+
+  isStepCompleted(index: number): boolean { return this.completedSteps.has(index); }
+=======
     if (index === 0) return true;
     if (index <= this.currentStep) return true;
     if (this.isEditMode) return true;
@@ -358,18 +527,28 @@ export class SubjectEnrollmentComponent implements OnInit, OnDestroy {
   isStepCompleted(index: number): boolean {
     return this.completedSteps.has(index);
   }
+>>>>>>> upstream/main
 
   allStepsCompleted(): boolean {
     if (this.isEditMode) return true;
     return this.steps.slice(0, 3).every((_, i) => this.completedSteps.has(i));
   }
 
+<<<<<<< HEAD
+=======
   // ─── Progress ring ────────────────────────────────────────────────────────
+>>>>>>> upstream/main
   getProgressPercent(): number {
     return Math.round((this.completedSteps.size / (this.steps.length - 1)) * 100);
   }
 
   getRingOffset(): number {
+<<<<<<< HEAD
+    return 2 * Math.PI * 56 * (1 - this.completedSteps.size / (this.steps.length - 1));
+  }
+
+  goBack(): void { this.router.navigate(['/academic/subjects']); }
+=======
     const circumference = 2 * Math.PI * 56;
     const pct = this.completedSteps.size / (this.steps.length - 1);
     return circumference * (1 - pct);
@@ -378,4 +557,5 @@ export class SubjectEnrollmentComponent implements OnInit, OnDestroy {
   goBack(): void {
     this.router.navigate(['/academic/subjects']);
   }
+>>>>>>> upstream/main
 }
