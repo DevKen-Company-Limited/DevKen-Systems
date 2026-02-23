@@ -35,13 +35,11 @@ using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Identity;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSeries;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Payments;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Tenant;
-using Devken.CBC.SchoolManagement.Infrastructure.Repositories.Assessments;
 using Devken.CBC.SchoolManagement.Infrastructure.RepositoryManagers.UserActivities;
 using Devken.CBC.SchoolManagement.Infrastructure.Security;
 using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Academics;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Administration.Students;
-using Devken.CBC.SchoolManagement.Infrastructure.Services.Assessments;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Images;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Reports;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.RoleAssignment;
@@ -311,8 +309,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<ISubscriptionPlanService, SubscriptionPlanService>();
             services.AddScoped<IImageUploadService, ImageUploadService>();
             services.AddScoped<IDocumentNumberSeriesRepository, DocumentNumberService>();
-            services.AddScoped<IAssessmentService, AssessmentService>();
-            services.AddScoped<IAssessmentService, AssessmentService>();
+            //services.AddScoped<IAssessmentService, AssessmentService>();
+            //services.AddScoped<IAssessmentService, AssessmentService>();
 
             services.AddScoped<IFormativeAssessmentRepository, FormativeAssessmentRepository>();
             services.AddScoped<ISummativeAssessmentRepository, SummativeAssessmentRepository>();

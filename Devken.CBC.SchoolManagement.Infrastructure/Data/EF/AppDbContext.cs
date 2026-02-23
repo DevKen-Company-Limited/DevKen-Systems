@@ -24,9 +24,16 @@ using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using CompetencyAssessmentConfiguration = Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Assessments.CompetencyAssessmentConfiguration;
+using CompetencyAssessmentScoreConfiguration = Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Assessments.CompetencyAssessmentScoreConfiguration;
+using FormativeAssessmentConfiguration = Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Assessments.FormativeAssessmentConfiguration;
+using FormativeAssessmentScoreConfiguration = Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Assessments.FormativeAssessmentScoreConfiguration;
+using SummativeAssessmentConfiguration = Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Assessments.SummativeAssessmentConfiguration;
+using SummativeAssessmentScoreConfiguration = Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Assessments.SummativeAssessmentScoreConfiguration;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
 {
@@ -70,19 +77,18 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         public DbSet<Parent> Parents => Set<Parent>();
 
         // ── CBC Curriculum Helpers ───────────────────────────────────────
-<<<<<<< HEAD
         // These form the LearningArea → Strand → SubStrand → LearningOutcome
         // hierarchy used to structure the CBC curriculum. LearningOutcome links
         // back to FormativeAssessments via a one-to-many relationship.
-=======
->>>>>>> upstream/main
+        // Strand and SubStrand are also directly linked to FormativeAssessment
+        // so that assessments can be tagged to a specific curriculum node
+        // without necessarily requiring a full LearningOutcome selection.
         public DbSet<LearningArea> LearningAreas => Set<LearningArea>();
         public DbSet<Strand> Strands => Set<Strand>();
         public DbSet<SubStrand> SubStrands => Set<SubStrand>();
         public DbSet<LearningOutcome> LearningOutcomes => Set<LearningOutcome>();
 
         // ── Assessments (TPT) ───────────────────────────────────────────
-<<<<<<< HEAD
         //
         // TPT strategy: Assessment1 is abstract and maps to the "Assessments" table
         // containing only shared columns. Each concrete subtype maps to its own
@@ -92,8 +98,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         //
         // Use the concrete DbSets for targeted queries (e.g. formative only),
         // or the base DbSet when you need cross-type queries.
-=======
->>>>>>> upstream/main
         public DbSet<Assessment1> Assessments => Set<Assessment1>();
         public DbSet<FormativeAssessment> FormativeAssessments => Set<FormativeAssessment>();
         public DbSet<SummativeAssessment> SummativeAssessments => Set<SummativeAssessment>();
@@ -102,11 +106,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         public DbSet<Grade> Grades => Set<Grade>();
 
         // ── Assessment Scores ───────────────────────────────────────────
-<<<<<<< HEAD
         // Each score type is an independent entity (not part of the TPT hierarchy)
         // with its own table and FK back to the corresponding assessment type.
-=======
->>>>>>> upstream/main
         public DbSet<FormativeAssessmentScore> FormativeAssessmentScores => Set<FormativeAssessmentScore>();
         public DbSet<SummativeAssessmentScore> SummativeAssessmentScores => Set<SummativeAssessmentScore>();
         public DbSet<CompetencyAssessmentScore> CompetencyAssessmentScores => Set<CompetencyAssessmentScore>();
@@ -136,11 +137,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             DecimalPrecisionConvention.Apply(mb);
 
             // ── GENERIC BASE ENTITY KEY CONFIGURATION ───────────────────
-<<<<<<< HEAD
             // Only configure the key on root entities. Derived TPT types share
             // the root PK — EF Core handles the join automatically.
-=======
->>>>>>> upstream/main
             foreach (var entityType in mb.Model.GetEntityTypes())
             {
                 if (typeof(BaseEntity<Guid>).IsAssignableFrom(entityType.ClrType)
@@ -151,7 +149,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             }
 
             // ── ASSESSMENT TPT MAPPING ───────────────────────────────────
-<<<<<<< HEAD
             //
             // Declare the TPT hierarchy here so EF Core knows the mapping
             // strategy before the individual entity configurations are applied.
@@ -178,12 +175,46 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
               .HasForeignKey(t => t.CurrentClassId)
               .OnDelete(DeleteBehavior.Restrict);
 
-            // FormativeAssessment → LearningOutcome (optional FK)
+            // ── FORMATIVE ASSESSMENT CBC CURRICULUM LINKS ────────────────
+            //
+            // A FormativeAssessment can optionally be tagged to a specific
+            // Strand, SubStrand, and/or LearningOutcome within the CBC
+            // curriculum hierarchy. All three are optional (nullable FKs) so
+            // that teachers can tag as broadly or as specifically as needed:
+            //
+            //   LearningArea → Strand → SubStrand → LearningOutcome
+            //                    ↑           ↑             ↑
+            //              (StrandId)  (SubStrandId) (LearningOutcomeId)
+            //                     all three on FormativeAssessment
+            //
+            // SetNull on delete: removing a curriculum node does not cascade-
+            // delete assessments; it simply clears the FK so the assessment
+            // becomes "untagged" and can be re-linked later.
+
+            // FormativeAssessment → Strand (optional)
+            mb.Entity<FormativeAssessment>()
+              .HasOne(f => f.Strand)
+              .WithMany()
+              .HasForeignKey(f => f.StrandId)
+              .IsRequired(false)
+              .OnDelete(DeleteBehavior.SetNull);
+
+            // FormativeAssessment → SubStrand (optional)
+            mb.Entity<FormativeAssessment>()
+              .HasOne(f => f.SubStrand)
+              .WithMany()
+              .HasForeignKey(f => f.SubStrandId)
+              .IsRequired(false)
+              .OnDelete(DeleteBehavior.SetNull);
+
+            // FormativeAssessment → LearningOutcome (optional)
+            // Inverse: LearningOutcome.FormativeAssessments collection
             mb.Entity<FormativeAssessment>()
               .HasOne(f => f.LearningOutcome)
               .WithMany(lo => lo.FormativeAssessments)
               .HasForeignKey(f => f.LearningOutcomeId)
-              .OnDelete(DeleteBehavior.Restrict);
+              .IsRequired(false)
+              .OnDelete(DeleteBehavior.SetNull);
 
             // SuperAdminRefreshToken → SuperAdmin
             mb.Entity<SuperAdminRefreshToken>()
@@ -263,17 +294,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
 
             // ── APPLY ENTITY CONFIGURATIONS ─────────────────────────────
 
-=======
-            // NOTE: ToTable is also set in AssessmentConfiguration but must
-            // be declared here first for TPT strategy to register correctly.
-            mb.Entity<Assessment1>().UseTptMappingStrategy();
-
-            // ── APPLY ENTITY CONFIGURATIONS ─────────────────────────────
-            // All FK relationships, query filters, and property configs
-            // are defined ONLY inside these configuration classes — never
-            // duplicated here in OnModelCreating.
-
->>>>>>> upstream/main
             // Identity & School
             mb.ApplyConfiguration(new SchoolConfiguration());
             mb.ApplyConfiguration(new PermissionConfiguration());
@@ -294,39 +314,29 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             mb.ApplyConfiguration(new ParentConfiguration(_tenantContext));
 
             // Grades
-            mb.ApplyConfiguration(new GradeConfiguration(_tenantContext));
+           // mb.ApplyConfiguration(new GradeConfiguration(_tenantContext));
 
-<<<<<<< HEAD
-            // ── CBC Curriculum Helpers ───────────────────────────────────
+            // CBC Curriculum Helpers
             // Order matters: configure parent tables before children so that
             // FK references are resolved correctly during migration generation.
             // LearningArea has no FK dependencies, so it goes first.
             // Strand depends on LearningArea, SubStrand on Strand, and
             // LearningOutcome on all three — hence the bottom-up order below.
-=======
-            // CBC Curriculum Helpers
->>>>>>> upstream/main
             mb.ApplyConfiguration(new LearningAreaConfiguration());
             mb.ApplyConfiguration(new StrandConfiguration());
             mb.ApplyConfiguration(new SubStrandConfiguration());
             mb.ApplyConfiguration(new LearningOutcomeConfiguration());
 
-            // Assessments — root first (TPT base), then each subtype
-<<<<<<< HEAD
+            // Assessments — root first (TPT base), then each subtype.
             // Each configuration only adds column/index mappings for its own
-            // properties; the TPT table routing is already declared above.
-=======
->>>>>>> upstream/main
-            mb.ApplyConfiguration(new AssessmentConfiguration(_tenantContext));
+            // properties; the TPT table routing and FK relationships for
+            // the CBC curriculum hierarchy are already declared above.
+           // mb.ApplyConfiguration(new AssessmentConfiguration(_tenantContext));
             mb.ApplyConfiguration(new FormativeAssessmentConfiguration(_tenantContext));
             mb.ApplyConfiguration(new SummativeAssessmentConfiguration(_tenantContext));
             mb.ApplyConfiguration(new CompetencyAssessmentConfiguration(_tenantContext));
 
-<<<<<<< HEAD
-            // Assessment scores — independent tables, wired above
-=======
-            // Assessment scores
->>>>>>> upstream/main
+            // Assessment scores — independent tables, relationships wired above
             mb.ApplyConfiguration(new FormativeAssessmentScoreConfiguration(_tenantContext));
             mb.ApplyConfiguration(new SummativeAssessmentScoreConfiguration(_tenantContext));
             mb.ApplyConfiguration(new CompetencyAssessmentScoreConfiguration(_tenantContext));

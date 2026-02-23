@@ -1,4 +1,5 @@
-﻿using Devken.CBC.SchoolManagement.Application.DTOs.Assessments;
+﻿// Devken.CBC.SchoolManagement.Application/Service/Assessments/IAssessmentService.cs
+using Devken.CBC.SchoolManagement.Application.DTOs.Assessments;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -7,7 +8,7 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Assessments
 {
     public interface IAssessmentService
     {
-        // ── Queries ──────────────────────────────────────────────────────────
+        // ── Queries ───────────────────────────────────────────────────────────
         Task<IEnumerable<AssessmentListItem>> GetAllAsync(
             AssessmentTypeDto? type,
             Guid? classId,
@@ -24,7 +25,7 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Assessments
             Guid? userSchoolId,
             bool isSuperAdmin);
 
-        // ── Commands ─────────────────────────────────────────────────────────
+        // ── Commands ──────────────────────────────────────────────────────────
         Task<AssessmentResponse> CreateAsync(
             CreateAssessmentRequest request,
             Guid? userSchoolId,
@@ -48,7 +49,7 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Assessments
             Guid? userSchoolId,
             bool isSuperAdmin);
 
-        // ── Scores ───────────────────────────────────────────────────────────
+        // ── Scores ────────────────────────────────────────────────────────────
         Task<IEnumerable<AssessmentScoreResponse>> GetScoresAsync(
             Guid assessmentId,
             AssessmentTypeDto type,

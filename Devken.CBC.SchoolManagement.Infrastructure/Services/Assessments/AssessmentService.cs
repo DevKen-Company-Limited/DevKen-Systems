@@ -1,302 +1,398 @@
-﻿using Devken.CBC.SchoolManagement.Application.DTOs.Assessments;
+﻿// Devken.CBC.SchoolManagement.Application/Service/Assessments/AssessmentService.cs
+using Devken.CBC.SchoolManagement.Application.DTOs.Assessments;
 using Devken.CBC.SchoolManagement.Application.Exceptions;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
-using Devken.CBC.SchoolManagement.Application.Service.Assessments;
 using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Assessments
+namespace Devken.CBC.SchoolManagement.Application.Service.Assessments
 {
     public class AssessmentService : IAssessmentService
     {
-        private readonly IRepositoryManager _repo;
+        private readonly IRepositoryManager _repository;
 
-        public AssessmentService(IRepositoryManager repo)
-            => _repo = repo ?? throw new ArgumentNullException(nameof(repo));
+        public AssessmentService(IRepositoryManager repository)
+        {
+            _repository = repository ?? throw new ArgumentNullException(nameof(repository));
+        }
 
-        // ── GET ALL ──────────────────────────────────────────────────────────
+        // ─────────────────────────────────────────────────────────────────────
+        // GET ALL
+        // ─────────────────────────────────────────────────────────────────────
         public async Task<IEnumerable<AssessmentListItem>> GetAllAsync(
-            AssessmentTypeDto? type, Guid? classId, Guid? termId,
-            Guid? subjectId, Guid? teacherId, bool? isPublished,
-            Guid? userSchoolId, bool isSuperAdmin)
+            AssessmentTypeDto? type,
+            Guid? classId, Guid? termId, Guid? subjectId, Guid? teacherId,
+            bool? isPublished, Guid? userSchoolId, bool isSuperAdmin)
         {
             var results = new List<AssessmentListItem>();
 
-            bool doFormative = !type.HasValue || type == AssessmentTypeDto.Formative;
-            bool doSummative = !type.HasValue || type == AssessmentTypeDto.Summative;
-            bool doCompetency = !type.HasValue || type == AssessmentTypeDto.Competency;
+            bool fetchAll = type == null;
+            bool fetchFormative = fetchAll || type == AssessmentTypeDto.Formative;
+            bool fetchSummative = fetchAll || type == AssessmentTypeDto.Summative;
+            bool fetchCompetency = fetchAll || type == AssessmentTypeDto.Competency;
 
-            if (doFormative)
+            if (fetchFormative)
             {
-                var items = await _repo.FormativeAssessment.GetAllAsync(
-                    classId, termId, subjectId, teacherId, isPublished);
-                results.AddRange(items.Select(f => new AssessmentListItem
-                {
-                    Id = f.Id,
-                    Title = f.Title,
-                    AssessmentType = AssessmentTypeDto.Formative,
-                    TeacherName = $"{f.Teacher?.FirstName} {f.Teacher?.LastName}".Trim(),
-                    SubjectName = f.Subject?.Name ?? string.Empty,
-                    ClassName = f.Class?.Name ?? string.Empty,
-                    TermName = f.Term?.Name ?? string.Empty,
-                    AssessmentDate = f.AssessmentDate,
-                    MaximumScore = f.MaximumScore,
-                    IsPublished = f.IsPublished,
-                    ScoreCount = f.Scores?.Count ?? 0,
-                }));
+                var entities = await _repository.FormativeAssessment
+                    .GetAllAsync(classId, termId, subjectId, teacherId, isPublished);
+
+                results.AddRange(
+                    ApplyTenantFilter(entities, userSchoolId, isSuperAdmin)
+                        .Select(MapFormativeToListItem));
             }
 
-            if (doSummative)
+            if (fetchSummative)
             {
-                var items = await _repo.SummativeAssessment.GetAllAsync(
-                    classId, termId, subjectId, teacherId, isPublished);
-                results.AddRange(items.Select(s => new AssessmentListItem
-                {
-                    Id = s.Id,
-                    Title = s.Title,
-                    AssessmentType = AssessmentTypeDto.Summative,
-                    TeacherName = $"{s.Teacher?.FirstName} {s.Teacher?.LastName}".Trim(),
-                    SubjectName = s.Subject?.Name ?? string.Empty,
-                    ClassName = s.Class?.Name ?? string.Empty,
-                    TermName = s.Term?.Name ?? string.Empty,
-                    AssessmentDate = s.AssessmentDate,
-                    MaximumScore = s.MaximumScore,
-                    IsPublished = s.IsPublished,
-                    ScoreCount = s.Scores?.Count ?? 0,
-                }));
+                var entities = await _repository.SummativeAssessment
+                    .GetAllAsync(classId, termId, subjectId, teacherId, isPublished);
+
+                results.AddRange(
+                    ApplyTenantFilter(entities, userSchoolId, isSuperAdmin)
+                        .Select(MapSummativeToListItem));
             }
 
-            if (doCompetency)
+            if (fetchCompetency)
             {
-                var items = await _repo.CompetencyAssessment.GetAllAsync(
-                    classId, termId, subjectId, teacherId, isPublished);
-                results.AddRange(items.Select(c => new AssessmentListItem
-                {
-                    Id = c.Id,
-                    Title = c.Title,
-                    AssessmentType = AssessmentTypeDto.Competency,
-                    TeacherName = $"{c.Teacher?.FirstName} {c.Teacher?.LastName}".Trim(),
-                    SubjectName = c.Subject?.Name ?? string.Empty,
-                    ClassName = c.Class?.Name ?? string.Empty,
-                    TermName = c.Term?.Name ?? string.Empty,
-                    AssessmentDate = c.AssessmentDate,
-                    MaximumScore = c.MaximumScore,
-                    IsPublished = c.IsPublished,
-                    ScoreCount = c.Scores?.Count ?? 0,
-                }));
+                var entities = await _repository.CompetencyAssessment
+                    .GetAllAsync(classId, termId, subjectId, teacherId, isPublished);
+
+                results.AddRange(
+                    ApplyTenantFilter(entities, userSchoolId, isSuperAdmin)
+                        .Select(MapCompetencyToListItem));
             }
 
             return results.OrderByDescending(r => r.AssessmentDate);
         }
 
-        // ── GET BY ID ────────────────────────────────────────────────────────
-        // FIX: For SuperAdmin, use IgnoreQueryFilters path so the tenant filter
-        //      does not silently block records belonging to other schools.
+        // ─────────────────────────────────────────────────────────────────────
+        // GET BY ID
+        // ─────────────────────────────────────────────────────────────────────
         public async Task<AssessmentResponse> GetByIdAsync(
             Guid id, AssessmentTypeDto type, Guid? userSchoolId, bool isSuperAdmin)
         {
             return type switch
             {
-                AssessmentTypeDto.Formative => await GetFormativeAsync(id, isSuperAdmin),
-                AssessmentTypeDto.Summative => await GetSummativeAsync(id, isSuperAdmin),
-                AssessmentTypeDto.Competency => await GetCompetencyAsync(id, isSuperAdmin),
-                _ => throw new NotFoundException($"Assessment {id} not found.")
+                AssessmentTypeDto.Formative => await GetFormativeById(id, userSchoolId, isSuperAdmin),
+                AssessmentTypeDto.Summative => await GetSummativeById(id, userSchoolId, isSuperAdmin),
+                AssessmentTypeDto.Competency => await GetCompetencyById(id, userSchoolId, isSuperAdmin),
+                _ => throw new ValidationException($"Unknown assessment type: {type}")
             };
         }
 
-        /// <summary>
-        /// Fetches a FormativeAssessment with full navigations.
-        /// SuperAdmin bypasses the tenant query filter via IgnoreQueryFilters.
-        /// </summary>
-        private async Task<AssessmentResponse> GetFormativeAsync(Guid id, bool isSuperAdmin = false)
+        private async Task<AssessmentResponse> GetFormativeById(
+            Guid id, Guid? userSchoolId, bool isSuperAdmin)
         {
-            FormativeAssessment? entity;
+            var entity = isSuperAdmin
+                ? await _repository.FormativeAssessment.GetByIdIgnoringTenantAsync(id)
+                : await _repository.FormativeAssessment.GetByIdWithDetailsAsync(id);
 
-            if (isSuperAdmin)
-            {
-                entity = await _repo.FormativeAssessment.GetByIdIgnoringTenantAsync(id)
-                    ?? throw new NotFoundException($"Formative Assessment {id} not found.");
-            }
-            else
-            {
-                entity = await _repo.FormativeAssessment.GetByIdWithDetailsAsync(id)
-                    ?? throw new NotFoundException($"Formative Assessment {id} not found.");
-            }
+            if (entity == null)
+                throw new NotFoundException($"Formative assessment {id} not found.");
 
-            return MapFormativeResponse(entity);
+            ValidateTenantAccess(entity.TenantId, userSchoolId, isSuperAdmin);
+            return MapFormativeToResponse(entity);
         }
 
-        /// <summary>
-        /// Fetches a SummativeAssessment with full navigations.
-        /// SuperAdmin bypasses the tenant query filter via IgnoreQueryFilters.
-        /// </summary>
-        private async Task<AssessmentResponse> GetSummativeAsync(Guid id, bool isSuperAdmin = false)
+        private async Task<AssessmentResponse> GetSummativeById(
+            Guid id, Guid? userSchoolId, bool isSuperAdmin)
         {
-            SummativeAssessment? entity;
+            var entity = isSuperAdmin
+                ? await _repository.SummativeAssessment.GetByIdIgnoringTenantAsync(id)
+                : await _repository.SummativeAssessment.GetByIdWithDetailsAsync(id);
 
-            if (isSuperAdmin)
-            {
-                entity = await _repo.SummativeAssessment.GetByIdIgnoringTenantAsync(id)
-                    ?? throw new NotFoundException($"Summative Assessment {id} not found.");
-            }
-            else
-            {
-                entity = await _repo.SummativeAssessment.GetByIdWithDetailsAsync(id)
-                    ?? throw new NotFoundException($"Summative Assessment {id} not found.");
-            }
+            if (entity == null)
+                throw new NotFoundException($"Summative assessment {id} not found.");
 
-            return MapSummativeResponse(entity);
+            ValidateTenantAccess(entity.TenantId, userSchoolId, isSuperAdmin);
+            return MapSummativeToResponse(entity);
         }
 
-        /// <summary>
-        /// Fetches a CompetencyAssessment with full navigations.
-        /// SuperAdmin bypasses the tenant query filter via IgnoreQueryFilters.
-        /// </summary>
-        private async Task<AssessmentResponse> GetCompetencyAsync(Guid id, bool isSuperAdmin = false)
+        private async Task<AssessmentResponse> GetCompetencyById(
+            Guid id, Guid? userSchoolId, bool isSuperAdmin)
         {
-            CompetencyAssessment? entity;
+            var entity = isSuperAdmin
+                ? await _repository.CompetencyAssessment.GetByIdIgnoringTenantAsync(id)
+                : await _repository.CompetencyAssessment.GetByIdWithDetailsAsync(id);
 
-            if (isSuperAdmin)
-            {
-                entity = await _repo.CompetencyAssessment.GetByIdIgnoringTenantAsync(id)
-                    ?? throw new NotFoundException($"Competency Assessment {id} not found.");
-            }
-            else
-            {
-                entity = await _repo.CompetencyAssessment.GetByIdWithDetailsAsync(id)
-                    ?? throw new NotFoundException($"Competency Assessment {id} not found.");
-            }
+            if (entity == null)
+                throw new NotFoundException($"Competency assessment {id} not found.");
 
-            return MapCompetencyResponse(entity);
+            ValidateTenantAccess(entity.TenantId, userSchoolId, isSuperAdmin);
+            return MapCompetencyToResponse(entity);
         }
 
-        // ── CREATE ───────────────────────────────────────────────────────────
-        // After SaveAsync, call LoadNavigationsAsync on the already-tracked entity
-        // to populate navigation properties without triggering the tenant filter.
-        // This is safe for both regular users and SuperAdmin.
+        // ─────────────────────────────────────────────────────────────────────
+        // CREATE
+        // ─────────────────────────────────────────────────────────────────────
         public async Task<AssessmentResponse> CreateAsync(
             CreateAssessmentRequest request, Guid? userSchoolId, bool isSuperAdmin)
         {
-            ValidateCreateRequest(request, isSuperAdmin);
+            var tenantId = ResolveTenant(request.TenantId, userSchoolId, isSuperAdmin);
 
-            switch (request.AssessmentType)
+            return request.AssessmentType switch
             {
-                case AssessmentTypeDto.Formative:
-                    {
-                        var entity = new FormativeAssessment();
-                        ApplyShared(entity, request, userSchoolId, isSuperAdmin);
-                        ApplyFormative(entity, request);
-                        entity.AssessmentType = "Formative";
-                        _repo.FormativeAssessment.Create(entity);
-                        await _repo.SaveAsync();
-
-                        // Load navigations on the tracked entity — bypasses tenant filter
-                        await _repo.FormativeAssessment.LoadNavigationsAsync(entity);
-                        return MapFormativeResponse(entity);
-                    }
-
-                case AssessmentTypeDto.Summative:
-                    {
-                        var entity = new SummativeAssessment();
-                        ApplyShared(entity, request, userSchoolId, isSuperAdmin);
-                        ApplySummative(entity, request);
-                        entity.AssessmentType = "Summative";
-                        _repo.SummativeAssessment.Create(entity);
-                        await _repo.SaveAsync();
-
-                        await _repo.SummativeAssessment.LoadNavigationsAsync(entity);
-                        return MapSummativeResponse(entity);
-                    }
-
-                case AssessmentTypeDto.Competency:
-                    {
-                        if (string.IsNullOrWhiteSpace(request.CompetencyName))
-                            throw new ValidationException("CompetencyName is required for Competency assessments.");
-
-                        var entity = new CompetencyAssessment();
-                        ApplyShared(entity, request, userSchoolId, isSuperAdmin);
-                        ApplyCompetency(entity, request);
-                        entity.AssessmentType = "Competency";
-                        _repo.CompetencyAssessment.Create(entity);
-                        await _repo.SaveAsync();
-
-                        await _repo.CompetencyAssessment.LoadNavigationsAsync(entity);
-                        return MapCompetencyResponse(entity);
-                    }
-
-                default:
-                    throw new ValidationException("Invalid AssessmentType.");
-            }
+                AssessmentTypeDto.Formative => await CreateFormative(request, tenantId),
+                AssessmentTypeDto.Summative => await CreateSummative(request, tenantId),
+                AssessmentTypeDto.Competency => await CreateCompetency(request, tenantId),
+                _ => throw new ValidationException($"Unknown assessment type: {request.AssessmentType}")
+            };
         }
 
-        // ── UPDATE ───────────────────────────────────────────────────────────
-        // FIX: After updating, re-fetch via the SuperAdmin-aware helper so the
-        //      response is populated correctly regardless of TenantContext.
+        private async Task<AssessmentResponse> CreateFormative(
+            CreateAssessmentRequest r, Guid tenantId)
+        {
+            var entity = new FormativeAssessment
+            {
+                Id = Guid.NewGuid(),
+                Title = r.Title.Trim(),
+                Description = r.Description?.Trim(),
+                TeacherId = r.TeacherId,
+                SubjectId = r.SubjectId,
+                ClassId = r.ClassId,
+                TermId = r.TermId,
+                AcademicYearId = r.AcademicYearId,
+                AssessmentDate = r.AssessmentDate,
+                MaximumScore = r.MaximumScore,
+                AssessmentType = AssessmentTypeDto.Formative.ToString(),
+                IsPublished = false,
+                TenantId = tenantId,
+                CreatedOn = DateTime.UtcNow,
+
+                FormativeType = r.FormativeType?.Trim(),
+                CompetencyArea = r.CompetencyArea?.Trim(),
+                StrandId = r.StrandId,
+                SubStrandId = r.SubStrandId,
+                LearningOutcomeId = r.LearningOutcomeId,
+                Criteria = r.Criteria?.Trim(),
+                FeedbackTemplate = r.FeedbackTemplate?.Trim(),
+                RequiresRubric = r.RequiresRubric,
+                AssessmentWeight = r.AssessmentWeight,
+                Instructions = r.FormativeInstructions?.Trim(),
+            };
+
+            _repository.FormativeAssessment.Create(entity);
+            await _repository.SaveAsync();
+            await _repository.FormativeAssessment.LoadNavigationsAsync(entity);
+            return MapFormativeToResponse(entity);
+        }
+
+        private async Task<AssessmentResponse> CreateSummative(
+            CreateAssessmentRequest r, Guid tenantId)
+        {
+            var entity = new SummativeAssessment
+            {
+                Id = Guid.NewGuid(),
+                Title = r.Title.Trim(),
+                Description = r.Description?.Trim(),
+                TeacherId = r.TeacherId,
+                SubjectId = r.SubjectId,
+                ClassId = r.ClassId,
+                TermId = r.TermId,
+                AcademicYearId = r.AcademicYearId,
+                AssessmentDate = r.AssessmentDate,
+                MaximumScore = r.MaximumScore,
+                AssessmentType = AssessmentTypeDto.Summative.ToString(),
+                IsPublished = false,
+                TenantId = tenantId,
+                CreatedOn = DateTime.UtcNow,
+
+                ExamType = r.ExamType?.Trim(),
+                Duration = r.Duration,
+                NumberOfQuestions = r.NumberOfQuestions,
+                PassMark = r.PassMark,
+                HasPracticalComponent = r.HasPracticalComponent,
+                PracticalWeight = r.PracticalWeight,
+                TheoryWeight = r.TheoryWeight,
+                Instructions = r.SummativeInstructions?.Trim(),
+            };
+
+            _repository.SummativeAssessment.Create(entity);
+            await _repository.SaveAsync();
+            await _repository.SummativeAssessment.LoadNavigationsAsync(entity);
+            return MapSummativeToResponse(entity);
+        }
+
+        private async Task<AssessmentResponse> CreateCompetency(
+            CreateAssessmentRequest r, Guid tenantId)
+        {
+            if (string.IsNullOrWhiteSpace(r.CompetencyName))
+                throw new ValidationException("CompetencyName is required for Competency assessments.");
+
+            var entity = new CompetencyAssessment
+            {
+                Id = Guid.NewGuid(),
+                Title = r.Title.Trim(),
+                Description = r.Description?.Trim(),
+                TeacherId = r.TeacherId,
+                SubjectId = r.SubjectId,
+                ClassId = r.ClassId,
+                TermId = r.TermId,
+                AcademicYearId = r.AcademicYearId,
+                AssessmentDate = r.AssessmentDate,
+                MaximumScore = r.MaximumScore,
+                AssessmentType = AssessmentTypeDto.Competency.ToString(),
+                IsPublished = false,
+                TenantId = tenantId,
+                CreatedOn = DateTime.UtcNow,
+
+                CompetencyName = r.CompetencyName.Trim(),
+                CompetencyStrand = r.CompetencyStrand?.Trim(),
+                CompetencySubStrand = r.CompetencySubStrand?.Trim(),
+                TargetLevel = r.TargetLevel,
+                PerformanceIndicators = r.PerformanceIndicators?.Trim(),
+                AssessmentMethod = r.AssessmentMethod,
+                RatingScale = r.RatingScale?.Trim(),
+                IsObservationBased = r.IsObservationBased,
+                ToolsRequired = r.ToolsRequired?.Trim(),
+                Instructions = r.CompetencyInstructions?.Trim(),
+                SpecificLearningOutcome = r.SpecificLearningOutcome?.Trim(),
+            };
+
+            _repository.CompetencyAssessment.Create(entity);
+            await _repository.SaveAsync();
+            await _repository.CompetencyAssessment.LoadNavigationsAsync(entity);
+            return MapCompetencyToResponse(entity);
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // UPDATE
+        // ─────────────────────────────────────────────────────────────────────
         public async Task<AssessmentResponse> UpdateAsync(
             Guid id, UpdateAssessmentRequest request, Guid? userSchoolId, bool isSuperAdmin)
         {
-            switch (request.AssessmentType)
+            return request.AssessmentType switch
             {
-                case AssessmentTypeDto.Formative:
-                    {
-                        // For fetch-before-update, also use IgnoreQueryFilters for SuperAdmin
-                        var entity = isSuperAdmin
-                            ? await _repo.FormativeAssessment.GetByIdIgnoringTenantAsync(id, trackChanges: true)
-                                  ?? throw new NotFoundException($"Formative Assessment {id} not found.")
-                            : await _repo.FormativeAssessment.GetByIdWithDetailsAsync(id, trackChanges: true)
-                                  ?? throw new NotFoundException($"Formative Assessment {id} not found.");
-
-                        ApplyShared(entity, request, userSchoolId, isSuperAdmin);
-                        ApplyFormative(entity, request);
-                        _repo.FormativeAssessment.Update(entity);
-                        await _repo.SaveAsync();
-
-                        // Re-fetch with navigations via the SuperAdmin-aware helper
-                        return await GetFormativeAsync(id, isSuperAdmin);
-                    }
-
-                case AssessmentTypeDto.Summative:
-                    {
-                        var entity = isSuperAdmin
-                            ? await _repo.SummativeAssessment.GetByIdIgnoringTenantAsync(id, trackChanges: true)
-                                  ?? throw new NotFoundException($"Summative Assessment {id} not found.")
-                            : await _repo.SummativeAssessment.GetByIdWithDetailsAsync(id, trackChanges: true)
-                                  ?? throw new NotFoundException($"Summative Assessment {id} not found.");
-
-                        ApplyShared(entity, request, userSchoolId, isSuperAdmin);
-                        ApplySummative(entity, request);
-                        _repo.SummativeAssessment.Update(entity);
-                        await _repo.SaveAsync();
-
-                        return await GetSummativeAsync(id, isSuperAdmin);
-                    }
-
-                case AssessmentTypeDto.Competency:
-                    {
-                        var entity = isSuperAdmin
-                            ? await _repo.CompetencyAssessment.GetByIdIgnoringTenantAsync(id, trackChanges: true)
-                                  ?? throw new NotFoundException($"Competency Assessment {id} not found.")
-                            : await _repo.CompetencyAssessment.GetByIdWithDetailsAsync(id, trackChanges: true)
-                                  ?? throw new NotFoundException($"Competency Assessment {id} not found.");
-
-                        ApplyShared(entity, request, userSchoolId, isSuperAdmin);
-                        ApplyCompetency(entity, request);
-                        _repo.CompetencyAssessment.Update(entity);
-                        await _repo.SaveAsync();
-
-                        return await GetCompetencyAsync(id, isSuperAdmin);
-                    }
-
-                default:
-                    throw new ValidationException("Invalid AssessmentType.");
-            }
+                AssessmentTypeDto.Formative => await UpdateFormative(id, request, userSchoolId, isSuperAdmin),
+                AssessmentTypeDto.Summative => await UpdateSummative(id, request, userSchoolId, isSuperAdmin),
+                AssessmentTypeDto.Competency => await UpdateCompetency(id, request, userSchoolId, isSuperAdmin),
+                _ => throw new ValidationException($"Unknown assessment type: {request.AssessmentType}")
+            };
         }
 
-        // ── PUBLISH ──────────────────────────────────────────────────────────
-        // FIX: SuperAdmin uses IgnoreQueryFilters path for fetching before publish.
+        private async Task<AssessmentResponse> UpdateFormative(
+            Guid id, UpdateAssessmentRequest r, Guid? userSchoolId, bool isSuperAdmin)
+        {
+            var entity = isSuperAdmin
+                ? await _repository.FormativeAssessment.GetByIdIgnoringTenantAsync(id, trackChanges: true)
+                : await _repository.FormativeAssessment.GetByIdWithDetailsAsync(id, trackChanges: true);
+
+            if (entity == null)
+                throw new NotFoundException($"Formative assessment {id} not found.");
+
+            ValidateTenantAccess(entity.TenantId, userSchoolId, isSuperAdmin);
+
+            // Shared
+            entity.Title = r.Title.Trim();
+            entity.Description = r.Description?.Trim();
+            entity.TeacherId = r.TeacherId;
+            entity.SubjectId = r.SubjectId;
+            entity.ClassId = r.ClassId;
+            entity.TermId = r.TermId;
+            entity.AcademicYearId = r.AcademicYearId;
+            entity.AssessmentDate = r.AssessmentDate;
+            entity.MaximumScore = r.MaximumScore;
+
+            // Formative-specific
+            entity.FormativeType = r.FormativeType?.Trim();
+            entity.CompetencyArea = r.CompetencyArea?.Trim();
+            entity.StrandId = r.StrandId;
+            entity.SubStrandId = r.SubStrandId;
+            entity.LearningOutcomeId = r.LearningOutcomeId;
+            entity.Criteria = r.Criteria?.Trim();
+            entity.FeedbackTemplate = r.FeedbackTemplate?.Trim();
+            entity.RequiresRubric = r.RequiresRubric;
+            entity.AssessmentWeight = r.AssessmentWeight;
+            entity.Instructions = r.FormativeInstructions?.Trim();
+
+            _repository.FormativeAssessment.Update(entity);
+            await _repository.SaveAsync();
+            await _repository.FormativeAssessment.LoadNavigationsAsync(entity);
+            return MapFormativeToResponse(entity);
+        }
+
+        private async Task<AssessmentResponse> UpdateSummative(
+            Guid id, UpdateAssessmentRequest r, Guid? userSchoolId, bool isSuperAdmin)
+        {
+            var entity = isSuperAdmin
+                ? await _repository.SummativeAssessment.GetByIdIgnoringTenantAsync(id, trackChanges: true)
+                : await _repository.SummativeAssessment.GetByIdWithDetailsAsync(id, trackChanges: true);
+
+            if (entity == null)
+                throw new NotFoundException($"Summative assessment {id} not found.");
+
+            ValidateTenantAccess(entity.TenantId, userSchoolId, isSuperAdmin);
+
+            entity.Title = r.Title.Trim();
+            entity.Description = r.Description?.Trim();
+            entity.TeacherId = r.TeacherId;
+            entity.SubjectId = r.SubjectId;
+            entity.ClassId = r.ClassId;
+            entity.TermId = r.TermId;
+            entity.AcademicYearId = r.AcademicYearId;
+            entity.AssessmentDate = r.AssessmentDate;
+            entity.MaximumScore = r.MaximumScore;
+
+            entity.ExamType = r.ExamType?.Trim();
+            entity.Duration = r.Duration;
+            entity.NumberOfQuestions = r.NumberOfQuestions;
+            entity.PassMark = r.PassMark;
+            entity.HasPracticalComponent = r.HasPracticalComponent;
+            entity.PracticalWeight = r.PracticalWeight;
+            entity.TheoryWeight = r.TheoryWeight;
+            entity.Instructions = r.SummativeInstructions?.Trim();
+
+            _repository.SummativeAssessment.Update(entity);
+            await _repository.SaveAsync();
+            await _repository.SummativeAssessment.LoadNavigationsAsync(entity);
+            return MapSummativeToResponse(entity);
+        }
+
+        private async Task<AssessmentResponse> UpdateCompetency(
+            Guid id, UpdateAssessmentRequest r, Guid? userSchoolId, bool isSuperAdmin)
+        {
+            var entity = isSuperAdmin
+                ? await _repository.CompetencyAssessment.GetByIdIgnoringTenantAsync(id, trackChanges: true)
+                : await _repository.CompetencyAssessment.GetByIdWithDetailsAsync(id, trackChanges: true);
+
+            if (entity == null)
+                throw new NotFoundException($"Competency assessment {id} not found.");
+
+            ValidateTenantAccess(entity.TenantId, userSchoolId, isSuperAdmin);
+
+            entity.Title = r.Title.Trim();
+            entity.Description = r.Description?.Trim();
+            entity.TeacherId = r.TeacherId;
+            entity.SubjectId = r.SubjectId;
+            entity.ClassId = r.ClassId;
+            entity.TermId = r.TermId;
+            entity.AcademicYearId = r.AcademicYearId;
+            entity.AssessmentDate = r.AssessmentDate;
+            entity.MaximumScore = r.MaximumScore;
+
+            entity.CompetencyName = (r.CompetencyName ?? entity.CompetencyName).Trim();
+            entity.CompetencyStrand = r.CompetencyStrand?.Trim();
+            entity.CompetencySubStrand = r.CompetencySubStrand?.Trim();
+            entity.TargetLevel = r.TargetLevel;
+            entity.PerformanceIndicators = r.PerformanceIndicators?.Trim();
+            entity.AssessmentMethod = r.AssessmentMethod;
+            entity.RatingScale = r.RatingScale?.Trim();
+            entity.IsObservationBased = r.IsObservationBased;
+            entity.ToolsRequired = r.ToolsRequired?.Trim();
+            entity.Instructions = r.CompetencyInstructions?.Trim();
+            entity.SpecificLearningOutcome = r.SpecificLearningOutcome?.Trim();
+
+            _repository.CompetencyAssessment.Update(entity);
+            await _repository.SaveAsync();
+            await _repository.CompetencyAssessment.LoadNavigationsAsync(entity);
+            return MapCompetencyToResponse(entity);
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // PUBLISH
+        // ─────────────────────────────────────────────────────────────────────
         public async Task PublishAsync(
             Guid id, AssessmentTypeDto type, Guid? userSchoolId, bool isSuperAdmin)
         {
@@ -305,60 +401,58 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Assessments
                 case AssessmentTypeDto.Formative:
                     {
                         var entity = isSuperAdmin
-                            ? await _repo.FormativeAssessment.GetByIdIgnoringTenantAsync(id, trackChanges: true)
-                                  ?? throw new NotFoundException($"Formative Assessment {id} not found.")
-                            : await _repo.FormativeAssessment.GetByIdAsync(id, trackChanges: true)
-                                  ?? throw new NotFoundException($"Formative Assessment {id} not found.");
+                            ? await _repository.FormativeAssessment.GetByIdIgnoringTenantAsync(id, trackChanges: true)
+                            : await _repository.FormativeAssessment.GetByIdWithDetailsAsync(id, trackChanges: true);
 
-                        if (entity.IsPublished)
-                            throw new ConflictException("Assessment is already published.");
+                        if (entity == null) throw new NotFoundException($"Formative assessment {id} not found.");
+                        if (entity.IsPublished) throw new ConflictException("Assessment is already published.");
+                        ValidateTenantAccess(entity.TenantId, userSchoolId, isSuperAdmin);
 
                         entity.IsPublished = true;
                         entity.PublishedDate = DateTime.UtcNow;
-                        _repo.FormativeAssessment.Update(entity);
+                        _repository.FormativeAssessment.Update(entity);
                         break;
                     }
-
                 case AssessmentTypeDto.Summative:
                     {
                         var entity = isSuperAdmin
-                            ? await _repo.SummativeAssessment.GetByIdIgnoringTenantAsync(id, trackChanges: true)
-                                  ?? throw new NotFoundException($"Summative Assessment {id} not found.")
-                            : await _repo.SummativeAssessment.GetByIdAsync(id, trackChanges: true)
-                                  ?? throw new NotFoundException($"Summative Assessment {id} not found.");
+                            ? await _repository.SummativeAssessment.GetByIdIgnoringTenantAsync(id, trackChanges: true)
+                            : await _repository.SummativeAssessment.GetByIdWithDetailsAsync(id, trackChanges: true);
 
-                        if (entity.IsPublished)
-                            throw new ConflictException("Assessment is already published.");
+                        if (entity == null) throw new NotFoundException($"Summative assessment {id} not found.");
+                        if (entity.IsPublished) throw new ConflictException("Assessment is already published.");
+                        ValidateTenantAccess(entity.TenantId, userSchoolId, isSuperAdmin);
 
                         entity.IsPublished = true;
                         entity.PublishedDate = DateTime.UtcNow;
-                        _repo.SummativeAssessment.Update(entity);
+                        _repository.SummativeAssessment.Update(entity);
                         break;
                     }
-
                 case AssessmentTypeDto.Competency:
                     {
                         var entity = isSuperAdmin
-                            ? await _repo.CompetencyAssessment.GetByIdIgnoringTenantAsync(id, trackChanges: true)
-                                  ?? throw new NotFoundException($"Competency Assessment {id} not found.")
-                            : await _repo.CompetencyAssessment.GetByIdAsync(id, trackChanges: true)
-                                  ?? throw new NotFoundException($"Competency Assessment {id} not found.");
+                            ? await _repository.CompetencyAssessment.GetByIdIgnoringTenantAsync(id, trackChanges: true)
+                            : await _repository.CompetencyAssessment.GetByIdWithDetailsAsync(id, trackChanges: true);
 
-                        if (entity.IsPublished)
-                            throw new ConflictException("Assessment is already published.");
+                        if (entity == null) throw new NotFoundException($"Competency assessment {id} not found.");
+                        if (entity.IsPublished) throw new ConflictException("Assessment is already published.");
+                        ValidateTenantAccess(entity.TenantId, userSchoolId, isSuperAdmin);
 
                         entity.IsPublished = true;
                         entity.PublishedDate = DateTime.UtcNow;
-                        _repo.CompetencyAssessment.Update(entity);
+                        _repository.CompetencyAssessment.Update(entity);
                         break;
                     }
+                default:
+                    throw new ValidationException($"Unknown assessment type: {type}");
             }
 
-            await _repo.SaveAsync();
+            await _repository.SaveAsync();
         }
 
-        // ── DELETE ───────────────────────────────────────────────────────────
-        // FIX: SuperAdmin uses IgnoreQueryFilters path for fetching before delete.
+        // ─────────────────────────────────────────────────────────────────────
+        // DELETE
+        // ─────────────────────────────────────────────────────────────────────
         public async Task DeleteAsync(
             Guid id, AssessmentTypeDto type, Guid? userSchoolId, bool isSuperAdmin)
         {
@@ -367,160 +461,262 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Assessments
                 case AssessmentTypeDto.Formative:
                     {
                         var entity = isSuperAdmin
-                            ? await _repo.FormativeAssessment.GetByIdIgnoringTenantAsync(id, trackChanges: true)
-                                  ?? throw new NotFoundException($"Formative Assessment {id} not found.")
-                            : await _repo.FormativeAssessment.GetByIdAsync(id, trackChanges: true)
-                                  ?? throw new NotFoundException($"Formative Assessment {id} not found.");
+                            ? await _repository.FormativeAssessment.GetByIdIgnoringTenantAsync(id, trackChanges: true)
+                            : await _repository.FormativeAssessment.GetByIdWithDetailsAsync(id, trackChanges: true);
 
-                        if (entity.IsPublished)
-                            throw new ConflictException("Cannot delete a published assessment. Unpublish it first.");
+                        if (entity == null) throw new NotFoundException($"Formative assessment {id} not found.");
+                        if (entity.IsPublished) throw new ConflictException("Cannot delete a published assessment.");
+                        ValidateTenantAccess(entity.TenantId, userSchoolId, isSuperAdmin);
 
-                        _repo.FormativeAssessment.Delete(entity);
+                        _repository.FormativeAssessment.Delete(entity);
                         break;
                     }
-
                 case AssessmentTypeDto.Summative:
                     {
                         var entity = isSuperAdmin
-                            ? await _repo.SummativeAssessment.GetByIdIgnoringTenantAsync(id, trackChanges: true)
-                                  ?? throw new NotFoundException($"Summative Assessment {id} not found.")
-                            : await _repo.SummativeAssessment.GetByIdAsync(id, trackChanges: true)
-                                  ?? throw new NotFoundException($"Summative Assessment {id} not found.");
+                            ? await _repository.SummativeAssessment.GetByIdIgnoringTenantAsync(id, trackChanges: true)
+                            : await _repository.SummativeAssessment.GetByIdWithDetailsAsync(id, trackChanges: true);
 
-                        if (entity.IsPublished)
-                            throw new ConflictException("Cannot delete a published assessment. Unpublish it first.");
+                        if (entity == null) throw new NotFoundException($"Summative assessment {id} not found.");
+                        if (entity.IsPublished) throw new ConflictException("Cannot delete a published assessment.");
+                        ValidateTenantAccess(entity.TenantId, userSchoolId, isSuperAdmin);
 
-                        _repo.SummativeAssessment.Delete(entity);
+                        _repository.SummativeAssessment.Delete(entity);
                         break;
                     }
-
                 case AssessmentTypeDto.Competency:
                     {
                         var entity = isSuperAdmin
-                            ? await _repo.CompetencyAssessment.GetByIdIgnoringTenantAsync(id, trackChanges: true)
-                                  ?? throw new NotFoundException($"Competency Assessment {id} not found.")
-                            : await _repo.CompetencyAssessment.GetByIdAsync(id, trackChanges: true)
-                                  ?? throw new NotFoundException($"Competency Assessment {id} not found.");
+                            ? await _repository.CompetencyAssessment.GetByIdIgnoringTenantAsync(id, trackChanges: true)
+                            : await _repository.CompetencyAssessment.GetByIdWithDetailsAsync(id, trackChanges: true);
 
-                        if (entity.IsPublished)
-                            throw new ConflictException("Cannot delete a published assessment. Unpublish it first.");
+                        if (entity == null) throw new NotFoundException($"Competency assessment {id} not found.");
+                        if (entity.IsPublished) throw new ConflictException("Cannot delete a published assessment.");
+                        ValidateTenantAccess(entity.TenantId, userSchoolId, isSuperAdmin);
 
-                        _repo.CompetencyAssessment.Delete(entity);
+                        _repository.CompetencyAssessment.Delete(entity);
                         break;
                     }
+                default:
+                    throw new ValidationException($"Unknown assessment type: {type}");
             }
 
-            await _repo.SaveAsync();
+            await _repository.SaveAsync();
         }
 
-        // ── SCORES ───────────────────────────────────────────────────────────
+        // ─────────────────────────────────────────────────────────────────────
+        // SCORES — GET
+        // ─────────────────────────────────────────────────────────────────────
         public async Task<IEnumerable<AssessmentScoreResponse>> GetScoresAsync(
             Guid assessmentId, AssessmentTypeDto type, Guid? userSchoolId, bool isSuperAdmin)
         {
+            // Verify the parent assessment exists and the caller may access it
+            await GetByIdAsync(assessmentId, type, userSchoolId, isSuperAdmin);
+
             return type switch
             {
-                AssessmentTypeDto.Formative => (await _repo.FormativeAssessmentScore
-                    .GetByAssessmentAsync(assessmentId)).Select(MapFormativeScore),
+                AssessmentTypeDto.Formative => (await _repository.FormativeAssessmentScore
+                    .GetByAssessmentAsync(assessmentId))
+                    .Select(MapFormativeScore),
 
-                AssessmentTypeDto.Summative => (await _repo.SummativeAssessmentScore
-                    .GetByAssessmentAsync(assessmentId)).Select(MapSummativeScore),
+                AssessmentTypeDto.Summative => (await _repository.SummativeAssessmentScore
+                    .GetByAssessmentAsync(assessmentId))
+                    .Select(MapSummativeScore),
 
-                AssessmentTypeDto.Competency => (await _repo.CompetencyAssessmentScore
-                    .GetByAssessmentAsync(assessmentId)).Select(MapCompetencyScore),
+                AssessmentTypeDto.Competency => (await _repository.CompetencyAssessmentScore
+                    .GetByAssessmentAsync(assessmentId))
+                    .Select(MapCompetencyScore),
 
-                _ => throw new ValidationException("Invalid AssessmentType.")
+                _ => throw new ValidationException($"Unknown assessment type: {type}")
             };
         }
 
+        // ─────────────────────────────────────────────────────────────────────
+        // SCORES — UPSERT
+        // ─────────────────────────────────────────────────────────────────────
         public async Task<AssessmentScoreResponse> UpsertScoreAsync(
             UpsertScoreRequest request, Guid? userSchoolId, bool isSuperAdmin)
         {
-            switch (request.AssessmentType)
+            var assessment = await GetByIdAsync(
+                request.AssessmentId, request.AssessmentType, userSchoolId, isSuperAdmin);
+
+            if (!assessment.IsPublished)
+                throw new ConflictException("Scores can only be entered for published assessments.");
+
+            return request.AssessmentType switch
             {
-                case AssessmentTypeDto.Formative:
-                    {
-                        var existing = await _repo.FormativeAssessmentScore
-                            .GetByAssessmentAndStudentAsync(request.AssessmentId, request.StudentId, trackChanges: true);
+                AssessmentTypeDto.Formative => await UpsertFormativeScore(request),
+                AssessmentTypeDto.Summative => await UpsertSummativeScore(request),
+                AssessmentTypeDto.Competency => await UpsertCompetencyScore(request),
+                _ => throw new ValidationException($"Unknown assessment type: {request.AssessmentType}")
+            };
+        }
 
-                        if (existing == null)
-                        {
-                            var score = new FormativeAssessmentScore
-                            {
-                                FormativeAssessmentId = request.AssessmentId,
-                                StudentId = request.StudentId,
-                            };
-                            ApplyFormativeScore(score, request);
-                            _repo.FormativeAssessmentScore.Create(score);
-                            await _repo.SaveAsync();
-                            var created = await _repo.FormativeAssessmentScore
-                                .GetByAssessmentAndStudentAsync(request.AssessmentId, request.StudentId);
-                            return MapFormativeScore(created!);
-                        }
+        private async Task<AssessmentScoreResponse> UpsertFormativeScore(UpsertScoreRequest r)
+        {
+            var existing = await _repository.FormativeAssessmentScore
+                .GetByAssessmentAndStudentAsync(r.AssessmentId, r.StudentId, trackChanges: true);
 
-                        ApplyFormativeScore(existing, request);
-                        _repo.FormativeAssessmentScore.Update(existing);
-                        await _repo.SaveAsync();
-                        return MapFormativeScore(existing);
-                    }
+            if (existing != null)
+            {
+                existing.Score = r.Score ?? existing.Score;
+                existing.MaximumScore = r.MaximumScore ?? existing.MaximumScore;
+                existing.Grade = r.Grade;
+                existing.PerformanceLevel = r.PerformanceLevel;
+                existing.Feedback = r.Feedback;
+                existing.Strengths = r.Strengths;
+                existing.AreasForImprovement = r.AreasForImprovement;
+                existing.IsSubmitted = r.IsSubmitted;
+                existing.SubmissionDate = r.SubmissionDate;
+                existing.CompetencyArea = r.CompetencyArea;
+                existing.CompetencyAchieved = r.CompetencyAchieved;
+                existing.GradedById = r.GradedById;
+                existing.GradedDate = DateTime.UtcNow;
 
-                case AssessmentTypeDto.Summative:
-                    {
-                        var existing = await _repo.SummativeAssessmentScore
-                            .GetByAssessmentAndStudentAsync(request.AssessmentId, request.StudentId, trackChanges: true);
+                _repository.FormativeAssessmentScore.Update(existing);
+                await _repository.SaveAsync();
+                return MapFormativeScore(existing);
+            }
+            else
+            {
+                var score = new FormativeAssessmentScore
+                {
+                    Id = Guid.NewGuid(),
+                    FormativeAssessmentId = r.AssessmentId,
+                    StudentId = r.StudentId,
+                    Score = r.Score ?? 0,
+                    MaximumScore = r.MaximumScore ?? 0,
+                    Grade = r.Grade,
+                    PerformanceLevel = r.PerformanceLevel,
+                    Feedback = r.Feedback,
+                    Strengths = r.Strengths,
+                    AreasForImprovement = r.AreasForImprovement,
+                    IsSubmitted = r.IsSubmitted,
+                    SubmissionDate = r.SubmissionDate,
+                    CompetencyArea = r.CompetencyArea,
+                    CompetencyAchieved = r.CompetencyAchieved,
+                    GradedById = r.GradedById,
+                    GradedDate = DateTime.UtcNow,
+                    CreatedOn = DateTime.UtcNow,
+                };
 
-                        if (existing == null)
-                        {
-                            var score = new SummativeAssessmentScore
-                            {
-                                SummativeAssessmentId = request.AssessmentId,
-                                StudentId = request.StudentId,
-                            };
-                            ApplySummativeScore(score, request);
-                            _repo.SummativeAssessmentScore.Create(score);
-                            await _repo.SaveAsync();
-                            var created = await _repo.SummativeAssessmentScore
-                                .GetByAssessmentAndStudentAsync(request.AssessmentId, request.StudentId);
-                            return MapSummativeScore(created!);
-                        }
-
-                        ApplySummativeScore(existing, request);
-                        _repo.SummativeAssessmentScore.Update(existing);
-                        await _repo.SaveAsync();
-                        return MapSummativeScore(existing);
-                    }
-
-                case AssessmentTypeDto.Competency:
-                    {
-                        var existing = await _repo.CompetencyAssessmentScore
-                            .GetByAssessmentAndStudentAsync(request.AssessmentId, request.StudentId, trackChanges: true);
-
-                        if (existing == null)
-                        {
-                            var score = new CompetencyAssessmentScore
-                            {
-                                CompetencyAssessmentId = request.AssessmentId,
-                                StudentId = request.StudentId,
-                                Rating = request.Rating ?? "Not Assessed",
-                            };
-                            ApplyCompetencyScore(score, request);
-                            _repo.CompetencyAssessmentScore.Create(score);
-                            await _repo.SaveAsync();
-                            var created = await _repo.CompetencyAssessmentScore
-                                .GetByAssessmentAndStudentAsync(request.AssessmentId, request.StudentId);
-                            return MapCompetencyScore(created!);
-                        }
-
-                        ApplyCompetencyScore(existing, request);
-                        _repo.CompetencyAssessmentScore.Update(existing);
-                        await _repo.SaveAsync();
-                        return MapCompetencyScore(existing);
-                    }
-
-                default:
-                    throw new ValidationException("Invalid AssessmentType.");
+                _repository.FormativeAssessmentScore.Create(score);
+                await _repository.SaveAsync();
+                return MapFormativeScore(score);
             }
         }
 
+        private async Task<AssessmentScoreResponse> UpsertSummativeScore(UpsertScoreRequest r)
+        {
+            var existing = await _repository.SummativeAssessmentScore
+                .GetByAssessmentAndStudentAsync(r.AssessmentId, r.StudentId, trackChanges: true);
+
+            if (existing != null)
+            {
+                existing.TheoryScore = r.TheoryScore ?? existing.TheoryScore;
+                existing.PracticalScore = r.PracticalScore;
+                existing.MaximumTheoryScore = r.MaximumTheoryScore ?? existing.MaximumTheoryScore;
+                existing.MaximumPracticalScore = r.MaximumPracticalScore;
+                existing.Grade = r.Grade;
+                existing.Remarks = r.Remarks;
+                existing.PositionInClass = r.PositionInClass;
+                existing.PositionInStream = r.PositionInStream;
+                existing.IsPassed = r.IsPassed;
+                existing.Comments = r.Comments;
+                existing.GradedById = r.GradedById;
+                existing.GradedDate = DateTime.UtcNow;
+
+                _repository.SummativeAssessmentScore.Update(existing);
+                await _repository.SaveAsync();
+                return MapSummativeScore(existing);
+            }
+            else
+            {
+                var score = new SummativeAssessmentScore
+                {
+                    Id = Guid.NewGuid(),
+                    SummativeAssessmentId = r.AssessmentId,
+                    StudentId = r.StudentId,
+                    TheoryScore = r.TheoryScore ?? 0,
+                    PracticalScore = r.PracticalScore,
+                    MaximumTheoryScore = r.MaximumTheoryScore ?? 0,
+                    MaximumPracticalScore = r.MaximumPracticalScore,
+                    Grade = r.Grade,
+                    Remarks = r.Remarks,
+                    PositionInClass = r.PositionInClass,
+                    PositionInStream = r.PositionInStream,
+                    IsPassed = r.IsPassed,
+                    Comments = r.Comments,
+                    GradedById = r.GradedById,
+                    GradedDate = DateTime.UtcNow,
+                    CreatedOn = DateTime.UtcNow,
+                };
+
+                _repository.SummativeAssessmentScore.Create(score);
+                await _repository.SaveAsync();
+                return MapSummativeScore(score);
+            }
+        }
+
+        private async Task<AssessmentScoreResponse> UpsertCompetencyScore(UpsertScoreRequest r)
+        {
+            if (string.IsNullOrWhiteSpace(r.Rating))
+                throw new ValidationException("Rating is required for Competency scores.");
+
+            var existing = await _repository.CompetencyAssessmentScore
+                .GetByAssessmentAndStudentAsync(r.AssessmentId, r.StudentId, trackChanges: true);
+
+            if (existing != null)
+            {
+                existing.Rating = r.Rating;
+                existing.ScoreValue = r.ScoreValue;
+                existing.Evidence = r.Evidence;
+                existing.AssessmentMethod = r.AssessmentMethod;
+                existing.ToolsUsed = r.ToolsUsed;
+                existing.Feedback = r.Feedback;
+                existing.AreasForImprovement = r.AreasForImprovement;
+                existing.IsFinalized = r.IsFinalized;
+                existing.Strand = r.Strand;
+                existing.SubStrand = r.SubStrand;
+                existing.SpecificLearningOutcome = r.SpecificLearningOutcome;
+                existing.AssessorId = r.AssessorId;
+
+                _repository.CompetencyAssessmentScore.Update(existing);
+                await _repository.SaveAsync();
+                return MapCompetencyScore(existing);
+            }
+            else
+            {
+                var score = new CompetencyAssessmentScore
+                {
+                    Id = Guid.NewGuid(),
+                    CompetencyAssessmentId = r.AssessmentId,
+                    StudentId = r.StudentId,
+                    Rating = r.Rating,
+                    ScoreValue = r.ScoreValue,
+                    Evidence = r.Evidence,
+                    AssessmentDate = DateTime.UtcNow,
+                    AssessmentMethod = r.AssessmentMethod,
+                    ToolsUsed = r.ToolsUsed,
+                    Feedback = r.Feedback,
+                    AreasForImprovement = r.AreasForImprovement,
+                    IsFinalized = r.IsFinalized,
+                    Strand = r.Strand,
+                    SubStrand = r.SubStrand,
+                    SpecificLearningOutcome = r.SpecificLearningOutcome,
+                    AssessorId = r.AssessorId,
+                    CreatedOn = DateTime.UtcNow,
+                };
+
+                _repository.CompetencyAssessmentScore.Create(score);
+                await _repository.SaveAsync();
+                return MapCompetencyScore(score);
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // SCORES — DELETE
+        // ─────────────────────────────────────────────────────────────────────
         public async Task DeleteScoreAsync(
             Guid scoreId, AssessmentTypeDto type, Guid? userSchoolId, bool isSuperAdmin)
         {
@@ -528,249 +724,213 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Assessments
             {
                 case AssessmentTypeDto.Formative:
                     {
-                        var score = await _repo.FormativeAssessmentScore.GetByIdAsync(scoreId, trackChanges: true)
-                            ?? throw new NotFoundException($"Formative score {scoreId} not found.");
-                        _repo.FormativeAssessmentScore.Delete(score);
+                        var score = await _repository.FormativeAssessmentScore
+                            .GetByIdAsync(scoreId, trackChanges: true);
+                        if (score == null) throw new NotFoundException($"Score {scoreId} not found.");
+                        _repository.FormativeAssessmentScore.Delete(score);
                         break;
                     }
                 case AssessmentTypeDto.Summative:
                     {
-                        var score = await _repo.SummativeAssessmentScore.GetByIdAsync(scoreId, trackChanges: true)
-                            ?? throw new NotFoundException($"Summative score {scoreId} not found.");
-                        _repo.SummativeAssessmentScore.Delete(score);
+                        var score = await _repository.SummativeAssessmentScore
+                            .GetByIdAsync(scoreId, trackChanges: true);
+                        if (score == null) throw new NotFoundException($"Score {scoreId} not found.");
+                        _repository.SummativeAssessmentScore.Delete(score);
                         break;
                     }
                 case AssessmentTypeDto.Competency:
                     {
-                        var score = await _repo.CompetencyAssessmentScore.GetByIdAsync(scoreId, trackChanges: true)
-                            ?? throw new NotFoundException($"Competency score {scoreId} not found.");
-                        _repo.CompetencyAssessmentScore.Delete(score);
+                        var score = await _repository.CompetencyAssessmentScore
+                            .GetByIdAsync(scoreId, trackChanges: true);
+                        if (score == null) throw new NotFoundException($"Score {scoreId} not found.");
+                        _repository.CompetencyAssessmentScore.Delete(score);
                         break;
                     }
+                default:
+                    throw new ValidationException($"Unknown assessment type: {type}");
             }
 
-            await _repo.SaveAsync();
+            await _repository.SaveAsync();
         }
 
-        // ═════════════════════════════════════════════════════════════════════
-        // PRIVATE — Validation & Apply helpers
-        // ═════════════════════════════════════════════════════════════════════
-
-        private static void ValidateCreateRequest(CreateAssessmentRequest r, bool isSuperAdmin)
+        // ─────────────────────────────────────────────────────────────────────
+        // MAPPERS
+        // ─────────────────────────────────────────────────────────────────────
+        private static AssessmentListItem MapFormativeToListItem(FormativeAssessment f) => new()
         {
-            if (isSuperAdmin && (r.TenantId == null || r.TenantId == Guid.Empty))
-                throw new ValidationException("TenantId is required for SuperAdmin.");
-        }
-
-        private static void ApplyShared(Assessment1 e, CreateAssessmentRequest r,
-            Guid? userSchoolId, bool isSuperAdmin)
-        {
-            e.Title = r.Title;
-            e.Description = r.Description;
-            e.TeacherId = r.TeacherId;
-            e.SubjectId = r.SubjectId;
-            e.ClassId = r.ClassId;
-            e.TermId = r.TermId;
-            e.AcademicYearId = r.AcademicYearId;
-            e.AssessmentDate = r.AssessmentDate;
-            e.MaximumScore = r.MaximumScore;
-            e.IsPublished = r.IsPublished;
-
-            if (e.TenantId == Guid.Empty)
-                e.TenantId = isSuperAdmin ? r.TenantId!.Value : userSchoolId!.Value;
-        }
-
-        private static void ApplyFormative(FormativeAssessment e, CreateAssessmentRequest r)
-        {
-            e.FormativeType = r.FormativeType;
-            e.CompetencyArea = r.CompetencyArea;
-            e.LearningOutcomeId = r.LearningOutcomeId;
-            e.Strand = r.FormativeStrand;
-            e.SubStrand = r.FormativeSubStrand;
-            e.Criteria = r.Criteria;
-            e.Instructions = r.FormativeInstructions;
-            e.FeedbackTemplate = r.FeedbackTemplate;
-            e.RequiresRubric = r.RequiresRubric;
-            e.AssessmentWeight = r.AssessmentWeight;
-        }
-
-        private static void ApplySummative(SummativeAssessment e, CreateAssessmentRequest r)
-        {
-            e.ExamType = r.ExamType;
-            e.Duration = r.Duration;
-            e.NumberOfQuestions = r.NumberOfQuestions;
-            e.PassMark = r.PassMark;
-            e.HasPracticalComponent = r.HasPracticalComponent;
-            e.PracticalWeight = r.PracticalWeight;
-            e.TheoryWeight = r.TheoryWeight;
-            e.Instructions = r.SummativeInstructions;
-        }
-
-        private static void ApplyCompetency(CompetencyAssessment e, CreateAssessmentRequest r)
-        {
-            e.CompetencyName = r.CompetencyName!;
-            e.Strand = r.CompetencyStrand;
-            e.SubStrand = r.CompetencySubStrand;
-            e.TargetLevel = r.TargetLevel;
-            e.PerformanceIndicators = r.PerformanceIndicators;
-            e.AssessmentMethod = r.AssessmentMethod;
-            e.RatingScale = r.RatingScale;
-            e.IsObservationBased = r.IsObservationBased;
-            e.ToolsRequired = r.ToolsRequired;
-            e.Instructions = r.CompetencyInstructions;
-            e.SpecificLearningOutcome = r.SpecificLearningOutcome;
-        }
-
-        private static void ApplyFormativeScore(FormativeAssessmentScore s, UpsertScoreRequest r)
-        {
-            s.Score = r.Score ?? 0;
-            s.MaximumScore = r.MaximumScore ?? 0;
-            s.Grade = r.Grade;
-            s.PerformanceLevel = r.PerformanceLevel;
-            s.Feedback = r.Feedback;
-            s.Strengths = r.Strengths;
-            s.AreasForImprovement = r.AreasForImprovement;
-            s.IsSubmitted = r.IsSubmitted;
-            s.SubmissionDate = r.SubmissionDate;
-            s.CompetencyArea = r.CompetencyArea;
-            s.CompetencyAchieved = r.CompetencyAchieved;
-            s.GradedById = r.GradedById;
-            s.GradedDate = DateTime.UtcNow;
-        }
-
-        private static void ApplySummativeScore(SummativeAssessmentScore s, UpsertScoreRequest r)
-        {
-            s.TheoryScore = r.TheoryScore ?? 0;
-            s.PracticalScore = r.PracticalScore;
-            s.MaximumTheoryScore = r.MaximumTheoryScore ?? 0;
-            s.MaximumPracticalScore = r.MaximumPracticalScore;
-            s.Grade = r.Grade;
-            s.Remarks = r.Remarks;
-            s.PositionInClass = r.PositionInClass;
-            s.PositionInStream = r.PositionInStream;
-            s.IsPassed = r.IsPassed;
-            s.Comments = r.Comments;
-            s.GradedById = r.GradedById;
-            s.GradedDate = DateTime.UtcNow;
-        }
-
-        private static void ApplyCompetencyScore(CompetencyAssessmentScore s, UpsertScoreRequest r)
-        {
-            s.Rating = r.Rating ?? "Not Assessed";
-            s.ScoreValue = r.ScoreValue;
-            s.Evidence = r.Evidence;
-            s.AssessmentDate = DateTime.UtcNow;
-            s.AssessmentMethod = r.AssessmentMethod;
-            s.ToolsUsed = r.ToolsUsed;
-            s.Feedback = r.Feedback;
-            s.AreasForImprovement = r.AreasForImprovement;
-            s.IsFinalized = r.IsFinalized;
-            s.Strand = r.Strand;
-            s.SubStrand = r.SubStrand;
-            s.SpecificLearningOutcome = r.SpecificLearningOutcome;
-            s.AssessorId = r.AssessorId;
-        }
-
-        // ═════════════════════════════════════════════════════════════════════
-        // PRIVATE — Response mappers
-        // ═════════════════════════════════════════════════════════════════════
-
-        private static AssessmentResponse MapShared(Assessment1 a) => new()
-        {
-            Id = a.Id,
-            Title = a.Title,
-            Description = a.Description,
-            TeacherId = a.TeacherId,
-            TeacherName = $"{a.Teacher?.FirstName} {a.Teacher?.LastName}".Trim(),
-            SubjectId = a.SubjectId,
-            SubjectName = a.Subject?.Name ?? string.Empty,
-            ClassId = a.ClassId,
-            ClassName = a.Class?.Name ?? string.Empty,
-            TermId = a.TermId,
-            TermName = a.Term?.Name ?? string.Empty,
-            AcademicYearId = a.AcademicYearId,
-            AcademicYearName = a.AcademicYear?.Name ?? string.Empty,
-            AssessmentDate = a.AssessmentDate,
-            MaximumScore = a.MaximumScore,
-            IsPublished = a.IsPublished,
-            PublishedDate = a.PublishedDate,
-            CreatedOn = a.CreatedOn,
+            Id = f.Id,
+            Title = f.Title,
+            AssessmentType = AssessmentTypeDto.Formative,
+            TeacherName = f.Teacher != null ? $"{f.Teacher.FirstName} {f.Teacher.LastName}".Trim() : "-",
+            SubjectName = f.Subject?.Name ?? "-",
+            ClassName = f.Class?.Name ?? "-",
+            TermName = f.Term?.Name ?? "-",
+            AssessmentDate = f.AssessmentDate,
+            MaximumScore = f.MaximumScore,
+            IsPublished = f.IsPublished,
+            ScoreCount = f.Scores?.Count ?? 0,
+            StrandName = f.Strand?.Name,
+            SubStrandName = f.SubStrand?.Name,
         };
 
-        private static AssessmentResponse MapFormativeResponse(FormativeAssessment f)
+        private static AssessmentListItem MapSummativeToListItem(SummativeAssessment s) => new()
         {
-            var r = MapShared(f);
-            r.AssessmentType = AssessmentTypeDto.Formative;
-            r.ScoreCount = f.Scores?.Count ?? 0;
-            r.FormativeType = f.FormativeType;
-            r.CompetencyArea = f.CompetencyArea;
-            r.LearningOutcomeId = f.LearningOutcomeId;
-            r.LearningOutcomeName = f.LearningOutcome?.Outcome;
-            r.FormativeStrand = f.Strand;
-            r.FormativeSubStrand = f.SubStrand;
-            r.Criteria = f.Criteria;
-            r.FeedbackTemplate = f.FeedbackTemplate;
-            r.RequiresRubric = f.RequiresRubric;
-            r.AssessmentWeight = f.AssessmentWeight;
-            r.FormativeInstructions = f.Instructions;
-            return r;
-        }
+            Id = s.Id,
+            Title = s.Title,
+            AssessmentType = AssessmentTypeDto.Summative,
+            TeacherName = s.Teacher != null ? $"{s.Teacher.FirstName} {s.Teacher.LastName}".Trim() : "-",
+            SubjectName = s.Subject?.Name ?? "-",
+            ClassName = s.Class?.Name ?? "-",
+            TermName = s.Term?.Name ?? "-",
+            AssessmentDate = s.AssessmentDate,
+            MaximumScore = s.MaximumScore,
+            IsPublished = s.IsPublished,
+            ScoreCount = s.Scores?.Count ?? 0,
+        };
 
-        private static AssessmentResponse MapSummativeResponse(SummativeAssessment s)
+        private static AssessmentListItem MapCompetencyToListItem(CompetencyAssessment c) => new()
         {
-            var r = MapShared(s);
-            r.AssessmentType = AssessmentTypeDto.Summative;
-            r.ScoreCount = s.Scores?.Count ?? 0;
-            r.ExamType = s.ExamType;
-            r.Duration = s.Duration;
-            r.NumberOfQuestions = s.NumberOfQuestions;
-            r.PassMark = s.PassMark;
-            r.HasPracticalComponent = s.HasPracticalComponent;
-            r.PracticalWeight = s.PracticalWeight;
-            r.TheoryWeight = s.TheoryWeight;
-            r.SummativeInstructions = s.Instructions;
-            return r;
-        }
+            Id = c.Id,
+            Title = c.Title,
+            AssessmentType = AssessmentTypeDto.Competency,
+            TeacherName = c.Teacher != null ? $"{c.Teacher.FirstName} {c.Teacher.LastName}".Trim() : "-",
+            SubjectName = c.Subject?.Name ?? "-",
+            ClassName = c.Class?.Name ?? "-",
+            TermName = c.Term?.Name ?? "-",
+            AssessmentDate = c.AssessmentDate,
+            MaximumScore = c.MaximumScore,
+            IsPublished = c.IsPublished,
+            ScoreCount = c.Scores?.Count ?? 0,
+        };
 
-        private static AssessmentResponse MapCompetencyResponse(CompetencyAssessment c)
+        private static AssessmentResponse MapFormativeToResponse(FormativeAssessment f) => new()
         {
-            var r = MapShared(c);
-            r.AssessmentType = AssessmentTypeDto.Competency;
-            r.ScoreCount = c.Scores?.Count ?? 0;
-            r.CompetencyName = c.CompetencyName;
-            r.CompetencyStrand = c.Strand;
-            r.CompetencySubStrand = c.SubStrand;
-            r.TargetLevel = c.TargetLevel;
-            r.PerformanceIndicators = c.PerformanceIndicators;
-            r.AssessmentMethod = c.AssessmentMethod;
-            r.RatingScale = c.RatingScale;
-            r.IsObservationBased = c.IsObservationBased;
-            r.ToolsRequired = c.ToolsRequired;
-            r.CompetencyInstructions = c.Instructions;
-            r.SpecificLearningOutcome = c.SpecificLearningOutcome;
-            return r;
-        }
+            Id = f.Id,
+            AssessmentType = AssessmentTypeDto.Formative,
+            Title = f.Title,
+            Description = f.Description,
+            TeacherId = f.TeacherId,
+            TeacherName = f.Teacher != null ? $"{f.Teacher.FirstName} {f.Teacher.LastName}".Trim() : "-",
+            SubjectId = f.SubjectId,
+            SubjectName = f.Subject?.Name ?? "-",
+            ClassId = f.ClassId,
+            ClassName = f.Class?.Name ?? "-",
+            TermId = f.TermId,
+            TermName = f.Term?.Name ?? "-",
+            AcademicYearId = f.AcademicYearId,
+            AcademicYearName = f.AcademicYear?.Name ?? "-",
+            AssessmentDate = f.AssessmentDate,
+            MaximumScore = f.MaximumScore,
+            IsPublished = f.IsPublished,
+            PublishedDate = f.PublishedDate,
+            CreatedOn = f.CreatedOn,
+            ScoreCount = f.Scores?.Count ?? 0,
+
+            FormativeType = f.FormativeType,
+            CompetencyArea = f.CompetencyArea,
+            StrandId = f.StrandId,
+            StrandName = f.Strand?.Name,
+            SubStrandId = f.SubStrandId,
+            SubStrandName = f.SubStrand?.Name,
+            LearningOutcomeId = f.LearningOutcomeId,
+            LearningOutcomeName = f.LearningOutcome?.Outcome,
+            Criteria = f.Criteria,
+            FeedbackTemplate = f.FeedbackTemplate,
+            RequiresRubric = f.RequiresRubric,
+            AssessmentWeight = f.AssessmentWeight,
+            FormativeInstructions = f.Instructions,
+        };
+
+        private static AssessmentResponse MapSummativeToResponse(SummativeAssessment s) => new()
+        {
+            Id = s.Id,
+            AssessmentType = AssessmentTypeDto.Summative,
+            Title = s.Title,
+            Description = s.Description,
+            TeacherId = s.TeacherId,
+            TeacherName = s.Teacher != null ? $"{s.Teacher.FirstName} {s.Teacher.LastName}".Trim() : "-",
+            SubjectId = s.SubjectId,
+            SubjectName = s.Subject?.Name ?? "-",
+            ClassId = s.ClassId,
+            ClassName = s.Class?.Name ?? "-",
+            TermId = s.TermId,
+            TermName = s.Term?.Name ?? "-",
+            AcademicYearId = s.AcademicYearId,
+            AcademicYearName = s.AcademicYear?.Name ?? "-",
+            AssessmentDate = s.AssessmentDate,
+            MaximumScore = s.MaximumScore,
+            IsPublished = s.IsPublished,
+            PublishedDate = s.PublishedDate,
+            CreatedOn = s.CreatedOn,
+            ScoreCount = s.Scores?.Count ?? 0,
+
+            ExamType = s.ExamType,
+            Duration = s.Duration,
+            NumberOfQuestions = s.NumberOfQuestions,
+            PassMark = s.PassMark,
+            HasPracticalComponent = s.HasPracticalComponent,
+            PracticalWeight = s.PracticalWeight,
+            TheoryWeight = s.TheoryWeight,
+            SummativeInstructions = s.Instructions,
+        };
+
+        private static AssessmentResponse MapCompetencyToResponse(CompetencyAssessment c) => new()
+        {
+            Id = c.Id,
+            AssessmentType = AssessmentTypeDto.Competency,
+            Title = c.Title,
+            Description = c.Description,
+            TeacherId = c.TeacherId,
+            TeacherName = c.Teacher != null ? $"{c.Teacher.FirstName} {c.Teacher.LastName}".Trim() : "-",
+            SubjectId = c.SubjectId,
+            SubjectName = c.Subject?.Name ?? "-",
+            ClassId = c.ClassId,
+            ClassName = c.Class?.Name ?? "-",
+            TermId = c.TermId,
+            TermName = c.Term?.Name ?? "-",
+            AcademicYearId = c.AcademicYearId,
+            AcademicYearName = c.AcademicYear?.Name ?? "-",
+            AssessmentDate = c.AssessmentDate,
+            MaximumScore = c.MaximumScore,
+            IsPublished = c.IsPublished,
+            PublishedDate = c.PublishedDate,
+            CreatedOn = c.CreatedOn,
+            ScoreCount = c.Scores?.Count ?? 0,
+
+            CompetencyName = c.CompetencyName,
+            CompetencyStrand = c.CompetencyStrand,
+            CompetencySubStrand = c.CompetencySubStrand,
+            TargetLevel = c.TargetLevel,
+            PerformanceIndicators = c.PerformanceIndicators,
+            AssessmentMethod = c.AssessmentMethod,
+            RatingScale = c.RatingScale,
+            IsObservationBased = c.IsObservationBased,
+            ToolsRequired = c.ToolsRequired,
+            CompetencyInstructions = c.Instructions,
+            SpecificLearningOutcome = c.SpecificLearningOutcome,
+        };
 
         private static AssessmentScoreResponse MapFormativeScore(FormativeAssessmentScore s) => new()
         {
             Id = s.Id,
             AssessmentType = AssessmentTypeDto.Formative,
             AssessmentId = s.FormativeAssessmentId,
-            AssessmentTitle = s.FormativeAssessment?.Title ?? string.Empty,
+            AssessmentTitle = s.FormativeAssessment?.Title ?? "-",
             StudentId = s.StudentId,
-            StudentName = $"{s.Student?.FirstName} {s.Student?.LastName}".Trim(),
-            StudentAdmissionNo = s.Student?.AdmissionNumber ?? string.Empty,
-            AssessmentDate = s.FormativeAssessment?.AssessmentDate ?? default,
+            StudentName = s.Student != null ? $"{s.Student.FirstName} {s.Student.LastName}".Trim() : "-",
+            StudentAdmissionNo = s.Student?.AdmissionNumber ?? "-",
+            AssessmentDate = s.FormativeAssessment?.AssessmentDate ?? DateTime.MinValue,
             Score = s.Score,
             MaximumScore = s.MaximumScore,
-            Percentage = s.MaximumScore > 0 ? (s.Score / s.MaximumScore) * 100 : 0,
+            Percentage = s.Percentage,
             Grade = s.Grade,
             PerformanceLevel = s.PerformanceLevel,
             Feedback = s.Feedback,
             Strengths = s.Strengths,
             CompetencyAchieved = s.CompetencyAchieved,
             IsSubmitted = s.IsSubmitted,
-            GradedByName = $"{s.GradedBy?.FirstName} {s.GradedBy?.LastName}".Trim(),
+            GradedByName = s.GradedBy != null
+                ? $"{s.GradedBy.FirstName} {s.GradedBy.LastName}".Trim() : null,
         };
 
         private static AssessmentScoreResponse MapSummativeScore(SummativeAssessmentScore s) => new()
@@ -778,33 +938,20 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Assessments
             Id = s.Id,
             AssessmentType = AssessmentTypeDto.Summative,
             AssessmentId = s.SummativeAssessmentId,
-            AssessmentTitle = s.SummativeAssessment?.Title ?? string.Empty,
+            AssessmentTitle = s.SummativeAssessment?.Title ?? "-",
             StudentId = s.StudentId,
-            StudentName = $"{s.Student?.FirstName} {s.Student?.LastName}".Trim(),
-            StudentAdmissionNo = s.Student?.AdmissionNumber ?? string.Empty,
-            AssessmentDate = s.SummativeAssessment?.AssessmentDate ?? default,
+            StudentName = s.Student != null ? $"{s.Student.FirstName} {s.Student.LastName}".Trim() : "-",
+            StudentAdmissionNo = s.Student?.AdmissionNumber ?? "-",
+            AssessmentDate = s.SummativeAssessment?.AssessmentDate ?? DateTime.MinValue,
             TheoryScore = s.TheoryScore,
             PracticalScore = s.PracticalScore,
-            TotalScore = s.TheoryScore + (s.PracticalScore ?? 0),
-            MaximumTotalScore = s.MaximumTheoryScore + (s.MaximumPracticalScore ?? 0),
-            Grade = s.Grade,
+            TotalScore = s.TotalScore,
+            MaximumTotalScore = s.MaximumTotalScore,
             Remarks = s.Remarks,
             PositionInClass = s.PositionInClass,
             IsPassed = s.IsPassed,
+            PerformanceStatus = s.PerformanceStatus,
             Comments = s.Comments,
-            GradedByName = $"{s.GradedBy?.FirstName} {s.GradedBy?.LastName}".Trim(),
-            PerformanceStatus = s.MaximumTheoryScore > 0
-                ? ((s.TheoryScore + (s.PracticalScore ?? 0)) /
-                   (s.MaximumTheoryScore + (s.MaximumPracticalScore ?? 0)) * 100) switch
-                {
-                    var pct when pct >= 80 => "Excellent",
-                    var pct when pct >= 70 => "Very Good",
-                    var pct when pct >= 60 => "Good",
-                    var pct when pct >= 50 => "Average",
-                    var pct when pct >= 40 => "Below Average",
-                    _ => "Poor"
-                }
-                : "N/A",
         };
 
         private static AssessmentScoreResponse MapCompetencyScore(CompetencyAssessmentScore s) => new()
@@ -812,19 +959,80 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Assessments
             Id = s.Id,
             AssessmentType = AssessmentTypeDto.Competency,
             AssessmentId = s.CompetencyAssessmentId,
-            AssessmentTitle = s.CompetencyAssessment?.Title ?? string.Empty,
+            AssessmentTitle = s.CompetencyAssessment?.Title ?? "-",
             StudentId = s.StudentId,
-            StudentName = $"{s.Student?.FirstName} {s.Student?.LastName}".Trim(),
-            StudentAdmissionNo = s.Student?.AdmissionNumber ?? string.Empty,
+            StudentName = s.Student != null ? $"{s.Student.FirstName} {s.Student.LastName}".Trim() : "-",
+            StudentAdmissionNo = s.Student?.AdmissionNumber ?? "-",
             AssessmentDate = s.AssessmentDate,
             Rating = s.Rating,
             CompetencyLevel = s.CompetencyLevel,
             Evidence = s.Evidence,
             IsFinalized = s.IsFinalized,
-            Feedback = s.Feedback,
+            AssessorName = s.Assessor != null
+                ? $"{s.Assessor.FirstName} {s.Assessor.LastName}".Trim() : null,
             Strand = s.Strand,
             SubStrand = s.SubStrand,
-            AssessorName = $"{s.Assessor?.FirstName} {s.Assessor?.LastName}".Trim(),
         };
+
+        // ─────────────────────────────────────────────────────────────────────
+        // ACCESS CONTROL HELPERS
+        // ─────────────────────────────────────────────────────────────────────
+        private static Guid ResolveTenant(Guid? requestTenantId, Guid? userSchoolId, bool isSuperAdmin)
+        {
+            if (!isSuperAdmin)
+                return userSchoolId
+                    ?? throw new UnauthorizedException("School context is missing from the token.");
+
+            return requestTenantId
+                ?? throw new ValidationException(
+                    "A school must be selected (tenantId is required for SuperAdmin).");
+        }
+
+        private static void ValidateTenantAccess(
+            Guid entityTenantId, Guid? userSchoolId, bool isSuperAdmin)
+        {
+            if (isSuperAdmin) return;
+
+            if (userSchoolId == null || userSchoolId != entityTenantId)
+                throw new UnauthorizedException("You do not have access to this assessment.");
+        }
+
+        private static IEnumerable<T> ApplyTenantFilter<T>(
+            IEnumerable<T> entities, Guid? userSchoolId, bool isSuperAdmin)
+            where T : Domain.Common.TenantBaseEntity<Guid>
+        {
+            if (isSuperAdmin) return entities;
+            if (userSchoolId == null) return Enumerable.Empty<T>();
+            return entities.Where(e => e.TenantId == userSchoolId);
+        }
     }
 }
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IRepositoryManager — add these properties to your existing interface
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common
+// {
+//     public interface IRepositoryManager
+//     {
+//         // ... existing properties (School, User, Role, UserRole, etc.) ...
+//
+//         IFormativeAssessmentRepository          FormativeAssessment          { get; }
+//         ISummativeAssessmentRepository          SummativeAssessment          { get; }
+//         ICompetencyAssessmentRepository         CompetencyAssessment         { get; }
+//         IFormativeAssessmentScoreRepository     FormativeAssessmentScore     { get; }
+//         ISummativeAssessmentScoreRepository     SummativeAssessmentScore     { get; }
+//         ICompetencyAssessmentScoreRepository    CompetencyAssessmentScore    { get; }
+//
+//         Task SaveAsync();
+//     }
+// }
+//
+// ─────────────────────────────────────────────────────────────────────────────
+// DI Registration (Program.cs / ServiceCollectionExtensions.cs)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// services.AddScoped<IAssessmentService, AssessmentService>();
+// (repositories are already registered via IRepositoryManager)

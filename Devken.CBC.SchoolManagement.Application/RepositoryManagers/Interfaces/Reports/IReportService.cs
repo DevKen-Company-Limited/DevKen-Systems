@@ -3,6 +3,7 @@
 using System;
 using System.Threading.Tasks;
 
+
 namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Reports
 {
     public interface IReportService

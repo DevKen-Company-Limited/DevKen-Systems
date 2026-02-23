@@ -6,116 +6,369 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Assessments
 {
     /// <summary>
-    /// Configures the root TPT table "Assessments" which holds only the columns
-    /// shared by all assessment subtypes. Subtype-specific columns live in their
-    /// own dedicated tables (FormativeAssessments, SummativeAssessments,
-    /// CompetencyAssessments) and are configured in their own IEntityTypeConfiguration.
+    /// Configures the "FormativeAssessments" TPT sub-table.
+    /// Only columns and relationships that are specific to <see cref="FormativeAssessment"/>
+    /// are declared here — shared columns (Title, TeacherId, etc.) and their FK
+    /// relationships are owned entirely by <see cref="AssessmentConfiguration"/>.
+    ///
+    /// CBC curriculum links (Strand → SubStrand → LearningOutcome) are all optional
+    /// nullable FKs so teachers can tag an assessment as broadly or specifically as
+    /// they need. Deleting a curriculum node uses SetNull so the assessment is simply
+    /// "untagged" rather than blocked or cascade-deleted.
     /// </summary>
-    public class AssessmentConfiguration : IEntityTypeConfiguration<Assessment1>
+    public class FormativeAssessmentConfiguration : IEntityTypeConfiguration<FormativeAssessment>
     {
         private readonly TenantContext _tenantContext;
 
-        public AssessmentConfiguration(TenantContext tenantContext)
+        public FormativeAssessmentConfiguration(TenantContext tenantContext)
             => _tenantContext = tenantContext;
 
-        public void Configure(EntityTypeBuilder<Assessment1> builder)
+        public void Configure(EntityTypeBuilder<FormativeAssessment> builder)
         {
-<<<<<<< HEAD
-            // Table name is declared in AppDbContext via UseTptMappingStrategy().
-            // We only configure columns and indexes here.
+            builder.ToTable("FormativeAssessments");
 
-            builder.Property(a => a.Title)
-                   .IsRequired()
-                   .HasMaxLength(200);
+            // ── Formative-specific columns ────────────────────────────────────
+            builder.Property(f => f.FormativeType).HasMaxLength(50);
+            builder.Property(f => f.CompetencyArea).HasMaxLength(100);
+            builder.Property(f => f.Criteria).HasMaxLength(500);
+            builder.Property(f => f.Instructions).HasMaxLength(1000);
+            builder.Property(f => f.FeedbackTemplate).HasMaxLength(1000);
+            builder.Property(f => f.RequiresRubric).HasDefaultValue(false);
+            builder.Property(f => f.AssessmentWeight)
+                   .HasColumnType("decimal(5,2)")
+                   .HasDefaultValue(100.0m);
 
-            builder.Property(a => a.Description)
-                   .HasMaxLength(500);
+            // ── CBC curriculum FK columns (all nullable) ──────────────────────
+            builder.Property(f => f.StrandId).IsRequired(false);
+            builder.Property(f => f.SubStrandId).IsRequired(false);
+            builder.Property(f => f.LearningOutcomeId).IsRequired(false);
 
-            builder.Property(a => a.AssessmentType)
-                   .IsRequired()
+            // ── CBC Curriculum Relationships ──────────────────────────────────
+            //
+            // Strand, SubStrand and LearningOutcome are all optional FKs that let
+            // a teacher tag the assessment to the correct node in the CBC hierarchy:
+            //
+            //   LearningArea → Strand → SubStrand → LearningOutcome
+            //                     ↑          ↑             ↑
+            //               StrandId    SubStrandId  LearningOutcomeId
+            //
+            // WithMany() with no argument (no inverse collection on Strand/SubStrand)
+            // keeps these as unidirectional relationships. The LearningOutcome side
+            // uses the inverse collection WithMany(lo => lo.FormativeAssessments)
+            // because LearningOutcome owns that navigation property.
+            //
+            // SetNull: removing a curriculum node un-tags the assessment without
+            // blocking the delete or removing the assessment itself.
+
+            // FormativeAssessment → Strand (optional, no inverse collection on Strand)
+            builder.HasOne(f => f.Strand)
+                   .WithMany()
+                   .HasForeignKey(f => f.StrandId)
+                   .IsRequired(false)
+                   .OnDelete(DeleteBehavior.SetNull);
+
+            // FormativeAssessment → SubStrand (optional, no inverse collection on SubStrand)
+            builder.HasOne(f => f.SubStrand)
+                   .WithMany()
+                   .HasForeignKey(f => f.SubStrandId)
+                   .IsRequired(false)
+                   .OnDelete(DeleteBehavior.SetNull);
+
+            // FormativeAssessment → LearningOutcome (optional)
+            // Inverse: LearningOutcome.FormativeAssessments
+            builder.HasOne(f => f.LearningOutcome)
+                   .WithMany(lo => lo.FormativeAssessments)
+                   .HasForeignKey(f => f.LearningOutcomeId)
+                   .IsRequired(false)
+                   .OnDelete(DeleteBehavior.SetNull);
+
+            // ── Scores relationship ───────────────────────────────────────────
+            // Cascade: deleting a FormativeAssessment removes all its scores.
+            builder.HasMany(f => f.Scores)
+                   .WithOne(s => s.FormativeAssessment)
+                   .HasForeignKey(s => s.FormativeAssessmentId)
+                   .OnDelete(DeleteBehavior.Cascade);
+
+            // ── Indexes ───────────────────────────────────────────────────────
+            builder.HasIndex(f => f.StrandId);
+            builder.HasIndex(f => f.SubStrandId);
+            builder.HasIndex(f => f.LearningOutcomeId);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    /// <summary>
+    /// Configures the "SummativeAssessments" TPT sub-table.
+    /// Shared columns are owned by <see cref="AssessmentConfiguration"/>.
+    /// </summary>
+    public class SummativeAssessmentConfiguration : IEntityTypeConfiguration<SummativeAssessment>
+    {
+        private readonly TenantContext _tenantContext;
+
+        public SummativeAssessmentConfiguration(TenantContext tenantContext)
+            => _tenantContext = tenantContext;
+
+        public void Configure(EntityTypeBuilder<SummativeAssessment> builder)
+        {
+            builder.ToTable("SummativeAssessments");
+
+            // ── Summative-specific columns ────────────────────────────────────
+            builder.Property(s => s.ExamType).HasMaxLength(50);
+            builder.Property(s => s.NumberOfQuestions).HasDefaultValue(0);
+            builder.Property(s => s.PassMark)
+                   .HasColumnType("decimal(5,2)")
+                   .HasDefaultValue(50.0m);
+            builder.Property(s => s.HasPracticalComponent).HasDefaultValue(false);
+            builder.Property(s => s.PracticalWeight)
+                   .HasColumnType("decimal(5,2)")
+                   .HasDefaultValue(0.0m);
+            builder.Property(s => s.TheoryWeight)
+                   .HasColumnType("decimal(5,2)")
+                   .HasDefaultValue(100.0m);
+            builder.Property(s => s.Instructions).HasMaxLength(1000);
+
+            // ── Scores relationship ───────────────────────────────────────────
+            builder.HasMany(s => s.Scores)
+                   .WithOne(sc => sc.SummativeAssessment)
+                   .HasForeignKey(sc => sc.SummativeAssessmentId)
+                   .OnDelete(DeleteBehavior.Cascade);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    /// <summary>
+    /// Configures the "CompetencyAssessments" TPT sub-table.
+    /// Shared columns are owned by <see cref="AssessmentConfiguration"/>.
+    /// CompetencyStrand and CompetencySubStrand are stored as free-text strings
+    /// (not FK-linked) because competency descriptions are often ad-hoc and may
+    /// not align to the formal Strand/SubStrand hierarchy.
+    /// </summary>
+    public class CompetencyAssessmentConfiguration : IEntityTypeConfiguration<CompetencyAssessment>
+    {
+        private readonly TenantContext _tenantContext;
+
+        public CompetencyAssessmentConfiguration(TenantContext tenantContext)
+            => _tenantContext = tenantContext;
+
+        public void Configure(EntityTypeBuilder<CompetencyAssessment> builder)
+        {
+            builder.ToTable("CompetencyAssessments");
+
+            // ── Competency-specific columns ───────────────────────────────────
+            builder.Property(c => c.CompetencyName).IsRequired().HasMaxLength(100);
+            builder.Property(c => c.CompetencyStrand).HasMaxLength(100);
+            builder.Property(c => c.CompetencySubStrand).HasMaxLength(100);
+            builder.Property(c => c.PerformanceIndicators).HasMaxLength(1000);
+            builder.Property(c => c.RatingScale).HasMaxLength(20);
+            builder.Property(c => c.ToolsRequired).HasMaxLength(500);
+            builder.Property(c => c.Instructions).HasMaxLength(1000);
+            builder.Property(c => c.SpecificLearningOutcome).HasMaxLength(1000);
+            builder.Property(c => c.IsObservationBased).HasDefaultValue(true);
+
+            // ── Enum columns ──────────────────────────────────────────────────
+            builder.Property(c => c.TargetLevel)
+                   .HasConversion<string>()
                    .HasMaxLength(20);
 
-            builder.Property(a => a.MaximumScore)
-                   .HasColumnType("decimal(18,2)");
+            builder.Property(c => c.AssessmentMethod)
+                   .HasConversion<string>()
+                   .HasMaxLength(30);
 
-            builder.Property(a => a.IsPublished)
-                   .HasDefaultValue(false);
+            // ── Scores relationship ───────────────────────────────────────────
+            builder.HasMany(c => c.Scores)
+                   .WithOne(s => s.CompetencyAssessment)
+                   .HasForeignKey(s => s.CompetencyAssessmentId)
+                   .OnDelete(DeleteBehavior.Cascade);
+        }
+    }
 
-            builder.Property(a => a.PublishedDate)
-                   .IsRequired(false);
+    // ─────────────────────────────────────────────────────────────────────────
+    /// <summary>
+    /// Configures the "FormativeAssessmentScores" table.
+    /// The assessment FK and student/gradedBy FKs are declared here.
+    /// Computed properties (Percentage) are ignored so EF never tries to persist them.
+    /// </summary>
+    public class FormativeAssessmentScoreConfiguration
+        : IEntityTypeConfiguration<FormativeAssessmentScore>
+    {
+        private readonly TenantContext _tenantContext;
 
-            // ── Foreign Keys ────────────────────────────────────────────
+        public FormativeAssessmentScoreConfiguration(TenantContext tenantContext)
+            => _tenantContext = tenantContext;
 
-=======
-            builder.ToTable("Assessments");
-            builder.HasKey(a => a.Id);
+        public void Configure(EntityTypeBuilder<FormativeAssessmentScore> builder)
+        {
+            builder.ToTable("FormativeAssessmentScores");
+            builder.HasKey(s => s.Id);
 
-            builder.Property(a => a.Title).IsRequired().HasMaxLength(200);
-            builder.Property(a => a.Description).HasMaxLength(500);
-            builder.Property(a => a.AssessmentType).IsRequired().HasMaxLength(20);
-            builder.Property(a => a.MaximumScore).HasColumnType("decimal(18,2)");
-            builder.Property(a => a.AssessmentDate).IsRequired();
-            builder.Property(a => a.IsPublished).HasDefaultValue(false);
-            builder.Property(a => a.TeacherId).IsRequired();
-            builder.Property(a => a.SubjectId).IsRequired();
-            builder.Property(a => a.ClassId).IsRequired();
-            builder.Property(a => a.TermId).IsRequired();
-            builder.Property(a => a.AcademicYearId).IsRequired();
+            // ── Score columns ─────────────────────────────────────────────────
+            builder.Property(s => s.Score).HasColumnType("decimal(8,2)");
+            builder.Property(s => s.MaximumScore).HasColumnType("decimal(8,2)");
+            builder.Property(s => s.Grade).HasMaxLength(10);
+            builder.Property(s => s.PerformanceLevel).HasMaxLength(20);
+            builder.Property(s => s.Feedback).HasMaxLength(2000);
+            builder.Property(s => s.Strengths).HasMaxLength(500);
+            builder.Property(s => s.AreasForImprovement).HasMaxLength(500);
+            builder.Property(s => s.CompetencyArea).HasMaxLength(100);
+            builder.Property(s => s.IsSubmitted).HasDefaultValue(false);
+            builder.Property(s => s.CompetencyAchieved).HasDefaultValue(false);
 
-            // Each relationship is owned HERE and nowhere else.
-            // WithMany(collection) tells EF exactly which inverse nav to use,
-            // preventing it from auto-discovering a second relationship.
->>>>>>> upstream/main
-            builder.HasOne(a => a.Teacher)
+            // ── Computed — never persisted ────────────────────────────────────
+            builder.Ignore(s => s.Percentage);
+
+            // ── Relationships ─────────────────────────────────────────────────
+            // Parent assessment: cascade (score dies with the assessment)
+            builder.HasOne(s => s.FormativeAssessment)
+                   .WithMany(a => a.Scores)
+                   .HasForeignKey(s => s.FormativeAssessmentId)
+                   .OnDelete(DeleteBehavior.Cascade);
+
+            // Student: restrict (do not delete scores when a student is removed)
+            builder.HasOne(s => s.Student)
                    .WithMany()
-                   .HasForeignKey(a => a.TeacherId)
+                   .HasForeignKey(s => s.StudentId)
                    .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasOne(a => a.Subject)
+            // Teacher who graded (optional)
+            builder.HasOne(s => s.GradedBy)
                    .WithMany()
-                   .HasForeignKey(a => a.SubjectId)
+                   .HasForeignKey(s => s.GradedById)
+                   .IsRequired(false)
                    .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasOne(a => a.Class)
-                   .WithMany()
-                   .HasForeignKey(a => a.ClassId)
-                   .OnDelete(DeleteBehavior.Restrict);
+            // ── Indexes ───────────────────────────────────────────────────────
+            // Unique per student per assessment (upsert key)
+            builder.HasIndex(s => new { s.FormativeAssessmentId, s.StudentId }).IsUnique();
+            builder.HasIndex(s => s.StudentId);
 
-            // WithMany(t => t.Assessments) collapses the relationship that
-            // TermConfiguration was also defining via HasMany(t => t.Assessments)
-            // — having both caused the TermId1 shadow property.
-            builder.HasOne(a => a.Term)
-                   .WithMany()
-                   .HasForeignKey(a => a.TermId)
-                   .OnDelete(DeleteBehavior.Restrict);
-
-            // Same fix for AcademicYearId1 — AcademicYearConfiguration was also
-            // defining HasMany(ay => ay.Assessments) causing the duplicate.
-            builder.HasOne(a => a.AcademicYear)
-                   .WithMany()
-                   .HasForeignKey(a => a.AcademicYearId)
-                   .OnDelete(DeleteBehavior.Restrict);
-
-<<<<<<< HEAD
-            // ── Indexes ──────────────────────────────────────────────────
-
-            builder.HasIndex(a => a.TeacherId);
-            builder.HasIndex(a => a.SubjectId);
-            builder.HasIndex(a => a.ClassId);
-            builder.HasIndex(a => a.TermId);
-            builder.HasIndex(a => a.AcademicYearId);
-            builder.HasIndex(a => a.AssessmentType);
-
-            // ── Global Query Filter (multi-tenant) ───────────────────────
-            if (_tenantContext?.TenantId != null)
-            {
-                builder.HasQueryFilter(a => a.TenantId == _tenantContext.TenantId);
-            }
-=======
-            builder.HasQueryFilter(a =>
+            // ── Tenant filter ─────────────────────────────────────────────────
+            builder.HasQueryFilter(s =>
                 _tenantContext.TenantId == null ||
-                a.TenantId == _tenantContext.TenantId);
->>>>>>> upstream/main
+                s.TenantId == _tenantContext.TenantId);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    /// <summary>
+    /// Configures the "SummativeAssessmentScores" table.
+    /// Computed properties (TotalScore, MaximumTotalScore, Percentage,
+    /// PerformanceStatus) are ignored so EF never tries to persist them.
+    /// </summary>
+    public class SummativeAssessmentScoreConfiguration
+        : IEntityTypeConfiguration<SummativeAssessmentScore>
+    {
+        private readonly TenantContext _tenantContext;
+
+        public SummativeAssessmentScoreConfiguration(TenantContext tenantContext)
+            => _tenantContext = tenantContext;
+
+        public void Configure(EntityTypeBuilder<SummativeAssessmentScore> builder)
+        {
+            builder.ToTable("SummativeAssessmentScores");
+            builder.HasKey(s => s.Id);
+
+            // ── Score columns ─────────────────────────────────────────────────
+            builder.Property(s => s.TheoryScore).HasColumnType("decimal(8,2)");
+            builder.Property(s => s.PracticalScore).HasColumnType("decimal(8,2)");
+            builder.Property(s => s.MaximumTheoryScore).HasColumnType("decimal(8,2)");
+            builder.Property(s => s.MaximumPracticalScore).HasColumnType("decimal(8,2)");
+            builder.Property(s => s.Grade).HasMaxLength(10);
+            builder.Property(s => s.Remarks).HasMaxLength(20);
+            builder.Property(s => s.Comments).HasMaxLength(1000);
+            builder.Property(s => s.IsPassed).HasDefaultValue(false);
+
+            // ── Computed — never persisted ────────────────────────────────────
+            builder.Ignore(s => s.TotalScore);
+            builder.Ignore(s => s.MaximumTotalScore);
+            builder.Ignore(s => s.Percentage);
+            builder.Ignore(s => s.PerformanceStatus);
+
+            // ── Relationships ─────────────────────────────────────────────────
+            builder.HasOne(s => s.SummativeAssessment)
+                   .WithMany(a => a.Scores)
+                   .HasForeignKey(s => s.SummativeAssessmentId)
+                   .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasOne(s => s.Student)
+                   .WithMany()
+                   .HasForeignKey(s => s.StudentId)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(s => s.GradedBy)
+                   .WithMany()
+                   .HasForeignKey(s => s.GradedById)
+                   .IsRequired(false)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            // ── Indexes ───────────────────────────────────────────────────────
+            builder.HasIndex(s => new { s.SummativeAssessmentId, s.StudentId }).IsUnique();
+            builder.HasIndex(s => s.StudentId);
+
+            // ── Tenant filter ─────────────────────────────────────────────────
+            builder.HasQueryFilter(s =>
+                _tenantContext.TenantId == null ||
+                s.TenantId == _tenantContext.TenantId);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    /// <summary>
+    /// Configures the "CompetencyAssessmentScores" table.
+    /// CompetencyLevel is a computed property and is ignored by EF.
+    /// </summary>
+    public class CompetencyAssessmentScoreConfiguration
+        : IEntityTypeConfiguration<CompetencyAssessmentScore>
+    {
+        private readonly TenantContext _tenantContext;
+
+        public CompetencyAssessmentScoreConfiguration(TenantContext tenantContext)
+            => _tenantContext = tenantContext;
+
+        public void Configure(EntityTypeBuilder<CompetencyAssessmentScore> builder)
+        {
+            builder.ToTable("CompetencyAssessmentScores");
+            builder.HasKey(s => s.Id);
+
+            // ── Score columns ─────────────────────────────────────────────────
+            builder.Property(s => s.Rating).IsRequired().HasMaxLength(50);
+            builder.Property(s => s.Evidence).HasMaxLength(1000);
+            builder.Property(s => s.AssessmentMethod).HasMaxLength(20);
+            builder.Property(s => s.ToolsUsed).HasMaxLength(500);
+            builder.Property(s => s.Feedback).HasMaxLength(2000);
+            builder.Property(s => s.AreasForImprovement).HasMaxLength(500);
+            builder.Property(s => s.Strand).HasMaxLength(100);
+            builder.Property(s => s.SubStrand).HasMaxLength(100);
+            builder.Property(s => s.SpecificLearningOutcome).HasMaxLength(500);
+            builder.Property(s => s.IsFinalized).HasDefaultValue(false);
+
+            // ── Computed — never persisted ────────────────────────────────────
+            builder.Ignore(s => s.CompetencyLevel);
+
+            // ── Relationships ─────────────────────────────────────────────────
+            builder.HasOne(s => s.CompetencyAssessment)
+                   .WithMany(a => a.Scores)
+                   .HasForeignKey(s => s.CompetencyAssessmentId)
+                   .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasOne(s => s.Student)
+                   .WithMany()
+                   .HasForeignKey(s => s.StudentId)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(s => s.Assessor)
+                   .WithMany()
+                   .HasForeignKey(s => s.AssessorId)
+                   .IsRequired(false)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            // ── Indexes ───────────────────────────────────────────────────────
+            builder.HasIndex(s => new { s.CompetencyAssessmentId, s.StudentId }).IsUnique();
+            builder.HasIndex(s => s.StudentId);
+
+            // ── Tenant filter ─────────────────────────────────────────────────
+            builder.HasQueryFilter(s =>
+                _tenantContext.TenantId == null ||
+                s.TenantId == _tenantContext.TenantId);
         }
     }
 }

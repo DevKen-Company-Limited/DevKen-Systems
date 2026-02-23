@@ -1,4 +1,5 @@
-﻿using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Assessments;
+﻿// Devken.CBC.SchoolManagement.Infrastructure/Data/Repositories/Assessments/AssessmentRepositories.cs
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Assessments;
 using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.common;
@@ -6,138 +7,13 @@ using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
-<<<<<<< HEAD
 using System.Linq;
-=======
->>>>>>> upstream/main
 using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessments
 {
-<<<<<<< HEAD
-    /// <summary>
-    /// Concrete implementation of <see cref="IAssessmentRepository"/>.
-    /// Inherits generic CRUD from <see cref="RepositoryBase{T,TId}"/> and adds
-    /// assessment-specific query methods.
-    /// </summary>
-    public class AssessmentRepository : RepositoryBase<Assessment1, Guid>, IAssessmentRepository
-    {
-        public AssessmentRepository(AppDbContext context, TenantContext tenantContext)
-            : base(context, tenantContext) { }
-
-        // ── Custom queries ────────────────────────────────────────────────────
-
-        /// <inheritdoc/>
-        /// <remarks>
-        /// Returns every non-deleted assessment regardless of tenant.
-        /// Intended for SuperAdmin use only — the controller enforces that restriction.
-        /// </remarks>
-        public async Task<IEnumerable<Assessment1>> GetAllAsync(bool trackChanges = false)
-        {
-            var query = FindAll(trackChanges)
-                .Include(a => a.Subject)
-                .Include(a => a.Teacher)
-                .Include(a => a.Class)
-                .Include(a => a.Term)
-                .Include(a => a.AcademicYear)
-                .OrderByDescending(a => a.AssessmentDate);
-
-            return await query.ToListAsync();
-        }
-
-        /// <inheritdoc/>
-        public async Task<IEnumerable<Assessment1>> GetBySchoolAsync(
-            Guid schoolId, bool trackChanges = false)
-        {
-            var query = FindByCondition(a => a.TenantId == schoolId, trackChanges)
-                .Include(a => a.Subject)
-                .Include(a => a.Teacher)
-                .Include(a => a.Class)
-                .Include(a => a.Term)
-                .Include(a => a.AcademicYear)
-                .OrderByDescending(a => a.AssessmentDate);
-
-            return await query.ToListAsync();
-        }
-
-        /// <inheritdoc/>
-        public async Task<IEnumerable<Assessment1>> GetByClassAsync(
-            Guid classId, bool trackChanges = false)
-        {
-            var query = FindByCondition(a => a.ClassId == classId, trackChanges)
-                .Include(a => a.Subject)
-                .Include(a => a.Teacher)
-                .Include(a => a.Term)
-                .Include(a => a.AcademicYear)
-                .OrderByDescending(a => a.AssessmentDate);
-
-            return await query.ToListAsync();
-        }
-
-        /// <inheritdoc/>
-        public async Task<IEnumerable<Assessment1>> GetByTeacherAsync(
-            Guid teacherId, bool trackChanges = false)
-        {
-            var query = FindByCondition(a => a.TeacherId == teacherId, trackChanges)
-                .Include(a => a.Subject)
-                .Include(a => a.Class)
-                .Include(a => a.Term)
-                .Include(a => a.AcademicYear)
-                .OrderByDescending(a => a.AssessmentDate);
-
-            return await query.ToListAsync();
-        }
-
-        /// <inheritdoc/>
-        public async Task<IEnumerable<Assessment1>> GetByTermAsync(
-            Guid termId, Guid academicYearId, bool trackChanges = false)
-        {
-            var query = FindByCondition(
-                    a => a.TermId == termId && a.AcademicYearId == academicYearId,
-                    trackChanges)
-                .Include(a => a.Subject)
-                .Include(a => a.Class)
-                .Include(a => a.Teacher)
-                .OrderByDescending(a => a.AssessmentDate);
-
-            return await query.ToListAsync();
-        }
-
-        /// <inheritdoc/>
-        public async Task<Assessment1?> GetWithGradesAsync(
-            Guid assessmentId, bool trackChanges = false)
-        {
-            var query = FindByCondition(a => a.Id == assessmentId, trackChanges)
-                //.Include(a => a.Grades)
-                .Include(a => a.Subject)
-                .Include(a => a.Teacher)
-                .Include(a => a.Class)
-                .Include(a => a.Term)
-                .Include(a => a.AcademicYear);
-
-            return await query.FirstOrDefaultAsync();
-        }
-
-        /// <inheritdoc/>
-        public async Task<IEnumerable<Assessment1>> GetPublishedAsync(
-            Guid classId, Guid termId, bool trackChanges = false)
-        {
-            var query = FindByCondition(
-                    a => a.ClassId == classId
-                      && a.TermId == termId
-                      && a.IsPublished,
-                    trackChanges)
-                .Include(a => a.Subject)
-                .Include(a => a.Teacher)
-                .Include(a => a.AcademicYear)
-                .OrderByDescending(a => a.PublishedDate);
-
-            return await query.ToListAsync();
-        }
-    }
-=======
     // ─────────────────────────────────────────────────────────────────────────
-    // FORMATIVE ASSESSMENT REPOSITORY
+    // FORMATIVE ASSESSMENT
     // ─────────────────────────────────────────────────────────────────────────
     public class FormativeAssessmentRepository
         : RepositoryBase<FormativeAssessment, Guid>, IFormativeAssessmentRepository
@@ -146,8 +22,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
             : base(context, tenantContext) { }
 
         public async Task<IEnumerable<FormativeAssessment>> GetAllAsync(
-            Guid? classId, Guid? termId, Guid? subjectId, Guid? teacherId,
-            bool? isPublished, bool trackChanges = false)
+            Guid? classId, Guid? termId, Guid? subjectId,
+            Guid? teacherId, bool? isPublished, bool trackChanges = false)
         {
             var query = FindAll(trackChanges)
                 .Include(f => f.Teacher)
@@ -155,6 +31,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
                 .Include(f => f.Class)
                 .Include(f => f.Term)
                 .Include(f => f.AcademicYear)
+                .Include(f => f.Strand)
+                .Include(f => f.SubStrand)
                 .AsQueryable();
 
             if (classId.HasValue) query = query.Where(f => f.ClassId == classId);
@@ -163,14 +41,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
             if (teacherId.HasValue) query = query.Where(f => f.TeacherId == teacherId);
             if (isPublished.HasValue) query = query.Where(f => f.IsPublished == isPublished);
 
-            return await query
-                .OrderByDescending(f => f.AssessmentDate)
-                .ToListAsync();
+            return await query.OrderByDescending(f => f.AssessmentDate).ToListAsync();
         }
 
-        /// <summary>
-        /// Standard tenant-filtered fetch. Use for regular tenant users.
-        /// </summary>
         public async Task<FormativeAssessment?> GetByIdWithDetailsAsync(Guid id, bool trackChanges = false)
             => await FindByCondition(f => f.Id == id, trackChanges)
                 .Include(f => f.Teacher)
@@ -178,14 +51,13 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
                 .Include(f => f.Class)
                 .Include(f => f.Term)
                 .Include(f => f.AcademicYear)
+                .Include(f => f.Strand)
+                .Include(f => f.SubStrand)
                 .Include(f => f.LearningOutcome)
                 .Include(f => f.Scores).ThenInclude(s => s.Student)
+                .Include(f => f.Scores).ThenInclude(s => s.GradedBy)
                 .FirstOrDefaultAsync();
 
-        /// <summary>
-        /// Bypasses the global tenant query filter. Safe to use for SuperAdmin reads
-        /// where TenantContext may not match the entity's TenantId.
-        /// </summary>
         public async Task<FormativeAssessment?> GetByIdIgnoringTenantAsync(Guid id, bool trackChanges = false)
         {
             var query = _context.Set<FormativeAssessment>()
@@ -195,6 +67,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
                 .Include(f => f.Class)
                 .Include(f => f.Term)
                 .Include(f => f.AcademicYear)
+                .Include(f => f.Strand)
+                .Include(f => f.SubStrand)
                 .Include(f => f.LearningOutcome)
                 .Include(f => f.Scores).ThenInclude(s => s.Student)
                 .Where(f => f.Id == id);
@@ -206,10 +80,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
 
         public async Task<IEnumerable<FormativeAssessment>> GetByClassAndTermAsync(
             Guid classId, Guid termId, bool trackChanges = false)
-            => await FindByCondition(
-                    f => f.ClassId == classId && f.TermId == termId, trackChanges)
+            => await FindByCondition(f => f.ClassId == classId && f.TermId == termId, trackChanges)
                 .Include(f => f.Subject)
                 .Include(f => f.Teacher)
+                .Include(f => f.Strand)
+                .Include(f => f.SubStrand)
                 .OrderByDescending(f => f.AssessmentDate)
                 .ToListAsync();
 
@@ -218,11 +93,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
                 .Select(f => f.IsPublished)
                 .FirstOrDefaultAsync();
 
-        /// <summary>
-        /// Loads all navigation properties directly on the tracked entity,
-        /// bypassing the tenant query filter. Safe to call after Create + SaveAsync
-        /// when the TenantContext may not match the entity's TenantId (e.g. SuperAdmin).
-        /// </summary>
         public async Task LoadNavigationsAsync(FormativeAssessment entity)
         {
             var entry = _context.Entry(entity);
@@ -231,13 +101,14 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
             await entry.Reference(e => e.Class).LoadAsync();
             await entry.Reference(e => e.Term).LoadAsync();
             await entry.Reference(e => e.AcademicYear).LoadAsync();
+            await entry.Reference(e => e.Strand).LoadAsync();
+            await entry.Reference(e => e.SubStrand).LoadAsync();
             await entry.Reference(e => e.LearningOutcome).LoadAsync();
-            // Scores is empty on a brand-new assessment — no need to load
         }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // SUMMATIVE ASSESSMENT REPOSITORY
+    // SUMMATIVE ASSESSMENT
     // ─────────────────────────────────────────────────────────────────────────
     public class SummativeAssessmentRepository
         : RepositoryBase<SummativeAssessment, Guid>, ISummativeAssessmentRepository
@@ -246,8 +117,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
             : base(context, tenantContext) { }
 
         public async Task<IEnumerable<SummativeAssessment>> GetAllAsync(
-            Guid? classId, Guid? termId, Guid? subjectId, Guid? teacherId,
-            bool? isPublished, bool trackChanges = false)
+            Guid? classId, Guid? termId, Guid? subjectId,
+            Guid? teacherId, bool? isPublished, bool trackChanges = false)
         {
             var query = FindAll(trackChanges)
                 .Include(s => s.Teacher)
@@ -263,14 +134,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
             if (teacherId.HasValue) query = query.Where(s => s.TeacherId == teacherId);
             if (isPublished.HasValue) query = query.Where(s => s.IsPublished == isPublished);
 
-            return await query
-                .OrderByDescending(s => s.AssessmentDate)
-                .ToListAsync();
+            return await query.OrderByDescending(s => s.AssessmentDate).ToListAsync();
         }
 
-        /// <summary>
-        /// Standard tenant-filtered fetch. Use for regular tenant users.
-        /// </summary>
         public async Task<SummativeAssessment?> GetByIdWithDetailsAsync(Guid id, bool trackChanges = false)
             => await FindByCondition(s => s.Id == id, trackChanges)
                 .Include(s => s.Teacher)
@@ -279,12 +145,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
                 .Include(s => s.Term)
                 .Include(s => s.AcademicYear)
                 .Include(s => s.Scores).ThenInclude(sc => sc.Student)
+                .Include(s => s.Scores).ThenInclude(sc => sc.GradedBy)
                 .FirstOrDefaultAsync();
 
-        /// <summary>
-        /// Bypasses the global tenant query filter. Safe to use for SuperAdmin reads
-        /// where TenantContext may not match the entity's TenantId.
-        /// </summary>
         public async Task<SummativeAssessment?> GetByIdIgnoringTenantAsync(Guid id, bool trackChanges = false)
         {
             var query = _context.Set<SummativeAssessment>()
@@ -304,8 +167,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
 
         public async Task<IEnumerable<SummativeAssessment>> GetByClassAndTermAsync(
             Guid classId, Guid termId, bool trackChanges = false)
-            => await FindByCondition(
-                    s => s.ClassId == classId && s.TermId == termId, trackChanges)
+            => await FindByCondition(s => s.ClassId == classId && s.TermId == termId, trackChanges)
                 .Include(s => s.Subject)
                 .Include(s => s.Teacher)
                 .OrderByDescending(s => s.AssessmentDate)
@@ -316,11 +178,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
                 .Select(s => s.IsPublished)
                 .FirstOrDefaultAsync();
 
-        /// <summary>
-        /// Loads all navigation properties directly on the tracked entity,
-        /// bypassing the tenant query filter. Safe to call after Create + SaveAsync
-        /// when the TenantContext may not match the entity's TenantId (e.g. SuperAdmin).
-        /// </summary>
         public async Task LoadNavigationsAsync(SummativeAssessment entity)
         {
             var entry = _context.Entry(entity);
@@ -329,12 +186,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
             await entry.Reference(e => e.Class).LoadAsync();
             await entry.Reference(e => e.Term).LoadAsync();
             await entry.Reference(e => e.AcademicYear).LoadAsync();
-            // Scores is empty on a brand-new assessment — no need to load
         }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // COMPETENCY ASSESSMENT REPOSITORY
+    // COMPETENCY ASSESSMENT
     // ─────────────────────────────────────────────────────────────────────────
     public class CompetencyAssessmentRepository
         : RepositoryBase<CompetencyAssessment, Guid>, ICompetencyAssessmentRepository
@@ -343,8 +199,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
             : base(context, tenantContext) { }
 
         public async Task<IEnumerable<CompetencyAssessment>> GetAllAsync(
-            Guid? classId, Guid? termId, Guid? subjectId, Guid? teacherId,
-            bool? isPublished, bool trackChanges = false)
+            Guid? classId, Guid? termId, Guid? subjectId,
+            Guid? teacherId, bool? isPublished, bool trackChanges = false)
         {
             var query = FindAll(trackChanges)
                 .Include(c => c.Teacher)
@@ -360,14 +216,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
             if (teacherId.HasValue) query = query.Where(c => c.TeacherId == teacherId);
             if (isPublished.HasValue) query = query.Where(c => c.IsPublished == isPublished);
 
-            return await query
-                .OrderByDescending(c => c.AssessmentDate)
-                .ToListAsync();
+            return await query.OrderByDescending(c => c.AssessmentDate).ToListAsync();
         }
 
-        /// <summary>
-        /// Standard tenant-filtered fetch. Use for regular tenant users.
-        /// </summary>
         public async Task<CompetencyAssessment?> GetByIdWithDetailsAsync(Guid id, bool trackChanges = false)
             => await FindByCondition(c => c.Id == id, trackChanges)
                 .Include(c => c.Teacher)
@@ -376,12 +227,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
                 .Include(c => c.Term)
                 .Include(c => c.AcademicYear)
                 .Include(c => c.Scores).ThenInclude(s => s.Student)
+                .Include(c => c.Scores).ThenInclude(s => s.Assessor)
                 .FirstOrDefaultAsync();
 
-        /// <summary>
-        /// Bypasses the global tenant query filter. Safe to use for SuperAdmin reads
-        /// where TenantContext may not match the entity's TenantId.
-        /// </summary>
         public async Task<CompetencyAssessment?> GetByIdIgnoringTenantAsync(Guid id, bool trackChanges = false)
         {
             var query = _context.Set<CompetencyAssessment>()
@@ -401,8 +249,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
 
         public async Task<IEnumerable<CompetencyAssessment>> GetByClassAndTermAsync(
             Guid classId, Guid termId, bool trackChanges = false)
-            => await FindByCondition(
-                    c => c.ClassId == classId && c.TermId == termId, trackChanges)
+            => await FindByCondition(c => c.ClassId == classId && c.TermId == termId, trackChanges)
                 .Include(c => c.Subject)
                 .Include(c => c.Teacher)
                 .OrderByDescending(c => c.AssessmentDate)
@@ -413,11 +260,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
                 .Select(c => c.IsPublished)
                 .FirstOrDefaultAsync();
 
-        /// <summary>
-        /// Loads all navigation properties directly on the tracked entity,
-        /// bypassing the tenant query filter. Safe to call after Create + SaveAsync
-        /// when the TenantContext may not match the entity's TenantId (e.g. SuperAdmin).
-        /// </summary>
         public async Task LoadNavigationsAsync(CompetencyAssessment entity)
         {
             var entry = _context.Entry(entity);
@@ -426,7 +268,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
             await entry.Reference(e => e.Class).LoadAsync();
             await entry.Reference(e => e.Term).LoadAsync();
             await entry.Reference(e => e.AcademicYear).LoadAsync();
-            // Scores is empty on a brand-new assessment — no need to load
         }
     }
 
@@ -444,7 +285,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
             => await FindByCondition(s => s.FormativeAssessmentId == assessmentId, trackChanges)
                 .Include(s => s.Student)
                 .Include(s => s.GradedBy)
-                .OrderBy(s => s.Student.LastName)
+                .OrderBy(s => s.Student.LastName).ThenBy(s => s.Student.FirstName)
                 .ToListAsync();
 
         public async Task<IEnumerable<FormativeAssessmentScore>> GetByStudentAsync(
@@ -457,9 +298,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
             if (termId.HasValue)
                 query = query.Where(s => s.FormativeAssessment.TermId == termId);
 
-            return await query
-                .OrderByDescending(s => s.FormativeAssessment.AssessmentDate)
-                .ToListAsync();
+            return await query.OrderByDescending(s => s.FormativeAssessment.AssessmentDate).ToListAsync();
         }
 
         public async Task<FormativeAssessmentScore?> GetByAssessmentAndStudentAsync(
@@ -496,9 +335,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
             if (termId.HasValue)
                 query = query.Where(s => s.SummativeAssessment.TermId == termId);
 
-            return await query
-                .OrderByDescending(s => s.SummativeAssessment.AssessmentDate)
-                .ToListAsync();
+            return await query.OrderByDescending(s => s.SummativeAssessment.AssessmentDate).ToListAsync();
         }
 
         public async Task<SummativeAssessmentScore?> GetByAssessmentAndStudentAsync(
@@ -522,7 +359,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
             => await FindByCondition(s => s.CompetencyAssessmentId == assessmentId, trackChanges)
                 .Include(s => s.Student)
                 .Include(s => s.Assessor)
-                .OrderBy(s => s.Student.LastName)
+                .OrderBy(s => s.Student.LastName).ThenBy(s => s.Student.FirstName)
                 .ToListAsync();
 
         public async Task<IEnumerable<CompetencyAssessmentScore>> GetByStudentAsync(
@@ -535,9 +372,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
             if (termId.HasValue)
                 query = query.Where(s => s.CompetencyAssessment.TermId == termId);
 
-            return await query
-                .OrderByDescending(s => s.CompetencyAssessment.AssessmentDate)
-                .ToListAsync();
+            return await query.OrderByDescending(s => s.CompetencyAssessment.AssessmentDate).ToListAsync();
         }
 
         public async Task<CompetencyAssessmentScore?> GetByAssessmentAndStudentAsync(
@@ -549,5 +384,4 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
                 .Include(s => s.Assessor)
                 .FirstOrDefaultAsync();
     }
->>>>>>> upstream/main
 }

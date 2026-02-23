@@ -36,7 +36,7 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
         DbContext Context { get; }
 
         // ================= ASSESSMENTS =================
-        IAssessmentRepository Assessment { get; }
+       // IAssessmentRepository Assessment { get; }
         IFormativeAssessmentRepository FormativeAssessment { get; }
         ISummativeAssessmentRepository SummativeAssessment { get; }
         ICompetencyAssessmentRepository CompetencyAssessment { get; }

@@ -1,5 +1,7 @@
-﻿using Devken.CBC.SchoolManagement.Domain.Common;
+﻿// Devken.CBC.SchoolManagement.Domain/Entities/Assessments/CompetencyAssessmentScore.cs
+using Devken.CBC.SchoolManagement.Domain.Common;
 using Devken.CBC.SchoolManagement.Domain.Entities.Academic;
+using System;
 using System.ComponentModel.DataAnnotations;
 
 namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
@@ -15,8 +17,9 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
         public Guid? AssessorId { get; set; }
         public Teacher? Assessor { get; set; }
 
+        // ── Score data ────────────────────────────────────────────────────────
         [Required, MaxLength(50)]
-        public string Rating { get; set; } = null!;
+        public string Rating { get; set; } = null!;         // Exceeds | Meets | Approaching | Below
 
         public int? ScoreValue { get; set; }
 
@@ -45,10 +48,10 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
         [MaxLength(100)]
         public string? SubStrand { get; set; }
 
-        [MaxLength(100)]
+        [MaxLength(500)]
         public string? SpecificLearningOutcome { get; set; }
 
-        // Computed — not persisted (Ignore in Fluent API)
+        /// <summary>Computed, not persisted — configured with Ignore() in Fluent API.</summary>
         public string CompetencyLevel => Rating switch
         {
             "Exceeds" => "Excellent",

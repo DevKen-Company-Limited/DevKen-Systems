@@ -1,18 +1,22 @@
-﻿using Devken.CBC.SchoolManagement.Domain.Enums;
+﻿// Devken.CBC.SchoolManagement.Domain/Entities/Assessments/CompetencyAssessment.cs
+using Devken.CBC.SchoolManagement.Domain.Enums;
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
 {
     public class CompetencyAssessment : Assessment1
     {
-        [MaxLength(100)]
+        [Required, MaxLength(100)]
         public string CompetencyName { get; set; } = null!;
 
-        [MaxLength(50)]
-        public string? Strand { get; set; }
+        // Stored as strings for Competency — no FK constraint; can be ad-hoc labels
+        [MaxLength(100)]
+        public string? CompetencyStrand { get; set; }
 
-        [MaxLength(50)]
-        public string? SubStrand { get; set; }
+        [MaxLength(100)]
+        public string? CompetencySubStrand { get; set; }
 
         public CBCLevel TargetLevel { get; set; }
 
@@ -21,9 +25,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
 
         public AssessmentMethod AssessmentMethod { get; set; }
 
-        /// <summary>
-        /// Exceeds | Meets | Approaching | Below
-        /// </summary>
+        /// <summary>Exceeds | Meets | Approaching | Below</summary>
         [MaxLength(20)]
         public string? RatingScale { get; set; }
 
@@ -38,8 +40,8 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
         [MaxLength(1000)]
         public string? SpecificLearningOutcome { get; set; }
 
-        // Navigation
-        public ICollection<CompetencyAssessmentScore> Scores { get; set; } = new List<CompetencyAssessmentScore>();
+        public ICollection<CompetencyAssessmentScore> Scores { get; set; }
+            = new List<CompetencyAssessmentScore>();
     }
 
     public enum AssessmentMethod
