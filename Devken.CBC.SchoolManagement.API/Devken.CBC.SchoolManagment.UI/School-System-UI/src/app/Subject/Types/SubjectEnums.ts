@@ -1,4 +1,10 @@
 // types/SubjectEnums.ts
+<<<<<<< HEAD
+=======
+
+// Level as returned by API (level field as numeric string "0","1"...)
+// Map display labels to the numeric values the API uses
+>>>>>>> upstream/main
 export interface SelectOption {
   value: any;
   label: string;
@@ -28,6 +34,7 @@ export const CBCLevelOptions: SelectOption[] = [
   { value: 14, label: 'Grade 12'      },
 ];
 
+<<<<<<< HEAD
 // Maps C# enum name → numeric value
 const subjectTypeNameMap: Record<string, number> = {
   core: 1, optional: 2, elective: 3,
@@ -72,4 +79,29 @@ export function getCBCLevelLabel(val: number | string | undefined | null): strin
   if (val === null || val === undefined || val === '') return '—';
   const resolved = resolveCBCLevel(val);
   return CBCLevelOptions.find(o => o.value === resolved)?.label ?? val.toString();
+=======
+/** Get SubjectType label from numeric level value */
+export function getSubjectTypeLabel(val: number | string | undefined | null): string {
+  if (val === null || val === undefined || val === '') return '—';
+  const n = Number(val);
+  return SubjectTypeOptions.find(o => o.value === n)?.label ?? val.toString();
+}
+/** Get CBCLevel label from numeric level value */
+export function getCBCLevelLabel(val: number | string | undefined | null): string {
+  if (val === null || val === undefined || val === '') return '—';
+  const n = Number(val);
+  return CBCLevelOptions.find(o => o.value === n)?.label ?? val.toString();
+}
+
+/** Normalize raw subject from API */
+export function normalizeSubject(data: any): any {
+  if (!data) return {};
+  return {
+    ...data,
+    // subjectType comes as string name — keep as-is, matches option values
+    subjectType: data.subjectType ?? '',
+    // level comes as string "0", "1" etc. — convert to number for mat-select
+    level: data.level !== undefined && data.level !== null ? Number(data.level) : '',
+  };
+>>>>>>> upstream/main
 }

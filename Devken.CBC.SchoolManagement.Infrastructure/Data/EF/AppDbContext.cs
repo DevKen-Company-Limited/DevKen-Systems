@@ -70,15 +70,19 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         public DbSet<Parent> Parents => Set<Parent>();
 
         // ── CBC Curriculum Helpers ───────────────────────────────────────
+<<<<<<< HEAD
         // These form the LearningArea → Strand → SubStrand → LearningOutcome
         // hierarchy used to structure the CBC curriculum. LearningOutcome links
         // back to FormativeAssessments via a one-to-many relationship.
+=======
+>>>>>>> upstream/main
         public DbSet<LearningArea> LearningAreas => Set<LearningArea>();
         public DbSet<Strand> Strands => Set<Strand>();
         public DbSet<SubStrand> SubStrands => Set<SubStrand>();
         public DbSet<LearningOutcome> LearningOutcomes => Set<LearningOutcome>();
 
         // ── Assessments (TPT) ───────────────────────────────────────────
+<<<<<<< HEAD
         //
         // TPT strategy: Assessment1 is abstract and maps to the "Assessments" table
         // containing only shared columns. Each concrete subtype maps to its own
@@ -88,6 +92,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         //
         // Use the concrete DbSets for targeted queries (e.g. formative only),
         // or the base DbSet when you need cross-type queries.
+=======
+>>>>>>> upstream/main
         public DbSet<Assessment1> Assessments => Set<Assessment1>();
         public DbSet<FormativeAssessment> FormativeAssessments => Set<FormativeAssessment>();
         public DbSet<SummativeAssessment> SummativeAssessments => Set<SummativeAssessment>();
@@ -96,8 +102,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         public DbSet<Grade> Grades => Set<Grade>();
 
         // ── Assessment Scores ───────────────────────────────────────────
+<<<<<<< HEAD
         // Each score type is an independent entity (not part of the TPT hierarchy)
         // with its own table and FK back to the corresponding assessment type.
+=======
+>>>>>>> upstream/main
         public DbSet<FormativeAssessmentScore> FormativeAssessmentScores => Set<FormativeAssessmentScore>();
         public DbSet<SummativeAssessmentScore> SummativeAssessmentScores => Set<SummativeAssessmentScore>();
         public DbSet<CompetencyAssessmentScore> CompetencyAssessmentScores => Set<CompetencyAssessmentScore>();
@@ -127,8 +136,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             DecimalPrecisionConvention.Apply(mb);
 
             // ── GENERIC BASE ENTITY KEY CONFIGURATION ───────────────────
+<<<<<<< HEAD
             // Only configure the key on root entities. Derived TPT types share
             // the root PK — EF Core handles the join automatically.
+=======
+>>>>>>> upstream/main
             foreach (var entityType in mb.Model.GetEntityTypes())
             {
                 if (typeof(BaseEntity<Guid>).IsAssignableFrom(entityType.ClrType)
@@ -139,6 +151,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             }
 
             // ── ASSESSMENT TPT MAPPING ───────────────────────────────────
+<<<<<<< HEAD
             //
             // Declare the TPT hierarchy here so EF Core knows the mapping
             // strategy before the individual entity configurations are applied.
@@ -250,6 +263,17 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
 
             // ── APPLY ENTITY CONFIGURATIONS ─────────────────────────────
 
+=======
+            // NOTE: ToTable is also set in AssessmentConfiguration but must
+            // be declared here first for TPT strategy to register correctly.
+            mb.Entity<Assessment1>().UseTptMappingStrategy();
+
+            // ── APPLY ENTITY CONFIGURATIONS ─────────────────────────────
+            // All FK relationships, query filters, and property configs
+            // are defined ONLY inside these configuration classes — never
+            // duplicated here in OnModelCreating.
+
+>>>>>>> upstream/main
             // Identity & School
             mb.ApplyConfiguration(new SchoolConfiguration());
             mb.ApplyConfiguration(new PermissionConfiguration());
@@ -272,26 +296,37 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             // Grades
             mb.ApplyConfiguration(new GradeConfiguration(_tenantContext));
 
+<<<<<<< HEAD
             // ── CBC Curriculum Helpers ───────────────────────────────────
             // Order matters: configure parent tables before children so that
             // FK references are resolved correctly during migration generation.
             // LearningArea has no FK dependencies, so it goes first.
             // Strand depends on LearningArea, SubStrand on Strand, and
             // LearningOutcome on all three — hence the bottom-up order below.
+=======
+            // CBC Curriculum Helpers
+>>>>>>> upstream/main
             mb.ApplyConfiguration(new LearningAreaConfiguration());
             mb.ApplyConfiguration(new StrandConfiguration());
             mb.ApplyConfiguration(new SubStrandConfiguration());
             mb.ApplyConfiguration(new LearningOutcomeConfiguration());
 
             // Assessments — root first (TPT base), then each subtype
+<<<<<<< HEAD
             // Each configuration only adds column/index mappings for its own
             // properties; the TPT table routing is already declared above.
+=======
+>>>>>>> upstream/main
             mb.ApplyConfiguration(new AssessmentConfiguration(_tenantContext));
             mb.ApplyConfiguration(new FormativeAssessmentConfiguration(_tenantContext));
             mb.ApplyConfiguration(new SummativeAssessmentConfiguration(_tenantContext));
             mb.ApplyConfiguration(new CompetencyAssessmentConfiguration(_tenantContext));
 
+<<<<<<< HEAD
             // Assessment scores — independent tables, wired above
+=======
+            // Assessment scores
+>>>>>>> upstream/main
             mb.ApplyConfiguration(new FormativeAssessmentScoreConfiguration(_tenantContext));
             mb.ApplyConfiguration(new SummativeAssessmentScoreConfiguration(_tenantContext));
             mb.ApplyConfiguration(new CompetencyAssessmentScoreConfiguration(_tenantContext));

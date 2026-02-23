@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+<<<<<<< HEAD
+=======
+    <Folder Include="DTOs\Curriculum\" />
+>>>>>>> upstream/main
     <Folder Include="DTOs\Finance\" />
     <Folder Include="DTOs\Teachers\" />
     <Folder Include="Features\Assessments\Commands\Commands\" />

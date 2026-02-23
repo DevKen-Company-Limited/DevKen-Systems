@@ -16,12 +16,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
         private readonly TenantContext _tenantContext;
 
         public AssessmentConfiguration(TenantContext tenantContext)
-        {
-            _tenantContext = tenantContext;
-        }
+            => _tenantContext = tenantContext;
 
         public void Configure(EntityTypeBuilder<Assessment1> builder)
         {
+<<<<<<< HEAD
             // Table name is declared in AppDbContext via UseTptMappingStrategy().
             // We only configure columns and indexes here.
 
@@ -47,6 +46,26 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
 
             // ── Foreign Keys ────────────────────────────────────────────
 
+=======
+            builder.ToTable("Assessments");
+            builder.HasKey(a => a.Id);
+
+            builder.Property(a => a.Title).IsRequired().HasMaxLength(200);
+            builder.Property(a => a.Description).HasMaxLength(500);
+            builder.Property(a => a.AssessmentType).IsRequired().HasMaxLength(20);
+            builder.Property(a => a.MaximumScore).HasColumnType("decimal(18,2)");
+            builder.Property(a => a.AssessmentDate).IsRequired();
+            builder.Property(a => a.IsPublished).HasDefaultValue(false);
+            builder.Property(a => a.TeacherId).IsRequired();
+            builder.Property(a => a.SubjectId).IsRequired();
+            builder.Property(a => a.ClassId).IsRequired();
+            builder.Property(a => a.TermId).IsRequired();
+            builder.Property(a => a.AcademicYearId).IsRequired();
+
+            // Each relationship is owned HERE and nowhere else.
+            // WithMany(collection) tells EF exactly which inverse nav to use,
+            // preventing it from auto-discovering a second relationship.
+>>>>>>> upstream/main
             builder.HasOne(a => a.Teacher)
                    .WithMany()
                    .HasForeignKey(a => a.TeacherId)
@@ -62,16 +81,22 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
                    .HasForeignKey(a => a.ClassId)
                    .OnDelete(DeleteBehavior.Restrict);
 
+            // WithMany(t => t.Assessments) collapses the relationship that
+            // TermConfiguration was also defining via HasMany(t => t.Assessments)
+            // — having both caused the TermId1 shadow property.
             builder.HasOne(a => a.Term)
                    .WithMany()
                    .HasForeignKey(a => a.TermId)
                    .OnDelete(DeleteBehavior.Restrict);
 
+            // Same fix for AcademicYearId1 — AcademicYearConfiguration was also
+            // defining HasMany(ay => ay.Assessments) causing the duplicate.
             builder.HasOne(a => a.AcademicYear)
                    .WithMany()
                    .HasForeignKey(a => a.AcademicYearId)
                    .OnDelete(DeleteBehavior.Restrict);
 
+<<<<<<< HEAD
             // ── Indexes ──────────────────────────────────────────────────
 
             builder.HasIndex(a => a.TeacherId);
@@ -86,6 +111,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
             {
                 builder.HasQueryFilter(a => a.TenantId == _tenantContext.TenantId);
             }
+=======
+            builder.HasQueryFilter(a =>
+                _tenantContext.TenantId == null ||
+                a.TenantId == _tenantContext.TenantId);
+>>>>>>> upstream/main
         }
     }
 }

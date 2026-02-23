@@ -13,6 +13,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
         [MaxLength(500)]
         public string? Description { get; set; }
 
+        // ── FK properties (no [ForeignKey] attribute — Fluent API handles mapping)
         public Guid TeacherId { get; set; }
         public Teacher Teacher { get; set; } = null!;
 

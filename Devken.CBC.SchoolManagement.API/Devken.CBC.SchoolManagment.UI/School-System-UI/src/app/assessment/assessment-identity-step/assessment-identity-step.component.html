@@ -1,0 +1,295 @@
+<!-- assessment-identity-step/assessment-identity-step.component.html -->
+<div class="max-w-6xl">
+
+  <!-- Section Header -->
+  <div class="flex items-start gap-4 mb-8">
+    <div class="flex items-center justify-center w-14 h-14 rounded-xl
+                bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg">
+      <mat-icon class="text-white !w-7 !h-7">info</mat-icon>
+    </div>
+    <div class="flex-1">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Assessment Details</h2>
+      <p class="text-gray-600 dark:text-gray-400">
+        {{ isEditMode
+          ? 'Update the core details for this assessment.'
+          : 'Enter the core details shared by all assessment types. Fields marked * are required.' }}
+      </p>
+    </div>
+
+    <!-- Type badge -->
+    <span
+      *ngIf="assessmentType"
+      class="hidden sm:inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-bold shadow"
+      [ngClass]="{
+        'bg-indigo-600 text-white': getTypeColor(assessmentType) === 'indigo',
+        'bg-violet-600 text-white': getTypeColor(assessmentType) === 'violet',
+        'bg-teal-600   text-white': getTypeColor(assessmentType) === 'teal'
+      }">
+      <mat-icon class="!w-4 !h-4">assignment</mat-icon>
+      {{ typeLabel }}
+    </span>
+  </div>
+
+  <form [formGroup]="form" novalidate class="space-y-6">
+
+    <!-- ── SuperAdmin: School Selector ──────────────────────────────── -->
+    <mat-card *ngIf="isSuperAdmin" class="shadow-md border-2 border-amber-200 dark:border-amber-700">
+      <mat-card-header class="!pb-2">
+        <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+          <mat-icon class="text-amber-500">domain</mat-icon>
+          School Selection
+          <span class="ml-2 text-xs font-medium px-2 py-1 bg-amber-100 text-amber-700
+                       dark:bg-amber-900/30 dark:text-amber-300 rounded">Super Admin</span>
+          <span class="ml-auto text-xs font-medium px-2 py-1 bg-red-100 text-red-700
+                       dark:bg-red-900/30 dark:text-red-300 rounded">Required</span>
+        </mat-card-title>
+        <mat-card-subtitle class="!text-xs text-gray-500 dark:text-gray-400 mt-1">
+          Select a school first — teachers, subjects, classes, terms, and academic years
+          will be filtered to that school.
+        </mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content class="!pt-4">
+
+        <!-- Loading schools -->
+        <div *ngIf="loadingSchools" class="flex items-center gap-3 text-gray-500 py-2">
+          <mat-spinner diameter="20"></mat-spinner>
+          <span class="text-sm">Loading schools…</span>
+        </div>
+
+        <mat-form-field *ngIf="!loadingSchools" appearance="outline" class="w-full max-w-lg">
+          <mat-label>School *</mat-label>
+          <mat-select formControlName="schoolId">
+            <mat-option [value]="null">— Select a school —</mat-option>
+            <mat-option *ngFor="let s of schools" [value]="s.id">
+              {{ s.name }}
+            </mat-option>
+          </mat-select>
+          <mat-icon matPrefix class="text-amber-500">domain</mat-icon>
+          <mat-error>{{ getError('schoolId') }}</mat-error>
+        </mat-form-field>
+
+        <!-- Selected school info pill -->
+        <div *ngIf="selectedSchoolName"
+             class="mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg
+                    bg-amber-50 dark:bg-amber-900/20 border border-amber-200
+                    dark:border-amber-700 text-sm text-amber-800 dark:text-amber-300">
+          <mat-icon class="!w-4 !h-4">check_circle</mat-icon>
+          <span>Showing data for <strong>{{ selectedSchoolName }}</strong></span>
+        </div>
+
+      </mat-card-content>
+    </mat-card>
+
+    <!-- ── Lock overlay when SuperAdmin hasn't picked a school yet ─── -->
+    <div *ngIf="isSuperAdmin && !schoolSelected"
+         class="relative rounded-2xl overflow-hidden">
+
+      <!-- Dimmed placeholder -->
+      <div class="space-y-6 pointer-events-none opacity-30 select-none">
+        <mat-card class="shadow-md h-32"></mat-card>
+        <mat-card class="shadow-md h-32"></mat-card>
+        <mat-card class="shadow-md h-32"></mat-card>
+      </div>
+
+      <!-- Overlay message -->
+      <div class="absolute inset-0 flex flex-col items-center justify-center gap-3">
+        <div class="flex items-center justify-center w-14 h-14 rounded-full
+                    bg-amber-100 dark:bg-amber-900/40">
+          <mat-icon class="text-amber-500 !w-7 !h-7">lock</mat-icon>
+        </div>
+        <p class="text-sm font-semibold text-gray-600 dark:text-gray-300">
+          Select a school above to continue
+        </p>
+      </div>
+    </div>
+
+    <!-- ── Rest of the form (shown once school is selected / non-SuperAdmin) ── -->
+    <ng-container *ngIf="schoolSelected">
+
+      <!-- Loading lookups spinner -->
+      <div *ngIf="loadingLookups" class="flex items-center justify-center gap-3 py-8 text-gray-500">
+        <mat-spinner diameter="24"></mat-spinner>
+        <span class="text-sm">Loading school data…</span>
+      </div>
+
+      <ng-container *ngIf="!loadingLookups">
+
+        <!-- ── Title & Description ──────────────────────────────────── -->
+        <mat-card class="shadow-md">
+          <mat-card-header class="!pb-2">
+            <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+              <mat-icon class="text-indigo-600">title</mat-icon>
+              Assessment Title
+              <span class="ml-auto text-xs font-medium px-2 py-1 bg-red-100 text-red-700
+                           dark:bg-red-900/30 dark:text-red-300 rounded">Required</span>
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content class="!pt-4 space-y-4">
+
+            <mat-form-field appearance="outline" class="w-full">
+              <mat-label>Assessment Title *</mat-label>
+              <input matInput formControlName="title" placeholder="e.g. Week 3 Reading Quiz">
+              <mat-icon matPrefix class="text-gray-400">title</mat-icon>
+              <mat-hint>A clear, descriptive title for this assessment</mat-hint>
+              <mat-error>{{ getError('title') }}</mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="w-full">
+              <mat-label>Description (optional)</mat-label>
+              <textarea matInput formControlName="description" rows="3"
+                placeholder="Additional context or instructions for this assessment…"></textarea>
+              <mat-icon matPrefix class="text-gray-400">description</mat-icon>
+            </mat-form-field>
+
+          </mat-card-content>
+        </mat-card>
+
+        <!-- ── Context: Teacher / Subject / Class ──────────────────── -->
+        <mat-card class="shadow-md">
+          <mat-card-header class="!pb-2">
+            <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+              <mat-icon class="text-indigo-600">people</mat-icon>
+              Academic Context
+              <span class="ml-auto text-xs font-medium px-2 py-1 bg-red-100 text-red-700
+                           dark:bg-red-900/30 dark:text-red-300 rounded">Required</span>
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content class="!pt-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Teacher *</mat-label>
+                <mat-select formControlName="teacherId">
+                  <mat-option [value]="null">Select teacher</mat-option>
+                  <mat-option *ngFor="let t of teachers" [value]="t.id">
+                    {{ t.firstName }} {{ t.lastName }}
+                  </mat-option>
+                </mat-select>
+                <mat-icon matPrefix class="text-gray-400">person</mat-icon>
+                <mat-error>{{ getError('teacherId') }}</mat-error>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Subject *</mat-label>
+                <mat-select formControlName="subjectId">
+                  <mat-option [value]="null">Select subject</mat-option>
+                  <mat-option *ngFor="let s of subjects" [value]="s.id">
+                    {{ s.name }} ({{ s.code }})
+                  </mat-option>
+                </mat-select>
+                <mat-icon matPrefix class="text-gray-400">menu_book</mat-icon>
+                <mat-error>{{ getError('subjectId') }}</mat-error>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Class *</mat-label>
+                <mat-select formControlName="classId">
+                  <mat-option [value]="null">Select class</mat-option>
+                  <mat-option *ngFor="let c of classes" [value]="c.id">
+                    {{ c.name }}
+                  </mat-option>
+                </mat-select>
+                <mat-icon matPrefix class="text-gray-400">class</mat-icon>
+                <mat-error>{{ getError('classId') }}</mat-error>
+              </mat-form-field>
+
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- ── Academic Period ──────────────────────────────────────── -->
+        <mat-card class="shadow-md">
+          <mat-card-header class="!pb-2">
+            <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+              <mat-icon class="text-indigo-600">event</mat-icon>
+              Academic Period &amp; Date
+              <span class="ml-auto text-xs font-medium px-2 py-1 bg-red-100 text-red-700
+                           dark:bg-red-900/30 dark:text-red-300 rounded">Required</span>
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content class="!pt-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Academic Year *</mat-label>
+                <mat-select formControlName="academicYearId">
+                  <mat-option [value]="null">Select year</mat-option>
+                  <mat-option *ngFor="let y of academicYears" [value]="y.id">{{ y.name }}</mat-option>
+                </mat-select>
+                <mat-icon matPrefix class="text-gray-400">calendar_today</mat-icon>
+                <mat-error>{{ getError('academicYearId') }}</mat-error>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Term *</mat-label>
+                <mat-select formControlName="termId">
+                  <mat-option [value]="null">Select term</mat-option>
+                  <mat-option *ngFor="let t of terms" [value]="t.id">{{ t.name }}</mat-option>
+                </mat-select>
+                <mat-icon matPrefix class="text-gray-400">date_range</mat-icon>
+                <mat-error>{{ getError('termId') }}</mat-error>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Assessment Date *</mat-label>
+                <input matInput [matDatepicker]="dp" formControlName="assessmentDate">
+                <mat-datepicker-toggle matSuffix [for]="dp"></mat-datepicker-toggle>
+                <mat-datepicker #dp></mat-datepicker>
+                <mat-icon matPrefix class="text-gray-400">event</mat-icon>
+                <mat-error>{{ getError('assessmentDate') }}</mat-error>
+              </mat-form-field>
+
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- ── Score & Publishing ───────────────────────────────────── -->
+        <mat-card class="shadow-md">
+          <mat-card-header class="!pb-2">
+            <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+              <mat-icon class="text-indigo-600">grade</mat-icon>
+              Scoring &amp; Publishing
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content class="!pt-4 space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Maximum Score *</mat-label>
+                <input matInput type="number" formControlName="maximumScore" min="1">
+                <mat-icon matPrefix class="text-gray-400">grade</mat-icon>
+                <mat-hint>Total marks available for this assessment</mat-hint>
+                <mat-error>{{ getError('maximumScore') }}</mat-error>
+              </mat-form-field>
+
+              <!-- Published toggle -->
+              <div class="flex items-center justify-between p-4 rounded-xl
+                          bg-green-50 dark:bg-green-900/10
+                          border border-green-200 dark:border-green-800">
+                <div class="flex items-center gap-3">
+                  <div class="flex items-center justify-center w-10 h-10 rounded-lg
+                              bg-green-100 dark:bg-green-900/30">
+                    <mat-icon class="text-green-600">public</mat-icon>
+                  </div>
+                  <div>
+                    <div class="font-semibold text-gray-900 dark:text-white text-sm">
+                      Publish immediately
+                    </div>
+                    <div class="text-xs text-gray-600 dark:text-gray-400">
+                      Visible to teachers &amp; students when published
+                    </div>
+                  </div>
+                </div>
+                <mat-slide-toggle formControlName="isPublished" color="primary"></mat-slide-toggle>
+              </div>
+
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+      </ng-container><!-- /!loadingLookups -->
+    </ng-container><!-- /schoolSelected -->
+
+  </form>
+</div>
