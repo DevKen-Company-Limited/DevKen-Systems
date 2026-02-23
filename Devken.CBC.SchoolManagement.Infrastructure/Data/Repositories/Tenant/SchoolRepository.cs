@@ -35,7 +35,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Tenant
         public async Task<System.Collections.Generic.IEnumerable<School>> GetAllAsync(bool trackChanges = false)
         {
             return await FindAll(trackChanges)
-
                 .ToListAsync();
         }
 

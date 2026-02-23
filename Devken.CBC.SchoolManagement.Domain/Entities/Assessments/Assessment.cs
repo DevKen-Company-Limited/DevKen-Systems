@@ -30,17 +30,12 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
         public AcademicYear AcademicYear { get; set; } = null!;
 
         public DateTime AssessmentDate { get; set; }
-
         public decimal MaximumScore { get; set; }
 
-        /// <summary>
-        /// Discriminator: Formative | Summative | Competency
-        /// </summary>
         [Required, MaxLength(20)]
         public string AssessmentType { get; set; } = null!;
 
         public bool IsPublished { get; set; } = false;
-
         public DateTime? PublishedDate { get; set; }
     }
 }
