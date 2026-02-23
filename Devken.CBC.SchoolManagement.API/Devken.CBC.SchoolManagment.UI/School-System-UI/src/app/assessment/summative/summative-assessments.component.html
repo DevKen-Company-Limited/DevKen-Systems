@@ -1,0 +1,180 @@
+<!-- summative-assessments.component.html -->
+<div class="absolute inset-0 flex min-w-0 flex-col overflow-y-auto" cdkScrollable>
+
+  <!-- ── Page Header ──────────────────────────────────────────────────────── -->
+  <app-page-header
+    title="Summative Assessments"
+    description="Manage exams, end-term tests and their student scores"
+    icon="assignment"
+    [breadcrumbs]="breadcrumbs"
+    [actionTemplate]="headerActions">
+  </app-page-header>
+
+  <!-- Header Actions -->
+  <ng-template #headerActions>
+    <!-- Export dropdown -->
+    <button mat-stroked-button
+      [matMenuTriggerFor]="exportMenu"
+      [disabled]="isDownloading"
+      class="mr-3 border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400">
+      <ng-container *ngIf="isDownloading; else exportIcon">
+        <mat-progress-spinner mode="indeterminate" diameter="18" strokeWidth="2" class="inline-block mr-2">
+        </mat-progress-spinner>
+      </ng-container>
+      <ng-template #exportIcon>
+        <mat-icon class="icon-size-5">download</mat-icon>
+      </ng-template>
+      <span class="ml-2">{{ isDownloading ? 'Generating…' : 'Export' }}</span>
+      <mat-icon class="icon-size-4 ml-1">arrow_drop_down</mat-icon>
+    </button>
+
+    <mat-menu #exportMenu="matMenu">
+      <button mat-menu-item (click)="downloadListReport()" [disabled]="isDownloading">
+        <mat-icon class="text-violet-600">article</mat-icon>
+        <span>Assessments List (PDF)</span>
+      </button>
+    </mat-menu>
+
+    <!-- Create button -->
+    <button mat-flat-button
+      class="bg-white text-violet-700 hover:bg-violet-50 shadow-lg font-bold"
+      (click)="createAssessment()">
+      <mat-icon class="icon-size-5">add</mat-icon>
+      <span class="ml-2">Add</span>
+    </button>
+  </ng-template>
+
+  <!-- ── Main Content ──────────────────────────────────────────────────────── -->
+  <div class="bg-card -mt-10 flex-auto rounded-t-2xl p-6 shadow sm:p-10">
+
+    <!-- Stats -->
+    <app-stats-cards [cards]="statsCards" [columns]="4"></app-stats-cards>
+
+    <!-- Filters -->
+    <div class="mb-6">
+      <app-filter-panel
+        [fields]="filterFields"
+        [showPanel]="showFilterPanel"
+        [columns]="4"
+        (filterChange)="onFilterChange($event)"
+        (clearAll)="onClearFilters()"
+        (togglePanel)="toggleFilterPanel()">
+      </app-filter-panel>
+    </div>
+
+    <!-- Table -->
+    <app-data-table
+      [columns]="tableColumns"
+      [data]="paginatedData"
+      [actions]="tableActions"
+      [loading]="isLoading"
+      [header]="tableHeader"
+      [emptyState]="tableEmptyState"
+      [cellTemplates]="cellTemplates">
+    </app-data-table>
+
+    <!-- Pagination -->
+    <app-pagination
+      *ngIf="!isLoading"
+      [currentPage]="currentPage"
+      [totalItems]="filteredData.length"
+      [itemsPerPage]="itemsPerPage"
+      [itemLabel]="'assessments'"
+      [showItemsPerPageSelector]="true"
+      [showPageNumbers]="true"
+      (pageChange)="onPageChange($event)"
+      (itemsPerPageChange)="onItemsPerPageChange($event)">
+    </app-pagination>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<!-- Cell Templates                                                    -->
+<!-- ══════════════════════════════════════════════════════════════════ -->
+
+<!-- Title Cell -->
+<ng-template #titleCell let-row>
+  <div class="flex items-center gap-3">
+    <div class="flex items-center justify-center w-10 h-10 rounded-xl
+                bg-gradient-to-br from-violet-100 to-indigo-100
+                dark:from-violet-900/30 dark:to-indigo-900/30
+                border border-violet-200 dark:border-violet-800 flex-shrink-0">
+      <mat-icon class="text-violet-600 dark:text-violet-400 icon-size-5">assignment</mat-icon>
+    </div>
+    <div>
+      <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ row.title }}</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        {{ row.subjectName || 'No Subject' }} • {{ row.teacherName || 'No Teacher' }}
+      </p>
+    </div>
+  </div>
+</ng-template>
+
+<!-- Exam Type Cell -->
+<ng-template #examTypeCell let-row>
+  <div class="flex flex-col gap-1">
+    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold border"
+      [ngClass]="{
+        'bg-indigo-50  text-indigo-700  border-indigo-200  dark:bg-indigo-900/30  dark:text-indigo-300':  row.examType === 'EndTerm',
+        'bg-blue-50    text-blue-700    border-blue-200    dark:bg-blue-900/30    dark:text-blue-300':    row.examType === 'MidTerm',
+        'bg-violet-50  text-violet-700  border-violet-200  dark:bg-violet-900/30  dark:text-violet-300':  row.examType === 'Final',
+        'bg-teal-50    text-teal-700    border-teal-200    dark:bg-teal-900/30    dark:text-teal-300':    row.examType === 'CAT',
+        'bg-amber-50   text-amber-700   border-amber-200   dark:bg-amber-900/30   dark:text-amber-300':   row.examType === 'Mock',
+        'bg-gray-50    text-gray-700    border-gray-200    dark:bg-gray-900/30    dark:text-gray-300':    !row.examType
+      }">
+      {{ row.examType || 'N/A' }}
+    </span>
+    <span *ngIf="row.hasPracticalComponent" class="text-xs text-teal-600 dark:text-teal-400 flex items-center gap-1">
+      <mat-icon class="icon-size-3">science</mat-icon> Practical
+    </span>
+  </div>
+</ng-template>
+
+<!-- Class / Term Cell -->
+<ng-template #classCell let-row>
+  <div>
+    <p class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ row.className || '—' }}</p>
+    <p class="text-xs text-gray-500 dark:text-gray-400">
+      {{ row.termName || '—' }} · {{ row.academicYearName || '—' }}
+    </p>
+  </div>
+</ng-template>
+
+<!-- Score & Pass Mark Cell -->
+<ng-template #scoreCell let-row>
+  <div>
+    <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+      Max: <span class="text-indigo-600 dark:text-indigo-400">{{ row.maximumScore }}</span>
+    </p>
+    <p class="text-xs text-gray-500 dark:text-gray-400">
+      Pass: {{ row.passMark }}% •
+      <span [ngClass]="{'text-teal-600': row.hasPracticalComponent, 'text-gray-400': !row.hasPracticalComponent}">
+        T:{{ row.theoryWeight }}% P:{{ row.practicalWeight }}%
+      </span>
+    </p>
+  </div>
+</ng-template>
+
+<!-- Date Cell -->
+<ng-template #dateCell let-row>
+  <div>
+    <p class="text-sm text-gray-700 dark:text-gray-300">
+      {{ row.assessmentDate | date:'mediumDate' }}
+    </p>
+    <p *ngIf="row.duration" class="text-xs text-gray-500 dark:text-gray-400">
+      <mat-icon class="icon-size-3 align-middle">schedule</mat-icon>
+      {{ row.duration }}
+    </p>
+  </div>
+</ng-template>
+
+<!-- Status Cell -->
+<ng-template #statusCell let-row>
+  <span class="px-3 py-1 rounded-full text-xs font-semibold"
+    [ngClass]="{
+      'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400':   row.isPublished,
+      'bg-gray-100  dark:bg-gray-800     text-gray-600  dark:text-gray-400':   !row.isPublished
+    }">
+    {{ row.isPublished ? 'Published' : 'Draft' }}
+  </span>
+</ng-template>

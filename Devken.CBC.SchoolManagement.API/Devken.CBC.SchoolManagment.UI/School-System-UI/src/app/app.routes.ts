@@ -156,8 +156,14 @@ export const appRoutes: Route[] = [
             {
                 path: 'assessment',
                 children: [
+<<<<<<< HEAD
+                    { path: 'assessments', loadChildren: () => import('app/assessment/Assessments/assessments.component.routes') },
+                    { path: 'summative',loadChildren: () =>import('app/assessment/summative/summative-assessments.component.routes') },
+
+=======
                     { path: 'assessments', loadChildren: () => import('app/assessment/assessments.routes') },
               
+>>>>>>> upstream/main
                 ]
             },
 
@@ -174,10 +180,21 @@ export const appRoutes: Route[] = [
             // ================= CURRICULUM =================
             {
                 path: 'curriculum',
-                children: [
+                loadChildren: () => import('./curriculum/curriculum.routes'),
+                // children: [
+                    // { path: 'learning-areas', loadChildren: () => import('app/curriculum/curriculum.routes') },
+                    // { path: 'strands', loadChildren: () => import('app/curriculum/curriculum.routes') },
+                    // { path: 'sub-strands', loadChildren: () => import('app/curriculum/curriculum.routes') },
+                    // { path: 'learning-outcomes', loadChildren: () => import('app/curriculum/curriculum.routes') },
+                    
+                    // { path: 'learning-area', loadChildren: () => import('app/curriculum/curriculum.routes') },
+                    // { path: 'strand': () => import('app/curriculum/curriculum.routes') },
+                    // { path: 'substrand', loadChildren: () => import(app/curriculum/curriculum.routes') },
+                    // { path: 'learning-outcome', loadChildren: () => import('app/curriculum/curriculum.routes'}
+
                     // { path: 'structure', loadChildren: () => import('app/modules/curriculum/structure/structure.routes') },
                     // { path: 'lesson-plans', loadChildren: () => import('app/modules/curriculum/lesson-plans/lesson-plans.routes') }
-                ]
+                // ]
             },
 
             // ================= SUPER ADMIN =================
