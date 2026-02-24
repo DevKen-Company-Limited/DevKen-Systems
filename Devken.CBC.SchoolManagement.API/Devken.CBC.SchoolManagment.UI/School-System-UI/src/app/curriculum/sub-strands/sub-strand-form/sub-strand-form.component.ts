@@ -25,7 +25,6 @@ import { StrandResponseDto } from 'app/curriculum/types/strand.dto ';
 export interface SubStrandDialogData {
   editId?: string;
   defaultStrandId?: string;
-  defaultLearningAreaId?: string;
 }
 
 @Component({
@@ -38,6 +37,14 @@ export interface SubStrandDialogData {
     MatDialogModule, FuseAlertComponent,
   ],
   templateUrl: './sub-strand-form.component.html',
+  styles: [`
+    :host {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
+    }
+  `],
 })
 export class SubStrandFormComponent implements OnInit, OnDestroy {
   private _destroy$ = new Subject<void>();
@@ -54,15 +61,17 @@ export class SubStrandFormComponent implements OnInit, OnDestroy {
   isLoading = false;
   isSaving = false;
   schools: SchoolDto[] = [];
-  strands: StrandResponseDto[] = [];
   learningAreas: LearningAreaResponseDto[] = [];
+  strands: StrandResponseDto[] = [];
   filteredStrands: StrandResponseDto[] = [];
 
   get editId(): string | undefined { return this.data?.editId; }
   get isEditMode(): boolean { return !!this.editId; }
   get isSuperAdmin(): boolean { return this._authService.authUser?.isSuperAdmin ?? false; }
 
-  constructor(@Inject(MAT_DIALOG_DATA) public data: SubStrandDialogData) {}
+  constructor(@Inject(MAT_DIALOG_DATA) public data: SubStrandDialogData) {
+    this._dialogRef.addPanelClass('no-padding-dialog');
+  }
 
   ngOnInit(): void {
     this.buildForm();
@@ -78,42 +87,53 @@ export class SubStrandFormComponent implements OnInit, OnDestroy {
 
   private buildForm(): void {
     this.form = this.fb.group({
-      name:           ['', [Validators.required, Validators.maxLength(150)]],
-      learningAreaId: [this.data?.defaultLearningAreaId ?? ''],
-      strandId:       [this.data?.defaultStrandId ?? '', Validators.required],
+      name:            ['', [Validators.required, Validators.maxLength(150)]],
+      learningAreaId:  [''],
+      strandId:        [this.data?.defaultStrandId ?? '', Validators.required],
       ...(this.isSuperAdmin ? { tenantId: ['', Validators.required] } : {}),
-    });
-
-    this.form.get('learningAreaId')?.valueChanges.subscribe(laId => {
-      this.filteredStrands = laId ? this.strands.filter(s => s.learningAreaId === laId) : this.strands;
-      this.form.get('strandId')?.setValue('');
     });
   }
 
   private loadLookups(): void {
     this._laService.getAll().pipe(takeUntil(this._destroy$))
       .subscribe(data => { this.learningAreas = Array.isArray(data) ? data : []; });
+
     this._strandService.getAll().pipe(takeUntil(this._destroy$))
       .subscribe(data => {
         this.strands = Array.isArray(data) ? data : [];
-        // Apply initial LA filter if provided
-        const laId = this.form.get('learningAreaId')?.value;
-        this.filteredStrands = laId ? this.strands.filter(s => s.learningAreaId === laId) : this.strands;
+        this.filteredStrands = [...this.strands];
+
+        // If a strand is pre-selected, also pre-select its learning area
+        if (this.data?.defaultStrandId) {
+          const strand = this.strands.find(s => s.id === this.data.defaultStrandId);
+          if (strand?.learningAreaId) {
+            this.form.patchValue({ learningAreaId: strand.learningAreaId }, { emitEvent: false });
+            this.filteredStrands = this.strands.filter(s => s.learningAreaId === strand.learningAreaId);
+          }
+        }
       });
+  }
+
+  onLearningAreaChange(learningAreaId: string): void {
+    this.form.patchValue({ strandId: '' });
+    this.filteredStrands = learningAreaId
+      ? this.strands.filter(s => s.learningAreaId === learningAreaId)
+      : [...this.strands];
   }
 
   private loadExisting(id: string): void {
     this.isLoading = true;
     this._service.getById(id).pipe(takeUntil(this._destroy$)).subscribe({
-      next: ss => {
-        const strand = this.strands.find(s => s.id === ss.strandId);
-        const laId = strand?.learningAreaId ?? (ss as any).learningAreaId ?? '';
-        this.filteredStrands = laId ? this.strands.filter(s => s.learningAreaId === laId) : this.strands;
+      next: sub => {
+        // Pre-filter strands by the existing record's learning area
+        if (sub.learningAreaId) {
+          this.filteredStrands = this.strands.filter(s => s.learningAreaId === sub.learningAreaId);
+        }
         this.form.patchValue({
-          name: ss.name,
-          learningAreaId: laId,
-          strandId: ss.strandId,
-          ...(this.isSuperAdmin ? { tenantId: (ss as any).tenantId } : {}),
+          name:           sub.name,
+          learningAreaId: sub.learningAreaId ?? '',
+          strandId:       sub.strandId,
+          ...(this.isSuperAdmin ? { tenantId: sub.tenantId } : {}),
         });
         this.isLoading = false;
       },
@@ -141,10 +161,10 @@ export class SubStrandFormComponent implements OnInit, OnDestroy {
 
   cancel(): void { this._dialogRef.close(); }
 
-  getError(f: string): string {
-    const c = this.form.get(f);
+  getError(field: string): string {
+    const c = this.form.get(field);
     if (!c?.errors) return '';
-    if (c.errors['required']) return 'Required';
+    if (c.errors['required']) return 'This field is required';
     if (c.errors['maxlength']) return 'Too long';
     return 'Invalid';
   }

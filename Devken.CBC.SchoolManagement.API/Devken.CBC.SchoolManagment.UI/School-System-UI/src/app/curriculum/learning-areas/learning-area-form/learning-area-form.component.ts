@@ -63,7 +63,9 @@ export class LearningAreaFormComponent implements OnInit, OnDestroy {
     return this._authService.authUser?.isSuperAdmin ?? false;
   }
 
-  constructor(@Inject(MAT_DIALOG_DATA) public data: LearningAreaDialogData) {}
+  constructor(@Inject(MAT_DIALOG_DATA) public data: LearningAreaDialogData) {
+    this._dialogRef.addPanelClass('no-padding-dialog');
+  }
 
   ngOnInit(): void {
     this.buildForm();

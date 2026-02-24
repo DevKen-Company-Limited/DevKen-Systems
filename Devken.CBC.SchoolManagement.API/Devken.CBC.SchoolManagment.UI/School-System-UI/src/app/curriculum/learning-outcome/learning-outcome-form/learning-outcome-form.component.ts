@@ -72,7 +72,10 @@ export class LearningOutcomeFormComponent implements OnInit, OnDestroy {
   get isEditMode(): boolean { return !!this.editId; }
   get isSuperAdmin(): boolean { return this._authService.authUser?.isSuperAdmin ?? false; }
 
-  constructor(@Inject(MAT_DIALOG_DATA) public data: LearningOutcomeDialogData) {}
+  constructor(@Inject(MAT_DIALOG_DATA) public data: LearningOutcomeDialogData) {
+    // Remove MatDialog's default padding so our custom header/footer sit flush
+    this._dialogRef.addPanelClass('no-padding-dialog');
+  }
 
   ngOnInit(): void {
     this.buildForm();

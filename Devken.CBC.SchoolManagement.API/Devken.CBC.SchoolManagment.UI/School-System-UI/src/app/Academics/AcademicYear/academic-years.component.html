@@ -1,6 +1,6 @@
 <div class="absolute inset-0 flex min-w-0 flex-col overflow-y-auto" cdkScrollable>
 
-  <!-- ── Reusable Page Header ────────────────────────────────────────────── -->
+  <!-- ── Page Header ──────────────────────────────────────────────────────── -->
   <app-page-header
     title="Academic Years Management"
     description="Manage your school's academic year calendar"
@@ -9,23 +9,20 @@
     [actionTemplate]="headerActions">
   </app-page-header>
 
-  <!-- Header Actions Template -->
   <ng-template #headerActions>
-    <button mat-flat-button 
-      class="bg-white text-cyan-700 hover:bg-yellow-200 hover:text-cyan-900 shadow-lg transition-all hover:shadow-xl font-bold" 
+    <button mat-flat-button
+      class="bg-white text-cyan-700 hover:bg-yellow-200 hover:text-cyan-900 shadow-lg transition-all hover:shadow-xl font-bold"
       (click)="openCreate()">
       <mat-icon class="icon-size-5">add</mat-icon>
       <span class="ml-2">Add</span>
     </button>
   </ng-template>
 
-  <!-- ── Main Content ───────────────────────────────────────────────────── -->
+  <!-- ── Main Content ──────────────────────────────────────────────────────── -->
   <div class="bg-card -mt-10 flex-auto rounded-t-2xl p-6 shadow sm:p-10">
 
-    <!-- Stats Cards (Reusable Component) -->
     <app-stats-cards [cards]="statsCards" [columns]="3"></app-stats-cards>
 
-    <!-- Filter Panel Section -->
     <div class="mb-6">
       <app-filter-panel
         [fields]="filterFields"
@@ -37,7 +34,6 @@
       </app-filter-panel>
     </div>
 
-    <!-- ── Reusable Data Table ───────────────────────────────────────────── -->
     <app-data-table
       [columns]="tableColumns"
       [data]="paginatedData"
@@ -48,7 +44,6 @@
       [cellTemplates]="cellTemplates">
     </app-data-table>
 
-    <!-- Pagination (Reusable Component) -->
     <app-pagination
       *ngIf="!isLoading"
       [currentPage]="currentPage"
@@ -64,31 +59,31 @@
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════ -->
-<!-- Cell Templates for Data Table -->
+<!-- Cell Templates                                                        -->
 <!-- ══════════════════════════════════════════════════════════════════════ -->
 
-<!-- Code Cell Template -->
+<!-- Code Cell -->
 <ng-template #codeCell let-row>
   <div class="flex items-center gap-3">
-    <div class="w-10 h-10 rounded-lg flex items-center justify-center shadow-sm bg-gradient-to-br from-cyan-400 to-blue-600">
+    <div class="w-9 h-9 rounded-lg flex items-center justify-center bg-gradient-to-br from-cyan-400 to-blue-600 flex-shrink-0">
       <mat-icon class="text-white icon-size-5">badge</mat-icon>
     </div>
     <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ row.code }}</span>
   </div>
 </ng-template>
 
-<!-- Name Cell Template -->
+<!-- Name Cell -->
 <ng-template #nameCell let-row>
   <div>
     <p class="text-sm font-medium text-gray-900 dark:text-white">{{ row.name }}</p>
     <p class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5">
       <mat-icon class="icon-size-3">event</mat-icon>
-      {{ row.startDate | date:'MMM d, y' }} - {{ row.endDate | date:'MMM d, y' }}
+      {{ row.startDate | date:'MMM d, y' }} – {{ row.endDate | date:'MMM d, y' }}
     </p>
   </div>
 </ng-template>
 
-<!-- Start Date Cell Template -->
+<!-- Start Date Cell -->
 <ng-template #startDateCell let-row>
   <div class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
     <mat-icon class="icon-size-4 text-gray-500">event</mat-icon>
@@ -96,7 +91,7 @@
   </div>
 </ng-template>
 
-<!-- End Date Cell Template -->
+<!-- End Date Cell -->
 <ng-template #endDateCell let-row>
   <div class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
     <mat-icon class="icon-size-4 text-gray-500">event</mat-icon>
@@ -104,14 +99,14 @@
   </div>
 </ng-template>
 
-<!-- Status Cell Template -->
+<!-- Status Cell -->
 <ng-template #statusCell let-row>
-  <span 
+  <span
     class="px-3 py-1 rounded-full text-xs font-semibold"
     [ngClass]="{
       'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400': row.isCurrent,
-      'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400': row.isClosed,
-      'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400': !row.isCurrent && !row.isClosed
+      'bg-red-100   dark:bg-red-900/30   text-red-700   dark:text-red-400':   row.isClosed,
+      'bg-blue-100  dark:bg-blue-900/30  text-blue-700  dark:text-blue-400':  !row.isCurrent && !row.isClosed
     }">
     {{ row.isCurrent ? 'Current' : (row.isClosed ? 'Closed' : 'Open') }}
   </span>

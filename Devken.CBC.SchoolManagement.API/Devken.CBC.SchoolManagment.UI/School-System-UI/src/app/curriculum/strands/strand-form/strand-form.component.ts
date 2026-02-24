@@ -22,7 +22,6 @@ import { LearningAreaResponseDto } from 'app/curriculum/types/learning-area.dto 
 
 export interface StrandDialogData {
   editId?: string;
-  /** Pre-select a learning area when opening from strands list filtered by LA */
   defaultLearningAreaId?: string;
 }
 
@@ -36,6 +35,14 @@ export interface StrandDialogData {
     MatDialogModule, FuseAlertComponent,
   ],
   templateUrl: './strand-form.component.html',
+  styles: [`
+    :host {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
+    }
+  `],
 })
 export class StrandFormComponent implements OnInit, OnDestroy {
   private _destroy$ = new Subject<void>();
@@ -57,7 +64,10 @@ export class StrandFormComponent implements OnInit, OnDestroy {
   get isEditMode(): boolean { return !!this.editId; }
   get isSuperAdmin(): boolean { return this._authService.authUser?.isSuperAdmin ?? false; }
 
-  constructor(@Inject(MAT_DIALOG_DATA) public data: StrandDialogData) {}
+  constructor(@Inject(MAT_DIALOG_DATA) public data: StrandDialogData) {
+    // Remove MatDialog's default padding so our custom header/footer sit flush
+    this._dialogRef.addPanelClass('no-padding-dialog');
+  }
 
   ngOnInit(): void {
     this.buildForm();
