@@ -18,7 +18,7 @@ import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
 import { SchoolDto } from 'app/Tenant/types/school';
 import { LearningAreaService } from 'app/core/DevKenService/curriculum/learning-area.service';
 import { LearningAreaResponseDto } from 'app/curriculum/types/learning-area.dto ';
-import { CBCLevelOptions } from 'app/Subject/Types/SubjectEnums';
+import { CBCLevelOptions } from 'app/Academics/Subject/Types/SubjectEnums';
 
 export interface LearningAreaDialogData {
   editId?: string;

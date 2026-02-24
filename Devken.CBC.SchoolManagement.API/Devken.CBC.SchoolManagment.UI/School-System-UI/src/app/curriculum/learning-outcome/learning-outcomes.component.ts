@@ -27,7 +27,7 @@ import { LearningAreaResponseDto } from '../types/learning-area.dto ';
 import { LearningOutcomeResponseDto } from '../types/learning-outcome.dto';
 import { StrandResponseDto } from '../types/strand.dto ';
 import { SubStrandResponseDto } from '../types/substrand.dto ';
-import { LearningOutcomeFormComponent } from './learning-outcome-form/learning-outcome-form.component';
+import { LearningOutcomeFormComponent } from '../../dialog-modals/Curriculum/learning-outcome-form/learning-outcome-form.component';
 
 @Component({
   selector: 'app-learning-outcomes',
