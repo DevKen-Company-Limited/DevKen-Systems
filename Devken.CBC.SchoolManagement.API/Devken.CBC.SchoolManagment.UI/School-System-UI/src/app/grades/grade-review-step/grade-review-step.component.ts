@@ -18,6 +18,15 @@ export class GradeReviewStepComponent {
   @Input() steps:         GradeEnrollmentStep[] = [];
   @Input() completedSteps = new Set<number>();
   @Input() isSuperAdmin   = false;
+  @Input() displayNames: {
+    studentName?: string;
+    studentAdmNo?: string;
+    subjectName?: string;
+    subjectCode?: string;
+    termName?: string;
+    assessmentName?: string;
+    assessmentType?: string;
+  } = {};
   @Output() editSection   = new EventEmitter<number>();
 
   getGradeLetterName = getGradeLetterLabel;
@@ -26,6 +35,29 @@ export class GradeReviewStepComponent {
   get subject():  any { return this.formSections['subject']  ?? {}; }
   get score():    any { return this.formSections['score']    ?? {}; }
   get settings(): any { return this.formSections['settings'] ?? {}; }
+
+  // ─── Display helpers: prefer resolved name, fall back to ID ───────────────
+  get studentDisplay(): string {
+    return this.displayNames.studentName || this.subject.studentId || '—';
+  }
+  get studentAdmNo(): string {
+    return this.displayNames.studentAdmNo || '';
+  }
+  get subjectDisplay(): string {
+    return this.displayNames.subjectName || this.subject.subjectId || '—';
+  }
+  get subjectCode(): string {
+    return this.displayNames.subjectCode || '';
+  }
+  get termDisplay(): string {
+    return this.displayNames.termName || (this.subject.termId ? this.subject.termId : '—');
+  }
+  get assessmentDisplay(): string {
+    return this.displayNames.assessmentName || (this.subject.assessmentId ? this.subject.assessmentId : '—');
+  }
+  get assessmentTypeLabel(): string {
+    return this.displayNames.assessmentType || '';
+  }
 
   isComplete(index: number): boolean   { return this.completedSteps.has(index); }
   completedCount(): number {

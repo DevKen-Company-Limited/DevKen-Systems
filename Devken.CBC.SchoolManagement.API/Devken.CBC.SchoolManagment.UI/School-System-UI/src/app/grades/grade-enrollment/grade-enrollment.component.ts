@@ -13,11 +13,11 @@ import { AuthService }   from 'app/core/auth/auth.service';
 import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
 import { AlertService }  from 'app/core/DevKenService/Alert/AlertService';
 import { SchoolDto }     from 'app/Tenant/types/school';
-import { GradeReviewStepComponent } from '../grade-review-step/grade-review-step.component';
-import { GradeSettingsStepComponent } from '../grade-settings-step/grade-settings-step.component';
-import { GradeSubjectStepComponent } from '../grade-subject-step/grade-subject-step.component';
-import { GradeScoreStepComponent } from '../grade-score-step/grade-score-step.component';
 
+import { GradeSubjectStepComponent }  from '../grade-subject-step/grade-subject-step.component';
+import { GradeScoreStepComponent }    from '../grade-score-step/grade-score-step.component';
+import { GradeSettingsStepComponent } from '../grade-settings-step/grade-settings-step.component';
+import { GradeReviewStepComponent }   from '../grade-review-step/grade-review-step.component';
 
 export interface GradeEnrollmentStep {
   label:      string;
@@ -234,6 +234,22 @@ export class GradeEnrollmentComponent implements OnInit, OnDestroy {
   }
 
   private _clearDraft(): void { localStorage.removeItem(this.DRAFT_KEY); }
+
+  // ─── Display name cache (for review step) ─────────────────────────────────
+  /** Populated by GradeSubjectStepComponent so the review can display names, not UUIDs */
+  subjectStepDisplayNames: {
+    studentName?: string;
+    studentAdmNo?: string;
+    subjectName?: string;
+    subjectCode?: string;
+    termName?: string;
+    assessmentName?: string;
+    assessmentType?: string;
+  } = {};
+
+  onDisplayNamesChanged(names: typeof this.subjectStepDisplayNames): void {
+    this.subjectStepDisplayNames = { ...this.subjectStepDisplayNames, ...names };
+  }
 
   // ─── Section events ──────────────────────────────────────────────────────
   onSectionChanged(section: string, data: any): void {

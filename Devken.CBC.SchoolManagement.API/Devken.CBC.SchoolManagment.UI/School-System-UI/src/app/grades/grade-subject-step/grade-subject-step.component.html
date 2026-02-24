@@ -11,26 +11,34 @@
       <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Student & Subject</h2>
       <p class="text-gray-600 dark:text-gray-400">
         {{ isEditMode
-          ? 'Student and subject are read-only after creation.'
-          : 'Select the student, subject, and optionally the term for this grade. Fields marked * are required.' }}
+          ? 'Student and subject are read-only after the grade has been recorded.'
+          : 'Select the student and subject for this grade. Term is optional. Fields marked * are required.' }}
       </p>
     </div>
   </div>
 
-  <!-- Info Alert -->
-  <fuse-alert *ngIf="isEditMode" type="info" appearance="soft" [showIcon]="true" class="mb-6">
-    <strong>Note:</strong> Student and Subject cannot be changed after the grade has been recorded.
-    Delete and recreate the grade if you need to correct these fields.
-  </fuse-alert>
+  <!-- Loading Overlay -->
+  <div *ngIf="isAnyLoading && !isEditMode"
+       class="flex items-center gap-3 mb-6 p-4 rounded-xl
+              bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-800">
+    <mat-spinner diameter="20" class="flex-shrink-0"></mat-spinner>
+    <p class="text-sm text-indigo-700 dark:text-indigo-300">
+      Loading
+      <span *ngIf="isLoadingStudents">students</span><span *ngIf="isLoadingStudents && (isLoadingSubjects || isLoadingTerms)">, </span>
+      <span *ngIf="isLoadingSubjects">subjects</span><span *ngIf="isLoadingSubjects && isLoadingTerms">, </span>
+      <span *ngIf="isLoadingTerms">terms</span>…
+    </p>
+  </div>
 
-  <fuse-alert *ngIf="!isEditMode" type="info" appearance="soft" [showIcon]="true" class="mb-6">
-    <strong>Getting Started:</strong> Enter the student and subject UUIDs from the system.
-    Term and Assessment fields are optional — link them if this grade belongs to a specific term or assessment.
+  <!-- Edit Mode Info -->
+  <fuse-alert *ngIf="isEditMode" type="info" appearance="soft" [showIcon]="true" class="mb-6">
+    <strong>Note:</strong> Student and Subject are locked after the grade has been recorded.
+    Delete and re-create the grade to correct these fields.
   </fuse-alert>
 
   <form [formGroup]="form" novalidate class="space-y-6">
 
-    <!-- School Assignment (SuperAdmin only) -->
+    <!-- ── School Assignment (SuperAdmin only, create mode) ───────────── -->
     <mat-card *ngIf="isSuperAdmin && !isEditMode" class="shadow-md">
       <mat-card-header class="!pb-2">
         <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
@@ -44,75 +52,307 @@
         <mat-form-field appearance="outline" class="w-full">
           <mat-label>School *</mat-label>
           <mat-select formControlName="tenantId">
-            <mat-option value="">Select school</mat-option>
+            <mat-option [value]="null">— Select school —</mat-option>
             <mat-option *ngFor="let school of schools" [value]="school.id">
               {{ school.name }}
+              <span *ngIf="school.phoneNumber" class="text-xs text-gray-400"> ({{ school.phoneNumber }})</span>
             </mat-option>
           </mat-select>
           <mat-icon matPrefix class="text-gray-400">apartment</mat-icon>
-          <mat-hint>The school this grade belongs to</mat-hint>
+          <mat-hint>Selecting a school will load its students, subjects and terms</mat-hint>
           <mat-error>{{ getError('tenantId') }}</mat-error>
         </mat-form-field>
       </mat-card-content>
     </mat-card>
 
-    <!-- Student & Subject -->
+    <!-- ── Student ────────────────────────────────────────────────────── -->
     <mat-card class="shadow-md">
       <mat-card-header class="!pb-2">
         <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
           <mat-icon class="text-indigo-600">badge</mat-icon>
-          Student & Subject IDs
+          Student
           <span class="ml-auto text-xs font-medium px-2 py-1 bg-red-100 text-red-700
                        dark:bg-red-900/30 dark:text-red-300 rounded">Required</span>
         </mat-card-title>
       </mat-card-header>
       <mat-card-content class="!pt-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
+        <!-- Edit mode: read-only display -->
+        <div *ngIf="isEditMode; else studentDropdown"
+             class="flex items-center gap-3 p-4 rounded-xl
+                    bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+          <div class="flex items-center justify-center w-10 h-10 rounded-full
+                      bg-indigo-100 dark:bg-indigo-900/30 flex-shrink-0">
+            <mat-icon class="text-indigo-600">person</mat-icon>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-gray-900 dark:text-white">
+              {{ selectedLabel(students, form.getRawValue().studentId) }}
+            </p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              Adm: {{ selectedSubLabel(students, form.getRawValue().studentId) || '—' }}
+            </p>
+          </div>
+          <mat-icon class="ml-auto text-gray-300" matTooltip="Cannot change after creation">lock</mat-icon>
+        </div>
+
+        <ng-template #studentDropdown>
           <mat-form-field appearance="outline" class="w-full">
-            <mat-label>Student ID *</mat-label>
-            <input matInput formControlName="studentId" placeholder="e.g. 3fa85f64-5717-4562-b3fc-2c963f66afa6">
+            <mat-label>Student *</mat-label>
+            <mat-select formControlName="studentId">
+              <mat-option [value]="null">— Select student —</mat-option>
+
+              <!-- Loading placeholder -->
+              <mat-option *ngIf="isLoadingStudents" disabled>
+                <span class="flex items-center gap-2">
+                  <mat-spinner diameter="14"></mat-spinner>
+                  Loading students…
+                </span>
+              </mat-option>
+
+              <!-- No data -->
+              <mat-option *ngIf="!isLoadingStudents && students.length === 0" disabled>
+                No students found
+              </mat-option>
+
+              <!-- Options: Full Name · Admission Number -->
+              <mat-option *ngFor="let s of students" [value]="s.id">
+                <span class="font-medium">{{ s.label }}</span>
+                <span *ngIf="s.subLabel" class="text-xs text-gray-400 ml-2">· {{ s.subLabel }}</span>
+              </mat-option>
+            </mat-select>
             <mat-icon matPrefix class="text-gray-400">person</mat-icon>
-            <mat-hint>{{ isEditMode ? 'Read-only — defined at creation' : 'UUID of the student' }}</mat-hint>
+            <mat-hint>Name shown with admission number for easy identification</mat-hint>
             <mat-error>{{ getError('studentId') }}</mat-error>
           </mat-form-field>
+        </ng-template>
 
-          <mat-form-field appearance="outline" class="w-full">
-            <mat-label>Subject ID *</mat-label>
-            <input matInput formControlName="subjectId" placeholder="e.g. 3fa85f64-5717-4562-b3fc-2c963f66afa6">
-            <mat-icon matPrefix class="text-gray-400">menu_book</mat-icon>
-            <mat-hint>{{ isEditMode ? 'Read-only — defined at creation' : 'UUID of the subject' }}</mat-hint>
-            <mat-error>{{ getError('subjectId') }}</mat-error>
-          </mat-form-field>
-
-        </div>
       </mat-card-content>
     </mat-card>
 
-    <!-- Optional Linking -->
+    <!-- ── Subject ────────────────────────────────────────────────────── -->
     <mat-card class="shadow-md">
       <mat-card-header class="!pb-2">
         <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
-          <mat-icon class="text-indigo-600">link</mat-icon>
-          Term & Assessment (Optional)
+          <mat-icon class="text-indigo-600">menu_book</mat-icon>
+          Subject
+          <span class="ml-auto text-xs font-medium px-2 py-1 bg-red-100 text-red-700
+                       dark:bg-red-900/30 dark:text-red-300 rounded">Required</span>
         </mat-card-title>
       </mat-card-header>
       <mat-card-content class="!pt-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-          <mat-form-field appearance="outline" class="w-full">
-            <mat-label>Term ID</mat-label>
-            <input matInput formControlName="termId" placeholder="Term UUID (optional)">
-            <mat-icon matPrefix class="text-gray-400">date_range</mat-icon>
-            <mat-hint>Link to an academic term</mat-hint>
-          </mat-form-field>
+        <!-- Edit mode: read-only display -->
+        <div *ngIf="isEditMode; else subjectDropdown"
+             class="flex items-center gap-3 p-4 rounded-xl
+                    bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+          <div class="flex items-center justify-center w-10 h-10 rounded-full
+                      bg-violet-100 dark:bg-violet-900/30 flex-shrink-0">
+            <mat-icon class="text-violet-600">menu_book</mat-icon>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-gray-900 dark:text-white">
+              {{ selectedLabel(subjects, form.getRawValue().subjectId) }}
+            </p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              Code: {{ selectedSubLabel(subjects, form.getRawValue().subjectId) || '—' }}
+            </p>
+          </div>
+          <mat-icon class="ml-auto text-gray-300" matTooltip="Cannot change after creation">lock</mat-icon>
+        </div>
 
+        <ng-template #subjectDropdown>
           <mat-form-field appearance="outline" class="w-full">
-            <mat-label>Assessment ID</mat-label>
-            <input matInput formControlName="assessmentId" placeholder="Assessment UUID (optional)">
-            <mat-icon matPrefix class="text-gray-400">assignment</mat-icon>
-            <mat-hint>Link to a specific assessment</mat-hint>
+            <mat-label>Subject *</mat-label>
+            <mat-select formControlName="subjectId">
+              <mat-option [value]="null">— Select subject —</mat-option>
+
+              <mat-option *ngIf="isLoadingSubjects" disabled>
+                <span class="flex items-center gap-2">
+                  <mat-spinner diameter="14"></mat-spinner>
+                  Loading subjects…
+                </span>
+              </mat-option>
+
+              <mat-option *ngIf="!isLoadingSubjects && subjects.length === 0" disabled>
+                No subjects found
+              </mat-option>
+
+              <!-- Options: Subject Name · Code -->
+              <mat-option *ngFor="let s of subjects" [value]="s.id">
+                <span class="font-medium">{{ s.label }}</span>
+                <span *ngIf="s.subLabel" class="text-xs text-gray-400 ml-2">· {{ s.subLabel }}</span>
+              </mat-option>
+            </mat-select>
+            <mat-icon matPrefix class="text-gray-400">menu_book</mat-icon>
+            <mat-hint>Name shown with subject code for easy identification</mat-hint>
+            <mat-error>{{ getError('subjectId') }}</mat-error>
           </mat-form-field>
+        </ng-template>
+
+      </mat-card-content>
+    </mat-card>
+
+    <!-- ── Term (Optional dropdown) ───────────────────────────────────── -->
+    <mat-card class="shadow-md">
+      <mat-card-header class="!pb-2">
+        <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+          <mat-icon class="text-indigo-600">date_range</mat-icon>
+          Academic Term
+          <span class="ml-auto text-xs font-medium px-2 py-1 bg-gray-100 text-gray-600
+                       dark:bg-gray-700 dark:text-gray-300 rounded">Optional</span>
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>Academic Term</mat-label>
+          <mat-select formControlName="termId">
+            <mat-option [value]="null">— No term —</mat-option>
+
+            <mat-option *ngIf="isLoadingTerms" disabled>
+              <span class="flex items-center gap-2">
+                <mat-spinner diameter="14"></mat-spinner>
+                Loading terms…
+              </span>
+            </mat-option>
+
+            <mat-option *ngIf="!isLoadingTerms && terms.length === 0" disabled>
+              No terms found
+            </mat-option>
+
+            <!-- Options: Term Name · Academic Year -->
+            <mat-option *ngFor="let t of terms" [value]="t.id">
+              <span class="font-medium">{{ t.label }}</span>
+              <span *ngIf="t.subLabel" class="text-xs text-gray-400 ml-2">· {{ t.subLabel }}</span>
+            </mat-option>
+          </mat-select>
+          <mat-icon matPrefix class="text-gray-400">date_range</mat-icon>
+          <mat-hint>Link this grade to a specific academic term</mat-hint>
+        </mat-form-field>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- ── Assessment (Optional dropdown) ────────────────────────────── -->
+    <mat-card class="shadow-md">
+      <mat-card-header class="!pb-2">
+        <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+          <mat-icon class="text-indigo-600">assignment</mat-icon>
+          Assessment
+          <span class="ml-auto text-xs font-medium px-2 py-1 bg-gray-100 text-gray-600
+                       dark:bg-gray-700 dark:text-gray-300 rounded">Optional</span>
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>Assessment</mat-label>
+          <mat-select formControlName="assessmentId">
+            <mat-option [value]="null">— No assessment —</mat-option>
+
+            <mat-option *ngIf="isLoadingAssessments" disabled>
+              <span class="flex items-center gap-2">
+                <mat-spinner diameter="14"></mat-spinner>
+                Loading assessments…
+              </span>
+            </mat-option>
+
+            <mat-option *ngIf="!isLoadingAssessments && assessments.length === 0" disabled>
+              No assessments found
+            </mat-option>
+
+            <!-- Options: Assessment Title · Type (Formative / Summative / Competency) -->
+            <mat-option *ngFor="let a of assessments" [value]="a.id">
+              <span class="font-medium">{{ a.label }}</span>
+              <span *ngIf="a.subLabel" class="text-xs text-gray-400 ml-2">· {{ a.subLabel }}</span>
+            </mat-option>
+          </mat-select>
+          <mat-icon matPrefix class="text-gray-400">assignment</mat-icon>
+          <mat-hint>Link this grade to a specific assessment event</mat-hint>
+        </mat-form-field>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- ── Selection Summary ──────────────────────────────────────────── -->
+    <mat-card class="shadow-sm border border-dashed border-gray-300 dark:border-gray-600">
+      <mat-card-content class="!pt-4">
+        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+          <mat-icon class="icon-size-4 text-indigo-500">summarize</mat-icon>
+          Current Selection
+        </h4>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+
+          <!-- Student -->
+          <div class="flex items-center gap-2 text-sm">
+            <mat-icon class="icon-size-4 flex-shrink-0"
+              [ngClass]="form.get('studentId')?.value ? 'text-green-500' : 'text-gray-300'">
+              {{ form.get('studentId')?.value ? 'check_circle' : 'radio_button_unchecked' }}
+            </mat-icon>
+            <div class="min-w-0">
+              <p class="text-xs text-gray-500 dark:text-gray-400">Student</p>
+              <p class="font-semibold text-gray-900 dark:text-white truncate">
+                {{ form.get('studentId')?.value
+                    ? selectedLabel(students, form.get('studentId')?.value)
+                    : '—' }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Subject -->
+          <div class="flex items-center gap-2 text-sm">
+            <mat-icon class="icon-size-4 flex-shrink-0"
+              [ngClass]="form.get('subjectId')?.value ? 'text-green-500' : 'text-gray-300'">
+              {{ form.get('subjectId')?.value ? 'check_circle' : 'radio_button_unchecked' }}
+            </mat-icon>
+            <div class="min-w-0">
+              <p class="text-xs text-gray-500 dark:text-gray-400">Subject</p>
+              <p class="font-semibold text-gray-900 dark:text-white truncate">
+                {{ form.get('subjectId')?.value
+                    ? selectedLabel(subjects, form.get('subjectId')?.value)
+                    : '—' }}
+                <span *ngIf="form.get('subjectId')?.value &&
+                             selectedSubLabel(subjects, form.get('subjectId')?.value)"
+                      class="text-xs font-normal text-gray-400 ml-1">
+                  ({{ selectedSubLabel(subjects, form.get('subjectId')?.value) }})
+                </span>
+              </p>
+            </div>
+          </div>
+
+          <!-- Term -->
+          <div class="flex items-center gap-2 text-sm">
+            <mat-icon class="icon-size-4 flex-shrink-0"
+              [ngClass]="form.get('termId')?.value ? 'text-blue-500' : 'text-gray-300'">
+              {{ form.get('termId')?.value ? 'check_circle' : 'radio_button_unchecked' }}
+            </mat-icon>
+            <div class="min-w-0">
+              <p class="text-xs text-gray-500 dark:text-gray-400">Term</p>
+              <p class="font-semibold text-gray-900 dark:text-white truncate">
+                {{ form.get('termId')?.value
+                    ? selectedLabel(terms, form.get('termId')?.value)
+                    : '(none)' }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Assessment -->
+          <div class="flex items-center gap-2 text-sm">
+            <mat-icon class="icon-size-4 flex-shrink-0"
+              [ngClass]="form.get('assessmentId')?.value ? 'text-teal-500' : 'text-gray-300'">
+              {{ form.get('assessmentId')?.value ? 'check_circle' : 'radio_button_unchecked' }}
+            </mat-icon>
+            <div class="min-w-0">
+              <p class="text-xs text-gray-500 dark:text-gray-400">Assessment</p>
+              <p class="font-semibold text-gray-900 dark:text-white truncate">
+                {{ form.get('assessmentId')?.value
+                    ? selectedLabel(assessments, form.get('assessmentId')?.value)
+                    : '(none)' }}
+                <span *ngIf="form.get('assessmentId')?.value &&
+                             selectedSubLabel(assessments, form.get('assessmentId')?.value)"
+                      class="text-xs font-normal text-gray-400 ml-1">
+                  · {{ selectedSubLabel(assessments, form.get('assessmentId')?.value) }}
+                </span>
+              </p>
+            </div>
+          </div>
 
         </div>
       </mat-card-content>

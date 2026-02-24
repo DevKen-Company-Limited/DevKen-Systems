@@ -162,7 +162,8 @@
           [isEditMode]="isEditMode"
           [isSuperAdmin]="isSuperAdmin"
           (formChanged)="onSectionChanged('subject', $event)"
-          (formValid)="onSectionValidChanged('subject', $event)">
+          (formValid)="onSectionValidChanged('subject', $event)"
+          (displayNamesChanged)="onDisplayNamesChanged($event)">
         </app-grade-subject-step>
 
         <!-- Step 1: Score & Grade -->
@@ -190,6 +191,7 @@
           [steps]="steps"
           [completedSteps]="completedSteps"
           [isSuperAdmin]="isSuperAdmin"
+          [displayNames]="subjectStepDisplayNames"
           (editSection)="navigateToStep($event)">
         </app-grade-review-step>
 
