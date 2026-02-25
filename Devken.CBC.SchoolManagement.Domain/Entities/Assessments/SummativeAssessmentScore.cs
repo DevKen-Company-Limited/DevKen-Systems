@@ -20,7 +20,6 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
         // ── Score data ────────────────────────────────────────────────────────
         public decimal TheoryScore { get; set; }
         public decimal? PracticalScore { get; set; }
-
         public decimal MaximumTheoryScore { get; set; }
         public decimal? MaximumPracticalScore { get; set; }
 
@@ -29,7 +28,6 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
         public decimal MaximumTotalScore => MaximumTheoryScore + (MaximumPracticalScore ?? 0);
         public decimal Percentage => MaximumTotalScore > 0
             ? Math.Round((TotalScore / MaximumTotalScore) * 100, 2) : 0;
-
         public string PerformanceStatus => Percentage switch
         {
             >= 80 => "Excellent",
@@ -53,5 +51,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
 
         [MaxLength(1000)]
         public string? Comments { get; set; }
+
+        public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
     }
 }

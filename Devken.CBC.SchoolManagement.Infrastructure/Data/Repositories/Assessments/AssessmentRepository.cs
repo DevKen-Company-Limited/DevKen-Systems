@@ -272,7 +272,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // SCORE REPOSITORIES
+    // FORMATIVE ASSESSMENT SCORE
     // ─────────────────────────────────────────────────────────────────────────
     public class FormativeAssessmentScoreRepository
         : RepositoryBase<FormativeAssessmentScore, Guid>, IFormativeAssessmentScoreRepository
@@ -311,6 +311,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
                 .FirstOrDefaultAsync();
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // SUMMATIVE ASSESSMENT SCORE
+    // ─────────────────────────────────────────────────────────────────────────
     public class SummativeAssessmentScoreRepository
         : RepositoryBase<SummativeAssessmentScore, Guid>, ISummativeAssessmentScoreRepository
     {
@@ -348,6 +351,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessmen
                 .FirstOrDefaultAsync();
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // COMPETENCY ASSESSMENT SCORE
+    // ─────────────────────────────────────────────────────────────────────────
     public class CompetencyAssessmentScoreRepository
         : RepositoryBase<CompetencyAssessmentScore, Guid>, ICompetencyAssessmentScoreRepository
     {

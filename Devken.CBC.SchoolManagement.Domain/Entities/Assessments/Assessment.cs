@@ -20,7 +20,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
         [MaxLength(500)]
         public string? Description { get; set; }
 
-        // ── Foreign Keys ──────────────────────────────────────────────────────
+        // ── Foreign Keys ─────────────────────────────────────────────────────
         public Guid TeacherId { get; set; }
         public Teacher Teacher { get; set; } = null!;
 
@@ -36,7 +36,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
         public Guid AcademicYearId { get; set; }
         public AcademicYear AcademicYear { get; set; } = null!;
 
-        // ── Core Fields ───────────────────────────────────────────────────────
+        // ── Core Fields ──────────────────────────────────────────────────────
         public DateTime AssessmentDate { get; set; }
 
         [Range(0.01, 9999.99)]
@@ -48,5 +48,6 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
 
         public bool IsPublished { get; set; } = false;
         public DateTime? PublishedDate { get; set; }
+        public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
     }
 }

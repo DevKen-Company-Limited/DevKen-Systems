@@ -48,6 +48,9 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
 
         [MaxLength(100)]
         public string? CompetencyArea { get; set; }
+
         public bool CompetencyAchieved { get; set; } = false;
+
+        public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
     }
 }

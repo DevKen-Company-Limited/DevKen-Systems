@@ -27,7 +27,7 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
 
         Task<bool> IsPublishedAsync(Guid id);
 
-        /// <summary>Loads navigations after Create+Save; safe for SuperAdmin (bypasses tenant filter).</summary>
+        /// <summary>Loads navigations after Create+Save; safe for SuperAdmin.</summary>
         Task LoadNavigationsAsync(FormativeAssessment entity);
     }
 
@@ -42,7 +42,6 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
             Guid? teacherId, bool? isPublished, bool trackChanges = false);
 
         Task<SummativeAssessment?> GetByIdWithDetailsAsync(Guid id, bool trackChanges = false);
-
         Task<SummativeAssessment?> GetByIdIgnoringTenantAsync(Guid id, bool trackChanges = false);
 
         Task<IEnumerable<SummativeAssessment>> GetByClassAndTermAsync(
@@ -63,7 +62,6 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
             Guid? teacherId, bool? isPublished, bool trackChanges = false);
 
         Task<CompetencyAssessment?> GetByIdWithDetailsAsync(Guid id, bool trackChanges = false);
-
         Task<CompetencyAssessment?> GetByIdIgnoringTenantAsync(Guid id, bool trackChanges = false);
 
         Task<IEnumerable<CompetencyAssessment>> GetByClassAndTermAsync(

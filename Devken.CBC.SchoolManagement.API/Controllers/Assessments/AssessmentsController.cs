@@ -1,5 +1,5 @@
-
-﻿using Devken.CBC.SchoolManagement.Api.Controllers.Common;
+// Devken.CBC.SchoolManagement.Api/Controllers/Assessments/AssessmentsController.cs
+using Devken.CBC.SchoolManagement.Api.Controllers.Common;
 using Devken.CBC.SchoolManagement.Application.DTOs.Assessments;
 using Devken.CBC.SchoolManagement.Application.Exceptions;
 using Devken.CBC.SchoolManagement.Application.Service.Activities;
@@ -16,8 +16,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Assessments
     /// <summary>
     /// Unified assessment controller — handles Formative, Summative and Competency
     /// assessments via a single set of endpoints. AssessmentType in the request body
-    /// or query string determines which TPT subtype is operated on. Shared columns are
-    /// stored in the "Assessments" table; type-specific columns land in their own tables.
+    /// or query string determines which TPT subtype is operated on.
     ///
     /// UI usage: read AssessmentType from the response to know which fields to render.
     ///           Call GET /schema/{type} to get the field list for a dynamic form.
@@ -40,7 +39,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Assessments
         }
 
         // ─────────────────────────────────────────────────────────────────────
-        // GET ALL — returns a lightweight list, optionally filtered
+        // GET ALL
         // GET /api/assessments?type=Formative&classId=...&termId=...
         // ─────────────────────────────────────────────────────────────────────
 
@@ -57,7 +56,6 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Assessments
             try
             {
                 var userSchoolId = GetUserSchoolIdOrNullWithValidation();
-
                 var results = await _assessmentService.GetAllAsync(
                     type, classId, termId, subjectId, teacherId, isPublished,
                     userSchoolId, IsSuperAdmin);
@@ -70,7 +68,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Assessments
         }
 
         // ─────────────────────────────────────────────────────────────────────
-        // GET BY ID — returns full response including type-specific fields
+        // GET BY ID
         // GET /api/assessments/{id}?type=Summative
         // ─────────────────────────────────────────────────────────────────────
 
@@ -93,13 +91,9 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Assessments
         }
 
         // ─────────────────────────────────────────────────────────────────────
-        // CREATE — single endpoint, dispatches on AssessmentType in body
+        // CREATE
         // POST /api/assessments
         // ─────────────────────────────────────────────────────────────────────
-
-        // ─── In AssessmentsController.cs ───────────────────────────────────────────
-        // ONLY the Create action needs changing. Everything else stays the same.
-        // Replace your existing Create action with this:
 
         [HttpPost]
         [Authorize(Policy = PermissionKeys.AssessmentWrite)]
@@ -114,15 +108,11 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Assessments
 
                 if (!IsSuperAdmin)
                 {
-                    // Regular tenant user — always scoped to their own school
                     request.TenantId = userSchoolId;
                 }
                 else
                 {
-                    // SuperAdmin — frontend sends schoolId; TenantId may also be set.
-                    // Accept whichever is provided: TenantId takes priority, then SchoolId.
                     var resolvedSchoolId = request.TenantId ?? request.SchoolId;
-
                     if (resolvedSchoolId == null || resolvedSchoolId == Guid.Empty)
                         return ValidationErrorResponse("A school must be selected (schoolId or tenantId is required for SuperAdmin).");
 
@@ -147,8 +137,9 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Assessments
             catch (UnauthorizedException ex) { return ForbiddenResponse(ex.Message); }
             catch (Exception ex) { return InternalServerErrorResponse(GetFullExceptionMessage(ex)); }
         }
+
         // ─────────────────────────────────────────────────────────────────────
-        // UPDATE — dispatches on AssessmentType from request body
+        // UPDATE
         // PUT /api/assessments/{id}
         // ─────────────────────────────────────────────────────────────────────
 
@@ -234,7 +225,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Assessments
         }
 
         // ─────────────────────────────────────────────────────────────────────
-        // SCORES — get all scores for an assessment
+        // GET SCORES
         // GET /api/assessments/{id}/scores?type=Summative
         // ─────────────────────────────────────────────────────────────────────
 
@@ -255,7 +246,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Assessments
         }
 
         // ─────────────────────────────────────────────────────────────────────
-        // UPSERT SCORE — create or update a score for a student
+        // UPSERT SCORE
         // POST /api/assessments/scores
         // ─────────────────────────────────────────────────────────────────────
 
@@ -311,7 +302,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Assessments
         }
 
         // ─────────────────────────────────────────────────────────────────────
-        // SCHEMA — returns field metadata so the UI knows which fields to show
+        // SCHEMA — returns field metadata for dynamic form rendering
         // GET /api/assessments/schema/{type}
         // ─────────────────────────────────────────────────────────────────────
 
@@ -336,16 +327,16 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Assessments
             {
                 AssessmentTypeDto.Formative => new[]
                 {
-                    new { Field = "FormativeType",      Label = "Formative Type",      Required = false },
-                    new { Field = "CompetencyArea",     Label = "Competency Area",     Required = false },
-                    new { Field = "LearningOutcomeId",  Label = "Learning Outcome",    Required = false },
-                    new { Field = "FormativeStrand",    Label = "Strand",              Required = false },
-                    new { Field = "FormativeSubStrand", Label = "Sub-Strand",          Required = false },
-                    new { Field = "Criteria",           Label = "Assessment Criteria", Required = false },
-                    new { Field = "FeedbackTemplate",   Label = "Feedback Template",   Required = false },
-                    new { Field = "RequiresRubric",     Label = "Requires Rubric",     Required = false },
-                    new { Field = "AssessmentWeight",   Label = "Weight (%)",          Required = false },
-                    new { Field = "FormativeInstructions", Label = "Instructions",     Required = false },
+                    new { Field = "FormativeType",        Label = "Formative Type",      Required = false },
+                    new { Field = "CompetencyArea",       Label = "Competency Area",     Required = false },
+                    new { Field = "LearningOutcomeId",    Label = "Learning Outcome",    Required = false },
+                    new { Field = "FormativeStrand",      Label = "Strand",              Required = false },
+                    new { Field = "FormativeSubStrand",   Label = "Sub-Strand",          Required = false },
+                    new { Field = "Criteria",             Label = "Assessment Criteria", Required = false },
+                    new { Field = "FeedbackTemplate",     Label = "Feedback Template",   Required = false },
+                    new { Field = "RequiresRubric",       Label = "Requires Rubric",     Required = false },
+                    new { Field = "AssessmentWeight",     Label = "Weight (%)",          Required = false },
+                    new { Field = "FormativeInstructions",Label = "Instructions",        Required = false },
                 },
                 AssessmentTypeDto.Summative => new[]
                 {
@@ -360,17 +351,17 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Assessments
                 },
                 AssessmentTypeDto.Competency => new[]
                 {
-                    new { Field = "CompetencyName",         Label = "Competency Name",           Required = true  },
-                    new { Field = "CompetencyStrand",       Label = "Strand",                    Required = false },
-                    new { Field = "CompetencySubStrand",    Label = "Sub-Strand",                Required = false },
-                    new { Field = "TargetLevel",            Label = "CBC Level",                 Required = false },
-                    new { Field = "PerformanceIndicators",  Label = "Performance Indicators",    Required = false },
-                    new { Field = "AssessmentMethod",       Label = "Assessment Method",         Required = false },
-                    new { Field = "RatingScale",            Label = "Rating Scale",              Required = false },
-                    new { Field = "IsObservationBased",     Label = "Observation Based",         Required = false },
-                    new { Field = "ToolsRequired",          Label = "Tools Required",            Required = false },
-                    new { Field = "CompetencyInstructions", Label = "Instructions",              Required = false },
-                    new { Field = "SpecificLearningOutcome",Label = "Specific Learning Outcome", Required = false },
+                    new { Field = "CompetencyName",          Label = "Competency Name",           Required = true  },
+                    new { Field = "CompetencyStrand",        Label = "Strand",                    Required = false },
+                    new { Field = "CompetencySubStrand",     Label = "Sub-Strand",                Required = false },
+                    new { Field = "TargetLevel",             Label = "CBC Level",                 Required = false },
+                    new { Field = "PerformanceIndicators",   Label = "Performance Indicators",    Required = false },
+                    new { Field = "AssessmentMethod",        Label = "Assessment Method",         Required = false },
+                    new { Field = "RatingScale",             Label = "Rating Scale",              Required = false },
+                    new { Field = "IsObservationBased",      Label = "Observation Based",         Required = false },
+                    new { Field = "ToolsRequired",           Label = "Tools Required",            Required = false },
+                    new { Field = "CompetencyInstructions",  Label = "Instructions",              Required = false },
+                    new { Field = "SpecificLearningOutcome", Label = "Specific Learning Outcome", Required = false },
                 },
                 _ => null
             };
@@ -403,4 +394,3 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Assessments
         }
     }
 }
-

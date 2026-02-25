@@ -1,4 +1,5 @@
-﻿using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
+﻿// Devken.CBC.SchoolManagement.Application/RepositoryManagers/Interfaces/Common/IRepositoryManager.cs
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academics;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Assessments;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Curriculum;
@@ -31,13 +32,13 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
         IStrandRepository Strand { get; }
         ISubStrandRepository SubStrand { get; }
         ILearningOutcomeRepository LearningOutcome { get; }
+
         /// <summary>
         /// Exposes the underlying DbContext for advanced scenarios like execution strategy.
         /// </summary>
         DbContext Context { get; }
 
         // ================= ASSESSMENTS =================
-       // IAssessmentRepository Assessment { get; }
         IFormativeAssessmentRepository FormativeAssessment { get; }
         ISummativeAssessmentRepository SummativeAssessment { get; }
         ICompetencyAssessmentRepository CompetencyAssessment { get; }

@@ -60,5 +60,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
             "Below" => "Beginning",
             _ => "Not Assessed"
         };
+
+        public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
     }
 }

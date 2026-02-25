@@ -30,9 +30,6 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
         public decimal AssessmentWeight { get; set; } = 100.0m;
 
         // ── CBC Curriculum Hierarchy FKs ─────────────────────────────────────
-        // Links to the CBC strand/sub-strand/learning outcome hierarchy
-        // so that assessments are mapped to specific curriculum nodes.
-
         public Guid? StrandId { get; set; }
         public Strand? Strand { get; set; }
 

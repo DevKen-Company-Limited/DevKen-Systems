@@ -11,7 +11,6 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Assessments
         public string? ExamType { get; set; }               // EndTerm | MidTerm | Final
 
         public TimeSpan? Duration { get; set; }
-
         public int NumberOfQuestions { get; set; }
 
         [Range(0, 100)]

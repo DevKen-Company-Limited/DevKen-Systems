@@ -1,20 +1,28 @@
-﻿using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
+﻿// Devken.CBC.SchoolManagement.Infrastructure/Data/EF/Configurations/Assessments/AssessmentConfigurations.cs
+using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
 using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Assessments
 {
+    // ─────────────────────────────────────────────────────────────────────────
     /// <summary>
     /// Configures the "FormativeAssessments" TPT sub-table.
-    /// Only columns and relationships that are specific to <see cref="FormativeAssessment"/>
+    /// Only columns and relationships specific to <see cref="FormativeAssessment"/>
     /// are declared here — shared columns (Title, TeacherId, etc.) and their FK
-    /// relationships are owned entirely by <see cref="AssessmentConfiguration"/>.
+    /// relationships are owned by <see cref="AssessmentConfiguration"/>.
     ///
     /// CBC curriculum links (Strand → SubStrand → LearningOutcome) are all optional
     /// nullable FKs so teachers can tag an assessment as broadly or specifically as
-    /// they need. Deleting a curriculum node uses SetNull so the assessment is simply
-    /// "untagged" rather than blocked or cascade-deleted.
+    /// they need.
+    ///
+    /// IMPORTANT — DeleteBehavior.NoAction on CBC FKs:
+    /// SQL Server rejects SetNull here because it creates multiple cascade paths to
+    /// the same table (the TPT join via Assessment + the direct FK from the curriculum
+    /// node both terminate at FormativeAssessments — error 1785).
+    /// With NoAction the application service layer is responsible for nulling these
+    /// FKs before deleting any curriculum node (see ICurriculumService).
     /// </summary>
     public class FormativeAssessmentConfiguration : IEntityTypeConfiguration<FormativeAssessment>
     {
@@ -44,38 +52,28 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
             builder.Property(f => f.LearningOutcomeId).IsRequired(false);
 
             // ── CBC Curriculum Relationships ──────────────────────────────────
-            //
-            // FIX: Changed from SetNull → NoAction on all three CBC FKs.
-            //
-            // SQL Server rejects SetNull here because it creates multiple cascade
-            // paths to the same table:
-            //   Path 1: Strand → (SET NULL) → FormativeAssessment
-            //   Path 2: Assessment → (CASCADE) → FormativeAssessment
-            // Both paths terminate at FormativeAssessments, which SQL Server
-            // error 1785 disallows.
-            //
-            // With NoAction, deleting a Strand/SubStrand/LearningOutcome will
-            // fail at the DB level if any FormativeAssessment still references it.
-            // Your application service layer must null-out these FKs before
-            // deleting any curriculum node (see ICurriculumService).
-
+            // NoAction: SQL Server disallows SetNull here because multiple cascade
+            // paths would both terminate at FormativeAssessments (error 1785):
+            //   Path 1 → Assessment (TPT cascade) → FormativeAssessments
+            //   Path 2 → Strand/SubStrand/LO (SetNull) → FormativeAssessments
+            // Application layer must null these FKs before deleting curriculum nodes.
             builder.HasOne(f => f.Strand)
                    .WithMany()
                    .HasForeignKey(f => f.StrandId)
                    .IsRequired(false)
-                   .OnDelete(DeleteBehavior.NoAction);   // ← was SetNull
+                   .OnDelete(DeleteBehavior.NoAction);
 
             builder.HasOne(f => f.SubStrand)
                    .WithMany()
                    .HasForeignKey(f => f.SubStrandId)
                    .IsRequired(false)
-                   .OnDelete(DeleteBehavior.NoAction);   // ← was SetNull
+                   .OnDelete(DeleteBehavior.NoAction);
 
             builder.HasOne(f => f.LearningOutcome)
                    .WithMany(lo => lo.FormativeAssessments)
                    .HasForeignKey(f => f.LearningOutcomeId)
                    .IsRequired(false)
-                   .OnDelete(DeleteBehavior.NoAction);   // ← was SetNull
+                   .OnDelete(DeleteBehavior.NoAction);
 
             // ── Scores relationship ───────────────────────────────────────────
             builder.HasMany(f => f.Scores)
@@ -132,10 +130,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
     // ─────────────────────────────────────────────────────────────────────────
     /// <summary>
     /// Configures the "CompetencyAssessments" TPT sub-table.
-    /// Shared columns are owned by <see cref="AssessmentConfiguration"/>.
-    /// CompetencyStrand and CompetencySubStrand are stored as free-text strings
-    /// (not FK-linked) because competency descriptions are often ad-hoc and may
-    /// not align to the formal Strand/SubStrand hierarchy.
+    /// CompetencyStrand and CompetencySubStrand are free-text strings (not FK-linked)
+    /// because competency descriptions are often ad-hoc.
     /// </summary>
     public class CompetencyAssessmentConfiguration : IEntityTypeConfiguration<CompetencyAssessment>
     {
@@ -159,7 +155,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
             builder.Property(c => c.SpecificLearningOutcome).HasMaxLength(1000);
             builder.Property(c => c.IsObservationBased).HasDefaultValue(true);
 
-            // ── Enum columns ──────────────────────────────────────────────────
+            // ── Enum columns stored as strings for readability ────────────────
             builder.Property(c => c.TargetLevel)
                    .HasConversion<string>()
                    .HasMaxLength(20);
@@ -179,8 +175,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
     // ─────────────────────────────────────────────────────────────────────────
     /// <summary>
     /// Configures the "FormativeAssessmentScores" table.
-    /// The assessment FK and student/gradedBy FKs are declared here.
     /// Computed properties (Percentage) are ignored so EF never tries to persist them.
+    /// Unique index on (FormativeAssessmentId, StudentId) enforces one score per student.
     /// </summary>
     public class FormativeAssessmentScoreConfiguration
         : IEntityTypeConfiguration<FormativeAssessmentScore>
@@ -211,19 +207,19 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
             builder.Ignore(s => s.Percentage);
 
             // ── Relationships ─────────────────────────────────────────────────
-            // Parent assessment: cascade (score dies with the assessment)
+            // Cascade: score is deleted when the parent assessment is deleted
             builder.HasOne(s => s.FormativeAssessment)
                    .WithMany(a => a.Scores)
                    .HasForeignKey(s => s.FormativeAssessmentId)
                    .OnDelete(DeleteBehavior.Cascade);
 
-            // Student: restrict (do not delete scores when a student is removed)
+            // Restrict: do not delete scores when a student record is removed
             builder.HasOne(s => s.Student)
                    .WithMany()
                    .HasForeignKey(s => s.StudentId)
                    .OnDelete(DeleteBehavior.Restrict);
 
-            // Teacher who graded (optional)
+            // Restrict: optional grading teacher reference (nullable FK)
             builder.HasOne(s => s.GradedBy)
                    .WithMany()
                    .HasForeignKey(s => s.GradedById)
@@ -231,11 +227,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
                    .OnDelete(DeleteBehavior.Restrict);
 
             // ── Indexes ───────────────────────────────────────────────────────
-            // Unique per student per assessment (upsert key)
+            // Unique per student per assessment (upsert safety key)
             builder.HasIndex(s => new { s.FormativeAssessmentId, s.StudentId }).IsUnique();
             builder.HasIndex(s => s.StudentId);
 
-            // ── Tenant filter ─────────────────────────────────────────────────
+            // ── Tenant query filter ───────────────────────────────────────────
             builder.HasQueryFilter(s =>
                 _tenantContext.TenantId == null ||
                 s.TenantId == _tenantContext.TenantId);
@@ -298,7 +294,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
             builder.HasIndex(s => new { s.SummativeAssessmentId, s.StudentId }).IsUnique();
             builder.HasIndex(s => s.StudentId);
 
-            // ── Tenant filter ─────────────────────────────────────────────────
+            // ── Tenant query filter ───────────────────────────────────────────
             builder.HasQueryFilter(s =>
                 _tenantContext.TenantId == null ||
                 s.TenantId == _tenantContext.TenantId);
@@ -359,7 +355,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Asse
             builder.HasIndex(s => new { s.CompetencyAssessmentId, s.StudentId }).IsUnique();
             builder.HasIndex(s => s.StudentId);
 
-            // ── Tenant filter ─────────────────────────────────────────────────
+            // ── Tenant query filter ───────────────────────────────────────────
             builder.HasQueryFilter(s =>
                 _tenantContext.TenantId == null ||
                 s.TenantId == _tenantContext.TenantId);

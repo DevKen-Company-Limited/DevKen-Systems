@@ -101,6 +101,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Finance
         /// <summary>
         /// Recomputes the invoice status from current financial values.
         /// </summary>
+        /// public ICollection<CreditNote> CreditNotes { get; set; } = new List<CreditNote>();
         public void UpdateStatus()
         {
             if (StatusInvoice == InvoiceStatus.Cancelled || StatusInvoice == InvoiceStatus.Refunded)

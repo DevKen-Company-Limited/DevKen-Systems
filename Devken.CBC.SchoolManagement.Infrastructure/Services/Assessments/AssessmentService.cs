@@ -38,7 +38,6 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Assessments
             {
                 var entities = await _repository.FormativeAssessment
                     .GetAllAsync(classId, termId, subjectId, teacherId, isPublished);
-
                 results.AddRange(
                     ApplyTenantFilter(entities, userSchoolId, isSuperAdmin)
                         .Select(MapFormativeToListItem));
@@ -48,7 +47,6 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Assessments
             {
                 var entities = await _repository.SummativeAssessment
                     .GetAllAsync(classId, termId, subjectId, teacherId, isPublished);
-
                 results.AddRange(
                     ApplyTenantFilter(entities, userSchoolId, isSuperAdmin)
                         .Select(MapSummativeToListItem));
@@ -58,7 +56,6 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Assessments
             {
                 var entities = await _repository.CompetencyAssessment
                     .GetAllAsync(classId, termId, subjectId, teacherId, isPublished);
-
                 results.AddRange(
                     ApplyTenantFilter(entities, userSchoolId, isSuperAdmin)
                         .Select(MapCompetencyToListItem));
@@ -241,15 +238,20 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Assessments
                 CompetencyName = r.CompetencyName.Trim(),
                 CompetencyStrand = r.CompetencyStrand?.Trim(),
                 CompetencySubStrand = r.CompetencySubStrand?.Trim(),
-                TargetLevel = r.TargetLevel,
                 PerformanceIndicators = r.PerformanceIndicators?.Trim(),
-                AssessmentMethod = r.AssessmentMethod,
                 RatingScale = r.RatingScale?.Trim(),
                 IsObservationBased = r.IsObservationBased,
                 ToolsRequired = r.ToolsRequired?.Trim(),
                 Instructions = r.CompetencyInstructions?.Trim(),
                 SpecificLearningOutcome = r.SpecificLearningOutcome?.Trim(),
             };
+
+            // Cast enum-compatible fields
+            if (r.TargetLevel is Domain.Enums.CBCLevel cbcLevel)
+                entity.TargetLevel = cbcLevel;
+
+            if (r.AssessmentMethod is AssessmentMethod method)
+                entity.AssessmentMethod = method;
 
             _repository.CompetencyAssessment.Create(entity);
             await _repository.SaveAsync();
@@ -284,7 +286,6 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Assessments
 
             ValidateTenantAccess(entity.TenantId, userSchoolId, isSuperAdmin);
 
-            // Shared
             entity.Title = r.Title.Trim();
             entity.Description = r.Description?.Trim();
             entity.TeacherId = r.TeacherId;
@@ -295,7 +296,6 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Assessments
             entity.AssessmentDate = r.AssessmentDate;
             entity.MaximumScore = r.MaximumScore;
 
-            // Formative-specific
             entity.FormativeType = r.FormativeType?.Trim();
             entity.CompetencyArea = r.CompetencyArea?.Trim();
             entity.StrandId = r.StrandId;
@@ -334,7 +334,6 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Assessments
             entity.AcademicYearId = r.AcademicYearId;
             entity.AssessmentDate = r.AssessmentDate;
             entity.MaximumScore = r.MaximumScore;
-
             entity.ExamType = r.ExamType?.Trim();
             entity.Duration = r.Duration;
             entity.NumberOfQuestions = r.NumberOfQuestions;
@@ -371,18 +370,20 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Assessments
             entity.AcademicYearId = r.AcademicYearId;
             entity.AssessmentDate = r.AssessmentDate;
             entity.MaximumScore = r.MaximumScore;
-
             entity.CompetencyName = (r.CompetencyName ?? entity.CompetencyName).Trim();
             entity.CompetencyStrand = r.CompetencyStrand?.Trim();
             entity.CompetencySubStrand = r.CompetencySubStrand?.Trim();
-            entity.TargetLevel = r.TargetLevel;
             entity.PerformanceIndicators = r.PerformanceIndicators?.Trim();
-            entity.AssessmentMethod = r.AssessmentMethod;
             entity.RatingScale = r.RatingScale?.Trim();
             entity.IsObservationBased = r.IsObservationBased;
             entity.ToolsRequired = r.ToolsRequired?.Trim();
             entity.Instructions = r.CompetencyInstructions?.Trim();
             entity.SpecificLearningOutcome = r.SpecificLearningOutcome?.Trim();
+
+            if (r.TargetLevel is Domain.Enums.CBCLevel cbcLevel)
+                entity.TargetLevel = cbcLevel;
+            if (r.AssessmentMethod is AssessmentMethod method)
+                entity.AssessmentMethod = method;
 
             _repository.CompetencyAssessment.Update(entity);
             await _repository.SaveAsync();
@@ -467,7 +468,6 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Assessments
                         if (entity == null) throw new NotFoundException($"Formative assessment {id} not found.");
                         if (entity.IsPublished) throw new ConflictException("Cannot delete a published assessment.");
                         ValidateTenantAccess(entity.TenantId, userSchoolId, isSuperAdmin);
-
                         _repository.FormativeAssessment.Delete(entity);
                         break;
                     }
@@ -480,7 +480,6 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Assessments
                         if (entity == null) throw new NotFoundException($"Summative assessment {id} not found.");
                         if (entity.IsPublished) throw new ConflictException("Cannot delete a published assessment.");
                         ValidateTenantAccess(entity.TenantId, userSchoolId, isSuperAdmin);
-
                         _repository.SummativeAssessment.Delete(entity);
                         break;
                     }
@@ -493,7 +492,6 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Assessments
                         if (entity == null) throw new NotFoundException($"Competency assessment {id} not found.");
                         if (entity.IsPublished) throw new ConflictException("Cannot delete a published assessment.");
                         ValidateTenantAccess(entity.TenantId, userSchoolId, isSuperAdmin);
-
                         _repository.CompetencyAssessment.Delete(entity);
                         break;
                     }
@@ -510,22 +508,18 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Assessments
         public async Task<IEnumerable<AssessmentScoreResponse>> GetScoresAsync(
             Guid assessmentId, AssessmentTypeDto type, Guid? userSchoolId, bool isSuperAdmin)
         {
-            // Verify the parent assessment exists and the caller may access it
             await GetByIdAsync(assessmentId, type, userSchoolId, isSuperAdmin);
 
             return type switch
             {
                 AssessmentTypeDto.Formative => (await _repository.FormativeAssessmentScore
-                    .GetByAssessmentAsync(assessmentId))
-                    .Select(MapFormativeScore),
+                    .GetByAssessmentAsync(assessmentId)).Select(MapFormativeScore),
 
                 AssessmentTypeDto.Summative => (await _repository.SummativeAssessmentScore
-                    .GetByAssessmentAsync(assessmentId))
-                    .Select(MapSummativeScore),
+                    .GetByAssessmentAsync(assessmentId)).Select(MapSummativeScore),
 
                 AssessmentTypeDto.Competency => (await _repository.CompetencyAssessmentScore
-                    .GetByAssessmentAsync(assessmentId))
-                    .Select(MapCompetencyScore),
+                    .GetByAssessmentAsync(assessmentId)).Select(MapCompetencyScore),
 
                 _ => throw new ValidationException($"Unknown assessment type: {type}")
             };
@@ -992,7 +986,6 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Assessments
             Guid entityTenantId, Guid? userSchoolId, bool isSuperAdmin)
         {
             if (isSuperAdmin) return;
-
             if (userSchoolId == null || userSchoolId != entityTenantId)
                 throw new UnauthorizedException("You do not have access to this assessment.");
         }
@@ -1007,32 +1000,3 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Assessments
         }
     }
 }
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-// IRepositoryManager — add these properties to your existing interface
-// ─────────────────────────────────────────────────────────────────────────────
-//
-// namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common
-// {
-//     public interface IRepositoryManager
-//     {
-//         // ... existing properties (School, User, Role, UserRole, etc.) ...
-//
-//         IFormativeAssessmentRepository          FormativeAssessment          { get; }
-//         ISummativeAssessmentRepository          SummativeAssessment          { get; }
-//         ICompetencyAssessmentRepository         CompetencyAssessment         { get; }
-//         IFormativeAssessmentScoreRepository     FormativeAssessmentScore     { get; }
-//         ISummativeAssessmentScoreRepository     SummativeAssessmentScore     { get; }
-//         ICompetencyAssessmentScoreRepository    CompetencyAssessmentScore    { get; }
-//
-//         Task SaveAsync();
-//     }
-// }
-//
-// ─────────────────────────────────────────────────────────────────────────────
-// DI Registration (Program.cs / ServiceCollectionExtensions.cs)
-// ─────────────────────────────────────────────────────────────────────────────
-//
-// services.AddScoped<IAssessmentService, AssessmentService>();
-// (repositories are already registered via IRepositoryManager)

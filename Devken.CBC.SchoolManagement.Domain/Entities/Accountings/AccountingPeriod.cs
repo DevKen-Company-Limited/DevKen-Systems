@@ -1,4 +1,5 @@
 ﻿using Devken.CBC.SchoolManagement.Domain.Common;
+using Devken.CBC.SchoolManagement.Domain.Entities.Accountings;
 using Devken.CBC.SchoolManagement.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
