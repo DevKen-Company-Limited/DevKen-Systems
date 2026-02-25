@@ -1,0 +1,124 @@
+<!-- subject-settings/subject-settings.component.html -->
+<div class="max-w-6xl">
+
+  <!-- Section Header -->
+  <div class="flex items-start gap-4 mb-8">
+    <div class="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 shadow-lg">
+      <mat-icon class="text-white !w-7 !h-7">settings</mat-icon>
+    </div>
+    <div class="flex-1">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Subject Settings</h2>
+      <p class="text-gray-600 dark:text-gray-400">
+        Configure how this subject behaves across the school system. These settings can be changed later.
+      </p>
+    </div>
+  </div>
+
+  <fuse-alert type="info" appearance="soft" [showIcon]="true" class="mb-6">
+    <strong>No required fields here.</strong> Both settings have safe defaults — you can proceed without changes.
+  </fuse-alert>
+
+  <form [formGroup]="form" novalidate class="space-y-6">
+
+    <!-- Compulsory Setting -->
+    <mat-card class="shadow-md overflow-hidden">
+      <mat-card-content class="!p-0">
+        <div class="flex items-start gap-4 p-6
+                    bg-amber-50 dark:bg-amber-900/10
+                    border border-amber-200 dark:border-amber-800 rounded-xl">
+          <div class="flex items-center justify-center w-14 h-14 rounded-xl
+                      bg-amber-100 dark:bg-amber-900/30 flex-shrink-0">
+            <mat-icon class="text-amber-600 dark:text-amber-400 !w-7 !h-7">star</mat-icon>
+          </div>
+          <div class="flex-1">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <h3 class="text-base font-bold text-gray-900 dark:text-white mb-1">Compulsory Subject</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                  When enabled, all students at the assigned CBC level <strong>must</strong> take this subject.
+                  It cannot be dropped or swapped for another.
+                </p>
+                <div
+                  class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold"
+                  [ngClass]="{
+                    'bg-amber-200 text-amber-800 dark:bg-amber-800/40 dark:text-amber-300': isCompulsory,
+                    'bg-gray-100  text-gray-600  dark:bg-gray-700      dark:text-gray-400':  !isCompulsory
+                  }">
+                  <mat-icon class="icon-size-3">{{ isCompulsory ? 'check_circle' : 'remove_circle' }}</mat-icon>
+                  {{ isCompulsory ? 'Marked as compulsory' : 'Optional (default)' }}
+                </div>
+              </div>
+              <mat-slide-toggle formControlName="isCompulsory" color="accent" class="flex-shrink-0"></mat-slide-toggle>
+            </div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Active Setting -->
+    <mat-card class="shadow-md overflow-hidden">
+      <mat-card-content class="!p-0">
+        <div class="flex items-start gap-4 p-6
+                    bg-green-50 dark:bg-green-900/10
+                    border border-green-200 dark:border-green-800 rounded-xl">
+          <div class="flex items-center justify-center w-14 h-14 rounded-xl
+                      bg-green-100 dark:bg-green-900/30 flex-shrink-0">
+            <mat-icon class="text-green-600 dark:text-green-400 !w-7 !h-7">check_circle</mat-icon>
+          </div>
+          <div class="flex-1">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <h3 class="text-base font-bold text-gray-900 dark:text-white mb-1">Active Status</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                  Inactive subjects are <strong>hidden</strong> from class assignments, timetables and student-facing
+                  reports. Use this to disable a subject without deleting it.
+                </p>
+                <div
+                  class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold"
+                  [ngClass]="{
+                    'bg-green-200 text-green-800 dark:bg-green-800/40 dark:text-green-300': isActive,
+                    'bg-red-100   text-red-700   dark:bg-red-900/30   dark:text-red-400':  !isActive
+                  }">
+                  <mat-icon class="icon-size-3">{{ isActive ? 'radio_button_checked' : 'radio_button_unchecked' }}</mat-icon>
+                  {{ isActive ? 'Active — visible in the system' : 'Inactive — hidden from assignments' }}
+                </div>
+              </div>
+              <mat-slide-toggle formControlName="isActive" color="primary" class="flex-shrink-0"></mat-slide-toggle>
+            </div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Summary card -->
+    <mat-card class="shadow-sm border border-gray-200 dark:border-gray-700">
+      <mat-card-content class="!pt-4">
+        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+          <mat-icon class="icon-size-4 text-indigo-500">summarize</mat-icon>
+          Current Settings Summary
+        </h4>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="flex items-center gap-2 text-sm">
+            <mat-icon class="icon-size-4" [ngClass]="isCompulsory ? 'text-amber-500' : 'text-gray-400'">
+              {{ isCompulsory ? 'star' : 'star_border' }}
+            </mat-icon>
+            <span class="text-gray-600 dark:text-gray-400">Compulsory:</span>
+            <span class="font-semibold" [ngClass]="isCompulsory ? 'text-amber-600' : 'text-gray-500'">
+              {{ isCompulsory ? 'Yes' : 'No' }}
+            </span>
+          </div>
+          <div class="flex items-center gap-2 text-sm">
+            <mat-icon class="icon-size-4" [ngClass]="isActive ? 'text-green-500' : 'text-red-400'">
+              {{ isActive ? 'check_circle' : 'cancel' }}
+            </mat-icon>
+            <span class="text-gray-600 dark:text-gray-400">Status:</span>
+            <span class="font-semibold" [ngClass]="isActive ? 'text-green-600' : 'text-red-500'">
+              {{ isActive ? 'Active' : 'Inactive' }}
+            </span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+  </form>
+</div>
