@@ -1,0 +1,153 @@
+<!-- grade-settings-step/grade-settings-step.component.html -->
+<div class="max-w-6xl">
+
+  <!-- Section Header -->
+  <div class="flex items-start gap-4 mb-8">
+    <div class="flex items-center justify-center w-14 h-14 rounded-xl
+                bg-gradient-to-br from-teal-500 to-emerald-600 shadow-lg">
+      <mat-icon class="text-white !w-7 !h-7">settings</mat-icon>
+    </div>
+    <div class="flex-1">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Status & Remarks</h2>
+      <p class="text-gray-600 dark:text-gray-400">
+        Set the assessment date, add teacher remarks, and control the grade's finalization status.
+      </p>
+    </div>
+  </div>
+
+  <fuse-alert type="info" appearance="soft" [showIcon]="true" class="mb-6">
+    <strong>No blocking required fields here.</strong> Only the assessment date is required — remarks and
+    finalization status have safe defaults.
+  </fuse-alert>
+
+  <form [formGroup]="form" novalidate class="space-y-6">
+
+    <!-- Assessment Date -->
+    <mat-card class="shadow-md overflow-hidden">
+      <mat-card-content class="!p-0">
+        <div class="flex items-start gap-4 p-6
+                    bg-indigo-50 dark:bg-indigo-900/10
+                    border border-indigo-200 dark:border-indigo-800 rounded-xl">
+          <div class="flex items-center justify-center w-14 h-14 rounded-xl
+                      bg-indigo-100 dark:bg-indigo-900/30 flex-shrink-0">
+            <mat-icon class="text-indigo-600 dark:text-indigo-400 !w-7 !h-7">event</mat-icon>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-base font-bold text-gray-900 dark:text-white mb-1">Assessment Date *</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              The date this assessment was administered or graded.
+            </p>
+            <mat-form-field appearance="outline" class="w-full">
+              <mat-label>Assessment Date *</mat-label>
+              <input matInput [matDatepicker]="datePicker" formControlName="assessmentDate">
+              <mat-datepicker-toggle matSuffix [for]="datePicker"></mat-datepicker-toggle>
+              <mat-datepicker #datePicker></mat-datepicker>
+              <mat-icon matPrefix class="text-gray-400">event</mat-icon>
+              <mat-error>Assessment date is required</mat-error>
+            </mat-form-field>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Remarks -->
+    <mat-card class="shadow-md overflow-hidden">
+      <mat-card-content class="!p-0">
+        <div class="flex items-start gap-4 p-6
+                    bg-blue-50 dark:bg-blue-900/10
+                    border border-blue-200 dark:border-blue-800 rounded-xl">
+          <div class="flex items-center justify-center w-14 h-14 rounded-xl
+                      bg-blue-100 dark:bg-blue-900/30 flex-shrink-0">
+            <mat-icon class="text-blue-600 dark:text-blue-400 !w-7 !h-7">notes</mat-icon>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-base font-bold text-gray-900 dark:text-white mb-1">Remarks</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              Optional teacher notes or comments about this grade result.
+            </p>
+            <mat-form-field appearance="outline" class="w-full">
+              <mat-label>Remarks</mat-label>
+              <textarea matInput formControlName="remarks" rows="3"
+                placeholder="e.g. Student showed strong grasp of algebra concepts...">
+              </textarea>
+              <mat-icon matPrefix class="text-gray-400">notes</mat-icon>
+              <mat-hint>Optional — up to 500 characters</mat-hint>
+              <mat-error>Remarks is too long (max 500 characters)</mat-error>
+            </mat-form-field>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Finalized Toggle (edit mode only) -->
+    <mat-card *ngIf="isEditMode" class="shadow-md overflow-hidden">
+      <mat-card-content class="!p-0">
+        <div class="flex items-start gap-4 p-6
+                    bg-green-50 dark:bg-green-900/10
+                    border border-green-200 dark:border-green-800 rounded-xl">
+          <div class="flex items-center justify-center w-14 h-14 rounded-xl
+                      bg-green-100 dark:bg-green-900/30 flex-shrink-0">
+            <mat-icon class="text-green-600 dark:text-green-400 !w-7 !h-7">lock</mat-icon>
+          </div>
+          <div class="flex-1">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <h3 class="text-base font-bold text-gray-900 dark:text-white mb-1">Finalized Grade</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                  Once finalized, this grade <strong>cannot be edited or deleted</strong>.
+                  This is a one-way action — use with care.
+                </p>
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold"
+                  [ngClass]="{
+                    'bg-green-200 text-green-800 dark:bg-green-800/40 dark:text-green-300': isFinalized,
+                    'bg-gray-100  text-gray-600  dark:bg-gray-700      dark:text-gray-400':  !isFinalized
+                  }">
+                  <mat-icon class="icon-size-3">{{ isFinalized ? 'lock' : 'lock_open' }}</mat-icon>
+                  {{ isFinalized ? 'Grade is finalized (locked)' : 'Not finalized (editable)' }}
+                </div>
+              </div>
+              <mat-slide-toggle formControlName="isFinalized" color="primary" class="flex-shrink-0">
+              </mat-slide-toggle>
+            </div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Summary -->
+    <mat-card class="shadow-sm border border-gray-200 dark:border-gray-700">
+      <mat-card-content class="!pt-4">
+        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+          <mat-icon class="icon-size-4 text-indigo-500">summarize</mat-icon>
+          Current Settings Summary
+        </h4>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="flex items-center gap-2 text-sm">
+            <mat-icon class="icon-size-4 text-indigo-500">event</mat-icon>
+            <span class="text-gray-600 dark:text-gray-400">Date:</span>
+            <span class="font-semibold text-gray-900 dark:text-white">
+              {{ form.get('assessmentDate')?.value | date:'mediumDate' }}
+            </span>
+          </div>
+          <div class="flex items-center gap-2 text-sm">
+            <mat-icon class="icon-size-4" [ngClass]="isFinalized ? 'text-green-500' : 'text-gray-400'">
+              {{ isFinalized ? 'lock' : 'lock_open' }}
+            </mat-icon>
+            <span class="text-gray-600 dark:text-gray-400">Finalized:</span>
+            <span class="font-semibold" [ngClass]="isFinalized ? 'text-green-600' : 'text-gray-500'">
+              {{ isFinalized ? 'Yes' : 'No' }}
+            </span>
+          </div>
+          <div class="flex items-center gap-2 text-sm">
+            <mat-icon class="icon-size-4 text-blue-500">notes</mat-icon>
+            <span class="text-gray-600 dark:text-gray-400">Remarks:</span>
+            <span class="font-semibold text-gray-900 dark:text-white">
+              {{ form.get('remarks')?.value ? 'Added' : 'None' }}
+            </span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+  </form>
+</div>

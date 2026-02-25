@@ -1,0 +1,371 @@
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- Assessment Dialog — Responsive Design (No Photo Panel)                 -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<div class="assessment-dialog-wrapper" [class.is-loading]="isLookupsLoading">
+
+  <!-- ── Gradient Header ──────────────────────────────────────────────────── -->
+  <div class="dialog-header">
+    <div class="header-left">
+      <div class="header-icon-ring">
+        <mat-icon class="header-icon">{{ isEditMode ? 'edit_note' : 'assignment_add' }}</mat-icon>
+      </div>
+      <div class="header-text">
+        <h2 class="header-title">{{ isEditMode ? 'Edit Assessment' : 'New Assessment' }}</h2>
+        <p class="header-subtitle">
+          {{ isEditMode
+              ? 'Updating "' + (data.assessment?.title || 'assessment') + '"'
+              : 'Fill in the details to create a new assessment' }}
+        </p>
+      </div>
+    </div>
+    <button mat-icon-button class="close-btn" (click)="close()" matTooltip="Close">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <!-- ── Loading Overlay ──────────────────────────────────────────────────── -->
+  <div *ngIf="isLookupsLoading" class="loading-overlay">
+    <div class="loading-content">
+      <div class="loading-spinner-wrap">
+        <mat-spinner diameter="44" class="primary-spinner"></mat-spinner>
+        <mat-icon class="loading-icon">assignment</mat-icon>
+      </div>
+      <p class="loading-title">Preparing Form…</p>
+      <p class="loading-sub">Loading options and assessment data</p>
+    </div>
+  </div>
+
+  <!-- ── Body ─────────────────────────────────────────────────────────────── -->
+  <div class="dialog-body" [class.hidden]="isLookupsLoading">
+
+    <!-- ── Tab Bar ───────────────────────────────────────────────────────── -->
+    <div class="tab-bar" role="tablist">
+      <button *ngFor="let tab of tabs"
+              type="button"
+              role="tab"
+              class="tab-btn"
+              [class.active]="activeTabId === tab.id"
+              [class.has-error]="tabHasErrors(tab)"
+              (click)="setTab(tab.id)"
+              [attr.aria-selected]="activeTabId === tab.id">
+        <mat-icon class="tab-icon">{{ tab.icon }}</mat-icon>
+        <span class="tab-label">{{ tab.label }}</span>
+        <span *ngIf="tabHasErrors(tab)" class="tab-error-dot"></span>
+      </button>
+    </div>
+
+    <!-- ── Form Content ──────────────────────────────────────────────────── -->
+    <form [formGroup]="form" class="form-content" novalidate>
+
+      <!-- ══ TAB: BASIC INFO ══════════════════════════════════════════════ -->
+      <div *ngIf="activeTabId === 'basic'" class="tab-pane" role="tabpanel">
+
+        <!-- School (SuperAdmin only) -->
+        <div *ngIf="isSuperAdmin" class="school-section">
+          <div class="section-label">
+            <mat-icon>school</mat-icon>
+            <span>School Assignment</span>
+          </div>
+          <mat-form-field appearance="outline" class="field w-full">
+            <mat-label>School <span class="req">*</span></mat-label>
+            <mat-icon matPrefix class="field-prefix-icon">business</mat-icon>
+            <mat-select formControlName="schoolId">
+              <mat-option [value]="null">— Select School —</mat-option>
+              <mat-option *ngFor="let s of data.schools" [value]="s.id">{{ s.name }}</mat-option>
+            </mat-select>
+            <mat-hint>Assign this assessment to a school</mat-hint>
+            <mat-error>{{ getFieldError('schoolId') }}</mat-error>
+          </mat-form-field>
+        </div>
+
+        <!-- Title & Description -->
+        <div class="section-label" [class.mt-section]="isSuperAdmin">
+          <mat-icon>title</mat-icon>
+          <span>Assessment Details</span>
+        </div>
+
+        <mat-form-field appearance="outline" class="field w-full">
+          <mat-label>Title <span class="req">*</span></mat-label>
+          <mat-icon matPrefix class="field-prefix-icon">assignment</mat-icon>
+          <input matInput formControlName="title"
+                 placeholder="e.g. Mid-Term Mathematics Paper 1"
+                 maxlength="200" />
+          <mat-hint align="end">{{ form.get('title')?.value?.length || 0 }}/200</mat-hint>
+          <mat-error>{{ getFieldError('title') }}</mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="field w-full mt-field">
+          <mat-label>Description</mat-label>
+          <mat-icon matPrefix class="field-prefix-icon">notes</mat-icon>
+          <textarea matInput formControlName="description" rows="3"
+                    placeholder="Optional details about this assessment…"
+                    maxlength="500"></textarea>
+          <mat-hint align="end">{{ form.get('description')?.value?.length || 0 }}/500</mat-hint>
+        </mat-form-field>
+
+        <!-- Type / Score / Date -->
+        <div class="section-label mt-section">
+          <mat-icon>tune</mat-icon>
+          <span>Assessment Settings</span>
+        </div>
+
+        <div class="grid-3">
+          <mat-form-field appearance="outline" class="field">
+            <mat-label>Type <span class="req">*</span></mat-label>
+            <mat-icon matPrefix class="field-prefix-icon">category</mat-icon>
+            <mat-select formControlName="assessmentType">
+              <mat-option [value]="null">— Select —</mat-option>
+              <mat-option value="Formative">Formative</mat-option>
+              <mat-option value="Summative">Summative</mat-option>
+              <mat-option value="Competency">Competency</mat-option>
+            </mat-select>
+            <mat-error>{{ getFieldError('assessmentType') }}</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="field">
+            <mat-label>Maximum Score <span class="req">*</span></mat-label>
+            <mat-icon matPrefix class="field-prefix-icon">grade</mat-icon>
+            <input matInput type="number" formControlName="maximumScore"
+                   placeholder="100" min="0.01" step="0.5" />
+            <mat-hint>Marks out of this value</mat-hint>
+            <mat-error>{{ getFieldError('maximumScore') }}</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="field">
+            <mat-label>Assessment Date <span class="req">*</span></mat-label>
+            <mat-icon matPrefix class="field-prefix-icon">event</mat-icon>
+            <input matInput [matDatepicker]="datePicker"
+                   formControlName="assessmentDate"
+                   placeholder="DD/MM/YYYY" />
+            <mat-datepicker-toggle matIconSuffix [for]="datePicker"></mat-datepicker-toggle>
+            <mat-datepicker #datePicker></mat-datepicker>
+            <mat-error>{{ getFieldError('assessmentDate') }}</mat-error>
+          </mat-form-field>
+        </div>
+
+        <!-- Live preview strip -->
+        <div *ngIf="form.get('assessmentType')?.value" class="type-preview-strip">
+          <span class="type-badge"
+            [class.formative]="form.get('assessmentType')?.value === 'Formative'"
+            [class.summative]="form.get('assessmentType')?.value === 'Summative'"
+            [class.competency]="form.get('assessmentType')?.value === 'Competency'">
+            <mat-icon class="badge-icon">
+              {{ form.get('assessmentType')?.value === 'Formative' ? 'quiz'
+                : form.get('assessmentType')?.value === 'Summative' ? 'fact_check'
+                : 'psychology' }}
+            </mat-icon>
+            {{ form.get('assessmentType')?.value }}
+          </span>
+          <span *ngIf="form.get('maximumScore')?.value" class="score-badge">
+            <mat-icon class="badge-icon">grade</mat-icon>
+            Max: {{ form.get('maximumScore')?.value }} marks
+          </span>
+          <span *ngIf="form.get('assessmentDate')?.value" class="date-badge">
+            <mat-icon class="badge-icon">event</mat-icon>
+            {{ form.get('assessmentDate')?.value | date: 'dd MMM yyyy' }}
+          </span>
+        </div>
+
+      </div><!-- /basic tab -->
+
+      <!-- ══ TAB: ASSIGNMENT ══════════════════════════════════════════════ -->
+      <div *ngIf="activeTabId === 'assignment'" class="tab-pane" role="tabpanel">
+
+        <!-- Academic Context -->
+        <div class="section-label">
+          <mat-icon>calendar_today</mat-icon>
+          <span>Academic Context</span>
+        </div>
+
+        <div class="grid-2">
+          <mat-form-field appearance="outline" class="field">
+            <mat-label>Academic Year <span class="req">*</span></mat-label>
+            <mat-icon matPrefix class="field-prefix-icon">auto_stories</mat-icon>
+            <mat-select formControlName="academicYearId">
+              <mat-option [value]="null">— Select —</mat-option>
+              <mat-option *ngFor="let y of academicYears" [value]="y.id">{{ y.name }}</mat-option>
+            </mat-select>
+            <mat-error>{{ getFieldError('academicYearId') }}</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="field">
+            <mat-label>Term <span class="req">*</span></mat-label>
+            <mat-icon matPrefix class="field-prefix-icon">date_range</mat-icon>
+            <mat-select formControlName="termId">
+              <mat-option [value]="null">— Select —</mat-option>
+              <mat-option *ngFor="let t of terms" [value]="t.id">{{ t.name }}</mat-option>
+            </mat-select>
+            <mat-error>{{ getFieldError('termId') }}</mat-error>
+          </mat-form-field>
+        </div>
+
+        <!-- Class & Subject -->
+        <div class="section-label mt-section">
+          <mat-icon>class</mat-icon>
+          <span>Class &amp; Subject</span>
+        </div>
+
+        <div class="grid-2">
+          <mat-form-field appearance="outline" class="field">
+            <mat-label>Class <span class="req">*</span></mat-label>
+            <mat-icon matPrefix class="field-prefix-icon">groups</mat-icon>
+            <mat-select formControlName="classId">
+              <mat-option [value]="null">— Select —</mat-option>
+              <mat-option *ngFor="let c of classes" [value]="c.id">{{ c.name }}</mat-option>
+            </mat-select>
+            <mat-error>{{ getFieldError('classId') }}</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="field">
+            <mat-label>Subject <span class="req">*</span></mat-label>
+            <mat-icon matPrefix class="field-prefix-icon">menu_book</mat-icon>
+            <mat-select formControlName="subjectId">
+              <mat-option [value]="null">— Select —</mat-option>
+              <mat-option *ngFor="let s of subjects" [value]="s.id">{{ s.name }}</mat-option>
+            </mat-select>
+            <mat-error>{{ getFieldError('subjectId') }}</mat-error>
+          </mat-form-field>
+        </div>
+
+        <!-- Teacher -->
+        <div class="section-label mt-section">
+          <mat-icon>person</mat-icon>
+          <span>Assigned Teacher</span>
+        </div>
+
+        <mat-form-field appearance="outline" class="field w-full">
+          <mat-label>Teacher <span class="req">*</span></mat-label>
+          <mat-icon matPrefix class="field-prefix-icon">person_search</mat-icon>
+          <mat-select formControlName="teacherId">
+            <mat-option [value]="null">— Select Teacher —</mat-option>
+            <mat-option *ngFor="let t of teachers" [value]="t.id">{{ t.fullName }}</mat-option>
+          </mat-select>
+          <mat-hint>The teacher responsible for this assessment</mat-hint>
+          <mat-error>{{ getFieldError('teacherId') }}</mat-error>
+        </mat-form-field>
+
+        <!-- Summary card (shows when fields are filled) -->
+        <div *ngIf="hasAssignmentSummary" class="summary-card">
+          <div class="summary-header">
+            <mat-icon class="summary-icon">summarize</mat-icon>
+            <span>Assignment Summary</span>
+          </div>
+          <div class="summary-grid">
+            <div *ngIf="selectedAcademicYearName" class="summary-item">
+              <mat-icon>auto_stories</mat-icon>
+              <span>{{ selectedAcademicYearName }}</span>
+            </div>
+            <div *ngIf="selectedTermName" class="summary-item">
+              <mat-icon>date_range</mat-icon>
+              <span>{{ selectedTermName }}</span>
+            </div>
+            <div *ngIf="selectedClassName" class="summary-item">
+              <mat-icon>groups</mat-icon>
+              <span>{{ selectedClassName }}</span>
+            </div>
+            <div *ngIf="selectedSubjectName" class="summary-item">
+              <mat-icon>menu_book</mat-icon>
+              <span>{{ selectedSubjectName }}</span>
+            </div>
+            <div *ngIf="selectedTeacherName" class="summary-item summary-item--full">
+              <mat-icon>person</mat-icon>
+              <span>{{ selectedTeacherName }}</span>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /assignment tab -->
+
+    </form><!-- /form -->
+
+    <!-- ── Tab Navigation ────────────────────────────────────────────────── -->
+    <div class="tab-nav">
+      <div class="tab-nav-left">
+        <button *ngIf="!isFirstTab"
+                type="button"
+                mat-stroked-button
+                class="nav-btn prev-btn"
+                (click)="prevTab()">
+          <mat-icon>chevron_left</mat-icon>
+          Previous
+        </button>
+      </div>
+      <div class="tab-progress">
+        <span *ngFor="let tab of tabs"
+              class="progress-dot"
+              [class.active]="activeTabId === tab.id"
+              [class.has-error]="tabHasErrors(tab)"
+              (click)="setTab(tab.id)">
+        </span>
+      </div>
+      <div class="tab-nav-right">
+        <button *ngIf="!isLastTab"
+                type="button"
+                mat-flat-button
+                class="nav-btn next-btn"
+                (click)="nextTab()">
+          Next
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+    </div>
+
+  </div><!-- /dialog-body -->
+
+  <!-- ── Footer ────────────────────────────────────────────────────────────── -->
+  <div class="dialog-footer">
+
+    <!--
+      Hint row: shows remaining required fields when the form is not yet valid.
+      Replaces the old "submitted + invalid" error since the button is now
+      disabled proactively — users see this hint without having to click submit.
+    -->
+    <div *ngIf="!isLookupsLoading && !isFormReady && !isSaving" class="footer-hint">
+      <mat-icon class="footer-hint-icon">info_outline</mat-icon>
+      <span>
+        {{ invalidFieldCount }} required
+        {{ invalidFieldCount === 1 ? 'field' : 'fields' }} still
+        {{ invalidFieldCount === 1 ? 'needs' : 'need' }} to be filled in
+      </span>
+    </div>
+
+    <!-- Post-submit hard-error fallback (should rarely appear given button guard) -->
+    <div *ngIf="formSubmitted && form.invalid" class="footer-error">
+      <mat-icon class="footer-error-icon">warning_amber</mat-icon>
+      <span>Please fill in all required fields before submitting</span>
+    </div>
+
+    <div class="footer-actions">
+      <button type="button"
+              mat-stroked-button
+              class="cancel-btn"
+              (click)="close()">
+        Cancel
+      </button>
+
+      <!--
+        Submit button is disabled until:
+          1. Lookups have loaded (isLookupsLoading = false)
+          2. Every required field is valid (form.valid = true)
+          3. No save is in progress (isSaving = false)
+        isFormReady encapsulates all three conditions.
+      -->
+      <button type="button"
+              mat-flat-button
+              class="submit-btn"
+              [disabled]="!isFormReady"
+              [matTooltip]="!isFormReady && !isLookupsLoading
+                ? 'Complete all required fields to enable submit'
+                : ''"
+              (click)="onSubmit()">
+        <mat-spinner *ngIf="isSaving" diameter="18" class="btn-spinner"></mat-spinner>
+        <mat-icon *ngIf="!isSaving" class="submit-icon">
+          {{ isEditMode ? 'save' : 'check_circle' }}
+        </mat-icon>
+        {{ isSaving ? 'Saving…' : isEditMode ? 'Update' : 'Submit' }}
+      </button>
+    </div>
+  </div>
+
+</div><!-- /assessment-dialog-wrapper -->

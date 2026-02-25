@@ -1,30 +1,33 @@
 ﻿using Devken.CBC.SchoolManagement.Domain.Common;
 using Devken.CBC.SchoolManagement.Domain.Entities.Academic;
 using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
+using Devken.CBC.SchoolManagement.Domain.Entities.Assessments.Academic;
 using Devken.CBC.SchoolManagement.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
 namespace Devken.CBC.SchoolManagement.Domain.Entities.Helpers;
 
 public class Subject(
-
-    string Name,
-    string Code,
-    CBCLevel Level
+    string name,
+    string code,
+    CBCLevel level,
+    SubjectType subjectType
 ) : TenantBaseEntity<Guid>
 {
     #region Core Properties
 
     [Required, MaxLength(100)]
-    public string Name { get; } = Name;
+    public string Name { get; private set; } = name;
 
     [Required, MaxLength(20)]
-    public string Code { get; } = Code;
+    public string Code { get; private set; } = code;
 
-    public CBCLevel Level { get; } = Level;
+    public CBCLevel Level { get; private set; } = level;
 
-    [MaxLength(20)]
-    public string? SubjectType { get; set; } // Core, Optional, Elective
+
+
+
+    public SubjectType SubjectType { get; private set; } = subjectType;
 
     [MaxLength(500)]
     public string? Description { get; set; }
@@ -35,19 +38,10 @@ public class Subject(
 
     #region Navigation Properties
 
-    /// <summary>
-    /// Classes where this subject is taught
-    /// </summary>
     public ICollection<Class> Classes { get; set; } = new HashSet<Class>();
 
-    /// <summary>
-    /// Grades for this subject
-    /// </summary>
     public ICollection<Grade> Grades { get; set; } = new HashSet<Grade>();
 
-    /// <summary>
-    /// Teachers who teach this subject
-    /// </summary>
     public ICollection<Teacher> Teachers { get; set; } = new HashSet<Teacher>();
 
     #endregion

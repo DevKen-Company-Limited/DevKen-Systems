@@ -13,52 +13,44 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Fina
         {
             _tenantContext = tenantContext;
         }
-
         public void Configure(EntityTypeBuilder<Payment> builder)
         {
             builder.ToTable("Payments");
 
-            builder.HasKey(p => p.Id);
+            builder.Property(x => x.PaymentReference).HasMaxLength(50).IsRequired();
+            builder.Property(x => x.ReceiptNumber).HasMaxLength(30);
+            builder.Property(x => x.Amount).HasColumnType("decimal(18,2)");
+            builder.Property(x => x.PaymentMethod).HasConversion<string>().HasMaxLength(30);
+            builder.Property(x => x.StatusPayment).HasConversion<string>().HasMaxLength(20);
+            builder.Property(x => x.TransactionReference).HasMaxLength(100);
+            builder.Property(x => x.Description).HasMaxLength(500);
+            builder.Property(x => x.Notes).HasMaxLength(1000);
+            builder.Property(x => x.MpesaCode).HasMaxLength(20);
+            builder.Property(x => x.PhoneNumber).HasMaxLength(20);
+            builder.Property(x => x.BankName).HasMaxLength(100);
+            builder.Property(x => x.AccountNumber).HasMaxLength(50);
+            builder.Property(x => x.ChequeNumber).HasMaxLength(50);
+            builder.Property(x => x.ReversalReason).HasMaxLength(500);
 
-            builder.HasQueryFilter(p =>
-                _tenantContext.TenantId == null ||
-                p.TenantId == _tenantContext.TenantId);
+            builder.HasOne(x => x.Student)
+                   .WithMany()
+                   .HasForeignKey(x => x.StudentId)
+                   .OnDelete(DeleteBehavior.Restrict);
 
-            // Indexes
-            builder.HasIndex(p => new { p.TenantId, p.PaymentReference }).IsUnique();
-            builder.HasIndex(p => new { p.TenantId, p.TransactionReference }).IsUnique().HasFilter("[TransactionReference] IS NOT NULL");
-            builder.HasIndex(p => new { p.TenantId, p.StudentId, p.PaymentDate });
+            builder.HasOne(x => x.Invoice)
+                   .WithMany(x => x.Payments)
+                   .HasForeignKey(x => x.InvoiceId)
+                   .OnDelete(DeleteBehavior.Restrict);
 
-            // Properties
-            builder.Property(p => p.PaymentReference)
-                .IsRequired()
-                .HasMaxLength(50);
+            // Self-referencing for reversals
+            builder.HasOne(x => x.ReversedFromPayment)
+                   .WithOne(x => x.ReversalPayment)
+                   .HasForeignKey<Payment>(x => x.ReversedFromPaymentId)
+                   .OnDelete(DeleteBehavior.Restrict);
 
-            builder.Property(p => p.PaymentMethod)
-                .IsRequired()
-                .HasMaxLength(50);
-
-            builder.Property(p => p.Amount)
-                .HasPrecision(18, 2);
-
-            builder.Property(p => p.MpesaCode)
-                .HasMaxLength(20);
-
-            // Relationships
-            builder.HasOne(p => p.Student)
-                .WithMany(s => s.Payments)
-                .HasForeignKey(p => p.StudentId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            builder.HasOne(p => p.Invoice)
-                .WithMany(i => i.Payments)
-                .HasForeignKey(p => p.InvoiceId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            builder.HasOne(p => p.ReceivedByStaff)
-                .WithMany()
-                .HasForeignKey(p => p.ReceivedBy)
-                .OnDelete(DeleteBehavior.SetNull);
+            builder.HasIndex(x => new { x.TenantId, x.PaymentReference }).IsUnique();
+            builder.HasIndex(x => new { x.TenantId, x.StudentId });
+            builder.HasIndex(x => x.MpesaCode).HasFilter("[MpesaCode] IS NOT NULL");
         }
     }
 }

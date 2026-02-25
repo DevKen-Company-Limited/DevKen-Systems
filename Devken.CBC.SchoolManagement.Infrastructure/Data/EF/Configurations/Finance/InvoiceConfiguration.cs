@@ -17,73 +17,42 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Fina
         public void Configure(EntityTypeBuilder<Invoice> builder)
         {
             builder.ToTable("Invoices");
-            builder.HasKey(i => i.Id);
 
-            builder.HasQueryFilter(i =>
-                _tenantContext.TenantId == null ||
-                i.TenantId == _tenantContext.TenantId);
+            builder.Property(x => x.InvoiceNumber).HasMaxLength(50).IsRequired();
+            builder.Property(x => x.TotalAmount).HasColumnType("decimal(18,2)");
+            builder.Property(x => x.DiscountAmount).HasColumnType("decimal(18,2)");
+            builder.Property(x => x.AmountPaid).HasColumnType("decimal(18,2)");
+            builder.Property(x => x.StatusInvoice).HasConversion<string>().HasMaxLength(20);
+            builder.Property(x => x.Description).HasMaxLength(500);
+            builder.Property(x => x.Notes).HasMaxLength(1000);
 
-            builder.HasIndex(i => new { i.TenantId, i.StudentId });
-            builder.HasIndex(i => new { i.TenantId, i.ParentId });
-            builder.HasIndex(i => new { i.TenantId, i.InvoiceNumber }).IsUnique();
-            builder.HasIndex(i => new { i.TenantId, i.StatusInvoice });
+            // Ignore runtime-computed properties
+            builder.Ignore(x => x.Balance);
+            builder.Ignore(x => x.IsOverdue);
 
-            builder.Property(i => i.InvoiceNumber)
-                   .IsRequired()
-                   .HasMaxLength(50);
-
-            builder.Property(i => i.Description)
-                   .HasMaxLength(500);
-
-            builder.Property(i => i.Notes)
-                   .HasMaxLength(1000);
-
-            builder.Property(i => i.TotalAmount)
-                   .HasPrecision(18, 2);
-
-            builder.Property(i => i.AmountPaid)
-                   .HasPrecision(18, 2)
-                   .HasDefaultValue(0m);
-
-            // ✅ OPTION 1: Remove HasDefaultValue - let the C# default handle it
-            builder.Property(i => i.StatusInvoice)
-                   .HasConversion<string>()
-                   .IsRequired();
-            // The Invoice entity already sets = InvoiceStatus.Pending as default
-
-            builder.Ignore(i => i.Balance);
-            builder.Ignore(i => i.IsOverdue);
-
-            builder.HasOne(i => i.Student)
-                   .WithMany(s => s.Invoices)
-                   .HasForeignKey(i => i.StudentId)
-                   .OnDelete(DeleteBehavior.Cascade);
-
-            builder.HasOne(i => i.Parent)
-                   .WithMany(p => p.Invoices)
-                   .HasForeignKey(i => i.ParentId)
-                   .IsRequired(false)
-                   .OnDelete(DeleteBehavior.Restrict);
-
-            builder.HasOne(i => i.AcademicYear)
+            builder.HasOne(x => x.Student)
                    .WithMany()
-                   .HasForeignKey(i => i.AcademicYearId)
+                   .HasForeignKey(x => x.StudentId)
                    .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasOne(i => i.Term)
+            builder.HasOne(x => x.AcademicYear)
                    .WithMany()
-                   .HasForeignKey(i => i.TermId)
+                   .HasForeignKey(x => x.AcademicYearId)
                    .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasMany(i => i.Items)
-                   .WithOne(ii => ii.Invoice)
-                   .HasForeignKey(ii => ii.InvoiceId)
-                   .OnDelete(DeleteBehavior.Cascade);
+            builder.HasOne(x => x.Term)
+                   .WithMany()
+                   .HasForeignKey(x => x.TermId)
+                   .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasMany(i => i.Payments)
-                   .WithOne(p => p.Invoice)
-                   .HasForeignKey(p => p.InvoiceId)
-                   .OnDelete(DeleteBehavior.Cascade);
+            builder.HasOne(x => x.Parent)
+                   .WithMany()
+                   .HasForeignKey(x => x.ParentId)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasIndex(x => new { x.TenantId, x.InvoiceNumber }).IsUnique();
+            builder.HasIndex(x => new { x.TenantId, x.StudentId, x.StatusInvoice });
+            builder.HasIndex(x => x.DueDate);
         }
     }
 }

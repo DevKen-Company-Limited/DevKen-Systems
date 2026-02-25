@@ -1,0 +1,102 @@
+<!-- Learning Areas List -->
+<div class="absolute inset-0 flex min-w-0 flex-col overflow-y-auto" cdkScrollable>
+
+  <!-- Page Header -->
+  <app-page-header
+    title="Learning Areas"
+    description="Manage CBC curriculum learning areas across all levels"
+    icon="menu_book"
+    [breadcrumbs]="breadcrumbs"
+    [actionTemplate]="headerActions">
+  </app-page-header>
+
+  <ng-template #headerActions>
+    <button mat-flat-button
+      class="bg-white text-indigo-700 hover:bg-yellow-200 hover:text-indigo-900 shadow-lg transition-all hover:shadow-xl font-bold"
+      (click)="create()">
+      <mat-icon class="icon-size-5">add</mat-icon>
+      <span class="ml-2">Add</span>
+    </button>
+  </ng-template>
+
+  <!-- Main Content -->
+  <div class="bg-card -mt-10 flex-auto rounded-t-2xl p-6 shadow sm:p-10">
+
+    <!-- Stats -->
+    <app-stats-cards [cards]="statsCards" [columns]="3"></app-stats-cards>
+
+    <!-- Filter Panel -->
+    <div class="mb-6">
+      <app-filter-panel
+        [fields]="filterFields"
+        [showPanel]="showFilterPanel"
+        [columns]="3"
+        (filterChange)="onFilterChange($event)"
+        (clearAll)="onClearFilters()"
+        (togglePanel)="toggleFilterPanel()">
+      </app-filter-panel>
+    </div>
+
+    <!-- Table -->
+    <app-data-table
+      [columns]="tableColumns"
+      [data]="paginatedData"
+      [actions]="tableActions"
+      [loading]="isLoading"
+      [header]="tableHeader"
+      [emptyState]="tableEmptyState"
+      [cellTemplates]="cellTemplates">
+    </app-data-table>
+
+    <!-- Pagination -->
+    <app-pagination
+      *ngIf="!isLoading"
+      [currentPage]="currentPage"
+      [totalItems]="filteredData.length"
+      [itemsPerPage]="itemsPerPage"
+      [itemLabel]="'learning areas'"
+      [showItemsPerPageSelector]="true"
+      [showPageNumbers]="true"
+      (pageChange)="onPageChange($event)"
+      (itemsPerPageChange)="onItemsPerPageChange($event)">
+    </app-pagination>
+  </div>
+</div>
+
+<!-- ── Cell Templates ── -->
+
+<ng-template #nameCell let-row>
+  <div class="flex items-center gap-3">
+    <div class="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-indigo-900/30 dark:to-violet-900/30 flex-shrink-0">
+      <mat-icon class="text-indigo-600 dark:text-indigo-400 icon-size-5">menu_book</mat-icon>
+    </div>
+    <div>
+      <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ row.name }}</p>
+      <p *ngIf="row.code" class="text-xs text-gray-500 dark:text-gray-400">Code: {{ row.code }}</p>
+    </div>
+  </div>
+</ng-template>
+
+<ng-template #codeCell let-row>
+  <span *ngIf="row.code"
+    class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
+    {{ row.code }}
+  </span>
+  <span *ngIf="!row.code" class="text-gray-400">—</span>
+</ng-template>
+
+<ng-template #levelCell let-row>
+  <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+    {{ getLevelLabel(row.level) }}
+  </span>
+</ng-template>
+
+<ng-template #statusCell let-row>
+  <span class="px-3 py-1 rounded-full text-xs font-semibold"
+    [ngClass]="{
+      'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400': row.status === 'Active',
+      'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400': row.status !== 'Active'
+    }">
+    {{ row.status }}
+  </span>
+</ng-template>

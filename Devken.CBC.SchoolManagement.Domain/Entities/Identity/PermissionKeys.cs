@@ -43,6 +43,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
         public const string TermDelete = "Term.Delete";
         public const string SubjectRead = "Subject.Read";
         public const string SubjectWrite = "Subject.Write";
+        public const string SubjectDelete = "Subject.Delete";
         public const string ClassRead = "Class.Read";
         public const string ClassWrite = "Class.Write";
         public const string GradeRead = "Grade.Read";

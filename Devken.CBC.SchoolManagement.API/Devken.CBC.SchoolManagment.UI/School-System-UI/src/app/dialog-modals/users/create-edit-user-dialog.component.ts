@@ -1,6 +1,5 @@
-import { Component, Inject, OnInit } from '@angular/core';
+import { Component, Inject, OnInit, OnDestroy, ChangeDetectorRef, HostBinding } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -9,24 +8,41 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDividerModule } from '@angular/material/divider';
-import { take, forkJoin } from 'rxjs';
-
-import { API_BASE_URL } from 'app/app.config';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { Subject } from 'rxjs';
+import { takeUntil, take } from 'rxjs/operators';
 import { UserService } from 'app/core/DevKenService/user/UserService';
-import { BaseFormDialog } from 'app/shared/dialogs/BaseFormDialog';
-import { UserDto, CreateUserRequest, UpdateUserRequest, RoleDto } from 'app/core/DevKenService/Types/roles';
-import { SchoolDto, ApiResponse } from 'app/Tenant/types/school';
+import { CreateUserRequest, UpdateUserRequest, UserDto, RoleDto } from 'app/core/DevKenService/Types/roles';
 import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
+import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
 
-interface DialogData {
+
+// ── Types ──────────────────────────────────────────────────────────────────────
+
+export interface SchoolOption {
+  id: string;
+  name: string;
+  location?: string;
+}
+
+export interface UserDialogData {
   mode: 'create' | 'edit';
   userId?: string;
-  user?: UserDto;
   isSuperAdmin?: boolean;
 }
+
+type TabId = 'identity' | 'contact' | 'access';
+
+interface TabConfig {
+  id: TabId;
+  label: string;
+  icon: string;
+  fields: string[];
+}
+
+// ── Component ──────────────────────────────────────────────────────────────────
 
 @Component({
   selector: 'app-create-edit-user-dialog',
@@ -41,333 +57,356 @@ interface DialogData {
     MatIconModule,
     MatSelectModule,
     MatCheckboxModule,
+    MatDividerModule,
     MatProgressSpinnerModule,
-    MatSnackBarModule,
-    MatDividerModule
+    MatTooltipModule,
   ],
   templateUrl: './create-edit-user-dialog.component.html',
-  styleUrls: ['./create-edit-user-dialog.component.scss']
+  styleUrl: './create-edit-user-dialog.component.scss'
 })
-export class CreateEditUserDialogComponent
-  extends BaseFormDialog<CreateUserRequest, UpdateUserRequest, UserDto, DialogData>
-  implements OnInit {
+export class CreateEditUserDialogComponent implements OnInit, OnDestroy {
 
-  availableRoles: RoleDto[] = [];
-  availableSchools: SchoolDto[] = [];
-  isLoadingRoles = false;
+  // ── Host Bindings ────────────────────────────────────────────────────────────
+  @HostBinding('class.is-loading')
+  get hostIsLoading(): boolean {
+    return this.isLoadingRoles || this.isLoadingSchools;
+  }
+
+  // ── Form State ───────────────────────────────────────────────────────────────
+  form!: FormGroup;
+  formSubmitted = false;
+
+  // ── Dialog State ─────────────────────────────────────────────────────────────
+  isEditMode       = false;
+  isSuperAdmin     = false;
+  isSaving         = false;
+  isLoadingRoles   = false;
   isLoadingSchools = false;
-  isLoadingUser = false;
-  hidePassword = true;
-  currentUser: UserDto | null = null;
 
-  constructor(
-    protected fb: FormBuilder,
-    protected http: HttpClient,
-    protected service: UserService,
-    protected schoolService: SchoolService,
-    protected snackBar: MatSnackBar,
-    protected dialogRef: MatDialogRef<CreateEditUserDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: DialogData,
-    @Inject(API_BASE_URL) private _apiBase: string
-  ) {
-    super(fb, service, snackBar, dialogRef, data);
-  }
+  dialogTitle      = '';
+  availableRoles:   RoleDto[]      = [];
+  availableSchools: SchoolOption[] = [];
 
-  ngOnInit(): void {
-    // Build the form first
-    this.form = this.buildForm();
+  // ── Tab State ────────────────────────────────────────────────────────────────
+  activeTab: TabId = 'identity';
 
-    // Load data based on mode
-    if (this.isEditMode) {
-      this.loadUserAndRoles();
-    } else {
-      // Create mode
-      this.loadRoles();
-      if (this.isSuperAdmin) {
-        this.loadSchools();
-      }
+  readonly tabs: TabConfig[] = [
+    {
+      id: 'identity',
+      label: 'Identity',
+      icon: 'badge',
+      fields: ['firstName', 'lastName', 'schoolId']
+    },
+    {
+      id: 'contact',
+      label: 'Contact',
+      icon: 'contact_phone',
+      fields: ['email', 'phoneNumber']
+    },
+    {
+      id: 'access',
+      label: 'Access',
+      icon: 'admin_panel_settings',
+      fields: ['roleIds', 'isActive', 'sendWelcomeEmail']
     }
-  }
+  ];
 
-  protected buildForm(): FormGroup {
-    const isEdit = this.isEditMode;
+  private _destroy = new Subject<void>();
 
-    return this.fb.group({
-      firstName: ['', [Validators.required, Validators.minLength(2)]],
-      lastName: ['', [Validators.required, Validators.minLength(2)]],
-      email: ['', [Validators.required, Validators.email]],
-      phoneNumber: [''],
-      password: [
-        '',
-        isEdit ? [] : [Validators.required, Validators.minLength(8)]
-      ],
-      roleIds: [[] as string[]],
-      isActive: [true],
-      sendWelcomeEmail: [true],
-      schoolId: [
-        '',
-        this.isSuperAdmin && !isEdit ? [Validators.required] : []
-      ]
-    });
-  }
-
-  /**
-   * Load user data and roles in parallel for edit mode
-   */
-  private loadUserAndRoles(): void {
-    const userId = this.data.userId || this.data.user?.id;
-    
-    if (!userId) {
-      this.snackBar.open('User ID is required for editing', 'Close', { duration: 3000 });
-      this.close();
-      return;
-    }
-
-    this.isLoadingUser = true;
-    this.isLoadingRoles = true;
-
-    // Load user data and available roles in parallel
-    forkJoin({
-      user: this.service.getById(userId),
-      roles: this.loadRolesObservable()
-    })
-    .pipe(take(1))
-    .subscribe({
-      next: ({ user, roles }) => {
-        this.isLoadingUser = false;
-        this.isLoadingRoles = false;
-
-        // Handle user response
-        if (!user.success || !user.data) {
-          this.snackBar.open(
-            user.message || 'Failed to load user details',
-            'Close',
-            { duration: 3000 }
-          );
-          this.close();
-          return;
-        }
-
-        // Handle roles response
-        if (!roles.success || !roles.data) {
-          this.snackBar.open(
-            roles.message || 'Failed to load roles',
-            'Close',
-            { duration: 3000 }
-          );
-          // Don't close, allow editing without role changes
-        } else {
-          this.availableRoles = roles.data;
-        }
-
-        // Store current user and patch form
-        this.currentUser = user.data;
-        this.patchForEdit(this.currentUser);
-      },
-      error: (err) => {
-        this.isLoadingUser = false;
-        this.isLoadingRoles = false;
-        
-        const errorMsg = err?.error?.message || err.message || 'Failed to load user data';
-        this.snackBar.open(errorMsg, 'Close', { duration: 4000 });
-        this.close();
-      }
-    });
-  }
-
-  protected patchForEdit(user: UserDto): void {
-    if (!user) return;
-
-    // Extract roleIds - handle multiple possible response formats
-    let roleIds: string[] = [];
-
-    // Format 1: user.roles is array of objects with roleId property
-    if (user.roles && Array.isArray(user.roles) && user.roles.length > 0) {
-      if (typeof user.roles[0] === 'object' && 'roleId' in user.roles[0]) {
-        roleIds = user.roles.map(r => r.roleId);
-      }
-    }
-
-    // Format 2: user.roleNames is array of role names - need to match with availableRoles
-    if (roleIds.length === 0 && (user as any).roleNames && Array.isArray((user as any).roleNames)) {
-      const roleNames = (user as any).roleNames as string[];
-      roleIds = this.availableRoles
-        .filter(role => roleNames.includes(role.name))
-        .map(role => role.id);
-    }
-
-    // Format 3: user.roleIds is already an array of IDs
-    if (roleIds.length === 0 && (user as any).roleIds && Array.isArray((user as any).roleIds)) {
-      roleIds = (user as any).roleIds;
-    }
-
-    console.log('Patching user with roleIds:', roleIds);
-
-    this.form.patchValue({
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      phoneNumber: user.phoneNumber || '',
-      isActive: user.isActive,
-      roleIds: roleIds
-    });
-
-    // Clear password validators for edit mode
-    this.form.get('password')?.clearValidators();
-    this.form.get('password')?.updateValueAndValidity();
-
-    this.form.markAsPristine();
-  }
-
-  /**
-   * Load roles - returns observable for use in forkJoin
-   * Uses role-assignments endpoint which handles SuperAdmin vs School context
-   */
-  private loadRolesObservable() {
-    return this.http.get<ApiResponse<RoleDto[]>>(
-      `${this._apiBase}/api/role-assignments/available-roles`
-    );
-  }
-
-  /**
-   * Load roles for create mode
-   * Uses role-assignments endpoint which handles SuperAdmin vs School context
-   */
-  private loadRoles(): void {
-    this.isLoadingRoles = true;
-
-    this.http.get<ApiResponse<RoleDto[]>>(
-      `${this._apiBase}/api/role-assignments/available-roles`
-    )
-      .pipe(take(1))
-      .subscribe({
-        next: res => {
-          this.isLoadingRoles = false;
-
-          if (!res.success) {
-            this.snackBar.open(
-              res.message || 'Failed to load roles',
-              'Close',
-              { duration: 3000 }
-            );
-            return;
-          }
-
-          this.availableRoles = res.data;
-        },
-        error: err => {
-          this.isLoadingRoles = false;
-          this.snackBar.open(
-            err?.error?.message || err.message || 'Failed to load roles',
-            'Close',
-            { duration: 4000 }
-          );
-        }
-      });
-  }
-
-  private loadSchools(): void {
-    this.isLoadingSchools = true;
-
-    this.schoolService.getAll()
-      .pipe(take(1))
-      .subscribe({
-        next: res => {
-          this.isLoadingSchools = false;
-
-          if (!res.success) {
-            this.snackBar.open(
-              res.message || 'Failed to load schools',
-              'Close',
-              { duration: 3000 }
-            );
-            return;
-          }
-
-          this.availableSchools = res.data;
-        },
-        error: err => {
-          this.isLoadingSchools = false;
-          this.snackBar.open(
-            err?.error?.message || err.message || 'Failed to load schools',
-            'Close',
-            { duration: 4000 }
-          );
-        }
-      });
-  }
-
-  onSave(): void {
-    if (!this.currentUser && this.isEditMode) {
-      this.snackBar.open('User data not loaded', 'Close', { duration: 3000 });
-      return;
-    }
-
-    this.save(
-      // CREATE
-      raw => {
-        const payload: CreateUserRequest = {
-          firstName: raw.firstName.trim(),
-          lastName: raw.lastName.trim(),
-          email: raw.email.trim(),
-          phoneNumber: raw.phoneNumber?.trim() || undefined,
-          password: raw.password,
-          roleIds: raw.roleIds ?? [],
-          sendWelcomeEmail: raw.sendWelcomeEmail ?? false
-        };
-
-        // SuperAdmin must specify schoolId when creating users
-        if (this.isSuperAdmin && raw.schoolId) {
-          payload.schoolId = raw.schoolId;
-        }
-
-        return payload;
-      },
-
-      // UPDATE
-      raw => ({
-        firstName: raw.firstName.trim(),
-        lastName: raw.lastName.trim(),
-        email: raw.email.trim(),
-        phoneNumber: raw.phoneNumber?.trim() || undefined,
-        isActive: raw.isActive,
-        roleIds: raw.roleIds ?? []
-      }),
-
-      () => this.currentUser!.id
-    );
-  }
-
-  onCancel(): void {
-    this.close();
-  }
-
-  get isEditMode(): boolean {
-    return this.data.mode === 'edit';
-  }
-
-  get isSuperAdmin(): boolean {
-    return !!this.data.isSuperAdmin;
-  }
-
-  get dialogTitle(): string {
-    return this.isEditMode ? 'Edit User' : 'Create New User';
-  }
+  // ── Computed ──────────────────────────────────────────────────────────────────
 
   get showSchoolSelection(): boolean {
     return this.isSuperAdmin && !this.isEditMode;
   }
 
-  getErrorMessage(fieldName: string): string {
-    const control = this.form.get(fieldName);
-    if (!control?.errors) return '';
+  get currentTabIndex(): number {
+    return this.tabs.findIndex(t => t.id === this.activeTab);
+  }
 
-    if (control.hasError('required')) return 'This field is required';
-    if (control.hasError('email')) return 'Please enter a valid email address';
-    if (control.hasError('minlength')) {
-      return `Must be at least ${control.errors['minlength'].requiredLength} characters`;
+  get isFirstTab(): boolean { return this.currentTabIndex === 0; }
+  get isLastTab():  boolean { return this.currentTabIndex === this.tabs.length - 1; }
+
+  // ── Constructor ───────────────────────────────────────────────────────────────
+
+  constructor(
+    private _fb:        FormBuilder,
+    private _userSvc:   UserService,
+    private _schoolSvc: SchoolService,
+    private _alert:     AlertService,
+    private _dialogRef: MatDialogRef<CreateEditUserDialogComponent>,
+    private _cdr:       ChangeDetectorRef,
+    @Inject(MAT_DIALOG_DATA) private _data: UserDialogData
+  ) {
+    _dialogRef.addPanelClass(['user-management-dialog']);
+  }
+
+  // ── Lifecycle ──────────────────────────────────────────────────────────────────
+
+
+  // ── Lifecycle ──────────────────────────────────────────────────────────────────
+
+  ngOnInit(): void {
+    this.isEditMode   = this._data.mode === 'edit';
+    this.isSuperAdmin = this._data.isSuperAdmin ?? false;
+    this.dialogTitle  = this.isEditMode ? 'Edit User' : 'Create New User';
+
+    this._buildForm();
+
+    if (this.showSchoolSelection) {
+      this._loadSchools();
+
+      this.form.get('schoolId')!.valueChanges
+        .pipe(takeUntil(this._destroy))
+        .subscribe(schoolId => {
+          if (schoolId) {
+            this._loadRoles(schoolId);
+          } else {
+            this.availableRoles = [];
+            this.form.get('roleIds')?.setValue([]);
+          }
+        });
+    } else {
+      this._loadRoles();
     }
 
+    if (this.isEditMode && this._data.userId) {
+      this._loadUser(this._data.userId);
+    }
+  }
+
+  ngOnDestroy(): void {
+    this._destroy.next();
+    this._destroy.complete();
+  }
+
+  // ── Form ───────────────────────────────────────────────────────────────────────
+
+  private _buildForm(): void {
+    this.form = this._fb.group({
+      schoolId:         [null, this.showSchoolSelection ? [Validators.required] : []],
+      firstName:        ['', [Validators.required, Validators.minLength(2)]],
+      lastName:         ['', [Validators.required, Validators.minLength(2)]],
+      email:            ['', [Validators.required, Validators.email]],
+      phoneNumber:      [''],
+      roleIds:          [[]],
+      isActive:         [true],
+      sendWelcomeEmail: [true]
+    });
+  }
+
+  // ── Loaders ────────────────────────────────────────────────────────────────────
+
+  private _loadSchools(): void {
+    this.isLoadingSchools = true;
+
+    this._schoolSvc.getAll()
+      .pipe(take(1), takeUntil(this._destroy))
+      .subscribe({
+        next: res => {
+          this.isLoadingSchools = false;
+          if (res.success && res.data) {
+            this.availableSchools = res.data.map(s => ({
+              id:       s.id,
+              name:     s.name,
+              location: s.county ?? s.address ?? undefined
+            }));
+          } else {
+            this._alert.error(res.message || 'Failed to load schools');
+          }
+          this._cdr.detectChanges();
+        },
+        error: err => {
+          this.isLoadingSchools = false;
+          this._alert.error(err?.error?.message || 'Failed to load schools');
+          this._cdr.detectChanges();
+        }
+      });
+  }
+
+  private _loadRoles(schoolId?: string): void {
+    this.isLoadingRoles = true;
+    this.form.get('roleIds')?.setValue([]);
+
+    const roles$ = schoolId
+      ? this._userSvc.getAvailableRolesBySchool(schoolId)
+      : this._userSvc.getAvailableRoles();
+
+    roles$
+      .pipe(take(1), takeUntil(this._destroy))
+      .subscribe({
+        next: res => {
+          this.isLoadingRoles = false;
+          if (res.success && res.data) {
+            this.availableRoles = res.data;
+            if (this.availableRoles.length === 0) {
+              this._alert.warning('No roles found for this school. Please create roles first.');
+            }
+          } else {
+            this.availableRoles = [];
+            this._alert.error(res.message || 'Failed to load roles');
+          }
+          this._cdr.detectChanges();
+        },
+        error: (err) => {
+          this.isLoadingRoles = false;
+          this.availableRoles = [];
+          this._alert.error(err?.error?.message || err?.message || 'Failed to load roles');
+          console.error('[UserDialog] roles load error:', err);
+          this._cdr.detectChanges();
+        }
+      });
+  }
+
+  private _loadUser(userId: string): void {
+    this._userSvc.getById(userId)
+      .pipe(take(1), takeUntil(this._destroy))
+      .subscribe({
+        next: res => {
+          if (!res.success || !res.data) {
+            this._alert.error('Failed to load user data');
+            return;
+          }
+
+          const user = res.data;
+
+          this.form.patchValue({
+            firstName:   user.firstName,
+            lastName:    user.lastName,
+            email:       user.email,
+            phoneNumber: user.phoneNumber ?? '',
+            isActive:    user.isActive,
+            roleIds:     user.roles?.map((r: any) => r.id ?? r) ?? []
+          });
+
+          this.form.get('email')?.disable();
+          this._cdr.detectChanges();
+        },
+        error: err => {
+          this._alert.error(err?.error?.message || 'Failed to load user data');
+        }
+      });
+  }
+
+  // ── Navigation ─────────────────────────────────────────────────────────────────
+
+  setTab(tabId: TabId): void {
+    this.activeTab = tabId;
+  }
+
+  nextTab(): void {
+    const idx = this.currentTabIndex;
+    if (idx < this.tabs.length - 1) {
+      this.activeTab = this.tabs[idx + 1].id;
+    }
+  }
+
+  prevTab(): void {
+    const idx = this.currentTabIndex;
+    if (idx > 0) this.activeTab = this.tabs[idx - 1].id;
+  }
+
+  // ── Save ───────────────────────────────────────────────────────────────────────
+
+  onSave(): void {
+    this.formSubmitted = true;
+
+    if (this.form.invalid) {
+      for (const tab of this.tabs) {
+        if (tab.fields.some(f => this.form.get(f)?.invalid)) {
+          this.activeTab = tab.id;
+          break;
+        }
+      }
+      this.form.markAllAsTouched();
+      return;
+    }
+
+    this.isEditMode ? this._update() : this._create();
+  }
+
+  private _create(): void {
+    this.isSaving = true;
+    const v = this.form.getRawValue();
+
+    const payload: CreateUserRequest = {
+      firstName:        v.firstName.trim(),
+      lastName:         v.lastName.trim(),
+      email:            v.email.trim().toLowerCase(),
+      phoneNumber:      v.phoneNumber?.trim() || undefined,
+      roleIds:          v.roleIds ?? [],
+      sendWelcomeEmail: v.sendWelcomeEmail,
+      schoolId:         this.showSchoolSelection ? v.schoolId : undefined
+    };
+
+    this._userSvc.create(payload)
+      .pipe(take(1))
+      .subscribe({
+        next: res => {
+          this.isSaving = false;
+          if (res.success) {
+            this._alert.success('User created successfully');
+            this._dialogRef.close(true);
+          } else {
+            this._alert.error(res.message || 'Failed to create user');
+          }
+        },
+        error: err => {
+          this.isSaving = false;
+          this._alert.error(err?.error?.message || err?.message || 'Failed to create user');
+        }
+      });
+  }
+
+  private _update(): void {
+    this.isSaving = true;
+    const v = this.form.getRawValue();
+
+    const payload: UpdateUserRequest = {
+      firstName:   v.firstName.trim(),
+      lastName:    v.lastName.trim(),
+      phoneNumber: v.phoneNumber?.trim() || undefined,
+      roleIds:     v.roleIds ?? [],
+      isActive:    v.isActive
+    };
+
+    this._userSvc.update(this._data.userId!, payload)
+      .pipe(take(1))
+      .subscribe({
+        next: res => {
+          this.isSaving = false;
+          if (res.success) {
+            this._alert.success('User updated successfully');
+            this._dialogRef.close(true);
+          } else {
+            this._alert.error(res.message || 'Failed to update user');
+          }
+        },
+        error: err => {
+          this.isSaving = false;
+          this._alert.error(err?.error?.message || err?.message || 'Failed to update user');
+        }
+      });
+  }
+
+  onCancel(): void {
+    this._dialogRef.close(false);
+  }
+
+  // ── Validation Helpers ──────────────────────────────────────────────────────────
+
+  tabHasErrors(tab: TabConfig): boolean {
+    return this.formSubmitted && tab.fields.some(f => this.form.get(f)?.invalid);
+  }
+
+  getErrorMessage(field: string): string {
+    const ctrl = this.form.get(field);
+    if (!ctrl?.errors) return '';
+    if (ctrl.hasError('required'))  return 'This field is required';
+    if (ctrl.hasError('email'))     return 'Enter a valid email address';
+    if (ctrl.hasError('minlength')) {
+      const min = ctrl.errors['minlength'].requiredLength;
+      return `Minimum ${min} characters required`;
+    }
     return 'Invalid value';
   }
 }

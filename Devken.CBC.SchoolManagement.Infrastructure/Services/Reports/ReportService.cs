@@ -1,15 +1,22 @@
 ﻿using Devken.CBC.SchoolManagement.Application.DTOs.Academic;
+using Devken.CBC.SchoolManagement.Application.DTOs.Academics;
+using Devken.CBC.SchoolManagement.Application.DTOs.Assessments;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Reports;
 using Devken.CBC.SchoolManagement.Application.Service.Administration.Student;
 using Devken.CBC.SchoolManagement.Application.Services.Interfaces.Academic;
+using Devken.CBC.SchoolManagement.Domain.Enums;
+using Devken.CBC.SchoolManagement.Infrastructure.Services.Reports.Assessment;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Reports.Student;
+using Devken.CBC.SchoolManagement.Infrastructure.Services.Reports.Subject;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Reports
 {
@@ -24,30 +31,25 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Reports
             IStudentService studentService,
             IWebHostEnvironment env)
         {
-            _repositories = repositories;
-            _studentService = studentService;
-            _env = env;
+            _repositories = repositories ?? throw new ArgumentNullException(nameof(repositories));
+            _studentService = studentService ?? throw new ArgumentNullException(nameof(studentService));
+            _env = env ?? throw new ArgumentNullException(nameof(env));
         }
 
-        public async Task<byte[]> GenerateStudentsListReportAsync(
-            Guid? schoolId,
-            Guid? userSchoolId,
-            bool isSuperAdmin)
+        // ── Students Reports ──────────────────────────────────────────────
+        public async Task<byte[]> GenerateStudentsListReportAsync(Guid? schoolId, Guid? userSchoolId, bool isSuperAdmin)
         {
             var finalSchoolId = isSuperAdmin ? schoolId : userSchoolId;
-
             if (finalSchoolId == null)
-                throw new Exception("School context not found.");
+                throw new InvalidOperationException("School context not found.");
 
             var school = await _repositories.School
-                .GetByIdAsync(finalSchoolId.Value, trackChanges: false);
+                .GetByIdAsync(finalSchoolId.Value, trackChanges: false)
+                ?? throw new KeyNotFoundException($"School {finalSchoolId.Value} not found.");
 
-            if (school == null)
-                throw new Exception("School not found.");
+            byte[]? logoBytes = await ResolveLogoAsync(school.LogoUrl);
 
-            // Get students
-            var studentsData = await _studentService.GetAllStudentsAsync(
-                finalSchoolId, userSchoolId, isSuperAdmin);
+            var studentsData = await _studentService.GetAllStudentsAsync(finalSchoolId, userSchoolId, isSuperAdmin);
 
             var students = studentsData.Select(s => new StudentDto
             {
@@ -57,18 +59,225 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Reports
                 IsActive = s.IsActive
             }).ToList();
 
-            // Resolve logo
-            byte[]? logoBytes = null;
-            if (!string.IsNullOrWhiteSpace(school.LogoUrl))
-            {
-                var logoPath = Path.Combine(_env.WebRootPath, school.LogoUrl.TrimStart('/'));
-                if (File.Exists(logoPath))
-                    logoBytes = await File.ReadAllBytesAsync(logoPath);
-            }
-
-            // ✅ DevExpress XtraReport — no QuestPDF, no Element() calls
-            var document = new StudentsListReportDocument(school, students, logoBytes);
+            var document = new StudentsListReportDocument(school, students, logoBytes, isSuperAdmin);
             return document.ExportToPdfBytes();
+        }
+
+        public async Task<byte[]> GenerateAllSchoolsStudentsListReportAsync()
+        {
+            var allSchools = await _repositories.School.GetAllAsync(trackChanges: false);
+            var schoolMap = allSchools.ToDictionary(s => s.Id, s => s.Name);
+
+            var studentsData = await _studentService.GetAllStudentsAsync(null, null, isSuperAdmin: true);
+
+            var students = studentsData.Select(s => new StudentDto
+            {
+                AdmissionNumber = s.AdmissionNumber,
+                FullName = s.FullName,
+                CurrentClassName = s.CurrentClassName,
+                IsActive = s.IsActive,
+                SchoolName = s.SchoolId != Guid.Empty && schoolMap.TryGetValue(s.SchoolId, out var name)
+                                ? name
+                                : s.SchoolName ?? string.Empty
+            }).ToList();
+
+            var document = new StudentsListReportDocument(null, students, logoBytes: null, isSuperAdmin: true);
+            return document.ExportToPdfBytes();
+        }
+
+        // ── Subjects Reports ──────────────────────────────────────────────
+        public async Task<byte[]> GenerateSubjectsListReportAsync(Guid? schoolId, Guid? userSchoolId, bool isSuperAdmin)
+        {
+            var finalSchoolId = isSuperAdmin ? schoolId : userSchoolId;
+            if (finalSchoolId == null)
+                throw new InvalidOperationException("School context not found.");
+
+            var school = await _repositories.School
+                .GetByIdAsync(finalSchoolId.Value, trackChanges: false)
+                ?? throw new KeyNotFoundException($"School {finalSchoolId.Value} not found.");
+
+            byte[]? logoBytes = await ResolveLogoAsync(school.LogoUrl);
+
+            var subjectsData = await _repositories.Subject.GetAllAsync(trackChanges: false);
+
+            var subjects = subjectsData.Select(s => new SubjectReportDto
+            {
+                Code = s.Code,
+                Name = s.Name,
+                Level = s.Level.ToString(),
+                SubjectType = s.SubjectType.ToString(),
+                IsActive = s.IsActive
+            }).ToList();
+
+            var document = new SubjectsListReportDocument(school, subjects, logoBytes, isSuperAdmin);
+            return document.ExportToPdfBytes();
+        }
+
+        public async Task<byte[]> GenerateAllSchoolsSubjectsListReportAsync()
+        {
+            var allSchools = await _repositories.School.GetAllAsync(trackChanges: false);
+            var schoolMap = allSchools.ToDictionary(s => s.Id, s => s.Name);
+
+            var allSubjects = await _repositories.Subject.GetAllAsync(trackChanges: false);
+
+            var subjects = allSubjects.Select(s => new SubjectReportDto
+            {
+                Code = s.Code,
+                Name = s.Name,
+                Level = s.Level.ToString(),
+                SubjectType = s.SubjectType.ToString(),
+                IsActive = s.IsActive,
+                SchoolId = s.TenantId,
+                SchoolName = schoolMap.TryGetValue(s.TenantId, out var name) ? name : string.Empty
+            }).ToList();
+
+            var document = new SubjectsListReportDocument(null, subjects, logoBytes: null, isSuperAdmin: true);
+            return document.ExportToPdfBytes();
+        }
+
+        // ── Assessments Reports ──────────────────────────────────────────
+        public async Task<byte[]> GenerateAssessmentsListReportAsync(Guid? schoolId, Guid? userSchoolId, bool isSuperAdmin, AssessmentTypeDto? type = null)
+        {
+            var finalSchoolId = isSuperAdmin ? schoolId : userSchoolId;
+            if (finalSchoolId == null)
+                throw new InvalidOperationException("School context not found.");
+
+            var school = await _repositories.School
+                .GetByIdAsync(finalSchoolId.Value, trackChanges: false)
+                ?? throw new KeyNotFoundException($"School {finalSchoolId.Value} not found.");
+
+            byte[]? logoBytes = await ResolveLogoAsync(school.LogoUrl);
+
+            var formative = await _repositories.FormativeAssessment.GetAllAsync(null, null, null, null, null);
+            var summative = await _repositories.SummativeAssessment.GetAllAsync(null, null, null, null, null);
+            var competency = await _repositories.CompetencyAssessment.GetAllAsync(null, null, null, null, null);
+
+            var allAssessments = formative.Select(MapToAssessmentBase)
+                .Concat(summative.Select(MapToAssessmentBase))
+                .Concat(competency.Select(MapToAssessmentBase))
+                .Where(a => !type.HasValue || a.AssessmentType == (Domain.Enums.AssessmentType)type.Value)
+                .Select(a => new AssessmentReportDto
+                {
+                    Title = a.Title,
+                    AssessmentType = (AssessmentTypeDto)a.AssessmentType,
+                    TeacherName = a.TeacherName ?? string.Empty,
+                    SubjectName = a.SubjectName ?? string.Empty,
+                    ClassName = a.ClassName ?? string.Empty,
+                    TermName = a.TermName ?? string.Empty,
+                    AssessmentDate = a.AssessmentDate,
+                    MaximumScore = a.MaximumScore,
+                    IsPublished = a.IsPublished,
+                    ScoreCount = a.ScoreCount
+                })
+                .OrderByDescending(a => a.AssessmentDate)
+                .ToList();
+
+            var document = new AssessmentsListReportDocument(school, allAssessments, logoBytes, isSuperAdmin);
+            return document.ExportToPdfBytes();
+        }
+
+        public async Task<byte[]> GenerateAllSchoolsAssessmentsListReportAsync(AssessmentTypeDto? type = null)
+        {
+            var allSchools = await _repositories.School.GetAllAsync(trackChanges: false);
+            var schoolMap = allSchools.ToDictionary(s => s.Id, s => s.Name);
+
+            var formative = await _repositories.FormativeAssessment.GetAllAsync(null, null, null, null, null);
+            var summative = await _repositories.SummativeAssessment.GetAllAsync(null, null, null, null, null);
+            var competency = await _repositories.CompetencyAssessment.GetAllAsync(null, null, null, null, null);
+
+            var allAssessments = formative.Select(MapToAssessmentBase)
+                .Concat(summative.Select(MapToAssessmentBase))
+                .Concat(competency.Select(MapToAssessmentBase))
+                .Where(a => !type.HasValue || a.AssessmentType == (Domain.Enums.AssessmentType)type.Value)
+                .Select(a => new AssessmentReportDto
+                {
+                    Title = a.Title,
+                    AssessmentType = (AssessmentTypeDto)a.AssessmentType,
+                    TeacherName = a.TeacherName ?? string.Empty,
+                    SubjectName = a.SubjectName ?? string.Empty,
+                    ClassName = a.ClassName ?? string.Empty,
+                    TermName = a.TermName ?? string.Empty,
+                    AssessmentDate = a.AssessmentDate,
+                    MaximumScore = a.MaximumScore,
+                    IsPublished = a.IsPublished,
+                    ScoreCount = a.ScoreCount,
+                    SchoolId = a.TenantId,
+                    SchoolName = schoolMap.TryGetValue(a.TenantId, out var name) ? name : string.Empty
+                })
+                .OrderByDescending(a => a.AssessmentDate)
+                .ToList();
+
+            var document = new AssessmentsListReportDocument(null, allAssessments, logoBytes: null, isSuperAdmin: true);
+            return document.ExportToPdfBytes();
+        }
+
+        // ── Private Helpers ──────────────────────────────────────────────
+        private async Task<byte[]?> ResolveLogoAsync(string? logoUrl)
+        {
+            if (string.IsNullOrWhiteSpace(logoUrl)) return null;
+            var logoPath = Path.Combine(_env.WebRootPath, logoUrl.TrimStart('/'));
+            if (!File.Exists(logoPath)) return null;
+            return await File.ReadAllBytesAsync(logoPath);
+        }
+
+        private AssessmentBase MapToAssessmentBase(Domain.Entities.Assessments.FormativeAssessment a) => new AssessmentBase
+        {
+            TenantId = a.TenantId,
+            Title = a.Title,
+            AssessmentType = Domain.Enums.AssessmentType.Formative,
+            TeacherName = a.Teacher?.FullName,
+            SubjectName = a.Subject?.Name,
+            ClassName = a.Class?.Name,
+            TermName = a.Term?.Name,
+            AssessmentDate = a.AssessmentDate,
+            MaximumScore = (int)a.MaximumScore,
+            IsPublished = a.IsPublished,
+            ScoreCount = a.Scores?.Count ?? 0
+        };
+
+        private AssessmentBase MapToAssessmentBase(Domain.Entities.Assessments.SummativeAssessment a) => new AssessmentBase
+        {
+            TenantId = a.TenantId,
+            Title = a.Title,
+            AssessmentType = Domain.Enums.AssessmentType.Summative,
+            TeacherName = a.Teacher?.FullName,
+            SubjectName = a.Subject?.Name,
+            ClassName = a.Class?.Name,
+            TermName = a.Term?.Name,
+            AssessmentDate = a.AssessmentDate,
+            MaximumScore = (int)a.MaximumScore,
+            IsPublished = a.IsPublished,
+            ScoreCount = a.Scores?.Count ?? 0
+        };
+
+        private AssessmentBase MapToAssessmentBase(Domain.Entities.Assessments.CompetencyAssessment a) => new AssessmentBase
+        {
+            TenantId = a.TenantId,
+            Title = a.Title,
+            AssessmentType = Domain.Enums.AssessmentType.Competency,
+            TeacherName = a.Teacher?.FullName,
+            SubjectName = a.Subject?.Name,
+            ClassName = a.Class?.Name,
+            TermName = a.Term?.Name,
+            AssessmentDate = a.AssessmentDate,
+            MaximumScore = (int)a.MaximumScore,
+            IsPublished = a.IsPublished,
+            ScoreCount = a.Scores?.Count ?? 0
+        };
+
+        internal class AssessmentBase
+        {
+            public Guid TenantId { get; set; }
+            public string Title { get; set; } = string.Empty;
+            public Domain.Enums.AssessmentType AssessmentType { get; set; }
+            public string? TeacherName { get; set; }
+            public string? SubjectName { get; set; }
+            public string? ClassName { get; set; }
+            public string? TermName { get; set; }
+            public DateTime AssessmentDate { get; set; }
+            public int MaximumScore { get; set; }
+            public bool IsPublished { get; set; }
+            public int ScoreCount { get; set; }
         }
     }
 }

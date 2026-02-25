@@ -1,8 +1,9 @@
-﻿using Devken.CBC.SchoolManagement.Domain.Common;
+﻿// Devken.CBC.SchoolManagement.Infrastructure/Data/EF/AppDbContext.cs
+using Devken.CBC.SchoolManagement.Domain.Common;
 using Devken.CBC.SchoolManagement.Domain.Entities.Academic;
 using Devken.CBC.SchoolManagement.Domain.Entities.Administration;
-using Devken.CBC.SchoolManagement.Domain.Entities.Assessment;
 using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
+using Devken.CBC.SchoolManagement.Domain.Entities.Assessments.Academic;
 using Devken.CBC.SchoolManagement.Domain.Entities.Finance;
 using Devken.CBC.SchoolManagement.Domain.Entities.Helpers;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
@@ -20,6 +21,7 @@ using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Reports;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.SchoolConf;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Subscription;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Conventions;
+using Devken.CBC.SchoolManagement.Infrastructure.Persistence.Configurations;
 using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -27,6 +29,12 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using CompetencyAssessmentConfiguration = Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Assessments.CompetencyAssessmentConfiguration;
+using CompetencyAssessmentScoreConfiguration = Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Assessments.CompetencyAssessmentScoreConfiguration;
+using FormativeAssessmentConfiguration = Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Assessments.FormativeAssessmentConfiguration;
+using FormativeAssessmentScoreConfiguration = Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Assessments.FormativeAssessmentScoreConfiguration;
+using SummativeAssessmentConfiguration = Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Assessments.SummativeAssessmentConfiguration;
+using SummativeAssessmentScoreConfiguration = Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Assessments.SummativeAssessmentScoreConfiguration;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
 {
@@ -41,14 +49,15 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             IPasswordHasher<User> passwordHasher)
             : base(options)
         {
-            _tenantContext = tenantContext;
+            _tenantContext  = tenantContext;
             _passwordHasher = passwordHasher;
         }
 
         #region DbSets
-        // Identity & Admin
+
+        // ── Identity & Admin ────────────────────────────────────────────────
         public DbSet<School> Schools => Set<School>();
-        public DbSet<User> Users { get; set; }  
+        public DbSet<User> Users { get; set; }
         public DbSet<SuperAdmin> SuperAdmins => Set<SuperAdmin>();
         public DbSet<Role> Roles => Set<Role>();
         public DbSet<Permission> Permissions => Set<Permission>();
@@ -59,7 +68,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         public DbSet<Subscription> Subscriptions => Set<Subscription>();
         public DbSet<UserActivity> UserActivities => Set<UserActivity>();
 
-        // Academic
+        // ── Academic ────────────────────────────────────────────────────────
         public DbSet<Student> Students => Set<Student>();
         public DbSet<Teacher> Teachers => Set<Teacher>();
         public DbSet<Class> Classes => Set<Class>();
@@ -67,74 +76,238 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         public DbSet<Term> Terms => Set<Term>();
         public DbSet<Subject> Subjects => Set<Subject>();
         public DbSet<Parent> Parents => Set<Parent>();
+        public DbSet<Grade> Grades => Set<Grade>();
+
+        // ── CBC Curriculum Helpers ───────────────────────────────────────────
+        // LearningArea → Strand → SubStrand → LearningOutcome
+        // LearningOutcome links back to FormativeAssessments via one-to-many.
+        // Strand and SubStrand are also directly linked to FormativeAssessment
+        // so assessments can be tagged without requiring a full LO selection.
+        public DbSet<LearningArea> LearningAreas => Set<LearningArea>();
+        public DbSet<Strand> Strands => Set<Strand>();
+        public DbSet<SubStrand> SubStrands => Set<SubStrand>();
         public DbSet<LearningOutcome> LearningOutcomes => Set<LearningOutcome>();
 
-        // Assessments (TPH: single DbSet for base type only)
+        // ── Assessments (TPT) ───────────────────────────────────────────────
+        //
+        // TPT strategy: Assessment1 is abstract and maps to the "Assessments" table
+        // containing only shared columns. Each concrete subtype maps to its own table
+        // (FormativeAssessments / SummativeAssessments / CompetencyAssessments) holding
+        // only subtype-specific columns. EF Core joins via the shared PK.
+        //
+        // Use the concrete DbSets for type-targeted queries, the base DbSet for
+        // cross-type queries.
         public DbSet<Assessment1> Assessments => Set<Assessment1>();
-        public DbSet<Grade> Grades => Set<Grade>();
-        public DbSet<FormativeAssessmentScore> FormativeAssessmentScores => Set<FormativeAssessmentScore>();
-        public DbSet<SummativeAssessmentScore> SummativeAssessmentScores => Set<SummativeAssessmentScore>();
+        public DbSet<FormativeAssessment> FormativeAssessments => Set<FormativeAssessment>();
+        public DbSet<SummativeAssessment> SummativeAssessments => Set<SummativeAssessment>();
+        public DbSet<CompetencyAssessment> CompetencyAssessments => Set<CompetencyAssessment>();
+
+        // ── Assessment Scores ───────────────────────────────────────────────
+        // Each score type is an independent entity (NOT part of the TPT hierarchy)
+        // with its own table and FK back to the corresponding assessment type.
+        public DbSet<FormativeAssessmentScore>  FormativeAssessmentScores  => Set<FormativeAssessmentScore>();
+        public DbSet<SummativeAssessmentScore>  SummativeAssessmentScores  => Set<SummativeAssessmentScore>();
         public DbSet<CompetencyAssessmentScore> CompetencyAssessmentScores => Set<CompetencyAssessmentScore>();
 
-        // Reports
-        public DbSet<ProgressReport> ProgressReports => Set<ProgressReport>();
-        public DbSet<SubjectReport> SubjectReports => Set<SubjectReport>();
+        // ── Reports ─────────────────────────────────────────────────────────
+        public DbSet<ProgressReport>        ProgressReports        => Set<ProgressReport>();
+        public DbSet<SubjectReport>         SubjectReports         => Set<SubjectReport>();
         public DbSet<ProgressReportComment> ProgressReportComments => Set<ProgressReportComment>();
 
-        // Finance
-        public DbSet<Invoice> Invoices => Set<Invoice>();
+        // ── Finance ─────────────────────────────────────────────────────────
+        public DbSet<Invoice>     Invoices     => Set<Invoice>();
         public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
-        public DbSet<Payment> Payments => Set<Payment>();
-        public DbSet<FeeItem> FeeItems => Set<FeeItem>();
-        public DbSet<SubscriptionPlanEntity> SubscriptionPlans { get; set; }
-        public DbSet<MpesaPaymentRecord> MpesaPayments { get; set; }
-        public DbSet<TeacherCBCLevel> TeacherCBCLevels { get; set; } = null!;
-        public DbSet<DocumentNumberSeries> DocumentNumberSeries => Set<DocumentNumberSeries>();
+        public DbSet<Payment>     Payments     => Set<Payment>();
+        public DbSet<CreditNote> CreditNotes => Set<CreditNote>();
+        public DbSet<FeeItem>     FeeItems     => Set<FeeItem>();
+
+
+        // ── Payments & Misc ─────────────────────────────────────────────────
+        public DbSet<SubscriptionPlanEntity> SubscriptionPlans    { get; set; }
+        public DbSet<MpesaPaymentRecord>     MpesaPayments        { get; set; }
+        public DbSet<TeacherCBCLevel>        TeacherCBCLevels     { get; set; } = null!;
+        public DbSet<DocumentNumberSeries>   DocumentNumberSeries => Set<DocumentNumberSeries>();
+
         #endregion
 
         protected override void OnModelCreating(ModelBuilder mb)
         {
             base.OnModelCreating(mb);
-            //mb.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
-            // ── GLOBAL CONVENTIONS ───────────────────────────────
+            // ── GLOBAL CONVENTIONS ───────────────────────────────────────────
             DecimalPrecisionConvention.Apply(mb);
 
-            // ── GENERIC BASE ENTITY CONFIGURATION ───────────────
+            // ── GENERIC BASE ENTITY KEY CONFIGURATION ────────────────────────
+            // Only configure the key on root entities. Derived TPT types share
+            // the root PK — EF Core handles the join automatically.
             foreach (var entityType in mb.Model.GetEntityTypes())
             {
-                if (typeof(BaseEntity<Guid>).IsAssignableFrom(entityType.ClrType))
+                if (typeof(BaseEntity<Guid>).IsAssignableFrom(entityType.ClrType)
+                    && entityType.BaseType == null)
                 {
-                    // Skip derived types in TPH hierarchy
-                    if (entityType.BaseType == null)
-                    {
-                        mb.Entity(entityType.ClrType).HasKey("Id");
-                    }
+                    mb.Entity(entityType.ClrType).HasKey("Id");
                 }
             }
 
-            // ── SPECIFIC RELATIONSHIPS NOT IN ENTITY CONFIGURATIONS ───────────
-            // Only configure relationships that are NOT already in entity configuration files
+            // ── ASSESSMENT TPT MAPPING ────────────────────────────────────────
+            //
+            // Declare the TPT hierarchy first so EF Core knows the mapping
+            // strategy before the individual entity configurations below.
+            // Table names are explicit for readability and migration stability.
+            mb.Entity<Assessment1>()
+              .UseTptMappingStrategy()
+              .ToTable("Assessments");
 
+            mb.Entity<FormativeAssessment>().ToTable("FormativeAssessments");
+            mb.Entity<SummativeAssessment>().ToTable("SummativeAssessments");
+            mb.Entity<CompetencyAssessment>().ToTable("CompetencyAssessments");
+
+            // ── EXPLICIT RELATIONSHIPS ────────────────────────────────────────
+
+            // Teacher → current class (self-referencing, restrict to avoid orphans)
             mb.Entity<Teacher>()
-                .HasOne(t => t.CurrentClass)
-                .WithMany()
-                .HasForeignKey(t => t.CurrentClassId)
-                .OnDelete(DeleteBehavior.Restrict);
+              .HasOne(t => t.CurrentClass)
+              .WithMany()
+              .HasForeignKey(t => t.CurrentClassId)
+              .OnDelete(DeleteBehavior.Restrict);
+
+            // ── FORMATIVE ASSESSMENT — CBC CURRICULUM LINKS ───────────────────
+            //
+            // A FormativeAssessment can optionally be tagged to a Strand,
+            // SubStrand, and/or LearningOutcome (all nullable FKs).
+            //
+            //   LearningArea → Strand → SubStrand → LearningOutcome
+            //                    ↑           ↑             ↑
+            //              StrandId    SubStrandId   LearningOutcomeId
+            //              (all three on FormativeAssessment)
+            //
+            // IMPORTANT — DeleteBehavior.NoAction (NOT SetNull):
+            //
+            // SQL Server rejects SetNull on these three FKs because it creates
+            // multiple cascade paths that both terminate at "FormativeAssessments":
+            //
+            //   Path 1: Assessment (TPT cascade on PK) → FormativeAssessments
+            //   Path 2: Strand/SubStrand/LO (SetNull)  → FormativeAssessments
+            //
+            // SQL Server error 1785: "Introducing FOREIGN KEY constraint may cause
+            // cycles or multiple cascade paths."
+            //
+            // Resolution: Use NoAction here. The application service layer (e.g.,
+            // ICurriculumService) must null these FKs on all FormativeAssessments
+            // before deleting a Strand, SubStrand, or LearningOutcome.
+            // The individual IEntityTypeConfiguration classes (FormativeAssessmentConfiguration)
+            // repeat these declarations — that is correct and consistent.
 
             mb.Entity<FormativeAssessment>()
-                .HasOne(f => f.LearningOutcome)
-                .WithMany(lo => lo.FormativeAssessments)
-                .HasForeignKey(f => f.LearningOutcomeId)
-                .OnDelete(DeleteBehavior.Restrict);
+              .HasOne(f => f.Strand)
+              .WithMany()
+              .HasForeignKey(f => f.StrandId)
+              .IsRequired(false)
+              .OnDelete(DeleteBehavior.NoAction);   // ← NoAction (not SetNull)
 
+            mb.Entity<FormativeAssessment>()
+              .HasOne(f => f.SubStrand)
+              .WithMany()
+              .HasForeignKey(f => f.SubStrandId)
+              .IsRequired(false)
+              .OnDelete(DeleteBehavior.NoAction);   // ← NoAction (not SetNull)
+
+            mb.Entity<FormativeAssessment>()
+              .HasOne(f => f.LearningOutcome)
+              .WithMany(lo => lo.FormativeAssessments)
+              .HasForeignKey(f => f.LearningOutcomeId)
+              .IsRequired(false)
+              .OnDelete(DeleteBehavior.NoAction);   // ← NoAction (not SetNull)
+
+            // ── SuperAdminRefreshToken → SuperAdmin ───────────────────────────
             mb.Entity<SuperAdminRefreshToken>()
-                .HasOne(t => t.SuperAdmin)
-                .WithMany()
-                .HasForeignKey(t => t.SuperAdminId)
-                .OnDelete(DeleteBehavior.Cascade);
+              .HasOne(t => t.SuperAdmin)
+              .WithMany()
+              .HasForeignKey(t => t.SuperAdminId)
+              .OnDelete(DeleteBehavior.Cascade);
 
-            // ── APPLY CONFIGURATIONS ───────────────────
+            // ── FORMATIVE ASSESSMENT SCORE RELATIONSHIPS ──────────────────────
+            mb.Entity<FormativeAssessmentScore>(entity =>
+            {
+                // Cascade: score is deleted when the parent assessment is deleted
+                entity.HasOne(s => s.FormativeAssessment)
+                      .WithMany(a => a.Scores)
+                      .HasForeignKey(s => s.FormativeAssessmentId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                // Restrict: preserve scores if a student record is removed
+                entity.HasOne(s => s.Student)
+                      .WithMany()
+                      .HasForeignKey(s => s.StudentId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                // Restrict: optional grading teacher (nullable FK)
+                entity.HasOne(s => s.GradedBy)
+                      .WithMany()
+                      .HasForeignKey(s => s.GradedById)
+                      .IsRequired(false)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                // Computed — never persisted
+                entity.Ignore(s => s.Percentage);
+            });
+
+            // ── SUMMATIVE ASSESSMENT SCORE RELATIONSHIPS ──────────────────────
+            mb.Entity<SummativeAssessmentScore>(entity =>
+            {
+                entity.HasOne(s => s.SummativeAssessment)
+                      .WithMany(a => a.Scores)
+                      .HasForeignKey(s => s.SummativeAssessmentId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(s => s.Student)
+                      .WithMany()
+                      .HasForeignKey(s => s.StudentId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(s => s.GradedBy)
+                      .WithMany()
+                      .HasForeignKey(s => s.GradedById)
+                      .IsRequired(false)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                // Computed — never persisted
+                entity.Ignore(s => s.TotalScore);
+                entity.Ignore(s => s.MaximumTotalScore);
+                entity.Ignore(s => s.Percentage);
+                entity.Ignore(s => s.PerformanceStatus);
+            });
+
+            // ── COMPETENCY ASSESSMENT SCORE RELATIONSHIPS ─────────────────────
+            mb.Entity<CompetencyAssessmentScore>(entity =>
+            {
+                entity.HasOne(s => s.CompetencyAssessment)
+                      .WithMany(a => a.Scores)
+                      .HasForeignKey(s => s.CompetencyAssessmentId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(s => s.Student)
+                      .WithMany()
+                      .HasForeignKey(s => s.StudentId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                // Restrict: optional assessor teacher (nullable FK)
+                entity.HasOne(s => s.Assessor)
+                      .WithMany()
+                      .HasForeignKey(s => s.AssessorId)
+                      .IsRequired(false)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                // Computed — never persisted
+                entity.Ignore(s => s.CompetencyLevel);
+            });
+
+            // ── APPLY ENTITY CONFIGURATIONS ───────────────────────────────────
+            //
+            // Order: parent tables before children so FK references resolve
+            // correctly during migration generation.
+
+            // Identity & School
             mb.ApplyConfiguration(new SchoolConfiguration());
             mb.ApplyConfiguration(new PermissionConfiguration());
             mb.ApplyConfiguration(new RoleConfiguration(_tenantContext));
@@ -144,6 +317,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             mb.ApplyConfiguration(new RefreshTokenConfiguration(_tenantContext));
             mb.ApplyConfiguration(new SubscriptionConfiguration(_tenantContext));
 
+            // Academic
             mb.ApplyConfiguration(new StudentConfiguration(_tenantContext));
             mb.ApplyConfiguration(new TeacherConfiguration(_tenantContext));
             mb.ApplyConfiguration(new ClassConfiguration(_tenantContext));
@@ -151,69 +325,102 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             mb.ApplyConfiguration(new TermConfiguration(_tenantContext));
             mb.ApplyConfiguration(new SubjectConfiguration(_tenantContext));
             mb.ApplyConfiguration(new ParentConfiguration(_tenantContext));
-            mb.ApplyConfiguration(new LearningOutcomeConfiguration(_tenantContext));
-
             mb.ApplyConfiguration(new GradeConfiguration(_tenantContext));
 
-            // TPH Assessment configurations
-            mb.ApplyConfiguration(new AssessmentConfiguration(_tenantContext));
-            mb.ApplyConfiguration(new FormativeAssessmentConfiguration());
-            mb.ApplyConfiguration(new SummativeAssessmentConfiguration());
-            mb.ApplyConfiguration(new CompetencyAssessmentConfiguration());
+            // CBC Curriculum Helpers (parent-first order)
+            mb.ApplyConfiguration(new LearningAreaConfiguration());
+            mb.ApplyConfiguration(new StrandConfiguration());
+            mb.ApplyConfiguration(new SubStrandConfiguration());
+            mb.ApplyConfiguration(new LearningOutcomeConfiguration());
 
-            mb.ApplyConfiguration(new FormativeAssessmentScoreConfiguration());
+            // Assessments — root first (TPT base commented out; handled inline above),
+            // then each subtype configuration for column/index mappings only.
+            // NOTE: AssessmentConfiguration is intentionally NOT applied here because
+            // the base table (Assessments) is fully configured via UseTptMappingStrategy()
+            // and the inline relationship declarations above.
+            mb.ApplyConfiguration(new FormativeAssessmentConfiguration(_tenantContext));
+            mb.ApplyConfiguration(new SummativeAssessmentConfiguration(_tenantContext));
+            mb.ApplyConfiguration(new CompetencyAssessmentConfiguration(_tenantContext));
+
+            // Assessment scores — independent tables, relationships wired inline above,
+            // configurations add column constraints, indexes and tenant query filters.
+            mb.ApplyConfiguration(new FormativeAssessmentScoreConfiguration(_tenantContext));
             mb.ApplyConfiguration(new SummativeAssessmentScoreConfiguration(_tenantContext));
-            mb.ApplyConfiguration(new CompetencyAssessmentScoreConfiguration());
+            mb.ApplyConfiguration(new CompetencyAssessmentScoreConfiguration(_tenantContext));
 
+            // Reports
             mb.ApplyConfiguration(new ProgressReportConfiguration(_tenantContext));
             mb.ApplyConfiguration(new SubjectReportConfiguration(_tenantContext));
             mb.ApplyConfiguration(new ProgressReportCommentConfiguration(_tenantContext));
 
+            // Finance
             mb.ApplyConfiguration(new InvoiceConfiguration(_tenantContext));
             mb.ApplyConfiguration(new InvoiceItemConfiguration(_tenantContext));
             mb.ApplyConfiguration(new PaymentConfiguration(_tenantContext));
             mb.ApplyConfiguration(new FeeItemConfiguration(_tenantContext));
-            
+            mb.ApplyConfiguration(new CreditNoteConfiguration());
+
+            // Payments & misc
             mb.ApplyConfiguration(new MpesaPaymentRecordConfiguration1());
-            mb.ApplyConfiguration(new SubscriptionPlanConfiguration());
             mb.ApplyConfiguration(new SubscriptionPlanConfiguration());
             mb.ApplyConfiguration(new TeacherCBCLevelConfiguration(_tenantContext));
             mb.ApplyConfiguration(new DocumentNumberSeriesConfiguration(_tenantContext));
+
         }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
-            UpdateAuditableEntities();
+            ApplyAuditInformation();
             UpdateTenantEntities();
             return await base.SaveChangesAsync(cancellationToken);
         }
 
         public override int SaveChanges()
         {
-            UpdateAuditableEntities();
+            ApplyAuditInformation();
             UpdateTenantEntities();
             return base.SaveChanges();
         }
 
-        private void UpdateAuditableEntities()
-        {
-            var entries = ChangeTracker.Entries()
-                .Where(e => e.Entity is IAuditableEntity &&
-                            (e.State == EntityState.Added || e.State == EntityState.Modified));
+        // ─────────────────────────────────────────────────────────────────────
+        // AUDIT HELPERS
+        // ─────────────────────────────────────────────────────────────────────
 
-            var now = DateTime.UtcNow;
+        private void ApplyAuditInformation()
+        {
+            var now    = DateTime.UtcNow;
             var userId = _tenantContext?.ActingUserId;
 
-            foreach (var entry in entries)
+            foreach (var entry in ChangeTracker.Entries())
             {
-                var entity = (IAuditableEntity)entry.Entity;
-                if (entry.State == EntityState.Added)
+                if (entry.Entity is BaseEntity<Guid> baseEntity)
                 {
-                    entity.CreatedOn = now;
-                    entity.CreatedBy = userId;
+                    if (entry.State == EntityState.Added)
+                    {
+                        if (baseEntity.Id == Guid.Empty)
+                            baseEntity.Id = Guid.NewGuid();
+
+                        baseEntity.CreatedOn = now;
+                        baseEntity.UpdatedOn = now;
+                    }
+                    else if (entry.State == EntityState.Modified)
+                    {
+                        baseEntity.UpdatedOn = now;
+                    }
                 }
-                entity.UpdatedOn = now;
-                entity.UpdatedBy = userId;
+
+                if (entry.Entity is IAuditableEntity auditable &&
+                    (entry.State == EntityState.Added || entry.State == EntityState.Modified))
+                {
+                    if (entry.State == EntityState.Added)
+                    {
+                        auditable.CreatedOn = now;
+                        auditable.CreatedBy = userId;
+                    }
+
+                    auditable.UpdatedOn = now;
+                    auditable.UpdatedBy = userId;
+                }
             }
         }
 
@@ -226,9 +433,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             {
                 var entity = (ITenantEntity)entry.Entity;
                 if (entity.TenantId == Guid.Empty && _tenantContext?.TenantId != null)
-                {
                     entity.TenantId = _tenantContext.TenantId.Value;
-                }
             }
         }
     }
