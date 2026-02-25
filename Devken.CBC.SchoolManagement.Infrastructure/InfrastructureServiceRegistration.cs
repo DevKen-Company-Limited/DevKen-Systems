@@ -5,6 +5,7 @@ using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Acad
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academics;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Assessments;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Finance;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Identity;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.NumberSeries;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Payments;
@@ -17,6 +18,7 @@ using Devken.CBC.SchoolManagement.Application.Service.Activities;
 using Devken.CBC.SchoolManagement.Application.Service.Administration.Student;
 using Devken.CBC.SchoolManagement.Application.Service.Assessments;
 using Devken.CBC.SchoolManagement.Application.Service.Curriculum;
+using Devken.CBC.SchoolManagement.Application.Service.Finance;
 using Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment;
 using Devken.CBC.SchoolManagement.Application.Service.Isubscription;
 using Devken.CBC.SchoolManagement.Application.Service.ISubscription;
@@ -32,6 +34,7 @@ using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academics;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessments;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Curriculum;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Finance;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Identity;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSeries;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Payments;
@@ -43,6 +46,7 @@ using Devken.CBC.SchoolManagement.Infrastructure.Services.Academics;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Administration.Students;
 
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Curriculum;
+using Devken.CBC.SchoolManagement.Infrastructure.Services.Finance;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Images;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Reports;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.RoleAssignment;
@@ -276,6 +280,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IUserActivityRepository, UserActivityRepository>(); 
             services.AddScoped<IUserActivityService1, UserActivityService1>();
             // Repositories
+            services.AddScoped<IFeeItemRepository, FeeItemRepository>();
+            services.AddScoped<IFeeItemService, FeeItemService>();
             services.AddScoped<IGradeRepository, GradeRepository>();
             services.AddScoped<IGradeService, GradeService>();
             services.AddScoped<IStudentRepository, StudentRepository>();
