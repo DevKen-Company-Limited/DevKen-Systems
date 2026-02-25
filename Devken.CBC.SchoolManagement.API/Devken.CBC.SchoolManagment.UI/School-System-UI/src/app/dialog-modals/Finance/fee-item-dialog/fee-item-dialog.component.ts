@@ -23,6 +23,9 @@ import { takeUntil, finalize }     from 'rxjs/operators';
 import { AuthService }             from 'app/core/auth/auth.service';
 import { FeeItemService } from 'app/core/DevKenService/Finance/fee-item.service';
 import { FeeItemResponseDto, FEE_TYPE_OPTIONS, RECURRENCE_OPTIONS, CBC_LEVEL_OPTIONS, APPLICABLE_TO_OPTIONS, CreateFeeItemDto, UpdateFeeItemDto } from 'app/Finance/fee-item/Types/fee-item.model';
+import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
+import { SchoolDto } from 'app/Tenant/types/school';
+import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
 
 export interface FeeItemDialogData {
   mode: 'create' | 'edit';
@@ -54,8 +57,10 @@ export interface FeeItemDialogData {
   `]
 })
 export class FeeItemDialogComponent implements OnInit, OnDestroy {
+  schools: SchoolDto[] = [];
   private readonly _unsubscribe = new Subject<void>();
   private readonly _authService = inject(AuthService);
+  private _alert = inject(AlertService);
 
   // ── Form State ─────────────────────────────────────────────────────────────
   form!: FormGroup;
@@ -88,12 +93,16 @@ export class FeeItemDialogComponent implements OnInit, OnDestroy {
     private readonly _dialogRef: MatDialogRef<FeeItemDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: FeeItemDialogData,
     private readonly _cdr: ChangeDetectorRef,
+     private _schoolService: SchoolService,
   ) {
-    _dialogRef.addPanelClass(['fee-item-dialog', 'responsive-dialog']);
+    _dialogRef.addPanelClass('no-padding-dialog');
   }
 
   ngOnInit(): void {
     this._buildForm();
+    if (this.isSuperAdmin) {
+    this._loadSchools();
+  }
     if (this.isEditMode && this.data.item) {
       this._patchForm(this.data.item);
     }
@@ -107,6 +116,7 @@ export class FeeItemDialogComponent implements OnInit, OnDestroy {
   // ── Form Setup ─────────────────────────────────────────────────────────────
   private _buildForm(): void {
     this.form = this._fb.group({
+      schoolId: ['', this.isSuperAdmin ? [Validators.required] : []],
       name:            ['', [Validators.required, Validators.maxLength(100)]],
       description:     ['', [Validators.maxLength(500)]],
       defaultAmount:   [0,  [Validators.required, Validators.min(0)]],
@@ -135,6 +145,7 @@ export class FeeItemDialogComponent implements OnInit, OnDestroy {
 
   private _patchForm(item: FeeItemResponseDto): void {
     this.form.patchValue({
+      schoolId:        item.schoolId        ?? '',
       name:            item.name            ?? '',
       description:     item.description     ?? '',
       defaultAmount:   item.defaultAmount   ?? 0,
@@ -152,44 +163,78 @@ export class FeeItemDialogComponent implements OnInit, OnDestroy {
     this._cdr.detectChanges();
   }
 
+    private _loadSchools(): void {
+    this._schoolService.getAll().subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.schools = response.data;
+        }
+      },
+      error: (err) => {
+        console.error('Failed to load schools', err);
+        this._alert.error('Failed to load schools');
+      }
+    });
+  }
+
   // ── Submit & Cancel ────────────────────────────────────────────────────────
   onSubmit(): void {
-    this.formSubmitted = true;
-    if (this.form.invalid) return;
+  this.formSubmitted = true;
+  if (this.form.invalid) return;
 
-    const raw = this.form.getRawValue();
-    const payload: CreateFeeItemDto | UpdateFeeItemDto = {
-      name:            raw.name?.trim(),
-      description:     raw.description?.trim() || undefined,
-      defaultAmount:   +raw.defaultAmount,
-      feeType:         +raw.feeType,
-      isMandatory:     raw.isMandatory,
-      isRecurring:     raw.isRecurring,
-      recurrence:      raw.isRecurring ? +raw.recurrence : undefined,
-      isTaxable:       raw.isTaxable,
-      taxRate:         raw.isTaxable ? +raw.taxRate : undefined,
-      glCode:          raw.glCode?.trim() || undefined,
-      isActive:        raw.isActive,
+  const raw = this.form.getRawValue();
+
+  if (this.isEditMode) {
+    // 🔹 UPDATE – no tenant identifier
+    const payload: UpdateFeeItemDto = {
+      name: raw.name?.trim(),
+      description: raw.description?.trim() || undefined,
+      defaultAmount: +raw.defaultAmount,
+      feeType: +raw.feeType,
+      isMandatory: raw.isMandatory,
+      isRecurring: raw.isRecurring,
+      recurrence: raw.isRecurring ? +raw.recurrence : undefined,
+      isTaxable: raw.isTaxable,
+      taxRate: raw.isTaxable ? +raw.taxRate : undefined,
+      glCode: raw.glCode?.trim() || undefined,
+      isActive: raw.isActive,
       applicableLevel: raw.applicableLevel != null ? +raw.applicableLevel : undefined,
-      applicableTo:    raw.applicableTo    != null ? +raw.applicableTo    : undefined,
+      applicableTo: raw.applicableTo != null ? +raw.applicableTo : undefined,
     };
-
     this.isSaving = true;
-    const obs$ = this.isEditMode
-      ? this._service.update(this.data.item!.id, payload as UpdateFeeItemDto)
-      : this._service.create(payload as CreateFeeItemDto);
-
-    obs$.pipe(takeUntil(this._unsubscribe), finalize(() => { this.isSaving = false; this._cdr.detectChanges(); }))
+    this._service.update(this.data.item!.id, payload)
+      .pipe(takeUntil(this._unsubscribe), finalize(() => { this.isSaving = false; this._cdr.detectChanges(); }))
       .subscribe({
-        next: res => {
-          if (res.success) {
-            this._dialogRef.close({ success: true, data: res.data });
-          }
-          // Let the parent handle error toasts — or add one here if preferred
-        },
-        error: () => { /* parent handles */ }
+        next: res => { if (res.success) this._dialogRef.close({ success: true, data: res.data }); },
+        error: () => {}
+      });
+  } else {
+    // 🔹 CREATE – send tenantId for SuperAdmin
+    const payload: CreateFeeItemDto = {
+      tenantId: this.isSuperAdmin ? raw.schoolId?.trim() : undefined,
+      name: raw.name?.trim(),
+      description: raw.description?.trim() || undefined,
+      defaultAmount: +raw.defaultAmount,
+      feeType: +raw.feeType,
+      isMandatory: raw.isMandatory,
+      isRecurring: raw.isRecurring,
+      recurrence: raw.isRecurring ? +raw.recurrence : undefined,
+      isTaxable: raw.isTaxable,
+      taxRate: raw.isTaxable ? +raw.taxRate : undefined,
+      glCode: raw.glCode?.trim() || undefined,
+      isActive: raw.isActive,
+      applicableLevel: raw.applicableLevel != null ? +raw.applicableLevel : undefined,
+      applicableTo: raw.applicableTo != null ? +raw.applicableTo : undefined,
+    };
+    this.isSaving = true;
+    this._service.create(payload)
+      .pipe(takeUntil(this._unsubscribe), finalize(() => { this.isSaving = false; this._cdr.detectChanges(); }))
+      .subscribe({
+        next: res => { if (res.success) this._dialogRef.close({ success: true, data: res.data }); },
+        error: () => {}
       });
   }
+}
 
   onCancel(): void {
     this._dialogRef.close(null);

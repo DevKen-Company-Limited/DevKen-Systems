@@ -164,7 +164,7 @@
         class="bg-gradient-to-r from-violet-600 to-purple-600 text-white min-w-28">
         <mat-spinner *ngIf="isSaving" diameter="18" class="mr-2 inline-block"></mat-spinner>
         <mat-icon *ngIf="!isSaving" class="mr-1">{{ isEditMode ? 'save' : 'add' }}</mat-icon>
-        {{ isSaving ? 'Saving…' : (isEditMode ? 'Update' : 'Create') }}
+        {{ isSaving ? 'Saving…' : (isEditMode ? 'Update' : 'Submit') }}
       </button>
     </div>
 

@@ -2,10 +2,14 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { API_BASE_URL } from 'app/app.config';
-import { ApiResponse } from 'app/Tenant/types/school';
 import { FeeItemResponseDto, CreateFeeItemDto, UpdateFeeItemDto } from 'app/Finance/fee-item/Types/fee-item.model';
 
-
+export interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+  errors?: Record<string, string[]>;
+}
 @Injectable({ providedIn: 'root' })
 export class FeeItemService {
   private readonly apiBase = inject(API_BASE_URL);

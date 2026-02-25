@@ -71,7 +71,7 @@ export interface CreateFeeItemDto {
   isActive: boolean;
   applicableLevel?: CBCLevel;
   applicableTo?: ApplicableTo;
-  tenantId?: string;
+  tenantId?: string; 
 }
 
 export interface UpdateFeeItemDto {
@@ -88,6 +88,7 @@ export interface UpdateFeeItemDto {
   isActive: boolean;
   applicableLevel?: CBCLevel;
   applicableTo?: ApplicableTo;
+  schoolId?: string;   
 }
 
 export const FEE_TYPE_OPTIONS = [

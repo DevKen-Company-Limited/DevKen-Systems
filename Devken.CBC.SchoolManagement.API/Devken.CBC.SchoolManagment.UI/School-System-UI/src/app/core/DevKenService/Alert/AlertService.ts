@@ -78,14 +78,14 @@ export class AlertService {
     });
   }
 
-  confirm(p0: string, p1: string, p2: () => void, options: {
-  message: string;
-  title?: string;
-  confirmText?: string;
-  cancelText?: string;
-  onConfirm: () => void;
-  onCancel?: () => void;
-}) {
+  confirm(options: {
+    message: string;
+    title?: string;
+    confirmText?: string;
+    cancelText?: string;
+    onConfirm: () => void;
+    onCancel?: () => void;
+  }) {
     this.add({
       id: uuidv4(),
       type: 'confirm',

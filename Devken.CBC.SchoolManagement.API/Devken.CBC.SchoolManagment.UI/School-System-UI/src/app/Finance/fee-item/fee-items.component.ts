@@ -3,7 +3,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatDialog } from '@angular/material/dialog';
-import { take } from 'rxjs/operators';
+import { take, takeUntil } from 'rxjs/operators';
 import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
 import { FeeItemDialogData, FeeItemDialogComponent } from 'app/dialog-modals/Finance/fee-item-dialog/fee-item-dialog.component';
 import { DataTableComponent, TableHeader, TableColumn, TableAction } from 'app/shared/data-table/data-table.component';
@@ -13,6 +13,9 @@ import { PaginationComponent } from 'app/shared/pagination/pagination.component'
 import { StatsCardsComponent, StatCard } from 'app/shared/stats-cards/stats-cards.component';
 import { FeeItemResponseDto, FEE_TYPE_OPTIONS, resolveFeeTypeLabel, resolveLevelLabel } from './Types/fee-item.model';
 import { FeeItemService } from 'app/core/DevKenService/Finance/fee-item.service';
+import { Subject } from 'rxjs';
+import { MatButton, MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 
 
 @Component({
@@ -25,11 +28,13 @@ import { FeeItemService } from 'app/core/DevKenService/Finance/fee-item.service'
     FilterPanelComponent,
     DataTableComponent,
     PaginationComponent,
+    MatIconModule, 
+    MatButtonModule,
   ],
   templateUrl: './fee-items.component.html',
 })
 export class FeeItemsComponent implements OnInit {
-
+  private _destroy$ = new Subject<void>();
   // ── Templates ──────────────────────────────────────────────────────────────
   @ViewChild('nameCell')      nameCell!: TemplateRef<any>;
   @ViewChild('feeTypeCell')   feeTypeCell!: TemplateRef<any>;
@@ -299,19 +304,38 @@ export class FeeItemsComponent implements OnInit {
     });
   }
 
- confirmDelete(item: FeeItemResponseDto): void {
-  this.alertService.confirm(
-    `Delete "${item.name}"?`,
-    'This action cannot be undone.',
-    () => this.executeDelete(item),
-    {
-      message:     'This action cannot be undone.',
+confirmDelete(item: FeeItemResponseDto): void{
+    this.alertService.confirm({
+      title: 'Delete Item',
+      message: `Delete "${item.name}"? This action cannot be undone.`,
       confirmText: 'Delete',
-      cancelText:  'Cancel',
-      onConfirm:   () => this.executeDelete(item),
-    }
-  );
-}
+      onConfirm: () => {
+        this.service.delete(item.id).pipe(takeUntil(this._destroy$)).subscribe({
+          next: res => {
+            if (res.success) {
+              this.alertService.success('Item deleted successfully');
+              if (this.paginatedData.length === 1 && this.currentPage > 1) this.currentPage--;
+              this.loadAll();
+            }
+          },
+          error: err => this.alertService.error(err.error?.message || 'Failed to delete item'),
+        });
+      },
+    });
+  }
+//  confirmDelete(item: FeeItemResponseDto): void {
+//   this.alertService.confirm(
+//     `Delete "${item.name}"?`,
+//     'This action cannot be undone.',
+//     () => this.executeDelete(item),
+//     {
+//       message:     'This action cannot be undone.',
+//       confirmText: 'Delete',
+//       cancelText:  'Cancel',
+//       onConfirm:   () => this.executeDelete(item),
+//     }
+//   );
+// }
 
 private executeDelete(item: FeeItemResponseDto): void {
   this.service.delete(item.id).pipe(take(1)).subscribe({

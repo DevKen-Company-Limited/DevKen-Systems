@@ -327,6 +327,6 @@
   <button mat-flat-button color="primary" type="button" (click)="submit()" [disabled]="form.invalid || isSaving">
     <mat-icon *ngIf="isSaving" class="icon-size-5 mr-2">hourglass_empty</mat-icon>
     <mat-icon *ngIf="!isSaving" class="icon-size-5 mr-2">{{ isEditMode ? 'save' : 'add' }}</mat-icon>
-    {{ isSaving ? 'Saving...' : (isEditMode ? 'Save' : 'Create') }}
+    {{ isSaving ? 'Saving...' : (isEditMode ? 'Save' : 'Submit') }}
   </button>
 </div>

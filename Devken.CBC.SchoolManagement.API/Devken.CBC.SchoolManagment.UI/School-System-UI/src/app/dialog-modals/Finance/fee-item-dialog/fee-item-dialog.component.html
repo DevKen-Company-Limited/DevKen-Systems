@@ -39,6 +39,19 @@
 
 <!-- Form Content -->
 <form [formGroup]="form" (ngSubmit)="onSubmit()" mat-dialog-content class="p-5">
+ 
+  <!-- School Selection (SuperAdmin only) -->
+    <mat-form-field appearance="outline" class="w-full mb-4" *ngIf="isSuperAdmin">
+      <mat-label>School <span class="text-red-500">*</span></mat-label>
+      <mat-select formControlName="schoolId">
+        <mat-option *ngFor="let school of schools" [value]="school.id">
+          {{ school.name }}
+        </mat-option>
+      </mat-select>
+      <mat-error *ngIf="form.get('schoolId')?.hasError('required')">
+        School is required
+      </mat-error>
+    </mat-form-field> 
 
   <!-- Validation Summary -->
   <div *ngIf="formSubmitted && form.invalid"
@@ -220,6 +233,6 @@
   <button mat-flat-button color="primary" type="button"
           (click)="onSubmit()" [disabled]="isSaving">
     <mat-icon class="icon-size-5 mr-1">{{ isEditMode ? 'save' : 'check_circle' }}</mat-icon>
-    {{ isSaving ? 'Saving...' : (isEditMode ? 'Update Fee Item' : 'Create Fee Item') }}
+    {{ isSaving ? 'Saving...' : (isEditMode ? 'Update' : 'Submit') }}
   </button>
 </div>
