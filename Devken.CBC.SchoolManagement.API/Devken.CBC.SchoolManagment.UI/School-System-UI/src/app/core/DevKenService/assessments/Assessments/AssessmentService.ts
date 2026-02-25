@@ -1,19 +1,16 @@
 // ═══════════════════════════════════════════════════════════════════
-// assessment.service.ts
+// AssessmentService.ts
+// Uses: API_BASE_URL injection (NO environment)
+// Matches: AssessmentsController endpoints exactly
 // ═══════════════════════════════════════════════════════════════════
 
-import { inject, Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { API_BASE_URL } from 'app/app.config';
-import {
-  AssessmentDto,
-  AssessmentListItem,
-  AssessmentType,
-  CreateAssessmentRequest,
-  UpdateAssessmentRequest,
-} from 'app/assessment/types/AssessmentDtos';
+import { AssessmentType, AssessmentListItem, AssessmentResponse, CreateAssessmentRequest, UpdateAssessmentRequest, AssessmentScoreResponse, UpsertScoreRequest, AssessmentSchemaResponse } from 'app/assessment/types/assessments';
+
 
 interface ApiResponse<T> {
   success: boolean;
@@ -23,155 +20,232 @@ interface ApiResponse<T> {
 
 @Injectable({ providedIn: 'root' })
 export class AssessmentService {
+
+  // ✅ Base API URL via InjectionToken
   private readonly _apiBase = inject(API_BASE_URL);
-  private readonly _base    = `${this._apiBase}/api/Assessments`;
+  private readonly _http = inject(HttpClient);
 
-  constructor(private _http: HttpClient) {}
+  // ✅ Main controller base
+  private readonly _base = `${this._apiBase}/api/assessments`;
 
-  // ── Assessments ───────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────────
+  // GET ALL
+  // GET /api/assessments?type=&classId=&termId=&subjectId=&teacherId=&isPublished=
+  // ────────────────────────────────────────────────────────────────
+  getAll(
+    type?: AssessmentType,
+    classId?: string,
+    termId?: string,
+    subjectId?: string,
+    teacherId?: string,
+    isPublished?: boolean,
+  ): Observable<AssessmentListItem[]> {
 
-  /**
-   * Returns the flat list for a given assessment type.
-   * Mirrors GET /api/Assessments?assessmentType={type}
-   */
-getAll(assessmentType: AssessmentType): Observable<AssessmentListItem[]> {
-  return this._http
-    .get<ApiResponse<AssessmentListItem[]>>(this._base, {
-      params: { assessmentType: String(assessmentType) },
-    })
-    .pipe(map(r => r?.data ?? []));
-}
+    let params = new HttpParams();
 
+    if (type != null)         params = params.set('type', String(type));
+    if (classId)              params = params.set('classId', classId);
+    if (termId)               params = params.set('termId', termId);
+    if (subjectId)            params = params.set('subjectId', subjectId);
+    if (teacherId)            params = params.set('teacherId', teacherId);
+    if (isPublished != null)  params = params.set('isPublished', String(isPublished));
 
-getById(id: string, assessmentType: AssessmentType): Observable<AssessmentDto> {
-  return this._http
-    .get<ApiResponse<AssessmentDto>>(`${this._base}/${id}`, {
-      params: { type: String(assessmentType) },
-    })
-    .pipe(map(r => r?.data ?? (r as any)));
-}
-
-  getWithGrades(id: string): Observable<any> {
     return this._http
-      .get<ApiResponse<any>>(`${this._base}/${id}/grades`)
-      .pipe(map(r => r?.data ?? (r as any)));
+      .get<ApiResponse<AssessmentListItem[]>>(this._base, { params })
+      .pipe(map(r => r.data ?? []));
   }
 
-  getByClass(classId: string): Observable<AssessmentListItem[]> {
+  // ────────────────────────────────────────────────────────────────
+  // GET BY ID
+  // GET /api/assessments/{id}?type=Summative
+  // ────────────────────────────────────────────────────────────────
+  getById(id: string, type: AssessmentType): Observable<AssessmentResponse> {
+    const params = new HttpParams().set('type', String(type));
+
     return this._http
-      .get<ApiResponse<AssessmentListItem[]>>(`${this._base}/class/${classId}`)
-      .pipe(map(r => r?.data ?? []));
+      .get<ApiResponse<AssessmentResponse>>(`${this._base}/${id}`, { params })
+      .pipe(map(r => r.data));
   }
 
-  getByTeacher(teacherId: string): Observable<AssessmentListItem[]> {
+  // ────────────────────────────────────────────────────────────────
+  // CREATE
+  // POST /api/assessments
+  // ────────────────────────────────────────────────────────────────
+  create(request: CreateAssessmentRequest): Observable<AssessmentResponse> {
     return this._http
-      .get<ApiResponse<AssessmentListItem[]>>(`${this._base}/teacher/${teacherId}`)
-      .pipe(map(r => r?.data ?? []));
+      .post<ApiResponse<AssessmentResponse>>(this._base, request)
+      .pipe(map(r => r.data));
   }
 
-  getByTerm(termId: string, academicYearId: string): Observable<AssessmentListItem[]> {
+  // ────────────────────────────────────────────────────────────────
+  // UPDATE
+  // PUT /api/assessments/{id}
+  // ────────────────────────────────────────────────────────────────
+  update(id: string, request: UpdateAssessmentRequest): Observable<AssessmentResponse> {
     return this._http
-      .get<ApiResponse<AssessmentListItem[]>>(
-        `${this._base}/term/${termId}/academic-year/${academicYearId}`
+      .put<ApiResponse<AssessmentResponse>>(`${this._base}/${id}`, request)
+      .pipe(map(r => r.data));
+  }
+
+  // ────────────────────────────────────────────────────────────────
+  // PUBLISH / UNPUBLISH
+  // PATCH /api/assessments/{id}/publish
+  // ────────────────────────────────────────────────────────────────
+  publish(
+    id: string,
+    type: AssessmentType
+  ): Observable<{ success: boolean; message: string }> {
+
+    const assessmentType = AssessmentType[type] as string;
+
+    return this._http.patch<{ success: boolean; message: string }>(
+      `${this._base}/${id}/publish`,
+      { assessmentType }
+    );
+  }
+
+  // ────────────────────────────────────────────────────────────────
+  // DELETE
+  // DELETE /api/assessments/{id}?type=Formative
+  // ────────────────────────────────────────────────────────────────
+  delete(
+    id: string,
+    type: AssessmentType
+  ): Observable<{ success: boolean; message: string }> {
+
+    const params = new HttpParams().set('type', String(type));
+
+    return this._http.delete<{ success: boolean; message: string }>(
+      `${this._base}/${id}`,
+      { params }
+    );
+  }
+
+  // ────────────────────────────────────────────────────────────────
+  // GET SCORES
+  // GET /api/assessments/{id}/scores?type=Summative
+  // ────────────────────────────────────────────────────────────────
+  getScores(id: string, type: AssessmentType): Observable<AssessmentScoreResponse[]> {
+
+    const params = new HttpParams().set('type', String(type));
+
+    return this._http
+      .get<ApiResponse<AssessmentScoreResponse[]>>(
+        `${this._base}/${id}/scores`,
+        { params }
       )
-      .pipe(map(r => r?.data ?? []));
+      .pipe(map(r => r.data ?? []));
   }
 
-  getPublished(classId: string, termId: string): Observable<AssessmentListItem[]> {
+  // ────────────────────────────────────────────────────────────────
+  // UPSERT SCORE
+  // POST /api/assessments/scores
+  // ────────────────────────────────────────────────────────────────
+  upsertScore(request: UpsertScoreRequest): Observable<AssessmentScoreResponse> {
     return this._http
-      .get<ApiResponse<AssessmentListItem[]>>(
-        `${this._base}/published/class/${classId}/term/${termId}`
+      .post<ApiResponse<AssessmentScoreResponse>>(
+        `${this._base}/scores`,
+        request
       )
-      .pipe(map(r => r?.data ?? []));
+      .pipe(map(r => r.data));
   }
 
-  create(payload: CreateAssessmentRequest): Observable<ApiResponse<AssessmentDto>> {
-    return this._http.post<ApiResponse<AssessmentDto>>(this._base, payload);
+  // ────────────────────────────────────────────────────────────────
+  // DELETE SCORE
+  // DELETE /api/assessments/scores/{scoreId}?type=Formative
+  // ────────────────────────────────────────────────────────────────
+  deleteScore(
+    scoreId: string,
+    type: AssessmentType
+  ): Observable<{ success: boolean; message: string }> {
+
+    const params = new HttpParams().set('type', String(type));
+
+    return this._http.delete<{ success: boolean; message: string }>(
+      `${this._base}/scores/${scoreId}`,
+      { params }
+    );
   }
 
-  update(id: string, payload: UpdateAssessmentRequest): Observable<ApiResponse<AssessmentDto>> {
-    return this._http.put<ApiResponse<AssessmentDto>>(`${this._base}/${id}`, payload);
+  // ────────────────────────────────────────────────────────────────
+  // GET SCHEMA
+  // GET /api/assessments/schema/{type}
+  // ────────────────────────────────────────────────────────────────
+  getSchema(type: AssessmentType): Observable<AssessmentSchemaResponse> {
+    return this._http
+      .get<ApiResponse<AssessmentSchemaResponse>>(
+        `${this._base}/schema/${type}`
+      )
+      .pipe(map(r => r.data));
   }
 
-  /**
-   * PATCH /api/Assessments/{id}/publish
-   * assessmentType is required by the backend PublishAssessmentRequest.
-   */
-  publish(id: string, assessmentType: AssessmentType): Observable<ApiResponse<null>> {
-    return this._http.patch<ApiResponse<null>>(`${this._base}/${id}/publish`, { assessmentType });
+  // ════════════════════════════════════════════════════════════════
+  // LOOKUPS (ALL use injected API base)
+  // ════════════════════════════════════════════════════════════════
+
+  getClasses(): Observable<any[]> {
+    return this._http
+      .get<any>(`${this._apiBase}/api/academic/classes`)
+      .pipe(map(r => r.data ?? r));
   }
 
-  /**
-   * DELETE /api/Assessments/{id}?assessmentType={type}
-   * Type is sent as query param so the backend routes to the right table.
-   */
-  delete(id: string, assessmentType: AssessmentType): Observable<ApiResponse<void>> {
-    return this._http.delete<ApiResponse<void>>(`${this._base}/${id}`, {
-      params: { assessmentType: String(assessmentType) },
-    });
+  getTeachers(): Observable<any[]> {
+    return this._http
+      .get<any>(`${this._apiBase}/api/academic/teachers`)
+      .pipe(map(r => r.data ?? r));
   }
 
-  // ── Lookups ───────────────────────────────────────────────────────────────
+  getSubjects(): Observable<any[]> {
+    return this._http
+      .get<any>(`${this._apiBase}/api/academic/subjects`)
+      .pipe(map(r => r.data ?? r));
+  }
 
-  getClasses(schoolId?: string): Observable<any[]> {
-  const params = schoolId ? { schoolId } : {};
-  return this._http
-    .get<ApiResponse<any[]>>(`${this._apiBase}/api/academic/class`, { params })
-    .pipe(map(r => r?.data ?? []));
-}
+  getTerms(): Observable<any[]> {
+    return this._http
+      .get<any>(`${this._apiBase}/api/academic/terms`)
+      .pipe(map(r => r.data ?? r));
+  }
 
-getTeachers(schoolId?: string): Observable<any[]> {
-  const params = schoolId ? { schoolId } : {};
-  return this._http
-    .get<ApiResponse<any[]>>(`${this._apiBase}/api/academic/teachers`, { params })
-    .pipe(map(r => r?.data ?? []));
-}
-
-getSubjects(schoolId?: string): Observable<any[]> {
-  const params = schoolId ? { schoolId } : {};
-  return this._http
-    .get<ApiResponse<any[]>>(`${this._apiBase}/api/academic/subjects`, { params })
-    .pipe(map(r => r?.data ?? []));
-}
-
-getTerms(schoolId?: string): Observable<any[]> {
-  const params = schoolId ? { schoolId } : {};
-  return this._http
-    .get<ApiResponse<any[]>>(`${this._apiBase}/api/academic/terms`, { params })
-    .pipe(map(r => r?.data ?? []));
-}
-
-getAcademicYears(schoolId?: string): Observable<any[]> {
-  const params = schoolId ? { schoolId } : {};
-  return this._http
-    .get<ApiResponse<any[]>>(`${this._apiBase}/api/academic/academicyear`, { params })
-    .pipe(map(r => r?.data ?? []));
-}
+  getAcademicYears(): Observable<any[]> {
+    return this._http
+      .get<any>(`${this._apiBase}/api/academic/AcademicYear`)
+      .pipe(map(r => r.data ?? r));
+  }
 
   getSchools(): Observable<any[]> {
     return this._http
-      .get<ApiResponse<any[]>>(`${this._apiBase}/api/schools`)
-      .pipe(map(r => r?.data ?? []));
+      .get<any>(`${this._apiBase}/api/academic/schools`)
+      .pipe(map(r => r.data ?? r));
+  }
+
+  getStudents(classId?: string): Observable<any[]> {
+    const params = classId
+      ? new HttpParams().set('classId', classId)
+      : undefined;
+
+    return this._http
+      .get<any>(`${this._apiBase}/api/academic/students`, { params })
+      .pipe(map(r => r.data ?? r));
+  }
+
+  getLearningOutcomes(strandId?: string): Observable<any[]> {
+    const params = strandId
+      ? new HttpParams().set('strandId', strandId)
+      : undefined;
+
+    return this._http
+      .get<any>(`${this._apiBase}/api/curriculum/learningoutcomes`, { params })
+      .pipe(map(r => r.data ?? r));
   }
 
   getStrands(subjectId?: string): Observable<any[]> {
-    const url = subjectId
-      ? `${this._apiBase}/api/academic/strands?subjectId=${subjectId}`
-      : `${this._apiBase}/api/academic/strands`;
-    return this._http.get<ApiResponse<any[]>>(url).pipe(map(r => r?.data ?? []));
-  }
+    const params = subjectId
+      ? new HttpParams().set('subjectId', subjectId)
+      : undefined;
 
-  getSubStrands(strandId?: string): Observable<any[]> {
-    const url = strandId
-      ? `${this._apiBase}/api/academic/substrands?strandId=${strandId}`
-      : `${this._apiBase}/api/academic/substrands`;
-    return this._http.get<ApiResponse<any[]>>(url).pipe(map(r => r?.data ?? []));
-  }
-
-  getLearningOutcomes(subStrandId?: string): Observable<any[]> {
-    const url = subStrandId
-      ? `${this._apiBase}/api/academic/learningoutcomes?subStrandId=${subStrandId}`
-      : `${this._apiBase}/api/academic/learningoutcomes`;
-    return this._http.get<ApiResponse<any[]>>(url).pipe(map(r => r?.data ?? []));
+    return this._http
+      .get<any>(`${this._apiBase}/api/curriculum/strands`, { params })
+      .pipe(map(r => r.data ?? r));
   }
 }

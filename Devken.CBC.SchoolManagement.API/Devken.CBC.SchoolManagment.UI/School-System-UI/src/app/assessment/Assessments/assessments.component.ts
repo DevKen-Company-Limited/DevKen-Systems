@@ -26,13 +26,8 @@ import { AlertService }                                                         
 import { AuthService }                                                                from 'app/core/auth/auth.service';
 import { AssessmentReportService }                                                    from 'app/core/DevKenService/assessments/Assessments/AssessmentReportService';
 import { AssessmentService }                                                          from 'app/core/DevKenService/assessments/Assessments/AssessmentService';
-import {
-  ASSESSMENT_TYPE_COLORS,
-  ASSESSMENT_TYPES,
-  AssessmentListItem,
-  AssessmentType,
-  getAssessmentTypeLabel,
-} from '../types/AssessmentDtos';
+import { AssessmentType, AssessmentListItem, getAssessmentTypeLabel, ASSESSMENT_TYPE_COLORS } from '../types/assessments';
+
 
 
 @Component({

@@ -4,7 +4,7 @@
 
     <!-- ─── Left Sidebar / Step Navigator ────────────────────────── -->
     <aside
-      class="relative flex flex-col bg-white dark:bg-gray-800 shadow-xl transition-all duration-300"
+      class="relative flex flex-col bg-white dark:bg-gray-800 shadow-xl transition-all duration-300 z-30"
       [class.w-80]="!isSidebarCollapsed"
       [class.w-20]="isSidebarCollapsed"
       [class.hidden]="isMobileView && !showMobileSidebar"
@@ -138,7 +138,7 @@
 
         <app-assessment-info-step
           *ngIf="currentStep === 0"
-          [formData]="formSections.info"
+          [formData]="formSections['info']"
           [classes]="classes"
           [teachers]="teachers"
           [subjects]="subjects"
@@ -153,8 +153,11 @@
 
         <app-assessment-details-step
           *ngIf="currentStep === 1"
-          [formData]="formSections.details"
+          [formData]="formSections['details']"
           [assessmentTypes]="assessmentTypes"
+          [strands]="strands"
+          [subStrands]="subStrands"
+          [learningOutcomes]="learningOutcomes"
           [isEditMode]="isEditMode"
           (formChanged)="onSectionChanged('details', $event)"
           (formValid)="onSectionValidChanged('details', $event)">

@@ -1,36 +1,33 @@
 import { Routes } from "@angular/router";
 import { AssessmentsComponent } from "./assessments.component";
 import { AssessmentFormComponent } from "./form/assessment-form.component";
-import { AssessmentDetailsStepComponent } from "./steps/assessment-details-step.component";
-
+import { AssessmentDetailComponent } from "./detail/assessment-detail.component";
+import { AssessmentGradesComponent } from "./grades/assessment-grades.component";
 
 export default [
   {
     path: '',
-    component: AssessmentsComponent
+    component: AssessmentsComponent,
+    data: { title: 'Assessments', breadcrumb: 'Assessments' }
   },
   {
     path: 'create',
     component: AssessmentFormComponent,
+    data: { title: 'Create Assessment', breadcrumb: 'Create' }
   },
   {
     path: 'edit/:id',
-    component: AssessmentFormComponent, // reuse create component for edit
+    component: AssessmentFormComponent,
+    data: { title: 'Edit Assessment', breadcrumb: 'Edit' }
   },
   {
     path: 'details/:id',
-    component: AssessmentDetailsStepComponent,
-    data: {
-      title: 'Assessment Details',
-      breadcrumb: 'Details'
-    }
+    component: AssessmentDetailComponent,
+    data: { title: 'Assessment Details', breadcrumb: 'Details' }
   },
   {
     path: 'grades/:id',
-    component: AssessmentsComponent,
-    data: {
-      title: 'Assessment Grades',
-      breadcrumb: 'Grades'
-    }
+    component: AssessmentGradesComponent,
+    data: { title: 'Assessment Grades', breadcrumb: 'Grades' }
   }
 ] as Routes;

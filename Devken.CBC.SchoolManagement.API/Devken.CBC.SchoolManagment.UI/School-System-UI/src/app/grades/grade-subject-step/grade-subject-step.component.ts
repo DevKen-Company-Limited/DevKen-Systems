@@ -20,7 +20,8 @@ import { StudentService } from 'app/core/DevKenService/administration/students/S
 import { SubjectService } from 'app/core/DevKenService/SubjectService/SubjectService';
 import { TermService }    from 'app/core/DevKenService/TermService/term.service';
 import { AssessmentService } from 'app/core/DevKenService/assessments/Assessments/AssessmentService';
-import { AssessmentType } from 'app/assessment/types/AssessmentDtos';
+import { AssessmentType } from 'app/assessment/types/assessments';
+
 
 
 /** Lightweight option for a dropdown item */
