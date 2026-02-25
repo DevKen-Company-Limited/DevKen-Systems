@@ -240,29 +240,29 @@ namespace Devken.CBC.SchoolManagement.Domain.Enums
 
     #endregion
 
-    /// <summary>
-    /// General Payment status
-    /// </summary>
-    public enum PaymentStatus
-    {
-        [Description("Awaiting payment")]
-        Pending = 1,
+    ///// <summary>
+    ///// General Payment status
+    ///// </summary>
+    //public enum PaymentStatus
+    //{
+    //    [Description("Awaiting payment")]
+    //    Pending = 1,
 
-        [Description("Partially paid")]
-        Partial = 2,
+    //    [Description("Partially paid")]
+    //    Partial = 2,
 
-        [Description("Fully paid")]
-        Paid = 3,
+    //    [Description("Fully paid")]
+    //    Paid = 3,
 
-        [Description("Payment overdue")]
-        Overdue = 4,
+    //    [Description("Payment overdue")]
+    //    Overdue = 4,
 
-        [Description("Payment cancelled")]
-        Cancelled = 5,
+    //    [Description("Payment cancelled")]
+    //    Cancelled = 5,
 
-        [Description("Payment refunded")]
-        Refunded = 6
-    }
+    //    [Description("Payment refunded")]
+    //    Refunded = 6
+    //}
 
     /// <summary>
     /// Subscription status for school accounts

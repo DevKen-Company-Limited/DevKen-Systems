@@ -18,58 +18,29 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Fina
         {
             builder.ToTable("InvoiceItems");
 
-            builder.HasKey(ii => ii.Id);
+            builder.Property(x => x.Description).HasMaxLength(200).IsRequired();
+            builder.Property(x => x.ItemType).HasMaxLength(50);
+            builder.Property(x => x.UnitPrice).HasColumnType("decimal(18,2)");
+            builder.Property(x => x.Discount).HasColumnType("decimal(18,2)");
+            builder.Property(x => x.TaxRate).HasColumnType("decimal(5,2)");
+            builder.Property(x => x.Total).HasColumnType("decimal(18,2)");
+            builder.Property(x => x.TaxAmount).HasColumnType("decimal(18,2)");
+            builder.Property(x => x.NetAmount).HasColumnType("decimal(18,2)");
+            builder.Property(x => x.GlCode).HasMaxLength(100);
+            builder.Property(x => x.Notes).HasMaxLength(500);
 
-            builder.HasQueryFilter(ii =>
-                _tenantContext.TenantId == null ||
-                ii.TenantId == _tenantContext.TenantId);
+            // Ignore runtime-only properties
+            builder.Ignore(x => x.EffectiveUnitPrice);
 
-            // Indexes
-            builder.HasIndex(ii => new { ii.TenantId, ii.InvoiceId });
-            builder.HasIndex(ii => new { ii.TenantId, ii.FeeItemId });
+            builder.HasOne(x => x.Invoice)
+                   .WithMany(x => x.Items)
+                   .HasForeignKey(x => x.InvoiceId)
+                   .OnDelete(DeleteBehavior.Cascade);
 
-            // Properties
-            builder.Property(ii => ii.Description)
-                .IsRequired()
-                .HasMaxLength(200);
-
-            builder.Property(ii => ii.ItemType)
-                .HasMaxLength(50);
-
-            builder.Property(ii => ii.Quantity)
-                .IsRequired()
-                .HasDefaultValue(1);
-
-            builder.Property(ii => ii.UnitPrice)
-                .HasPrecision(18, 2)
-                .IsRequired();
-
-            builder.Property(ii => ii.Discount)
-                .HasPrecision(18, 2)
-                .HasDefaultValue(0.0m);
-
-            // Computed Columns
-            builder.Property(ii => ii.Total)
-                .HasComputedColumnSql("[Quantity] * [UnitPrice]", stored: true);
-
-            builder.Property(ii => ii.NetAmount)
-                .HasComputedColumnSql("([Quantity] * [UnitPrice]) - [Discount]", stored: true);
-
-            // Relationships
-            builder.HasOne(ii => ii.Invoice)
-                .WithMany(i => i.Items)
-                .HasForeignKey(ii => ii.InvoiceId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            builder.HasOne(ii => ii.Term)
-                .WithMany()
-                .HasForeignKey(ii => ii.TermId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            builder.HasOne(ii => ii.FeeItem)
-                .WithMany(fi => fi.InvoiceItems)
-                .HasForeignKey(ii => ii.FeeItemId)
-                .OnDelete(DeleteBehavior.Restrict);
+            builder.HasOne(x => x.FeeItem)
+                   .WithMany(x => x.InvoiceItems)
+                   .HasForeignKey(x => x.FeeItemId)
+                   .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }
