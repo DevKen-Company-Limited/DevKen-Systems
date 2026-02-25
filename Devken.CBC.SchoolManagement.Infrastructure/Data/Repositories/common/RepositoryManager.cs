@@ -41,6 +41,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         private readonly Lazy<IClassRepository> _classRepository;
         private readonly Lazy<ISubjectRepository> _subjectRepository;
         private readonly Lazy<IUserActivityRepository> _userActivityRepository;
+        private readonly Lazy<IGradeRepository> _gradeRepository;
 
         // ── CBC Curriculum ───────────────────────────────────────────────────
         private readonly Lazy<ILearningAreaRepository> _learningAreaRepository;
@@ -85,6 +86,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
             _classRepository = new Lazy<IClassRepository>(() => new ClassRepository(_context, _tenantContext));
             _subjectRepository = new Lazy<ISubjectRepository>(() => new SubjectRepository(_context, _tenantContext));
             _userActivityRepository = new Lazy<IUserActivityRepository>(() => new UserActivityRepository(_context, _tenantContext));
+            _gradeRepository = new Lazy<IGradeRepository>(() => new GradeRepository(_context, _tenantContext));
 
             // CBC Curriculum
             _learningAreaRepository = new Lazy<ILearningAreaRepository>(() => new LearningAreaRepository(_context, _tenantContext));
@@ -117,6 +119,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         }
 
         // ── Academic Properties ──────────────────────────────────────────────
+        public IGradeRepository Grade => _gradeRepository.Value;
         public IStudentRepository Student => _studentRepository.Value;
         public ITeacherRepository Teacher => _teacherRepository.Value;
         public ISchoolRepository School => _schoolRepository.Value;

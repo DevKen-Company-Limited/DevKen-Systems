@@ -274,8 +274,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IPasswordHashingService, BCryptPasswordHashingService>();
             services.AddScoped<IStudentService, StudentService>();
             services.AddScoped<IUserActivityRepository, UserActivityRepository>(); 
-            services.AddScoped<IUserActivityService1, UserActivityService1>(); 
+            services.AddScoped<IUserActivityService1, UserActivityService1>();
             // Repositories
+            services.AddScoped<IGradeRepository, GradeRepository>();
+            services.AddScoped<IGradeService, GradeService>();
             services.AddScoped<IStudentRepository, StudentRepository>();
             services.AddScoped<ISubjectRepository, SubjectRepository>();
             services.AddScoped<ISchoolRepository, SchoolRepository>();

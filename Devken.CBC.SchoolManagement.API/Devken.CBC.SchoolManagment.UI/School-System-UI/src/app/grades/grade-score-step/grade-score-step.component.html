@@ -1,0 +1,187 @@
+<!-- grade-score-step/grade-score-step.component.html -->
+<div class="max-w-6xl">
+
+  <!-- Section Header -->
+  <div class="flex items-start gap-4 mb-8">
+    <div class="flex items-center justify-center w-14 h-14 rounded-xl
+                bg-gradient-to-br from-violet-500 to-indigo-600 shadow-lg">
+      <mat-icon class="text-white !w-7 !h-7">grade</mat-icon>
+    </div>
+    <div class="flex-1">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Score & Grade</h2>
+      <p class="text-gray-600 dark:text-gray-400">
+        {{ isEditMode
+          ? 'Update the score, grade letter and assessment type.'
+          : 'Enter the score obtained, maximum possible score, and select the grade type. All fields are optional.' }}
+      </p>
+    </div>
+  </div>
+
+  <fuse-alert type="info" appearance="soft" [showIcon]="true" class="mb-6">
+    <strong>Score Entry:</strong> Enter the raw score and maximum score — the percentage will be
+    calculated automatically. You can also assign a <strong>Grade Letter</strong> manually.
+  </fuse-alert>
+
+  <form [formGroup]="form" novalidate class="space-y-6">
+
+    <!-- Grade Type Visual Cards -->
+    <mat-card class="shadow-md">
+      <mat-card-header class="!pb-2">
+        <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+          <mat-icon class="text-violet-600">category</mat-icon>
+          Assessment Type
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+
+        <!-- Visual type cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+          <div *ngFor="let t of gradeTypeOptions"
+            class="relative rounded-xl border-2 cursor-pointer p-4 transition-all"
+            [ngClass]="{
+              'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 shadow-md': form.get('gradeType')?.value == t.value,
+              'border-gray-200 dark:border-gray-700 hover:border-indigo-300 hover:bg-gray-50 dark:hover:bg-gray-800': form.get('gradeType')?.value != t.value
+            }"
+            (click)="form.get('gradeType')?.setValue(t.value)">
+            <div class="flex items-center gap-2 mb-2">
+              <mat-icon class="icon-size-5"
+                [ngClass]="{
+                  'text-indigo-600': form.get('gradeType')?.value == t.value,
+                  'text-gray-400':   form.get('gradeType')?.value != t.value
+                }">
+                {{ t.value === 0 ? 'trending_up' : t.value === 1 ? 'assessment' : 'verified' }}
+              </mat-icon>
+              <span class="text-sm font-semibold"
+                [ngClass]="{
+                  'text-indigo-700 dark:text-indigo-300': form.get('gradeType')?.value == t.value,
+                  'text-gray-700   dark:text-gray-300':   form.get('gradeType')?.value != t.value
+                }">
+                {{ t.label }}
+              </span>
+            </div>
+            <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+              {{ t.value === 0 ? 'Tracks ongoing learning' :
+                 t.value === 1 ? 'End-of-period evaluation' : 'Skill mastery check' }}
+            </p>
+            <div *ngIf="form.get('gradeType')?.value == t.value"
+              class="absolute top-2 right-2 w-5 h-5 rounded-full bg-indigo-600
+                     flex items-center justify-center">
+              <mat-icon class="!w-3 !h-3 !text-xs text-white">check</mat-icon>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dropdown confirmation -->
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>Assessment Type</mat-label>
+          <mat-select formControlName="gradeType">
+            <mat-option [value]="null">Not specified</mat-option>
+            <mat-option *ngFor="let t of gradeTypeOptions" [value]="t.value">{{ t.label }}</mat-option>
+          </mat-select>
+          <mat-icon matPrefix class="text-gray-400">category</mat-icon>
+          <mat-hint *ngIf="selectedTypeDescription">{{ selectedTypeDescription }}</mat-hint>
+        </mat-form-field>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Score Fields -->
+    <mat-card class="shadow-md">
+      <mat-card-header class="!pb-2">
+        <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+          <mat-icon class="text-violet-600">numbers</mat-icon>
+          Score Details
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Score</mat-label>
+            <input matInput type="number" min="0" formControlName="score" placeholder="e.g. 78">
+            <mat-icon matPrefix class="text-gray-400">numbers</mat-icon>
+            <mat-hint>Marks obtained</mat-hint>
+            <mat-error>{{ getError('score') }}</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Maximum Score</mat-label>
+            <input matInput type="number" min="0" formControlName="maximumScore" placeholder="e.g. 100">
+            <mat-icon matPrefix class="text-gray-400">numbers</mat-icon>
+            <mat-hint>Total possible marks</mat-hint>
+            <mat-error>{{ getError('maximumScore') }}</mat-error>
+          </mat-form-field>
+
+        </div>
+
+        <!-- Live percentage preview -->
+        <div *ngIf="computedPercentage !== null"
+             class="mt-4 flex items-center gap-3 p-4 rounded-xl border"
+             [ngClass]="{
+               'bg-green-50  border-green-200  dark:bg-green-900/10  dark:border-green-800':  computedPercentage >= 70,
+               'bg-amber-50  border-amber-200  dark:bg-amber-900/10  dark:border-amber-800':  computedPercentage >= 50 && computedPercentage < 70,
+               'bg-red-50    border-red-200    dark:bg-red-900/10    dark:border-red-800':    computedPercentage < 50
+             }">
+          <mat-icon [ngClass]="{
+            'text-green-600': computedPercentage >= 70,
+            'text-amber-600': computedPercentage >= 50 && computedPercentage < 70,
+            'text-red-600':   computedPercentage < 50
+          }">percent</mat-icon>
+          <div>
+            <p class="text-sm font-bold" [ngClass]="{
+              'text-green-700 dark:text-green-300': computedPercentage >= 70,
+              'text-amber-700 dark:text-amber-300': computedPercentage >= 50 && computedPercentage < 70,
+              'text-red-700   dark:text-red-300':   computedPercentage < 50
+            }">{{ computedPercentage }}% — {{
+              computedPercentage >= 80 ? 'Excellent' :
+              computedPercentage >= 70 ? 'Very Good' :
+              computedPercentage >= 60 ? 'Good' :
+              computedPercentage >= 50 ? 'Average' : 'Needs Improvement'
+            }}</p>
+            <p class="text-xs text-gray-500">Computed from score / maximum score</p>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Grade Letter -->
+    <mat-card class="shadow-md">
+      <mat-card-header class="!pb-2">
+        <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+          <mat-icon class="text-violet-600">star</mat-icon>
+          Grade Letter
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+
+        <!-- Visual letter grid -->
+        <div class="flex flex-wrap gap-2 mb-4">
+          <div *ngFor="let opt of gradeLetterOptions"
+            class="w-14 h-14 rounded-xl border-2 cursor-pointer flex items-center justify-center
+                   text-base font-bold transition-all"
+            [ngClass]="{
+              'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 shadow-md':
+                form.get('gradeLetter')?.value == opt.value,
+              'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-indigo-300':
+                form.get('gradeLetter')?.value != opt.value
+            }"
+            (click)="form.get('gradeLetter')?.setValue(opt.value)">
+            {{ opt.label }}
+          </div>
+        </div>
+
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>Grade Letter</mat-label>
+          <mat-select formControlName="gradeLetter">
+            <mat-option [value]="null">None</mat-option>
+            <mat-option *ngFor="let opt of gradeLetterOptions" [value]="opt.value">
+              {{ opt.label }}
+            </mat-option>
+          </mat-select>
+          <mat-icon matPrefix class="text-gray-400">star</mat-icon>
+          <mat-hint>Optional — select the letter grade</mat-hint>
+        </mat-form-field>
+      </mat-card-content>
+    </mat-card>
+
+  </form>
+</div>

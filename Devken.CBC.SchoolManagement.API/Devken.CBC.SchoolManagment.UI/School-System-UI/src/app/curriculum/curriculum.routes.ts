@@ -1,11 +1,11 @@
 import { Routes } from '@angular/router';
-import { LearningAreaFormComponent } from './learning-areas/learning-area-form/learning-area-form.component';
+import { LearningAreaFormComponent } from '../dialog-modals/Curriculum/learning-area-form/learning-area-form.component';
 import { LearningAreasComponent } from './learning-areas/learning-areas.component';
-import { LearningOutcomeFormComponent } from './learning-outcome/learning-outcome-form/learning-outcome-form.component';
+import { LearningOutcomeFormComponent } from '../dialog-modals/Curriculum/learning-outcome-form/learning-outcome-form.component';
 import { LearningOutcomesComponent } from './learning-outcome/learning-outcomes.component';
-import { StrandFormComponent } from './strands/strand-form/strand-form.component';
+import { StrandFormComponent } from '../dialog-modals/Curriculum/strand-form/strand-form.component';
 import { StrandsComponent } from './strands/strands.component';
-import { SubStrandFormComponent } from './sub-strands/sub-strand-form/sub-strand-form.component';
+import { SubStrandFormComponent } from '../dialog-modals/Curriculum/sub-strand-form/sub-strand-form.component';
 import { SubStrandsComponent } from './sub-strands/sub-strands.component';
 
 export default [

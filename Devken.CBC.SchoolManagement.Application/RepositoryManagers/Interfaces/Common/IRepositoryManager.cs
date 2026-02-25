@@ -24,6 +24,7 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
         IClassRepository Class { get; }
         ISubjectRepository Subject { get; }
         IUserActivityRepository UserActivity { get; }
+        IGradeRepository Grade { get; }
 
         // ================= CBC CURRICULUM =================
         ILearningAreaRepository LearningArea { get; }

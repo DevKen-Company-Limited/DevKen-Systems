@@ -313,9 +313,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             mb.ApplyConfiguration(new TermConfiguration(_tenantContext));
             mb.ApplyConfiguration(new SubjectConfiguration(_tenantContext));
             mb.ApplyConfiguration(new ParentConfiguration(_tenantContext));
-
-            // Grades
-           // mb.ApplyConfiguration(new GradeConfiguration(_tenantContext));
+            mb.ApplyConfiguration(new GradeConfiguration(_tenantContext));
 
             // CBC Curriculum Helpers
             // Order matters: configure parent tables before children so that

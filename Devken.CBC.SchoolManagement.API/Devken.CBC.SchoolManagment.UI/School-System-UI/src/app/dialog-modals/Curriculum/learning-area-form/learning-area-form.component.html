@@ -1,0 +1,106 @@
+<!-- Learning Area Create / Edit Dialog -->
+<!-- <div class="flex flex-col w-full max-w-xl"> -->
+  <!-- Dialog Header -->
+  <div class="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-indigo-700 via-violet-700 to-purple-700 shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
+        <mat-icon class="text-white">menu_book</mat-icon>
+      </div>
+      <div>
+        <h2 class="text-base font-bold text-white leading-tight">
+          {{ isEditMode ? 'Edit Learning Area' : 'Create Learning Area' }}
+        </h2>
+        <p class="text-xs text-white/70">
+          {{ isEditMode ? 'Update the learning area details' : 'Fill in the details to create a new CBC learning area' }}
+        </p>
+      </div>
+    </div>
+    <button mat-icon-button (click)="cancel()" class="text-white/80 hover:text-white hover:bg-white/10 rounded-xl">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="flex items-center justify-center py-16 bg-gray-50 dark:bg-gray-900">
+    <mat-spinner diameter="40"></mat-spinner>
+  </div>
+
+  <!-- Form Body -->
+  <form *ngIf="!isLoading" [formGroup]="form" novalidate (ngSubmit)="save()" class="flex flex-col bg-gray-50 dark:bg-gray-900">
+
+    <div class="p-6 space-y-5 overflow-y-auto max-h-[60vh]">
+
+      <!-- Info alert for new -->
+      <fuse-alert *ngIf="!isEditMode" type="info" appearance="soft" [showIcon]="true">
+        Learning areas are top-level curriculum groupings (e.g. Mathematics, English). Each belongs to a CBC level and can contain multiple strands.
+      </fuse-alert>
+
+      <!-- School (SuperAdmin only) -->
+      <div *ngIf="isSuperAdmin">
+        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+          School <span class="text-red-500">*</span>
+        </label>
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-select formControlName="tenantId" placeholder="Select school">
+            <mat-option value="">Select school</mat-option>
+            <mat-option *ngFor="let s of schools" [value]="s.id">{{ s.name }}</mat-option>
+          </mat-select>
+          <mat-error>{{ getError('tenantId') }}</mat-error>
+        </mat-form-field>
+      </div>
+
+      <!-- Name -->
+      <div>
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>Name <span class="text-red-500">*</span></mat-label>
+          <input matInput formControlName="name" placeholder="e.g. Mathematics, English Language, Science">
+          <mat-icon matPrefix class="text-gray-400">book</mat-icon>
+          <mat-hint>The full name of the learning area</mat-hint>
+          <mat-error>{{ getError('name') }}</mat-error>
+        </mat-form-field>
+      </div>
+
+      <!-- Code — manual entry only, no auto-generation -->
+      <div>
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>Code</mat-label>
+          <input matInput formControlName="code" placeholder="e.g. MATH, ENG, SCI" maxlength="20">
+          <mat-icon matPrefix class="text-gray-400">tag</mat-icon>
+          <mat-hint>Short unique code (optional, max 20 chars)</mat-hint>
+          <mat-error>{{ getError('code') }}</mat-error>
+        </mat-form-field>
+      </div>
+
+      <!-- CBC Level -->
+      <div>
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>CBC Level <span class="text-red-500">*</span></mat-label>
+          <mat-select formControlName="level" placeholder="Select level">
+            <mat-option value="">Select level</mat-option>
+            <mat-option *ngFor="let l of cbcLevels" [value]="l.value">
+              {{ l.label }}
+            </mat-option>
+          </mat-select>
+          <mat-icon matPrefix class="text-gray-400">bar_chart</mat-icon>
+          <mat-hint>The CBC level this area belongs to</mat-hint>
+          <mat-error>{{ getError('level') }}</mat-error>
+        </mat-form-field>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0">
+      <button type="button" mat-stroked-button (click)="cancel()" [disabled]="isSaving">
+        Cancel
+      </button>
+      <button type="submit" mat-flat-button color="primary" [disabled]="isSaving"
+        class="bg-gradient-to-r from-indigo-600 to-violet-600 text-white min-w-28">
+        <mat-spinner *ngIf="isSaving" diameter="18" class="mr-2 inline-block"></mat-spinner>
+        <mat-icon *ngIf="!isSaving" class="mr-1">{{ isEditMode ? 'save' : 'add' }}</mat-icon>
+        {{ isSaving ? 'Saving…' : (isEditMode ? 'Update' : 'Create') }}
+      </button>
+    </div>
+
+  </form>
+<!-- </div> -->

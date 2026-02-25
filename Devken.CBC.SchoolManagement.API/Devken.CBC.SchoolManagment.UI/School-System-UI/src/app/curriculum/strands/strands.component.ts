@@ -21,7 +21,7 @@ import { LearningAreaService } from 'app/core/DevKenService/curriculum/learning-
 import { StrandService } from 'app/core/DevKenService/curriculum/strand.service';
 import { LearningAreaResponseDto } from '../types/learning-area.dto ';
 import { StrandResponseDto } from '../types/strand.dto ';
-import { StrandFormComponent } from './strand-form/strand-form.component';
+import { StrandFormComponent } from '../../dialog-modals/Curriculum/strand-form/strand-form.component';
 
 @Component({
   selector: 'app-strands',

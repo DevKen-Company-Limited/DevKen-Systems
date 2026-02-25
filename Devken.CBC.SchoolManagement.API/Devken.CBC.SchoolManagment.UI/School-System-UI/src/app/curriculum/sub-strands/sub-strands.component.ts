@@ -23,7 +23,7 @@ import { SubStrandService } from 'app/core/DevKenService/curriculum/substrand.se
 import { LearningAreaResponseDto } from '../types/learning-area.dto ';
 import { StrandResponseDto } from '../types/strand.dto ';
 import { SubStrandResponseDto } from '../types/substrand.dto ';
-import { SubStrandFormComponent } from './sub-strand-form/sub-strand-form.component';
+import { SubStrandFormComponent } from '../../dialog-modals/Curriculum/sub-strand-form/sub-strand-form.component';
 
 @Component({
   selector: 'app-sub-strands',

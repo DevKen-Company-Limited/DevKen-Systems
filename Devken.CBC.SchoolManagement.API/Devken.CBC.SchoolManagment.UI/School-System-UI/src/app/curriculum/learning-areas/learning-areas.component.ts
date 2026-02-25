@@ -22,7 +22,7 @@ import { DataTableComponent, TableColumn, TableAction, TableHeader, TableEmptySt
 import { CBCLevelOptions } from '../types/curriculum-enums';
 import { LearningAreaService } from 'app/core/DevKenService/curriculum/learning-area.service';
 import { LearningAreaResponseDto } from '../types/learning-area.dto ';
-import { LearningAreaFormComponent } from './learning-area-form/learning-area-form.component';
+import { LearningAreaFormComponent } from '../../dialog-modals/Curriculum/learning-area-form/learning-area-form.component';
 
 @Component({
   selector: 'app-learning-areas',
