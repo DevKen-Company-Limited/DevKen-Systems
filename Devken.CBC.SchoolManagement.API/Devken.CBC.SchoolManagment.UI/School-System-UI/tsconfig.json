@@ -1,45 +1,21 @@
-// /* To learn more about this file see: https://angular.io/config/tsconfig. */
-// {
-//     "compileOnSave": false,
-//     "compilerOptions": {
-//         "baseUrl": "./src",
-//         "outDir": "./dist/out-tsc",
-//         "esModuleInterop": true,
-//         "sourceMap": true,
-//         "declaration": false,
-//         "experimentalDecorators": true,
-//         "moduleResolution": "bundler",
-//         "importHelpers": true,
-//         "target": "ES2022",
-//         "module": "ES2022",
-//         "useDefineForClassFields": false,
-//         "lib": ["ES2022", "dom"]
-//     },
-//     "angularCompilerOptions": {
-//         "enableI18nLegacyMessageIdFormat": false
-//     }
-// }
-/* Updated tsconfig.json for Vercel deployment with absolute imports */
+/* To learn more about this file see: https://angular.io/config/tsconfig. */
 {
-  "compileOnSave": false,
-  "compilerOptions": {
-    "baseUrl": "./src",                    // root of your app folder
-    "paths": {
-      "app/*": ["app/*"]                   // allow absolute imports like "app/finance/..."
+    "compileOnSave": false,
+    "compilerOptions": {
+        "baseUrl": "./src",
+        "outDir": "./dist/out-tsc",
+        "esModuleInterop": true,
+        "sourceMap": true,
+        "declaration": false,
+        "experimentalDecorators": true,
+        "moduleResolution": "bundler",
+        "importHelpers": true,
+        "target": "ES2022",
+        "module": "ES2022",
+        "useDefineForClassFields": false,
+        "lib": ["ES2022", "dom"]
     },
-    "outDir": "./dist/out-tsc",
-    "esModuleInterop": true,
-    "sourceMap": true,
-    "declaration": false,
-    "experimentalDecorators": true,
-    "moduleResolution": "node",            // safer for Angular CLI builds
-    "importHelpers": true,
-    "target": "ES2022",
-    "module": "ES2022",
-    "useDefineForClassFields": false,
-    "lib": ["ES2022", "dom"]
-  },
-  "angularCompilerOptions": {
-    "enableI18nLegacyMessageIdFormat": false
-  }
+    "angularCompilerOptions": {
+        "enableI18nLegacyMessageIdFormat": false
+    }
 }
