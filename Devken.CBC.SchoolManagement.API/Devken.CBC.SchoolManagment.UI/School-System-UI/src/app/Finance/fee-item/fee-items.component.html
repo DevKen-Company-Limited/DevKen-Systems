@@ -1,0 +1,115 @@
+<div class="absolute inset-0 flex min-w-0 flex-col overflow-y-auto" cdkScrollable>
+
+  <!-- Page Header -->
+  <app-page-header
+    title="Fee Items"
+    description="Define reusable fee templates applied to student invoices"
+    icon="payments"
+    [breadcrumbs]="breadcrumbs"
+    [actionTemplate]="headerActions">
+  </app-page-header>
+
+  <!-- Header Actions Template -->
+  <ng-template #headerActions>
+  <button mat-flat-button
+    class="bg-white text-indigo-700 hover:bg-yellow-200 hover:text-indigo-900 shadow-lg transition-all hover:shadow-xl font-bold"
+    (click)="openCreate()">
+    <mat-icon class="icon-size-5">add</mat-icon>
+    <span class="ml-2">Add</span>
+  </button>
+</ng-template>
+
+  <!-- Body -->
+  <div class="flex flex-col flex-auto p-4 sm:p-6 gap-4 overflow-y-auto bg-gray-50 dark:bg-gray-900">
+
+    <!-- Stats -->
+    <app-stats-cards [cards]="statsCards" [columns]="4"></app-stats-cards>
+
+    <!-- Filter Panel -->
+    <app-filter-panel
+      [fields]="filterFields"
+      [showPanel]="showFilters"
+      [columns]="3"
+      (filterChange)="onFilterChange($event)"
+      (clearAll)="onClearFilters()"
+      (togglePanel)="showFilters = !showFilters">
+    </app-filter-panel>
+
+    <!-- Data Table -->
+    <app-data-table
+      [columns]="tableColumns"
+      [data]="paginatedData"
+      [actions]="tableActions"
+      [loading]="isLoading"
+      [header]="tableHeader"
+      [emptyState]="emptyState"
+      [cellTemplates]="cellTemplates"
+      (rowClick)="onRowClick($event)"
+      (columnHeaderClick)="onColumnHeaderClick($event)">
+
+      <!-- Name Cell -->
+      <ng-template #nameCell let-row>
+        <div class="flex flex-col">
+          <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ row.name }}</span>
+          <span class="text-xs text-indigo-500 font-mono">{{ row.code }}</span>
+        </div>
+      </ng-template>
+
+      <!-- Fee Type Cell -->
+      <ng-template #feeTypeCell let-row>
+        <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+          {{ resolveFeeType(row.feeType) }}
+        </span>
+      </ng-template>
+
+      <!-- Amount Cell -->
+      <ng-template #amountCell let-row>
+        <span class="text-sm font-bold text-gray-800 dark:text-gray-200">
+          KES {{ row.defaultAmount | number:'1.2-2' }}
+        </span>
+      </ng-template>
+
+      <!-- Level Cell -->
+      <ng-template #levelCell let-row>
+        <span class="text-sm text-gray-600 dark:text-gray-400">
+          {{ resolveLevel(row.applicableLevel) }}
+        </span>
+      </ng-template>
+
+      <!-- Mandatory Cell -->
+      <ng-template #mandatoryCell let-row>
+        <span class="px-2 py-0.5 rounded-full text-xs font-semibold"
+              [class.bg-green-100]="row.isMandatory" [class.text-green-700]="row.isMandatory"
+              [class.bg-gray-100]="!row.isMandatory" [class.text-gray-500]="!row.isMandatory">
+          {{ row.isMandatory ? 'Yes' : 'No' }}
+        </span>
+      </ng-template>
+
+      <!-- Status Cell -->
+      <ng-template #statusCell let-row>
+        <button class="px-3 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer border-0"
+                [class.bg-green-100]="row.isActive" [class.text-green-700]="row.isActive"
+                [class.bg-red-100]="!row.isActive"  [class.text-red-600]="!row.isActive"
+                (click)="$event.stopPropagation(); toggleActive(row)">
+          {{ row.isActive ? 'Active' : 'Inactive' }}
+        </button>
+      </ng-template>
+
+    </app-data-table>
+
+    <!-- Pagination -->
+    <app-pagination
+      *ngIf="filteredData.length > 0"
+      [currentPage]="currentPage"
+      [totalItems]="filteredData.length"
+      [itemsPerPage]="itemsPerPage"
+      [showItemsPerPageSelector]="true"
+      [itemsPerPageOptions]="[10, 25, 50]"
+      [showPageNumbers]="true"
+      itemLabel="fee items"
+      (pageChange)="onPageChange($event)"
+      (itemsPerPageChange)="onItemsPerPageChange($event)">
+    </app-pagination>
+
+  </div>
+</div>

@@ -1,0 +1,238 @@
+<!-- Dialog Header with Gradient -->
+<div class="bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 relative overflow-hidden rounded-t-xl px-6 py-5">
+  <div class="absolute inset-0 opacity-10 pointer-events-none">
+    <div class="absolute top-0 right-0 w-32 h-32 bg-yellow-200 rounded-full blur-2xl"></div>
+    <div class="absolute bottom-0 left-0 w-40 h-40 bg-cyan-300 rounded-full blur-2xl"></div>
+  </div>
+
+  <div class="relative z-10 flex items-center gap-3 pr-10">
+    <div class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center shrink-0">
+      <mat-icon class="text-white icon-size-6">{{ isEditMode ? 'edit' : 'payments' }}</mat-icon>
+    </div>
+    <div>
+      <h2 class="text-xl font-bold text-white m-0 leading-tight">{{ dialogTitle }}</h2>
+      <p class="text-white/80 text-sm mt-0.5 mb-0">{{ dialogSubtitle }}</p>
+    </div>
+  </div>
+
+  <button mat-icon-button
+          class="absolute top-3 right-3 text-white z-20"
+          (click)="onCancel()"
+          matTooltip="Close">
+    <mat-icon>close</mat-icon>
+  </button>
+</div>
+
+<!-- Saving Overlay -->
+<div *ngIf="isSaving"
+     class="absolute inset-0 bg-white/95 dark:bg-gray-900/95 z-50 flex items-center justify-center backdrop-blur-sm">
+  <div class="text-center p-8">
+    <div class="relative w-16 h-16 mx-auto mb-4">
+      <mat-spinner diameter="60"></mat-spinner>
+      <mat-icon class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-indigo-600">payments</mat-icon>
+    </div>
+    <p class="text-lg font-semibold text-gray-800 dark:text-gray-200">
+      {{ isEditMode ? 'Updating...' : 'Creating...' }}
+    </p>
+  </div>
+</div>
+
+<!-- Form Content -->
+<form [formGroup]="form" (ngSubmit)="onSubmit()" mat-dialog-content class="p-5">
+ 
+  <!-- School Selection (SuperAdmin only) -->
+    <mat-form-field appearance="outline" class="w-full mb-4" *ngIf="isSuperAdmin">
+      <mat-label>School <span class="text-red-500">*</span></mat-label>
+      <mat-select formControlName="schoolId">
+        <mat-option *ngFor="let school of schools" [value]="school.id">
+          {{ school.name }}
+        </mat-option>
+      </mat-select>
+      <mat-error *ngIf="form.get('schoolId')?.hasError('required')">
+        School is required
+      </mat-error>
+    </mat-form-field> 
+
+  <!-- Validation Summary -->
+  <div *ngIf="formSubmitted && form.invalid"
+       class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg">
+    <div class="flex items-center gap-2 text-red-800 dark:text-red-200">
+      <mat-icon class="icon-size-5">error_outline</mat-icon>
+      <span class="font-medium">Please fix the following errors:</span>
+    </div>
+    <ul class="mt-1 ml-6 text-sm text-red-700 dark:text-red-300 list-disc">
+      <li *ngIf="form.get('name')?.hasError('required')">Fee item name is required</li>
+      <li *ngIf="form.get('feeType')?.hasError('required')">Fee type is required</li>
+      <li *ngIf="form.get('defaultAmount')?.hasError('required')">Default amount is required</li>
+      <li *ngIf="form.get('defaultAmount')?.hasError('min')">Amount must be non-negative</li>
+    </ul>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+    <!-- ── Left Column ── -->
+    <div class="space-y-4">
+
+      <!-- Name -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Fee Item Name <span class="text-red-500">*</span></mat-label>
+        <input matInput formControlName="name"
+               placeholder="e.g. Tuition Fee – Grade 1" autocomplete="off">
+        <mat-icon matPrefix>label</mat-icon>
+        <mat-error>{{ getFieldError('name') }}</mat-error>
+      </mat-form-field>
+
+      <!-- Fee Type -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Fee Type <span class="text-red-500">*</span></mat-label>
+        <mat-select formControlName="feeType">
+          <mat-option [value]="''">— Select Type —</mat-option>
+          <mat-option *ngFor="let opt of feeTypeOptions" [value]="opt.value">
+            {{ opt.label }}
+          </mat-option>
+        </mat-select>
+        <mat-icon matPrefix>category</mat-icon>
+        <mat-error>{{ getFieldError('feeType') }}</mat-error>
+      </mat-form-field>
+
+      <!-- Default Amount -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Default Amount (KES) <span class="text-red-500">*</span></mat-label>
+        <input matInput type="number" min="0" formControlName="defaultAmount"
+               placeholder="0.00">
+        <mat-icon matPrefix>attach_money</mat-icon>
+        <mat-hint>Fallback when no fee structure matches</mat-hint>
+        <mat-error>{{ getFieldError('defaultAmount') }}</mat-error>
+      </mat-form-field>
+
+      <!-- Applicable Level -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Applicable Level</mat-label>
+        <mat-select formControlName="applicableLevel">
+          <mat-option [value]="null">All Levels</mat-option>
+          <mat-option *ngFor="let opt of levelOptions" [value]="opt.value">
+            {{ opt.label }}
+          </mat-option>
+        </mat-select>
+        <mat-icon matPrefix>school</mat-icon>
+        <mat-hint>Leave blank to apply to all CBC levels</mat-hint>
+      </mat-form-field>
+
+      <!-- Applicable To -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Applicable To</mat-label>
+        <mat-select formControlName="applicableTo">
+          <mat-option *ngFor="let opt of applicableToOptions" [value]="opt.value">
+            {{ opt.label }}
+          </mat-option>
+        </mat-select>
+        <mat-icon matPrefix>group</mat-icon>
+      </mat-form-field>
+
+      <!-- GL Code -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>GL Code</mat-label>
+        <input matInput formControlName="glCode" placeholder="e.g. 4000-001">
+        <mat-icon matPrefix>account_tree</mat-icon>
+        <mat-hint>General ledger account code</mat-hint>
+        <mat-error>{{ getFieldError('glCode') }}</mat-error>
+      </mat-form-field>
+    </div>
+
+    <!-- ── Right Column ── -->
+    <div class="space-y-4">
+
+      <!-- Description -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Description</mat-label>
+        <textarea matInput formControlName="description"
+                  placeholder="Optional description..." rows="3" maxlength="500"></textarea>
+        <mat-icon matPrefix>description</mat-icon>
+        <mat-hint align="end">{{ descriptionLength }}/500</mat-hint>
+        <mat-error>{{ getFieldError('description') }}</mat-error>
+      </mat-form-field>
+
+      <!-- Is Mandatory -->
+      <div class="border-2 border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <mat-icon class="text-indigo-600 icon-size-5">lock</mat-icon>
+            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Mandatory Fee</span>
+          </div>
+          <mat-slide-toggle formControlName="isMandatory" color="primary"></mat-slide-toggle>
+        </div>
+        <p class="text-xs text-gray-500 dark:text-gray-400">Students are required to pay this fee</p>
+      </div>
+
+      <!-- Is Active -->
+      <div class="border-2 border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <mat-icon class="text-green-600 icon-size-5">check_circle</mat-icon>
+            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Active</span>
+          </div>
+          <mat-slide-toggle formControlName="isActive" color="primary"></mat-slide-toggle>
+        </div>
+        <p class="text-xs text-gray-500 dark:text-gray-400">Fee item is currently in use</p>
+      </div>
+
+      <!-- Is Recurring -->
+      <div class="border-2 border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <mat-icon class="text-violet-600 icon-size-5">repeat</mat-icon>
+            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Recurring Fee</span>
+          </div>
+          <mat-slide-toggle formControlName="isRecurring" color="accent"></mat-slide-toggle>
+        </div>
+        <p class="text-xs text-gray-500 dark:text-gray-400">This fee repeats on a schedule</p>
+      </div>
+
+      <!-- Recurrence (conditional) -->
+      <mat-form-field *ngIf="showRecurrence" appearance="outline" class="w-full">
+        <mat-label>Recurrence</mat-label>
+        <mat-select formControlName="recurrence">
+          <mat-option *ngFor="let opt of recurrenceOptions" [value]="opt.value">
+            {{ opt.label }}
+          </mat-option>
+        </mat-select>
+        <mat-icon matPrefix>schedule</mat-icon>
+      </mat-form-field>
+
+      <!-- Is Taxable -->
+      <div class="border-2 border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <mat-icon class="text-amber-600 icon-size-5">receipt_long</mat-icon>
+            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Taxable</span>
+          </div>
+          <mat-slide-toggle formControlName="isTaxable" color="warn"></mat-slide-toggle>
+        </div>
+        <p class="text-xs text-gray-500 dark:text-gray-400">Tax is applicable to this fee</p>
+      </div>
+
+      <!-- Tax Rate (conditional) -->
+      <mat-form-field *ngIf="showTaxRate" appearance="outline" class="w-full">
+        <mat-label>Tax Rate (%)</mat-label>
+        <input matInput type="number" min="0" max="100" formControlName="taxRate"
+               placeholder="e.g. 16">
+        <mat-icon matPrefix>percent</mat-icon>
+        <mat-hint>Percentage, e.g. 16 for 16% VAT</mat-hint>
+        <mat-error>{{ getFieldError('taxRate') }}</mat-error>
+      </mat-form-field>
+
+    </div>
+  </div>
+</form>
+
+<!-- Dialog Actions -->
+<div mat-dialog-actions class="flex justify-end gap-3 px-5 py-4 border-t border-gray-200 dark:border-gray-700">
+  <button mat-button type="button" (click)="onCancel()" [disabled]="isSaving">
+    Cancel
+  </button>
+  <button mat-flat-button color="primary" type="button"
+          (click)="onSubmit()" [disabled]="isSaving">
+    <mat-icon class="icon-size-5 mr-1">{{ isEditMode ? 'save' : 'check_circle' }}</mat-icon>
+    {{ isSaving ? 'Saving...' : (isEditMode ? 'Update' : 'Submit') }}
+  </button>
+</div>

@@ -3,6 +3,7 @@ using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Acad
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academics;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Assessments;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Curriculum;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Finance;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Identity;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.NumberSeries;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Payments;
@@ -16,6 +17,7 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
 {
     public interface IRepositoryManager
     {
+
         // ================= ACADEMIC =================
         IStudentRepository Student { get; }
         ITeacherRepository Teacher { get; }
@@ -33,6 +35,8 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
         ISubStrandRepository SubStrand { get; }
         ILearningOutcomeRepository LearningOutcome { get; }
 
+        // ================= FINANCE =================
+        IFeeItemRepository FeeItem { get; }   
         /// <summary>
         /// Exposes the underlying DbContext for advanced scenarios like execution strategy.
         /// </summary>

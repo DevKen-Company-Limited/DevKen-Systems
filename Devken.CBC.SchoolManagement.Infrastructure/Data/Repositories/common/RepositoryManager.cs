@@ -4,6 +4,7 @@ using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Acad
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Assessments;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Curriculum;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Finance;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Identity;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.NumberSeries;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Payments;
@@ -14,6 +15,7 @@ using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academic;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academics;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessments;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Curriculum;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Finance;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Identity;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSeries;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Payments;
@@ -72,6 +74,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         // ── Payments ─────────────────────────────────────────────────────────
         private readonly Lazy<IMpesaPaymentRepository> _mpesaPaymentRepository;
 
+        // ── Finance─────────────────────────────────────────────────────────
+        private readonly Lazy<IFeeItemRepository> _feeItemRepository;
         public RepositoryManager(AppDbContext context, TenantContext tenantContext)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
@@ -116,6 +120,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
 
             // Payments
             _mpesaPaymentRepository = new Lazy<IMpesaPaymentRepository>(() => new MpesaPaymentRepository(_context, _tenantContext));
+
+            // Finance
+            _feeItemRepository = new Lazy<IFeeItemRepository>(() => new FeeItemRepository(_context, _tenantContext));
         }
 
         // ── Academic Properties ──────────────────────────────────────────────
@@ -155,6 +162,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
 
         // ── Payment Properties ───────────────────────────────────────────────
         public IMpesaPaymentRepository MpesaPayment => _mpesaPaymentRepository.Value;
+
+        // ── Finance Properties ───────────────────────────────────────────────
+        public IFeeItemRepository FeeItem => _feeItemRepository.Value;
 
         // ── Number Series Properties ─────────────────────────────────────────
         public IDocumentNumberSeriesRepository DocumentNumberSeries => _documentNumberSeriesRepository.Value;
