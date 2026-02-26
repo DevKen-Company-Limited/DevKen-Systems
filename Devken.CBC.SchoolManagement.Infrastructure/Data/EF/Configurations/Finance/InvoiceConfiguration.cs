@@ -18,17 +18,54 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Fina
         {
             builder.ToTable("Invoices");
 
-            builder.Property(x => x.InvoiceNumber).HasMaxLength(50).IsRequired();
-            builder.Property(x => x.TotalAmount).HasColumnType("decimal(18,2)");
-            builder.Property(x => x.DiscountAmount).HasColumnType("decimal(18,2)");
-            builder.Property(x => x.AmountPaid).HasColumnType("decimal(18,2)");
-            builder.Property(x => x.StatusInvoice).HasConversion<string>().HasMaxLength(20);
-            builder.Property(x => x.Description).HasMaxLength(500);
-            builder.Property(x => x.Notes).HasMaxLength(1000);
+            builder.HasKey(x => x.Id);
 
-            // Ignore runtime-computed properties
+            // ───────────── Tenant Query Filter ─────────────
+            builder.HasQueryFilter(i =>
+                _tenantContext.TenantId == null ||
+                i.TenantId == _tenantContext.TenantId);
+
+            // ───────────── Identity ─────────────
+            builder.Property(x => x.InvoiceNumber)
+                   .IsRequired()
+                   .HasMaxLength(50);
+
+            // ───────────── Financial Precision (VERY IMPORTANT) ─────────────
+            builder.Property(x => x.TotalAmount)
+                   .HasPrecision(18, 2);
+
+            builder.Property(x => x.DiscountAmount)
+                   .HasPrecision(18, 2);
+
+            // 🔥 AmountPaid removed — DO NOT configure it anymore
+
+            // ───────────── Enum Configuration ─────────────
+            // Store as string (readable) OR int (performance)
+            builder.Property(x => x.StatusInvoice)
+                   .HasConversion<string>()
+                   .HasMaxLength(20)
+                   .IsRequired();
+
+            // ───────────── Text Fields ─────────────
+            builder.Property(x => x.Description)
+                   .HasMaxLength(500);
+
+            builder.Property(x => x.Notes)
+                   .HasMaxLength(1000);
+
+            // ───────────── Required Dates ─────────────
+            builder.Property(x => x.InvoiceDate)
+                   .IsRequired();
+
+            builder.Property(x => x.DueDate)
+                   .IsRequired();
+
+            // ───────────── Ignore Computed Properties ─────────────
             builder.Ignore(x => x.Balance);
             builder.Ignore(x => x.IsOverdue);
+            builder.Ignore(x => x.AmountPaid); // Now computed from Payments
+
+            // ───────────── Relationships ─────────────
 
             builder.HasOne(x => x.Student)
                    .WithMany()
@@ -50,9 +87,16 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Fina
                    .HasForeignKey(x => x.ParentId)
                    .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasIndex(x => new { x.TenantId, x.InvoiceNumber }).IsUnique();
+            // ───────────── Indexes (Enterprise-Level) ─────────────
+
+            builder.HasIndex(x => new { x.TenantId, x.InvoiceNumber })
+                   .IsUnique();
+
             builder.HasIndex(x => new { x.TenantId, x.StudentId, x.StatusInvoice });
-            builder.HasIndex(x => x.DueDate);
+
+            builder.HasIndex(x => new { x.TenantId, x.DueDate });
+
+            builder.HasIndex(x => new { x.TenantId, x.ParentId });
         }
     }
 }

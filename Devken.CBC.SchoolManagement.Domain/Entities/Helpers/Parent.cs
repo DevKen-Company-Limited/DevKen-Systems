@@ -4,20 +4,19 @@ using Devken.CBC.SchoolManagement.Domain.Entities.Finance;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Domain.Entities.Helpers
 {
     public class Parent : TenantBaseEntity<Guid>
     {
+        // ───────────── Basic Information ─────────────
+
         [Required]
         [MaxLength(100)]
         public string FirstName { get; set; } = null!;
 
         [MaxLength(100)]
-        public string? MiddleName { get; set; }
+        public string MiddleName { get; set; }
 
         [Required]
         [MaxLength(100)]
@@ -26,20 +25,61 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Helpers
         [MaxLength(20)]
         public string? PhoneNumber { get; set; }
 
-        [MaxLength(100)]
+        [MaxLength(20)]
+        public string? AlternativePhoneNumber { get; set; }
+
+        [MaxLength(150)]
         public string? Email { get; set; }
 
         [MaxLength(500)]
         public string? Address { get; set; }
 
-        [MaxLength(50)]
-        public string? Occupation { get; set; }
+        // ───────────── Identity Details (Kenya Context) ─────────────
+
+        [MaxLength(20)]
+        public string? NationalIdNumber { get; set; }
+
+        [MaxLength(20)]
+        public string? PassportNumber { get; set; }
+
+        // ───────────── Employment Details ─────────────
 
         [MaxLength(100)]
+        public string? Occupation { get; set; }
+
+        [MaxLength(150)]
         public string? Employer { get; set; }
 
-        // Navigation Properties
+        [MaxLength(100)]
+        public string? EmployerContact { get; set; }
+
+        // ───────────── Relationship Info ─────────────
+
+        [Required]
+        [MaxLength(50)]
+        public string RelationshipToStudent { get; set; } = null!;
+        // Example: Father, Mother, Guardian
+
+        public bool IsPrimaryContact { get; set; } = true;
+
+        public bool IsEmergencyContact { get; set; } = true;
+
+        // ───────────── Portal Access ─────────────
+
+        public bool HasPortalAccess { get; set; } = false;
+
+        [MaxLength(256)]
+        public string? PortalUserId { get; set; }
+        // If linked to Identity user table
+
+        // ───────────── Status ─────────────
+
+        public bool IsActive { get; set; } = true;
+
+        // ───────────── Navigation Properties ─────────────
+
         public ICollection<Student> Students { get; set; } = new List<Student>();
+
         public ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
     }
 }

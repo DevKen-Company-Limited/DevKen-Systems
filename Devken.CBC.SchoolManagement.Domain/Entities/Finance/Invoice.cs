@@ -9,112 +9,147 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Finance
 {
     public class Invoice : TenantBaseEntity<Guid>
     {
-        // ─── Identity ───────────────────────────────────────────────────────────────
+        // ─── Identity ─────────────────────────────────────────────
 
         [Required]
         [MaxLength(50)]
-        public string InvoiceNumber { get; set; } = null!;
+        public string InvoiceNumber { get; private set; } = null!;
 
-        // ─── Foreign Keys ────────────────────────────────────────────────────────────
+        // ─── Foreign Keys ──────────────────────────────────────────
 
-        public Guid StudentId { get; set; }
-        public Guid AcademicYearId { get; set; }
-        public Guid? TermId { get; set; }
-        public Guid? ParentId { get; set; }
+        public Guid StudentId { get; private set; }
+        public Guid AcademicYearId { get; private set; }
+        public Guid? TermId { get; private set; }
+        public Guid? ParentId { get; private set; }
 
-        // ─── Dates ───────────────────────────────────────────────────────────────────
+        // ─── Dates ─────────────────────────────────────────────────
 
-        public DateTime InvoiceDate { get; set; }
-        public DateTime DueDate { get; set; }
+        [Required]
+        public DateTime InvoiceDate { get; private set; }
 
-        // ─── Financials ──────────────────────────────────────────────────────────────
+        [Required]
+        public DateTime DueDate { get; private set; }
+
+        // ─── Financials ────────────────────────────────────────────
 
         [MaxLength(500)]
-        public string? Description { get; set; }
+        public string? Description { get; private set; }
 
-        public decimal TotalAmount { get; set; }
-        public decimal DiscountAmount { get; set; } = 0.0m;
-        public decimal AmountPaid { get; set; } = 0.0m;
+        public decimal TotalAmount { get; private set; }
 
-        /// <summary>Outstanding balance — not stored; computed at runtime.</summary>
+        public decimal DiscountAmount { get; private set; } = 0m;
+
+        // 🔥 REMOVE stored AmountPaid (computed instead)
+        [NotMapped]
+        public decimal AmountPaid => Payments.Sum(p => p.Amount);
+
         [NotMapped]
         public decimal Balance => TotalAmount - DiscountAmount - AmountPaid;
 
-        // ─── Status ──────────────────────────────────────────────────────────────────
+        // ─── Status ────────────────────────────────────────────────
 
-        public InvoiceStatus StatusInvoice { get; set; } = InvoiceStatus.Pending;
+        public InvoiceStatus StatusInvoice { get; private set; } = InvoiceStatus.Pending;
 
         [NotMapped]
-        public bool IsOverdue => DateTime.Today > DueDate && StatusInvoice == InvoiceStatus.Pending;
+        public bool IsOverdue =>
+            DateTime.Today > DueDate &&
+            StatusInvoice is InvoiceStatus.Pending or InvoiceStatus.PartiallyPaid;
 
-        // ─── Meta ────────────────────────────────────────────────────────────────────
+        // ─── Meta ─────────────────────────────────────────────────
 
         [MaxLength(1000)]
-        public string? Notes { get; set; }
+        public string? Notes { get; private set; }
 
-        // ─── Navigation ──────────────────────────────────────────────────────────────
+        // ─── Navigation ───────────────────────────────────────────
 
-        public Student Student { get; set; } = null!;
-        public AcademicYear AcademicYear { get; set; } = null!;
-        public Term? Term { get; set; }
-        public Parent? Parent { get; set; }
-        public ICollection<InvoiceItem> Items { get; set; } = new List<InvoiceItem>();
-        public ICollection<Payment> Payments { get; set; } = new List<Payment>();
-        public ICollection<CreditNote> CreditNotes { get; set; } = new List<CreditNote>();
-        public PaymentPlan? PaymentPlan { get; set; }
+        public Student Student { get; private set; } = null!;
+        public AcademicYear AcademicYear { get; private set; } = null!;
+        public Term? Term { get; private set; }
+        public Parent? Parent { get; private set; }
 
-        // ─── Domain Methods ──────────────────────────────────────────────────────────
+        public ICollection<InvoiceItem> Items { get; private set; } = new List<InvoiceItem>();
+        public ICollection<Payment> Payments { get; private set; } = new List<Payment>();
+        public ICollection<CreditNote> CreditNotes { get; private set; } = new List<CreditNote>();
 
-        /// <summary>
-        /// Recalculates TotalAmount from line items. Call after adding/removing items.
-        /// </summary>
+        public PaymentPlan? PaymentPlan { get; private set; }
+
+        // ───────────────────────────────────────────────────────────
+        // DOMAIN METHODS (SAFE)
+        // ───────────────────────────────────────────────────────────
+
         public void RecalculateTotals()
         {
+            if (!Items.Any())
+                throw new InvalidOperationException("Invoice must contain at least one item.");
+
             TotalAmount = Items.Sum(i => i.NetAmount);
+
+            if (TotalAmount < 0)
+                throw new InvalidOperationException("Total amount cannot be negative.");
+
+            UpdateStatus();
         }
 
-        /// <summary>
-        /// Records a payment and updates status accordingly.
-        /// Always call this instead of setting AmountPaid directly.
-        /// </summary>
-        public void ApplyPayment(decimal amount)
+        public void ApplyPayment(Payment payment)
         {
-            if (amount <= 0)
+            if (payment == null)
+                throw new ArgumentNullException(nameof(payment));
+
+            if (payment.Amount <= 0)
                 throw new InvalidOperationException("Payment amount must be positive.");
 
-            AmountPaid += amount;
+            if (payment.Amount > Balance)
+                throw new InvalidOperationException("Payment exceeds outstanding balance.");
+
+            Payments.Add(payment);
+
             UpdateStatus();
         }
 
-        /// <summary>
-        /// Applies a credit note to this invoice.
-        /// </summary>
-        public void ApplyCreditNote(decimal creditAmount)
+        public void ApplyCredit(decimal creditAmount)
         {
             if (creditAmount <= 0)
-                throw new InvalidOperationException("Credit amount must be positive.");
+                throw new InvalidOperationException("Credit must be positive.");
+
+            if (creditAmount > Balance)
+                throw new InvalidOperationException("Credit exceeds outstanding balance.");
 
             DiscountAmount += creditAmount;
+
             UpdateStatus();
         }
 
-        /// <summary>
-        /// Recomputes the invoice status from current financial values.
-        /// </summary>
-        /// public ICollection<CreditNote> CreditNotes { get; set; } = new List<CreditNote>();
-        public void UpdateStatus()
+        public void Cancel()
         {
-            if (StatusInvoice == InvoiceStatus.Cancelled || StatusInvoice == InvoiceStatus.Refunded)
-                return; // Do not auto-change terminal states.
+            if (StatusInvoice == InvoiceStatus.Paid)
+                throw new InvalidOperationException("Cannot cancel a paid invoice.");
 
-            var effective = TotalAmount - DiscountAmount;
+            StatusInvoice = InvoiceStatus.Cancelled;
+        }
 
-            StatusInvoice = AmountPaid switch
+        private void UpdateStatus()
+        {
+            if (StatusInvoice is InvoiceStatus.Cancelled or InvoiceStatus.Refunded)
+                return;
+
+            if (Balance <= 0)
             {
-                0 => DateTime.Today > DueDate ? InvoiceStatus.Overdue : InvoiceStatus.Pending,
-                var paid when paid >= effective => InvoiceStatus.Paid,
-                _ => DateTime.Today > DueDate ? InvoiceStatus.Overdue : InvoiceStatus.PartiallyPaid
-            };
+                StatusInvoice = InvoiceStatus.Paid;
+                return;
+            }
+
+            if (AmountPaid > 0)
+            {
+                StatusInvoice = DateTime.Today > DueDate
+                    ? InvoiceStatus.Overdue
+                    : InvoiceStatus.PartiallyPaid;
+
+                return;
+            }
+
+            StatusInvoice = DateTime.Today > DueDate
+                ? InvoiceStatus.Overdue
+                : InvoiceStatus.Pending;
         }
     }
 }
