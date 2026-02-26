@@ -246,7 +246,6 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Assessments
                 SpecificLearningOutcome = r.SpecificLearningOutcome?.Trim(),
             };
 
-            // Cast enum-compatible fields
             if (r.TargetLevel is Domain.Enums.CBCLevel cbcLevel)
                 entity.TargetLevel = cbcLevel;
 
@@ -797,12 +796,25 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Assessments
             ScoreCount = c.Scores?.Count ?? 0,
         };
 
+        // ══════════════════════════════════════════════════════════════════════
+        // FIX: All three response mappers now include SchoolId = x.TenantId
+        //
+        // The TenantId column in the Assessments table IS the school's ID.
+        // By exposing it as SchoolId in the response DTO, the Angular edit
+        // component can read data.schoolId directly without any extra lookup,
+        // and the school dropdown will pre-populate correctly for SuperAdmin.
+        // ══════════════════════════════════════════════════════════════════════
+
         private static AssessmentResponse MapFormativeToResponse(FormativeAssessment f) => new()
         {
             Id = f.Id,
             AssessmentType = AssessmentTypeDto.Formative,
             Title = f.Title,
             Description = f.Description,
+
+            // ── FIX: expose TenantId as SchoolId ──────────────────────────
+            SchoolId = f.TenantId,
+
             TeacherId = f.TeacherId,
             TeacherName = f.Teacher != null ? $"{f.Teacher.FirstName} {f.Teacher.LastName}".Trim() : "-",
             SubjectId = f.SubjectId,
@@ -841,6 +853,10 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Assessments
             AssessmentType = AssessmentTypeDto.Summative,
             Title = s.Title,
             Description = s.Description,
+
+            // ── FIX: expose TenantId as SchoolId ──────────────────────────
+            SchoolId = s.TenantId,
+
             TeacherId = s.TeacherId,
             TeacherName = s.Teacher != null ? $"{s.Teacher.FirstName} {s.Teacher.LastName}".Trim() : "-",
             SubjectId = s.SubjectId,
@@ -859,7 +875,9 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Assessments
             ScoreCount = s.Scores?.Count ?? 0,
 
             ExamType = s.ExamType,
-            Duration = s.Duration,
+            Duration = s.Duration.HasValue
+            ? (int?)s.Duration.Value.TotalMinutes
+            : null,
             NumberOfQuestions = s.NumberOfQuestions,
             PassMark = s.PassMark,
             HasPracticalComponent = s.HasPracticalComponent,
@@ -874,6 +892,10 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Assessments
             AssessmentType = AssessmentTypeDto.Competency,
             Title = c.Title,
             Description = c.Description,
+
+            // ── FIX: expose TenantId as SchoolId ──────────────────────────
+            SchoolId = c.TenantId,
+
             TeacherId = c.TeacherId,
             TeacherName = c.Teacher != null ? $"{c.Teacher.FirstName} {c.Teacher.LastName}".Trim() : "-",
             SubjectId = c.SubjectId,

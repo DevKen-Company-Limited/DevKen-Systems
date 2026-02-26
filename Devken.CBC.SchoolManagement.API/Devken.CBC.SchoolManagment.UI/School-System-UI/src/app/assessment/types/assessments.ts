@@ -46,6 +46,7 @@ export const ASSESSMENT_TYPE_COLORS: Record<string, string> = {
 // ─────────────────────────────────────────────────────────────────────────
 
 export interface AssessmentListItem {
+  classId(classId: any): unknown;
   id:             string;
   title:          string;
   assessmentType: AssessmentType;
@@ -69,6 +70,7 @@ export interface AssessmentListItem {
 // ─────────────────────────────────────────────────────────────────────────
 
 export interface AssessmentResponse {
+  schoolName: any;
   // Shared
   id:               string;
   assessmentType:   AssessmentType;
@@ -183,7 +185,7 @@ export interface AssessmentScoreResponse {
 // ─────────────────────────────────────────────────────────────────────────
 
 export interface CreateAssessmentRequest {
-  assessmentType: string;   // "Formative" | "Summative" | "Competency"
+  assessmentType: any;   // "Formative" | "Summative" | "Competency"
 
   // Tenant resolution
   tenantId?:  string;

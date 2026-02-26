@@ -1,4 +1,5 @@
 <!-- assessment-form.component.html -->
+<!-- Passes [schoolId]="activeSchoolId" to details step for SuperAdmin cascade -->
 <div class="w-full min-h-screen bg-gray-50 dark:bg-gray-900">
   <div class="flex h-screen max-w-[1920px] mx-auto">
 
@@ -122,11 +123,19 @@
             <span class="ml-2 hidden sm:inline">Back to Assessments</span>
           </button>
         </div>
-        <div class="flex items-center gap-2 text-xs sm:text-sm">
+
+        <!-- Loading indicator when fetching school-cascaded lookups -->
+        <div *ngIf="isLoadingLookups" class="flex items-center gap-2 text-sm text-indigo-600">
+          <mat-progress-spinner mode="indeterminate" diameter="18" strokeWidth="2"></mat-progress-spinner>
+          <span class="hidden sm:inline">Loading data…</span>
+        </div>
+
+        <div *ngIf="!isLoadingLookups" class="flex items-center gap-2 text-xs sm:text-sm">
           <span class="text-gray-500 dark:text-gray-400">Step {{ currentStep + 1 }} of {{ steps.length }}</span>
           <span class="text-gray-400 hidden sm:inline">—</span>
           <span class="font-medium text-gray-900 dark:text-white hidden sm:inline">{{ steps[currentStep]?.label }}</span>
         </div>
+
         <button mat-stroked-button color="primary" [disabled]="isSaving" (click)="saveDraft()">
           <mat-icon svgIcon="heroicons_outline:bookmark"></mat-icon>
           <span class="ml-2 hidden sm:inline">{{ isSaving ? 'Saving…' : 'Save Draft' }}</span>
@@ -136,6 +145,7 @@
       <!-- Step content -->
       <div class="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8" [@stepTransition]="currentStep">
 
+        <!-- Step 0 — Basic Info -->
         <app-assessment-info-step
           *ngIf="currentStep === 0"
           [formData]="formSections['info']"
@@ -148,21 +158,26 @@
           [isEditMode]="isEditMode"
           [isSuperAdmin]="isSuperAdmin"
           (formChanged)="onSectionChanged('info', $event)"
-          (formValid)="onSectionValidChanged('info', $event)">
+          (formValid)="onSectionValidChanged('info', $event)"
+          (schoolChanged)="onSchoolChanged($event)">
         </app-assessment-info-step>
 
+        <!-- Step 1 — Details
+             NOTE: strands / subStrands / learningOutcomes are NO LONGER
+             passed here. The details step loads them itself via its
+             injected AssessmentService.
+             [schoolId] is passed so SuperAdmin gets school-scoped data.
+        -->
         <app-assessment-details-step
           *ngIf="currentStep === 1"
           [formData]="formSections['details']"
-          [assessmentTypes]="assessmentTypes"
-          [strands]="strands"
-          [subStrands]="subStrands"
-          [learningOutcomes]="learningOutcomes"
+          [schoolId]="activeSchoolId"
           [isEditMode]="isEditMode"
           (formChanged)="onSectionChanged('details', $event)"
           (formValid)="onSectionValidChanged('details', $event)">
         </app-assessment-details-step>
 
+        <!-- Step 2 — Review -->
         <app-assessment-review-step
           *ngIf="currentStep === 2"
           [formSections]="formSections"
@@ -171,6 +186,7 @@
           [subjects]="subjects"
           [terms]="terms"
           [academicYears]="academicYears"
+          [schools]="schools"
           [steps]="steps"
           [completedSteps]="completedSteps"
           (editSection)="navigateToStep($event)">
@@ -186,6 +202,7 @@
           <span class="ml-2 hidden sm:inline">Previous</span>
         </button>
 
+        <!-- Step dots -->
         <div class="flex gap-2">
           <span *ngFor="let step of steps; let i = index"
             class="h-2 rounded-full transition-all"
@@ -197,15 +214,18 @@
           </span>
         </div>
 
+        <!-- Next / Submit -->
         <button *ngIf="currentStep < steps.length - 1" mat-flat-button color="primary"
-          (click)="nextStep()" [disabled]="!canProceed()">
+          (click)="nextStep()" [disabled]="!canProceed() || isLoadingLookups">
           <span class="mr-2">Next</span>
           <mat-icon svgIcon="heroicons_outline:chevron-right"></mat-icon>
         </button>
 
         <button *ngIf="currentStep === steps.length - 1" mat-flat-button color="primary"
           (click)="submitForm()" [disabled]="!allStepsCompleted() || isSubmitting">
-          <mat-icon svgIcon="heroicons_outline:check-circle"></mat-icon>
+          <mat-progress-spinner *ngIf="isSubmitting" mode="indeterminate" diameter="18"
+            strokeWidth="2" class="mr-2 inline-block"></mat-progress-spinner>
+          <mat-icon *ngIf="!isSubmitting" svgIcon="heroicons_outline:check-circle"></mat-icon>
           <span class="ml-2">{{ isSubmitting ? 'Saving…' : (isEditMode ? 'Update' : 'Submit') }}</span>
         </button>
       </footer>

@@ -42,21 +42,29 @@ namespace Devken.CBC.SchoolManagement.Application.DTOs.Assessments
     // ─────────────────────────────────────────────────────────────────────────
     public class AssessmentResponse
     {
-        // Shared
         public Guid Id { get; set; }
         public AssessmentTypeDto AssessmentType { get; set; }
-        public string Title { get; set; } = null!;
+        public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }
-        public Guid TeacherId { get; set; }
-        public string TeacherName { get; set; } = "-";
-        public Guid SubjectId { get; set; }
-        public string SubjectName { get; set; } = "-";
-        public Guid ClassId { get; set; }
-        public string ClassName { get; set; } = "-";
-        public Guid TermId { get; set; }
-        public string TermName { get; set; } = "-";
-        public Guid AcademicYearId { get; set; }
-        public string AcademicYearName { get; set; } = "-";
+
+        // ── FIX: School that owns this assessment (= TenantId in DB) ──────────
+        // Previously missing from the API response, causing the school dropdown
+        // to be blank for SuperAdmin on edit. Now returned as schoolId in JSON.
+        public Guid SchoolId { get; set; }
+
+        // ── People & Class ────────────────────────────────────────────────────
+        public Guid? TeacherId { get; set; }
+        public string? TeacherName { get; set; }
+        public Guid? SubjectId { get; set; }
+        public string? SubjectName { get; set; }
+        public Guid? ClassId { get; set; }
+        public string? ClassName { get; set; }
+        public Guid? TermId { get; set; }
+        public string? TermName { get; set; }
+        public Guid? AcademicYearId { get; set; }
+        public string? AcademicYearName { get; set; }
+
+        // ── Core fields ───────────────────────────────────────────────────────
         public DateTime AssessmentDate { get; set; }
         public decimal MaximumScore { get; set; }
         public bool IsPublished { get; set; }
@@ -81,7 +89,7 @@ namespace Devken.CBC.SchoolManagement.Application.DTOs.Assessments
 
         // ── Summative-specific ────────────────────────────────────────────────
         public string? ExamType { get; set; }
-        public TimeSpan? Duration { get; set; }
+        public int? Duration { get; set; }
         public int? NumberOfQuestions { get; set; }
         public decimal? PassMark { get; set; }
         public bool? HasPracticalComponent { get; set; }
@@ -93,9 +101,9 @@ namespace Devken.CBC.SchoolManagement.Application.DTOs.Assessments
         public string? CompetencyName { get; set; }
         public string? CompetencyStrand { get; set; }
         public string? CompetencySubStrand { get; set; }
-        public object? TargetLevel { get; set; }
+        public Domain.Enums.CBCLevel? TargetLevel { get; set; }
         public string? PerformanceIndicators { get; set; }
-        public object? AssessmentMethod { get; set; }
+        public AssessmentMethod? AssessmentMethod { get; set; }
         public string? RatingScale { get; set; }
         public bool? IsObservationBased { get; set; }
         public string? ToolsRequired { get; set; }

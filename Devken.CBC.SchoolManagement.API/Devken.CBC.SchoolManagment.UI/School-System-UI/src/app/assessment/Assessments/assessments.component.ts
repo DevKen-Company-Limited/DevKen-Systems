@@ -169,6 +169,17 @@ export class AssessmentsComponent implements OnInit, AfterViewInit, OnDestroy {
   currentPage     = 1;
   itemsPerPage    = 10;
 
+  // ── FIX: Map numeric AssessmentType → human-readable label ────────
+  // getAssessmentTypeLabel() returns the string name for a given enum value.
+  // We expose it as a method so the HTML template can call it directly,
+  // and we also use it in the type-badge ngClass so the template never
+  // has to compare raw numbers against strings like 'Formative'.
+  readonly AssessmentType = AssessmentType; // expose enum to template
+
+  getTypeName(type: AssessmentType | number): string {
+    return getAssessmentTypeLabel(type as AssessmentType) ?? 'Unknown';
+  }
+
   private _filters = {
     search: '', assessmentType: 'all', classId: 'all', published: 'all',
   };
