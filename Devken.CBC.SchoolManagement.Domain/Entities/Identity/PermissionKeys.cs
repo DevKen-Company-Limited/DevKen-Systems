@@ -27,11 +27,13 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
         public const string DocumentNumberSeriesWrite = "DocumentNumberSeries.Write";
         public const string DocumentNumberSeriesDelete = "DocumentNumberSeries.Delete";
 
-        // ── Academic ─────────────────────────────────────
+        // ── Academic Year ─────────────────────────────────
         public const string AcademicYearRead = "AcademicYear.Read";
         public const string AcademicYearWrite = "AcademicYear.Write";
         public const string AcademicYearDelete = "AcademicYear.Delete";
         public const string AcademicYearClose = "AcademicYear.Close";
+
+        // ── Academic ─────────────────────────────────────
         public const string StudentRead = "Student.Read";
         public const string StudentWrite = "Student.Write";
         public const string StudentDelete = "Student.Delete";
@@ -49,7 +51,6 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
         public const string GradeRead = "Grade.Read";
         public const string GradeWrite = "Grade.Write";
 
-
         // ── Assessment ───────────────────────────────────
         public const string AssessmentRead = "Assessment.Read";
         public const string AssessmentWrite = "Assessment.Write";
@@ -57,7 +58,13 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
         public const string ReportRead = "Report.Read";
         public const string ReportWrite = "Report.Write";
 
-        // ── Finance ──────────────────────────────────────
+        // ── Finance (general — covers FeeItem, FeeStructure, etc.) ──────────
+        /// <summary>Broad read access to all finance resources (fees, fee structures, invoices, payments).</summary>
+        public const string FinanceRead = "Finance.Read";
+        /// <summary>Broad write access to all finance resources (fees, fee structures, invoices, payments).</summary>
+        public const string FinanceWrite = "Finance.Write";
+
+        // ── Finance (granular) ───────────────────────────
         public const string FeeRead = "Fee.Read";
         public const string FeeWrite = "Fee.Write";
         public const string PaymentRead = "Payment.Read";
@@ -65,43 +72,70 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
         public const string InvoiceRead = "Invoice.Read";
         public const string InvoiceWrite = "Invoice.Write";
 
+        // ── Finance — Fee Structure ──────────────────────
+        /// <summary>View fee structures for a school.</summary>
+        public const string FeeStructureRead = "FeeStructure.Read";
+        /// <summary>Create, update, activate/deactivate fee structures.</summary>
+        public const string FeeStructureWrite = "FeeStructure.Write";
+        /// <summary>Delete fee structures.</summary>
+        public const string FeeStructureDelete = "FeeStructure.Delete";
+
         // ── Curriculum ───────────────────────────────────
         public const string CurriculumRead = "Curriculum.Read";
         public const string CurriculumWrite = "Curriculum.Write";
         public const string LessonPlanRead = "LessonPlan.Read";
         public const string LessonPlanWrite = "LessonPlan.Write";
 
-        // ✅ NEW: M-Pesa Specific Permissions
+        // ── M-Pesa ───────────────────────────────────────
         public const string MpesaInitiate = "Mpesa.Initiate";
         public const string MpesaViewTransactions = "Mpesa.ViewTransactions";
         public const string MpesaRefund = "Mpesa.Refund";
         public const string MpesaReconcile = "Mpesa.Reconcile";
 
         /// <summary>
-        /// Returns a list of all permission keys.
+        /// Returns a list of ALL permission keys.
         /// Useful for granting full access to admins or super admins.
         /// </summary>
         public static IEnumerable<string> AllPermissions => new[]
         {
+            // Administration
             SchoolRead, SchoolWrite, SchoolDelete,
             UserRead, UserWrite, UserDelete,
             RoleRead, RoleWrite, RoleDelete,
+
+            // Settings
+            DocumentNumberSeriesRead, DocumentNumberSeriesWrite, DocumentNumberSeriesDelete,
+
+            // Academic Year
+            AcademicYearRead, AcademicYearWrite, AcademicYearDelete, AcademicYearClose,
+
+            // Academic
             StudentRead, StudentWrite, StudentDelete,
             TeacherRead, TeacherWrite, TeacherDelete,
             TermRead, TermWrite, TermDelete,
-            SubjectRead, SubjectWrite,
+            SubjectRead, SubjectWrite, SubjectDelete,
             ClassRead, ClassWrite,
             GradeRead, GradeWrite,
+
+            // Assessment
             AssessmentRead, AssessmentWrite, AssessmentDelete,
             ReportRead, ReportWrite,
+
+            // Finance — broad
+            FinanceRead, FinanceWrite,
+
+            // Finance — granular
             FeeRead, FeeWrite,
             PaymentRead, PaymentWrite,
             InvoiceRead, InvoiceWrite,
+            FeeStructureRead, FeeStructureWrite, FeeStructureDelete,
+
+            // Curriculum
             CurriculumRead, CurriculumWrite,
-            AcademicYearRead, AcademicYearWrite, AcademicYearDelete, AcademicYearClose,
             LessonPlanRead, LessonPlanWrite,
+
+            // M-Pesa
             MpesaInitiate, MpesaViewTransactions, MpesaRefund, MpesaReconcile,
-            DocumentNumberSeriesRead, DocumentNumberSeriesWrite, DocumentNumberSeriesDelete
         };
     }
 }

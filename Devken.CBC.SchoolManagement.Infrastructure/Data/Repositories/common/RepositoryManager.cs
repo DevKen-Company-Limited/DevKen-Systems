@@ -1,4 +1,23 @@
-﻿using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces;
+﻿// ─────────────────────────────────────────────────────────────────────────────
+// DIFF / ADDITION for RepositoryManager.cs
+//
+// 1. Add private field (in the "Finance" region):
+//
+//   private readonly Lazy<IFeeStructureRepository> _feeStructureRepository;
+//
+// 2. In the constructor, after the _feeItemRepository initialisation:
+//
+//   _feeStructureRepository = new Lazy<IFeeStructureRepository>(
+//       () => new FeeStructureRepository(_context, _tenantContext));
+//
+// 3. Add the public property (in the "Finance Properties" region):
+//
+//   public IFeeStructureRepository FeeStructure => _feeStructureRepository.Value;
+//
+// Full updated class shown below for reference.
+// ─────────────────────────────────────────────────────────────────────────────
+
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academics;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Assessments;
@@ -15,7 +34,7 @@ using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academic;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academics;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessments;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Curriculum;
-using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Finance;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Finance;       // ← ensure this is present
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Identity;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSeries;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Payments;
@@ -74,8 +93,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         // ── Payments ─────────────────────────────────────────────────────────
         private readonly Lazy<IMpesaPaymentRepository> _mpesaPaymentRepository;
 
-        // ── Finance─────────────────────────────────────────────────────────
+        // ── Finance ──────────────────────────────────────────────────────────
         private readonly Lazy<IFeeItemRepository> _feeItemRepository;
+        private readonly Lazy<IFeeStructureRepository> _feeStructureRepository; // ← NEW
+
         public RepositoryManager(AppDbContext context, TenantContext tenantContext)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
@@ -116,17 +137,19 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
             _superAdminRepository = new Lazy<ISuperAdminRepository>(() => new SuperAdminRepository(_context, _tenantContext));
 
             // Number Series
-            _documentNumberSeriesRepository = new Lazy<IDocumentNumberSeriesRepository>(() => new DocumentNumberService(_context, _tenantContext, this));
+            _documentNumberSeriesRepository = new Lazy<IDocumentNumberSeriesRepository>(
+                () => new DocumentNumberService(_context, _tenantContext, this));
 
             // Payments
             _mpesaPaymentRepository = new Lazy<IMpesaPaymentRepository>(() => new MpesaPaymentRepository(_context, _tenantContext));
 
             // Finance
             _feeItemRepository = new Lazy<IFeeItemRepository>(() => new FeeItemRepository(_context, _tenantContext));
+            _feeStructureRepository = new Lazy<IFeeStructureRepository>(      // ← NEW
+                () => new FeeStructureRepository(_context, _tenantContext));
         }
 
         // ── Academic Properties ──────────────────────────────────────────────
-        public IGradeRepository Grade => _gradeRepository.Value;
         public IStudentRepository Student => _studentRepository.Value;
         public ITeacherRepository Teacher => _teacherRepository.Value;
         public ISchoolRepository School => _schoolRepository.Value;
@@ -135,6 +158,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         public IClassRepository Class => _classRepository.Value;
         public ISubjectRepository Subject => _subjectRepository.Value;
         public IUserActivityRepository UserActivity => _userActivityRepository.Value;
+        public IGradeRepository Grade => _gradeRepository.Value;
         public DbContext Context => _context;
 
         // ── CBC Curriculum Properties ────────────────────────────────────────
@@ -165,6 +189,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
 
         // ── Finance Properties ───────────────────────────────────────────────
         public IFeeItemRepository FeeItem => _feeItemRepository.Value;
+        public IFeeStructureRepository FeeStructure => _feeStructureRepository.Value; // ← NEW
 
         // ── Number Series Properties ─────────────────────────────────────────
         public IDocumentNumberSeriesRepository DocumentNumberSeries => _documentNumberSeriesRepository.Value;

@@ -7,14 +7,15 @@ using System.Threading.Tasks;
 namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
 {
     /// <summary>
-    /// Default roles seeded for each new school
+    /// Default roles seeded for each new school.
+    /// Each entry is (RoleName, Description, IsSystem, Permissions[]).
     /// </summary>
     public static class DefaultRoles
     {
         public static readonly (string RoleName, string Description, bool IsSystem, string[] Permissions)[] All =
         {
             // ══════════════════════════════════════════════════════════
-            // SCHOOL ADMIN - Full administrative access
+            // SCHOOL ADMIN — Full administrative access within the school
             // ══════════════════════════════════════════════════════════
             (
                 "SchoolAdmin",
@@ -22,7 +23,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                 true,
                 new[]
                 {
-                    // Administration - Full Access
+                    // Administration
                     PermissionKeys.SchoolRead,
                     PermissionKeys.SchoolWrite,
                     PermissionKeys.SchoolDelete,
@@ -32,13 +33,14 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                     PermissionKeys.RoleRead,
                     PermissionKeys.RoleWrite,
                     PermissionKeys.RoleDelete,
-                            // Academic Year - Full Access
+
+                    // Academic Year
                     PermissionKeys.AcademicYearRead,
                     PermissionKeys.AcademicYearWrite,
                     PermissionKeys.AcademicYearDelete,
                     PermissionKeys.AcademicYearClose,
 
-                    // Academic - Full Access
+                    // Academic
                     PermissionKeys.StudentRead,
                     PermissionKeys.StudentWrite,
                     PermissionKeys.StudentDelete,
@@ -52,19 +54,23 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                     PermissionKeys.GradeRead,
                     PermissionKeys.GradeWrite,
 
-                     // Term - Full Access 
+                    // Term
                     PermissionKeys.TermRead,
                     PermissionKeys.TermWrite,
                     PermissionKeys.TermDelete,
 
-                    // Assessment - Full Access
+                    // Assessment
                     PermissionKeys.AssessmentRead,
                     PermissionKeys.AssessmentWrite,
                     PermissionKeys.AssessmentDelete,
                     PermissionKeys.ReportRead,
                     PermissionKeys.ReportWrite,
 
-                    // Finance - Full Access
+                    // Finance — Broad
+                    PermissionKeys.FinanceRead,
+                    PermissionKeys.FinanceWrite,
+
+                    // Finance — Granular
                     PermissionKeys.FeeRead,
                     PermissionKeys.FeeWrite,
                     PermissionKeys.PaymentRead,
@@ -72,19 +78,24 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                     PermissionKeys.InvoiceRead,
                     PermissionKeys.InvoiceWrite,
 
-                    // ✅ M-Pesa - Full Access
+                    // Finance — Fee Structure (full access)
+                    PermissionKeys.FeeStructureRead,
+                    PermissionKeys.FeeStructureWrite,
+                    PermissionKeys.FeeStructureDelete,
+
+                    // M-Pesa — Full Access
                     PermissionKeys.MpesaInitiate,
                     PermissionKeys.MpesaViewTransactions,
                     PermissionKeys.MpesaRefund,
                     PermissionKeys.MpesaReconcile,
 
-                    // Curriculum - Full Access
+                    // Curriculum
                     PermissionKeys.CurriculumRead,
                     PermissionKeys.CurriculumWrite,
                     PermissionKeys.LessonPlanRead,
                     PermissionKeys.LessonPlanWrite,
 
-                                        // ✅ Settings - Full Access
+                    // Settings
                     PermissionKeys.DocumentNumberSeriesRead,
                     PermissionKeys.DocumentNumberSeriesWrite,
                     PermissionKeys.DocumentNumberSeriesDelete,
@@ -92,7 +103,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
             ),
 
             // ══════════════════════════════════════════════════════════
-            // TEACHER - Academic content for assigned classes
+            // TEACHER — Academic content for assigned classes
             // ══════════════════════════════════════════════════════════
             (
                 "Teacher",
@@ -100,26 +111,26 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                 true,
                 new[]
                 {
-                    // Academic - Read Only
+                    // Academic — Read Only
                     PermissionKeys.StudentRead,
                     PermissionKeys.SubjectRead,
                     PermissionKeys.ClassRead,
                     PermissionKeys.AcademicYearRead,
-                     PermissionKeys.TermRead,
+                    PermissionKeys.TermRead,
 
-                    // Grades - Read/Write
+                    // Grades — Read/Write
                     PermissionKeys.GradeRead,
                     PermissionKeys.GradeWrite,
 
-                    // Assessment - Read/Write
+                    // Assessment — Read/Write
                     PermissionKeys.AssessmentRead,
                     PermissionKeys.AssessmentWrite,
 
-                    // Reports - Read/Write
+                    // Reports — Read/Write
                     PermissionKeys.ReportRead,
                     PermissionKeys.ReportWrite,
 
-                    // Curriculum - Read/Write
+                    // Curriculum — Read/Write
                     PermissionKeys.LessonPlanRead,
                     PermissionKeys.LessonPlanWrite,
                     PermissionKeys.CurriculumRead,
@@ -127,7 +138,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
             ),
 
             // ══════════════════════════════════════════════════════════
-            // PARENT - Read-only access to their children's data
+            // PARENT — Read-only access to their children's data
             // ══════════════════════════════════════════════════════════
             (
                 "Parent",
@@ -135,33 +146,41 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                 true,
                 new[]
                 {
-                    // Academic - Read Only
+                    // Academic — Read Only
                     PermissionKeys.StudentRead,
                     PermissionKeys.GradeRead,
 
-                    // Assessment - Read Only
+                    // Assessment — Read Only
                     PermissionKeys.AssessmentRead,
                     PermissionKeys.ReportRead,
 
-                    // Finance - Read Only
+                    // Finance — Read Only
+                    PermissionKeys.FinanceRead,
                     PermissionKeys.PaymentRead,
                     PermissionKeys.InvoiceRead,
 
-                    // ✅ M-Pesa - View Only (to check payment status)
+                    // Fee Structure — Read Only (parent can view school fee breakdown)
+                    PermissionKeys.FeeStructureRead,
+
+                    // M-Pesa — View Only
                     PermissionKeys.MpesaViewTransactions,
                 }
             ),
 
             // ══════════════════════════════════════════════════════════
-            // FINANCE OFFICER - Manages fees, payments, and invoices
+            // FINANCE OFFICER — Manages fees, payments, and invoices
             // ══════════════════════════════════════════════════════════
             (
                 "FinanceOfficer",
-                "Manages fees, payments, invoices, and M-Pesa transactions",
+                "Manages fees, fee structures, payments, invoices, and M-Pesa transactions",
                 true,
                 new[]
                 {
-                    // Finance - Full Access
+                    // Finance — Broad
+                    PermissionKeys.FinanceRead,
+                    PermissionKeys.FinanceWrite,
+
+                    // Finance — Granular
                     PermissionKeys.FeeRead,
                     PermissionKeys.FeeWrite,
                     PermissionKeys.PaymentRead,
@@ -169,20 +188,26 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                     PermissionKeys.InvoiceRead,
                     PermissionKeys.InvoiceWrite,
 
-                    // ✅ M-Pesa - Full Operational Access
+                    // Finance — Fee Structure (full operational access; no delete)
+                    PermissionKeys.FeeStructureRead,
+                    PermissionKeys.FeeStructureWrite,
+
+                    // M-Pesa — Full Operational Access
                     PermissionKeys.MpesaInitiate,
                     PermissionKeys.MpesaViewTransactions,
                     PermissionKeys.MpesaRefund,
                     PermissionKeys.MpesaReconcile,
 
-                    // Student - Read Only (to view student info for billing)
+                    // Student — Read Only (for billing)
                     PermissionKeys.StudentRead,
-                     PermissionKeys.DocumentNumberSeriesRead,
+
+                    // Settings — Read Only
+                    PermissionKeys.DocumentNumberSeriesRead,
                 }
             ),
 
             // ══════════════════════════════════════════════════════════
-            // REGISTRAR - Student and teacher enrollment
+            // REGISTRAR — Student and teacher enrollment
             // ══════════════════════════════════════════════════════════
             (
                 "Registrar",
@@ -190,7 +215,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                 true,
                 new[]
                 {
-                    // Academic - Full Student/Teacher Management
+                    // Academic — Full Student/Teacher Management
                     PermissionKeys.StudentRead,
                     PermissionKeys.StudentWrite,
                     PermissionKeys.StudentDelete,
@@ -201,13 +226,14 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                     PermissionKeys.SubjectRead,
                     PermissionKeys.AcademicYearRead,
                     PermissionKeys.TermRead,
-                    // Reports - Read Only
+
+                    // Reports — Read Only
                     PermissionKeys.ReportRead,
                 }
             ),
 
             // ══════════════════════════════════════════════════════════
-            // HEAD TEACHER - Senior academic oversight
+            // HEAD TEACHER — Senior academic oversight
             // ══════════════════════════════════════════════════════════
             (
                 "HeadTeacher",
@@ -215,7 +241,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                 true,
                 new[]
                 {
-                    // Academic - Read All, Write Limited
+                    // Academic — Read All, Write Limited
                     PermissionKeys.StudentRead,
                     PermissionKeys.TeacherRead,
                     PermissionKeys.SubjectRead,
@@ -223,29 +249,33 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                     PermissionKeys.ClassRead,
                     PermissionKeys.ClassWrite,
                     PermissionKeys.GradeRead,
-                    PermissionKeys.AcademicYearRead, 
-                    PermissionKeys.AcademicYearWrite,
                     PermissionKeys.GradeWrite,
+                    PermissionKeys.AcademicYearRead,
+                    PermissionKeys.AcademicYearWrite,
                     PermissionKeys.TermRead,
                     PermissionKeys.TermWrite,
 
-                    // Assessment - Full Access
+                    // Assessment — Full Access
                     PermissionKeys.AssessmentRead,
                     PermissionKeys.AssessmentWrite,
                     PermissionKeys.AssessmentDelete,
                     PermissionKeys.ReportRead,
                     PermissionKeys.ReportWrite,
 
-                    // Curriculum - Full Access
+                    // Curriculum — Full Access
                     PermissionKeys.CurriculumRead,
                     PermissionKeys.CurriculumWrite,
                     PermissionKeys.LessonPlanRead,
                     PermissionKeys.LessonPlanWrite,
+
+                    // Finance — Read Only (to see student fee status)
+                    PermissionKeys.FinanceRead,
+                    PermissionKeys.FeeStructureRead,
                 }
             ),
 
             // ══════════════════════════════════════════════════════════
-            // ACCOUNTANT - View-only financial records
+            // ACCOUNTANT — View-only financial records
             // ══════════════════════════════════════════════════════════
             (
                 "Accountant",
@@ -253,21 +283,27 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                 true,
                 new[]
                 {
-                    // Finance - Read Only
+                    // Finance — Read Only (broad)
+                    PermissionKeys.FinanceRead,
+
+                    // Finance — Granular Read
                     PermissionKeys.FeeRead,
                     PermissionKeys.PaymentRead,
                     PermissionKeys.InvoiceRead,
 
-                    // ✅ M-Pesa - Read Only
+                    // Fee Structure — Read Only
+                    PermissionKeys.FeeStructureRead,
+
+                    // M-Pesa — Read Only
                     PermissionKeys.MpesaViewTransactions,
 
-                    // Student - Read Only (for financial reporting)
+                    // Student — Read Only (for financial reporting)
                     PermissionKeys.StudentRead,
                 }
             ),
 
             // ══════════════════════════════════════════════════════════
-            // ✅ NEW: CASHIER - Limited payment processing
+            // CASHIER — Limited payment processing
             // ══════════════════════════════════════════════════════════
             (
                 "Cashier",
@@ -275,16 +311,20 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                 true,
                 new[]
                 {
-                    // Finance - Limited Access
+                    // Finance — Limited
+                    PermissionKeys.FinanceRead,
                     PermissionKeys.PaymentRead,
                     PermissionKeys.PaymentWrite,
                     PermissionKeys.InvoiceRead,
 
-                    // ✅ M-Pesa - Operational Access (no refunds)
+                    // Fee Structure — Read Only (to look up amounts when collecting payment)
+                    PermissionKeys.FeeStructureRead,
+
+                    // M-Pesa — Operational Access (no refunds)
                     PermissionKeys.MpesaInitiate,
                     PermissionKeys.MpesaViewTransactions,
 
-                    // Student - Read Only
+                    // Student — Read Only
                     PermissionKeys.StudentRead,
                 }
             ),
