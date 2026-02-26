@@ -326,7 +326,7 @@
               [matTooltip]="isFormLocked ? 'Select a school to continue' : ''">
         <ng-container *ngIf="!isSaving; else savingTpl">
           <mat-icon class="icon-size-4 mr-1">{{ isEdit ? 'save' : 'add_circle' }}</mat-icon>
-          {{ isEdit ? 'Save Changes' : 'Create' }}
+          {{ isEdit ? 'Update' : 'Submit' }}
         </ng-container>
         <ng-template #savingTpl>
           <mat-spinner diameter="18" class="inline-block mr-2"></mat-spinner>
