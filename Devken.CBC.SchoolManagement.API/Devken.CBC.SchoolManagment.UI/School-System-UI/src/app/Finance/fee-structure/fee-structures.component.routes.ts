@@ -1,5 +1,5 @@
 import { Routes } from "@angular/router";
-import { FeeStructuresComponent } from "./fee-structures.component";
+import { FeeStructuresComponent } from "../../finance/fee-structure/fee-structures.component";
 
 export default[
     {
