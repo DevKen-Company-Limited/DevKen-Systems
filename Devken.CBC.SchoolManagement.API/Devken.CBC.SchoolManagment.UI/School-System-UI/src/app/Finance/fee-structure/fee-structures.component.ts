@@ -10,7 +10,15 @@ import { Subject } from 'rxjs';
 import { take, takeUntil } from 'rxjs/operators';
 
 import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
-
+import { FeeStructureService } from 'app/core/DevKenService/Finance/FeeStructureService';
+import {
+  FeeStructureDto,
+  CBC_LEVEL_OPTIONS,
+  APPLICABLE_TO_OPTIONS,
+  resolveLevelLabel,
+  resolveApplicableToLabel,
+  ApplicableTo,
+} from 'app/finance/fee-structure/types/fee-structure.model';
 
 import {
   DataTableComponent, TableHeader, TableColumn, TableAction,
@@ -21,9 +29,11 @@ import {
 import { PageHeaderComponent, Breadcrumb } from 'app/shared/Page-Header/page-header.component';
 import { PaginationComponent }              from 'app/shared/pagination/pagination.component';
 import { StatsCardsComponent, StatCard }    from 'app/shared/stats-cards/stats-cards.component';
-import { FeeStructureService } from 'app/core/DevKenService/Finance/FeeStructureService';
+
+// ── Utility: read the is_super_admin claim from the stored JWT ─────────────────
+// Adjust to match however your app exposes the current user's role/claims.
+import { AuthService } from 'app/core/auth/auth.service'; // ← update path if needed
 import { FeeStructureDialogData, FeeStructureDialogComponent } from 'app/dialog-modals/Finance/fee-structure/fee-structure-dialog.component';
-import { FeeStructureDto, CBC_LEVEL_OPTIONS, APPLICABLE_TO_OPTIONS, resolveLevelLabel, resolveApplicableToLabel, ApplicableTo } from './types/fee-structure.model';
 
 @Component({
   selector: 'app-fee-structures',
@@ -57,7 +67,10 @@ export class FeeStructuresComponent implements OnInit, AfterViewInit, OnDestroy 
   // ── State ──────────────────────────────────────────────────────────────────
   allData:      FeeStructureDto[] = [];
   filteredData: FeeStructureDto[] = [];
-  isLoading = false;
+  isLoading     = false;
+
+  /** Resolved once on init from AuthService; passed into every dialog open. */
+  isSuperAdmin = false;
 
   // ── Pagination ─────────────────────────────────────────────────────────────
   currentPage  = 1;
@@ -85,13 +98,13 @@ export class FeeStructuresComponent implements OnInit, AfterViewInit, OnDestroy 
   };
 
   tableColumns: TableColumn<FeeStructureDto>[] = [
-    { id: 'feeItemName',      label: 'Fee Item',     align: 'left',   sortable: true },
-    { id: 'academicYearName', label: 'Year / Term',  align: 'left',   sortable: true, hideOnMobile: true },
-    { id: 'level',            label: 'Level',        align: 'center', sortable: true, hideOnMobile: true },
-    { id: 'applicableTo',     label: 'Applies To',   align: 'center', hideOnMobile: true },
-    { id: 'amount',           label: 'Amount',       align: 'right',  sortable: true },
-    { id: 'maxDiscountPercent', label: 'Max Disc.',  align: 'center', hideOnMobile: true },
-    { id: 'isActive',         label: 'Status',       align: 'center' },
+    { id: 'feeItemName',        label: 'Fee Item',    align: 'left',   sortable: true },
+    { id: 'academicYearName',   label: 'Year / Term', align: 'left',   sortable: true, hideOnMobile: true },
+    { id: 'level',              label: 'Level',       align: 'center', sortable: true, hideOnMobile: true },
+    { id: 'applicableTo',       label: 'Applies To',  align: 'center', hideOnMobile: true },
+    { id: 'amount',             label: 'Amount',      align: 'right',  sortable: true },
+    { id: 'maxDiscountPercent', label: 'Max Disc.',   align: 'center', hideOnMobile: true },
+    { id: 'isActive',           label: 'Status',      align: 'center' },
   ];
 
   tableActions: TableAction<FeeStructureDto>[] = [
@@ -127,7 +140,7 @@ export class FeeStructuresComponent implements OnInit, AfterViewInit, OnDestroy 
   };
 
   filterFields: FilterField[] = [
-    { id: 'search',  label: 'Search',   type: 'text',   placeholder: 'Fee item or year…', value: '' },
+    { id: 'search', label: 'Search', type: 'text', placeholder: 'Fee item or year…', value: '' },
     {
       id: 'level', label: 'CBC Level', type: 'select', value: 'all',
       options: [
@@ -152,18 +165,22 @@ export class FeeStructuresComponent implements OnInit, AfterViewInit, OnDestroy 
     },
   ];
 
-  // ── Label helpers (used in templates) ─────────────────────────────────────
-  resolveLevel       = resolveLevelLabel;
-  resolveApplicable  = resolveApplicableToLabel;
+  resolveLevel      = resolveLevelLabel;
+  resolveApplicable = resolveApplicableToLabel;
 
   constructor(
     private service: FeeStructureService,
     private dialog:  MatDialog,
     private alert:   AlertService,
     private cdr:     ChangeDetectorRef,
+    private auth:    AuthService,   // ← inject your auth service
   ) {}
 
-  ngOnInit():  void { this.loadAll(); }
+  ngOnInit(): void {
+    this.isSuperAdmin = this.auth.authUser?.isSuperAdmin ?? false;
+    this.loadAll();
+  }
+
   ngOnDestroy(): void { this._destroy$.next(); this._destroy$.complete(); }
 
   ngAfterViewInit(): void {
@@ -223,10 +240,10 @@ export class FeeStructuresComponent implements OnInit, AfterViewInit, OnDestroy 
   private applyFilters(): void {
     let data = [...this.allData];
 
-    const search      = (this.activeFilters['search']      ?? '').toLowerCase().trim();
-    const level       = this.activeFilters['level']       ?? 'all';
-    const applicable  = this.activeFilters['applicableTo'] ?? 'all';
-    const status      = this.activeFilters['status']       ?? 'all';
+    const search     = (this.activeFilters['search']      ?? '').toLowerCase().trim();
+    const level      = this.activeFilters['level']        ?? 'all';
+    const applicable = this.activeFilters['applicableTo'] ?? 'all';
+    const status     = this.activeFilters['status']       ?? 'all';
 
     if (search) {
       data = data.filter(r =>
@@ -257,16 +274,16 @@ export class FeeStructuresComponent implements OnInit, AfterViewInit, OnDestroy 
 
   // ── Stats ──────────────────────────────────────────────────────────────────
   private buildStats(): void {
-    const total     = this.allData.length;
-    const active    = this.allData.filter(r => r.isActive).length;
-    const discounts = this.allData.filter(r => r.maxDiscountPercent != null && r.maxDiscountPercent > 0).length;
+    const total      = this.allData.length;
+    const active     = this.allData.filter(r => r.isActive).length;
+    const discounts  = this.allData.filter(r => r.maxDiscountPercent != null && r.maxDiscountPercent > 0).length;
     const annualFees = this.allData.filter(r => r.termId == null).length;
 
     this.statsCards = [
-      { label: 'Total Structures', value: total,       icon: 'account_balance', iconColor: 'indigo' },
-      { label: 'Active',           value: active,      icon: 'check_circle',    iconColor: 'green'  },
-      { label: 'With Discounts',   value: discounts,   icon: 'discount',        iconColor: 'amber'  },
-      { label: 'Annual Fees',      value: annualFees,  icon: 'event_repeat',    iconColor: 'pink'   },
+      { label: 'Total Structures', value: total,      icon: 'account_balance', iconColor: 'indigo' },
+      { label: 'Active',           value: active,     icon: 'check_circle',    iconColor: 'green'  },
+      { label: 'With Discounts',   value: discounts,  icon: 'discount',        iconColor: 'amber'  },
+      { label: 'Annual Fees',      value: annualFees, icon: 'event_repeat',    iconColor: 'pink'   },
     ];
   }
 
@@ -284,16 +301,28 @@ export class FeeStructuresComponent implements OnInit, AfterViewInit, OnDestroy 
   onRowClick(_row: FeeStructureDto): void { /* navigate to detail if needed */ }
 
   // ── CRUD ───────────────────────────────────────────────────────────────────
+
+  /** Opens the create dialog. SuperAdmin will be prompted to pick a school. */
   openCreate(): void {
-    const data: FeeStructureDialogData = { mode: 'create' };
-    this.dialog.open(FeeStructureDialogComponent, { data, width: '680px', panelClass: 'rounded-2xl' })
+    const data: FeeStructureDialogData = {
+      mode:        'create',
+      isSuperAdmin: this.isSuperAdmin,
+    };
+    this.dialog
+      .open(FeeStructureDialogComponent, { data, width: '680px', panelClass: 'rounded-2xl' })
       .afterClosed().pipe(take(1))
       .subscribe(result => { if (result?.success) this.loadAll(); });
   }
 
+  /** Opens the edit dialog. School is pre-selected from the item's tenantId. */
   openEdit(item: FeeStructureDto): void {
-    const data: FeeStructureDialogData = { mode: 'edit', item };
-    this.dialog.open(FeeStructureDialogComponent, { data, width: '680px', panelClass: 'rounded-2xl' })
+    const data: FeeStructureDialogData = {
+      mode:        'edit',
+      item,
+      isSuperAdmin: this.isSuperAdmin,
+    };
+    this.dialog
+      .open(FeeStructureDialogComponent, { data, width: '680px', panelClass: 'rounded-2xl' })
       .afterClosed().pipe(take(1))
       .subscribe(result => { if (result?.success) this.loadAll(); });
   }
@@ -315,7 +344,7 @@ export class FeeStructuresComponent implements OnInit, AfterViewInit, OnDestroy 
   confirmDelete(item: FeeStructureDto): void {
     this.alert.confirm({
       title:       'Delete Fee Structure',
-      message:     `Delete the fee structure for "${item.feeItemName}" (${item.academicYearName})? This action cannot be undone.`,
+      message:     `Delete the fee structure for "${item.feeItemName}" (${item.academicYearName})? This cannot be undone.`,
       confirmText: 'Delete',
       onConfirm:   () => this.executeDelete(item),
     });
