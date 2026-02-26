@@ -303,29 +303,46 @@ export class FeeStructuresComponent implements OnInit, AfterViewInit, OnDestroy 
   // ── CRUD ───────────────────────────────────────────────────────────────────
 
   /** Opens the create dialog. SuperAdmin will be prompted to pick a school. */
-  openCreate(): void {
-    const data: FeeStructureDialogData = {
-      mode:        'create',
-      isSuperAdmin: this.isSuperAdmin,
-    };
-    this.dialog
-      .open(FeeStructureDialogComponent, { data, width: '680px', panelClass: 'rounded-2xl' })
-      .afterClosed().pipe(take(1))
-      .subscribe(result => { if (result?.success) this.loadAll(); });
-  }
+openCreate(): void {
+  const data: FeeStructureDialogData = {
+    mode: 'create',
+    isSuperAdmin: this.isSuperAdmin,
+  };
 
-  /** Opens the edit dialog. School is pre-selected from the item's tenantId. */
-  openEdit(item: FeeStructureDto): void {
-    const data: FeeStructureDialogData = {
-      mode:        'edit',
-      item,
-      isSuperAdmin: this.isSuperAdmin,
-    };
-    this.dialog
-      .open(FeeStructureDialogComponent, { data, width: '680px', panelClass: 'rounded-2xl' })
-      .afterClosed().pipe(take(1))
-      .subscribe(result => { if (result?.success) this.loadAll(); });
-  }
+  this.dialog
+    .open(FeeStructureDialogComponent, {
+      data,
+      width: '680px',
+      panelClass: 'no-container-dialog',
+      hasBackdrop: true,
+    })
+    .afterClosed()
+    .pipe(take(1))
+    .subscribe(result => {
+      if (result?.success) this.loadAll();
+    });
+}
+
+openEdit(item: FeeStructureDto): void {
+  const data: FeeStructureDialogData = {
+    mode: 'edit',
+    item,
+    isSuperAdmin: this.isSuperAdmin,
+  };
+
+  this.dialog
+    .open(FeeStructureDialogComponent, {
+      data,
+      width: '680px',
+      panelClass: 'no-container-dialog',
+      hasBackdrop: true,
+    })
+    .afterClosed()
+    .pipe(take(1))
+    .subscribe(result => {
+      if (result?.success) this.loadAll();
+    });
+}
 
   toggleActive(item: FeeStructureDto): void {
     this.service.toggleActive(item.id).pipe(take(1)).subscribe({

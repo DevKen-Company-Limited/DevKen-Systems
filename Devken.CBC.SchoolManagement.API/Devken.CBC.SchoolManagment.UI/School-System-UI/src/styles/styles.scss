@@ -116,3 +116,43 @@
 
 
 
+.no-container-dialog {
+  /* 1. The CDK overlay pane — remove any pane-level sizing quirks */
+  &.cdk-overlay-pane {
+    overflow: visible;
+  }
+
+  /* 2. Angular Material 15+ MDC container — strip all chrome */
+  .mat-mdc-dialog-container {
+    padding: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border-radius: 1rem !important; /* matches rounded-2xl */
+    overflow: hidden;
+
+    /* 3. The MDC surface is the actual white card — flatten it */
+    .mdc-dialog__surface {
+      padding: 0 !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      border-radius: 1rem !important;
+      overflow: hidden;
+    }
+
+    /* 4. Strip the inner content wrapper padding */
+    .mat-mdc-dialog-content,
+    .mat-mdc-dialog-actions {
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+  }
+
+  /* 5. Angular Material ≤14 legacy fallback */
+  .mat-dialog-container {
+    padding: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border-radius: 1rem !important;
+    overflow: hidden;
+  }
+}

@@ -1,9 +1,10 @@
 import {
-  Component, Inject, OnInit, OnDestroy, ChangeDetectorRef
+  Component, Inject, OnInit, OnDestroy, ChangeDetectorRef,
+  HostBinding,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
-  ReactiveFormsModule, FormBuilder, FormGroup, Validators
+  ReactiveFormsModule, FormBuilder, FormGroup, Validators,
 } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -36,18 +37,12 @@ import {
 import { ApiResponse } from 'app/Tenant/types/school';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Lookup DTOs
-// ─────────────────────────────────────────────────────────────────────────────
 
 export interface SchoolLookup {
   id:   string;
   name: string;
   code: string;
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Dialog input data
-// ─────────────────────────────────────────────────────────────────────────────
 
 export interface FeeStructureDialogData {
   mode:          'create' | 'edit';
@@ -78,28 +73,30 @@ export interface FeeStructureDialogData {
   templateUrl: './fee-structure-dialog.component.html',
 })
 export class FeeStructureDialogComponent implements OnInit, OnDestroy {
-  private _destroy$     = new Subject<void>();
+  private _destroy$        = new Subject<void>();
   private readonly apiBase = inject(API_BASE_URL);
 
+  /**
+   * Make the component's host element the flex column container.
+   * This replaces the removed <div class="flex flex-col w-full max-w-2xl">
+   * outer wrapper so no extra DOM node is needed.
+   */
+  @HostBinding('class') hostClass = 'flex flex-col w-full overflow-hidden rounded-2xl bg-white dark:bg-gray-900';
+
   // ── Form ──────────────────────────────────────────────────────────────────
-  form!:         FormGroup;
-  isSaving       = false;
+  form!: FormGroup;
+  isSaving         = false;
   isLoadingLookups = false;
 
   // ── SuperAdmin school selection ───────────────────────────────────────────
-  schools:           SchoolLookup[] = [];
-  isLoadingSchools   = false;
-  selectedSchoolId:  string | null  = null;
+  schools:          SchoolLookup[] = [];
+  isLoadingSchools  = false;
+  selectedSchoolId: string | null  = null;
+
+  get isSuperAdmin(): boolean  { return !!this.data.isSuperAdmin; }
 
   /**
-   * True when the calling user is SuperAdmin.
-   * Passed via MAT_DIALOG_DATA.isSuperAdmin.
-   */
-  get isSuperAdmin(): boolean { return !!this.data.isSuperAdmin; }
-
-  /**
-   * For SuperAdmin creating a new record, all controls below the school
-   * selector stay disabled until a school is chosen.
+   * Form stays locked for SuperAdmin on create until a school is chosen.
    */
   get isFormLocked(): boolean {
     return this.isSuperAdmin && !this.isEdit && !this.selectedSchoolId;
@@ -133,15 +130,11 @@ export class FeeStructureDialogComponent implements OnInit, OnDestroy {
 
     if (this.isSuperAdmin) {
       this.loadSchools();
-
-      // When editing as SuperAdmin the school is already set on the item;
-      // pre-select it and load contextual lookups immediately.
       if (this.isEdit && this.data.item?.tenantId) {
         this.selectedSchoolId = this.data.item.tenantId;
         this.loadContextualLookups(this.selectedSchoolId);
       }
     } else {
-      // Regular user — load all lookups straight away.
       this.loadContextualLookups();
     }
   }
@@ -169,14 +162,12 @@ export class FeeStructureDialogComponent implements OnInit, OnDestroy {
       isActive:           [item?.isActive ?? true],
     });
 
-    // FeeItem, AcademicYear, Term are immutable after creation.
     if (this.isEdit) {
       this.form.get('feeItemId')?.disable();
       this.form.get('academicYearId')?.disable();
       this.form.get('termId')?.disable();
     }
 
-    // Re-filter terms when academic year selection changes.
     this.form.get('academicYearId')?.valueChanges
       .pipe(takeUntil(this._destroy$))
       .subscribe(yearId => {
@@ -207,102 +198,52 @@ export class FeeStructureDialogComponent implements OnInit, OnDestroy {
       });
   }
 
-  /**
-   * Called when the SuperAdmin picks a school from the dropdown.
-   * Resets all previously loaded contextual data and re-fetches
-   * fee items, academic years, and terms scoped to the chosen school.
-   */
   onSchoolChange(schoolId: string | null): void {
     this.selectedSchoolId = schoolId;
-
-    // Clear contextual lookups so stale options don't bleed through.
     this.feeItems      = [];
     this.academicYears = [];
     this.allTerms      = [];
     this.filteredTerms = [];
-
-    // Reset the main form fields that depend on the school.
-    this.form.patchValue({
-      feeItemId:      '',
-      academicYearId: '',
-      termId:         null,
-    });
-
-    if (schoolId) {
-      this.loadContextualLookups(schoolId);
-    }
-
+    this.form.patchValue({ feeItemId: '', academicYearId: '', termId: null });
+    if (schoolId) this.loadContextualLookups(schoolId);
     this.cdr.detectChanges();
   }
 
-  // ── Contextual Lookups (scoped to school) ─────────────────────────────────
+  // ── Contextual Lookups ────────────────────────────────────────────────────
 
-  /**
-   * Loads fee items, academic years, and terms.
-   * Pass schoolId to scope lookups to a specific tenant (SuperAdmin).
-   * Omit it to let the server use the JWT tenant (regular users).
-   */
   private loadContextualLookups(schoolId?: string): void {
     this.isLoadingLookups = true;
-
     let loaded = 0;
     const done = () => {
-      if (++loaded === 3) {
-        this.isLoadingLookups = false;
-        this.cdr.detectChanges();
-      }
+      if (++loaded === 3) { this.isLoadingLookups = false; this.cdr.detectChanges(); }
     };
 
-    // Build optional query string for SuperAdmin scoping.
-    const schoolQuery = schoolId ? `?schoolId=${schoolId}` : '';
+    const q = schoolId ? `?schoolId=${schoolId}` : '';
 
-    // ── Fee Items ──────────────────────────────────────────────────────────
-    this.http
-      .get<ApiResponse<FeeItemLookup[]>>(
-        `${this.apiBase}/api/finance/feeitems${schoolQuery}`
-      )
+    this.http.get<ApiResponse<FeeItemLookup[]>>(`${this.apiBase}/api/finance/feeitems${q}`)
       .pipe(takeUntil(this._destroy$))
-      .subscribe({
-        next: res => { if (res.success) this.feeItems = res.data; done(); },
-        error: ()  => done(),
-      });
+      .subscribe({ next: res => { if (res.success) this.feeItems = res.data; done(); }, error: () => done() });
 
-    // ── Academic Years ─────────────────────────────────────────────────────
-    this.http
-      .get<ApiResponse<AcademicYearLookup[]>>(
-        `${this.apiBase}/api/academic/academicyear${schoolQuery}`
-      )
+    this.http.get<ApiResponse<AcademicYearLookup[]>>(`${this.apiBase}/api/academic/academicyear${q}`)
       .pipe(takeUntil(this._destroy$))
       .subscribe({
         next: res => {
           if (res.success) this.academicYears = res.data;
-          const currentYear = this.form.get('academicYearId')?.value;
-          if (currentYear) {
-            this.filteredTerms = this.allTerms.filter(
-              t => t.academicYearId === currentYear
-            );
-          }
+          const yr = this.form.get('academicYearId')?.value;
+          if (yr) this.filteredTerms = this.allTerms.filter(t => t.academicYearId === yr);
           done();
         },
         error: () => done(),
       });
 
-    // ── Terms ──────────────────────────────────────────────────────────────
-    this.http
-      .get<ApiResponse<TermLookup[]>>(
-        `${this.apiBase}/api/academic/terms${schoolQuery}`
-      )
+    this.http.get<ApiResponse<TermLookup[]>>(`${this.apiBase}/api/academic/terms${q}`)
       .pipe(takeUntil(this._destroy$))
       .subscribe({
         next: res => {
           if (res.success) {
             this.allTerms = res.data;
-            const currentYear = this.form.get('academicYearId')?.value;
-            if (currentYear) {
-              this.filteredTerms = this.allTerms.filter(
-                t => t.academicYearId === currentYear
-              );
-            }
+            const yr = this.form.get('academicYearId')?.value;
+            if (yr) this.filteredTerms = this.allTerms.filter(t => t.academicYearId === yr);
           }
           done();
         },
@@ -326,7 +267,6 @@ export class FeeStructureDialogComponent implements OnInit, OnDestroy {
     return d instanceof Date ? d.toISOString() : d;
   }
 
-  /** Display name for the currently selected school in the locked state banner. */
   get selectedSchoolName(): string {
     return this.schools.find(s => s.id === this.selectedSchoolId)?.name ?? '';
   }
@@ -334,19 +274,14 @@ export class FeeStructureDialogComponent implements OnInit, OnDestroy {
   // ── Submit ────────────────────────────────────────────────────────────────
 
   save(): void {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
-      return;
-    }
-
-    // Extra guard: SuperAdmin must have a school selected before creating.
+    if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     if (this.isSuperAdmin && !this.isEdit && !this.selectedSchoolId) {
       this.alert.error('School Required', 'Please select a school before saving.');
       return;
     }
 
     this.isSaving = true;
-    const raw = this.form.getRawValue(); // includes disabled controls
+    const raw = this.form.getRawValue();
 
     if (this.isEdit) {
       const dto: UpdateFeeStructureDto = {
@@ -358,7 +293,6 @@ export class FeeStructureDialogComponent implements OnInit, OnDestroy {
         effectiveTo:        this.formatDate(raw.effectiveTo),
         isActive:           raw.isActive,
       };
-
       this.service.update(this.data.item!.id, dto)
         .pipe(takeUntil(this._destroy$))
         .subscribe({
@@ -367,22 +301,13 @@ export class FeeStructureDialogComponent implements OnInit, OnDestroy {
             if (res.success) {
               this.alert.success('Updated', 'Fee structure saved successfully.');
               this.dialogRef.close({ success: true, data: res.data });
-            } else {
-              this.alert.error('Error', res.message);
-            }
+            } else { this.alert.error('Error', res.message); }
           },
-          error: err => {
-            this.isSaving = false;
-            this.alert.error('Error', err?.error?.message ?? 'Failed to update.');
-          },
+          error: err => { this.isSaving = false; this.alert.error('Error', err?.error?.message ?? 'Failed to update.'); },
         });
     } else {
       const dto: CreateFeeStructureDto = {
-        // SuperAdmin explicitly sends tenantId; regular users omit it
-        // (the server picks it up from the JWT).
-        ...(this.isSuperAdmin && this.selectedSchoolId
-          ? { tenantId: this.selectedSchoolId }
-          : {}),
+        ...(this.isSuperAdmin && this.selectedSchoolId ? { tenantId: this.selectedSchoolId } : {}),
         feeItemId:          raw.feeItemId,
         academicYearId:     raw.academicYearId,
         termId:             raw.termId || null,
@@ -394,7 +319,6 @@ export class FeeStructureDialogComponent implements OnInit, OnDestroy {
         effectiveTo:        this.formatDate(raw.effectiveTo),
         isActive:           raw.isActive,
       };
-
       this.service.create(dto)
         .pipe(takeUntil(this._destroy$))
         .subscribe({
@@ -403,19 +327,12 @@ export class FeeStructureDialogComponent implements OnInit, OnDestroy {
             if (res.success) {
               this.alert.success('Created', 'Fee structure created successfully.');
               this.dialogRef.close({ success: true, data: res.data });
-            } else {
-              this.alert.error('Error', res.message);
-            }
+            } else { this.alert.error('Error', res.message); }
           },
-          error: err => {
-            this.isSaving = false;
-            this.alert.error('Error', err?.error?.message ?? 'Failed to create.');
-          },
+          error: err => { this.isSaving = false; this.alert.error('Error', err?.error?.message ?? 'Failed to create.'); },
         });
     }
   }
 
-  cancel(): void {
-    this.dialogRef.close(null);
-  }
+  cancel(): void { this.dialogRef.close(null); }
 }

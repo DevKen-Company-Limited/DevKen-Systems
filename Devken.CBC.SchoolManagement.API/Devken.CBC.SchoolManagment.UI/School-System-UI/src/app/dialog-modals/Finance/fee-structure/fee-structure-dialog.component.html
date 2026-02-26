@@ -1,6 +1,4 @@
-<div class="flex flex-col w-full max-w-2xl">
-
-  <!-- ── Dialog Header ───────────────────────────────────────────────────── -->
+<!-- ── Dialog Header ───────────────────────────────────────────────────── -->
   <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700
               bg-gradient-to-r from-indigo-600 to-violet-700 rounded-t-2xl">
     <div class="flex items-center gap-3">
@@ -328,7 +326,7 @@
               [matTooltip]="isFormLocked ? 'Select a school to continue' : ''">
         <ng-container *ngIf="!isSaving; else savingTpl">
           <mat-icon class="icon-size-4 mr-1">{{ isEdit ? 'save' : 'add_circle' }}</mat-icon>
-          {{ isEdit ? 'Update' : 'Submit' }}
+          {{ isEdit ? 'Save Changes' : 'Create' }}
         </ng-container>
         <ng-template #savingTpl>
           <mat-spinner diameter="18" class="inline-block mr-2"></mat-spinner>
@@ -338,4 +336,3 @@
     </div>
 
   </form>
-</div>
