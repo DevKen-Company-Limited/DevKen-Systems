@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { FeeItemsComponent } from './fee-items.component';
+import { FeeItemsComponent } from '../../finance/fee-item/fee-items.component';
 
 
 
