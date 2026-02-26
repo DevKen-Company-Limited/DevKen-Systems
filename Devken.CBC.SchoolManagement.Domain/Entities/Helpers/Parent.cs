@@ -1,6 +1,7 @@
 ﻿using Devken.CBC.SchoolManagement.Domain.Common;
 using Devken.CBC.SchoolManagement.Domain.Entities.Academic;
 using Devken.CBC.SchoolManagement.Domain.Entities.Finance;
+using Devken.CBC.SchoolManagement.Domain.Enums;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -16,7 +17,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Helpers
         public string FirstName { get; set; } = null!;
 
         [MaxLength(100)]
-        public string MiddleName { get; set; }
+        public string? MiddleName { get; set; }
 
         [Required]
         [MaxLength(100)]
@@ -34,7 +35,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Helpers
         [MaxLength(500)]
         public string? Address { get; set; }
 
-        // ───────────── Identity Details (Kenya Context) ─────────────
+        // ───────────── Identity Details ─────────────
 
         [MaxLength(20)]
         public string? NationalIdNumber { get; set; }
@@ -53,12 +54,10 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Helpers
         [MaxLength(100)]
         public string? EmployerContact { get; set; }
 
-        // ───────────── Relationship Info ─────────────
+        // ───────────── Relationship Info (ENUM) ─────────────
 
         [Required]
-        [MaxLength(50)]
-        public string RelationshipToStudent { get; set; } = null!;
-        // Example: Father, Mother, Guardian
+        public ParentRelationship Relationship { get; set; }
 
         public bool IsPrimaryContact { get; set; } = true;
 
@@ -70,13 +69,9 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Helpers
 
         [MaxLength(256)]
         public string? PortalUserId { get; set; }
-        // If linked to Identity user table
 
-        // ───────────── Status ─────────────
 
-        public bool IsActive { get; set; } = true;
-
-        // ───────────── Navigation Properties ─────────────
+        // ───────────── Navigation ─────────────
 
         public ICollection<Student> Students { get; set; } = new List<Student>();
 

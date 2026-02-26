@@ -462,6 +462,23 @@ namespace Devken.CBC.SchoolManagement.Domain.Enums
         F = 6
     }
 
+    public enum ParentRelationship
+    {
+        Father = 1,
+        Mother = 2,
+        Guardian = 3,
+        Sponsor = 4,
+        Grandparent = 5,
+        Other = 6
+    }
+
+    public enum ParentStatus
+    {
+        Active = 1,
+        Inactive = 2,
+        Blacklisted = 3,
+        Deceased = 4
+    }
     /// <summary>
     /// Mpesa Result Codes
     /// </summary>

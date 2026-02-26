@@ -1,4 +1,5 @@
 ﻿using Devken.CBC.SchoolManagement.Domain.Entities.Helpers;
+using Devken.CBC.SchoolManagement.Domain.Enums;
 using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -25,13 +26,19 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Acad
                 _tenantContext.TenantId == null ||
                 p.TenantId == _tenantContext.TenantId);
 
-            // ───────────── Indexes (Important for CBC Performance) ─────────────
+            // ───────────── Indexes (CBC Performance & Compliance) ─────────────
 
             builder.HasIndex(p => new { p.TenantId, p.Email });
-            builder.HasIndex(p => new { p.TenantId, p.PhoneNumber });
-            builder.HasIndex(p => new { p.TenantId, p.NationalIdNumber });
 
-            // ───────────── Property Configurations ─────────────
+            builder.HasIndex(p => new { p.TenantId, p.PhoneNumber });
+
+            builder.HasIndex(p => new { p.TenantId, p.NationalIdNumber })
+                   .IsUnique()
+                   .HasFilter("[NationalIdNumber] IS NOT NULL");
+
+            builder.HasIndex(p => new { p.TenantId, p.Status });
+
+            // ───────────── Basic Fields ─────────────
 
             builder.Property(p => p.FirstName)
                 .IsRequired()
@@ -71,12 +78,19 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Acad
             builder.Property(p => p.EmployerContact)
                 .HasMaxLength(100);
 
-            builder.Property(p => p.RelationshipToStudent)
-                .IsRequired()
-                .HasMaxLength(50);
-
             builder.Property(p => p.PortalUserId)
                 .HasMaxLength(256);
+
+            // ───────────── ENUM CONFIGURATION (Recommended: Store as INT) ─────────────
+
+            builder.Property(p => p.Relationship)
+                .HasConversion<int>()
+                .IsRequired();
+
+            builder.Property(p => p.Status)
+                .HasConversion<int>()
+                .IsRequired()
+                .HasDefaultValue(EntityStatus.Active);
 
             // ───────────── Boolean Defaults ─────────────
 
@@ -89,13 +103,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Acad
             builder.Property(p => p.HasPortalAccess)
                 .HasDefaultValue(false);
 
-            builder.Property(p => p.IsActive)
-                .HasDefaultValue(true);
-
             // ───────────── Relationships ─────────────
             // DO NOT configure Student relationship here
             // DO NOT configure Invoice relationship here
-            // They should be configured in their respective configurations
         }
     }
 }
