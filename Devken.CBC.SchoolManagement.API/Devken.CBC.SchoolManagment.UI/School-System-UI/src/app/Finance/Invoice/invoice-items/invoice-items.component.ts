@@ -9,6 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { FuseAlertComponent } from '@fuse/components/alert';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'app-invoice-items',
@@ -24,6 +25,7 @@ import { FuseAlertComponent } from '@fuse/components/alert';
     MatButtonModule,
     MatCardModule,
     FuseAlertComponent,
+    MatTooltipModule,
   ],
   templateUrl: './invoice-items.component.html',
 })

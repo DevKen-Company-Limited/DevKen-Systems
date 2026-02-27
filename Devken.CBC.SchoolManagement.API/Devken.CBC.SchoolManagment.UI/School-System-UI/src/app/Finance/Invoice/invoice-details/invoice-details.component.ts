@@ -46,22 +46,16 @@ export class InvoiceDetailsComponent implements OnInit, OnChanges {
   // ── Scalar inputs ────────────────────────────────────────────────────────
   @Input() formData:    any     = {};
   @Input() isEditMode:  boolean = false;
-  // @Input() isSuperAdmin: boolean = false;
+  @Input() isSuperAdmin: boolean = false;
+  @Input() schools: SchoolDto[] = [];
 
   // ── Lookup arrays — populated by invoice-enrollment.component.ts ─────────
   @Input() students:      InvoiceLookupItem[] = [];
   @Input() academicYears: InvoiceLookupItem[] = [];
   @Input() terms:         InvoiceLookupItem[] = [];
   @Input() parents:       InvoiceLookupItem[] = [];
-  private _authService = inject(AuthService);
-  private _schoolService = inject(SchoolService);
-  private destroy$ = new Subject<void>();
-  private alertService= inject (AlertService);
-  schools: SchoolDto[] = [];
-   // ✅ SuperAdmin getter
-  get isSuperAdmin(): boolean {
-    return this._authService.authUser?.isSuperAdmin ?? false;
-  }
+ 
+  
   // ── Outputs ──────────────────────────────────────────────────────────────
   @Output() formChanged = new EventEmitter<any>();
   @Output() formValid   = new EventEmitter<boolean>();
@@ -154,19 +148,5 @@ export class InvoiceDetailsComponent implements OnInit, OnChanges {
       dueDate:        'Due date',
     };
     return map[field] ?? field;
-  }
-
-   private loadSchools(): void {
-    this._schoolService.getAll()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (res: any) => {
-          this.schools = res.data ?? [];
-        },
-        error: (err) => {
-          console.error('Failed to load schools', err);
-          this.alertService.error('Could not load schools. Please refresh.');
-        }
-      });
   }
 }

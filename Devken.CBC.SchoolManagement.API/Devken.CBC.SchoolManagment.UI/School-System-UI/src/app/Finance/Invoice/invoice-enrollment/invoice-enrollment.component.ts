@@ -19,6 +19,8 @@ import { StudentService } from 'app/core/DevKenService/administration/students/S
 import { ParentService } from 'app/core/DevKenService/Parents/Parent.service';
 import { TermService } from 'app/core/DevKenService/TermService/term.service';
 import { AuthService } from 'app/core/auth/auth.service';
+import { SchoolDto } from 'app/Tenant/types/school';
+import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
 
 export interface InvoiceEnrollmentStep {
   label: string;
@@ -67,6 +69,8 @@ export class InvoiceEnrollmentComponent implements OnInit, OnDestroy {
   isSubmitting = false;
   lastSaved: Date | null = null;
 
+  schools: SchoolDto[] = [];
+  private _schoolService = inject(SchoolService);
 
   // Lookup data for the Details step
   students:      InvoiceLookupItem[] = [];
@@ -136,6 +140,11 @@ export class InvoiceEnrollmentComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    if (this.isSuperAdmin) {
+        this._schoolService.getAll()
+          .pipe(takeUntil(this.destroy$))
+          .subscribe((res: any) => { this.schools = res.data ?? []; });
+      }
     this.invoiceId  = this.route.snapshot.paramMap.get('id');
     this.isEditMode = !!this.invoiceId;
 

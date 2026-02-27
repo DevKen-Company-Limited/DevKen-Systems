@@ -12,21 +12,22 @@ export class InvoiceService {
   private http = inject(HttpClient);
 
   /** GET /api/finance/invoices */
-  getAll(query?: InvoiceQueryDto): Observable<ApiResponse<InvoiceSummaryResponseDto[]>> {
-    let params = new HttpParams();
-    if (query) {
-      if (query.studentId)             params = params.set('studentId', query.studentId);
-      if (query.parentId)              params = params.set('parentId', query.parentId);
-      if (query.academicYearId)        params = params.set('academicYearId', query.academicYearId);
-      if (query.termId)                params = params.set('termId', query.termId);
-      if (query.invoiceStatus != null) params = params.set('invoiceStatus', String(query.invoiceStatus));
-      if (query.isOverdue != null)     params = params.set('isOverdue', String(query.isOverdue));
-      if (query.dateFrom)              params = params.set('dateFrom', query.dateFrom);
-      if (query.dateTo)                params = params.set('dateTo', query.dateTo);
-      if (query.isActive != null)      params = params.set('isActive', String(query.isActive));
-    }
-    return this.http.get<ApiResponse<InvoiceSummaryResponseDto[]>>(this.baseUrl, { params });
+  getAll(query?: InvoiceQueryDto, schoolId?: string): Observable<ApiResponse<InvoiceSummaryResponseDto[]>> {
+  let params = new HttpParams();
+  if (schoolId) params = params.set('schoolId', schoolId);  // ← add first
+  if (query) {
+    if (query.studentId)             params = params.set('studentId', query.studentId);
+    if (query.parentId)              params = params.set('parentId', query.parentId);
+    if (query.academicYearId)        params = params.set('academicYearId', query.academicYearId);
+    if (query.termId)                params = params.set('termId', query.termId);
+    if (query.invoiceStatus != null) params = params.set('invoiceStatus', String(query.invoiceStatus));
+    if (query.isOverdue != null)     params = params.set('isOverdue', String(query.isOverdue));
+    if (query.dateFrom)              params = params.set('dateFrom', query.dateFrom);
+    if (query.dateTo)                params = params.set('dateTo', query.dateTo);
+    if (query.isActive != null)      params = params.set('isActive', String(query.isActive));
   }
+  return this.http.get<ApiResponse<InvoiceSummaryResponseDto[]>>(this.baseUrl, { params });
+}
 
   /** GET /api/finance/invoices/{id} */
   getById(id: string): Observable<ApiResponse<InvoiceResponseDto>> {

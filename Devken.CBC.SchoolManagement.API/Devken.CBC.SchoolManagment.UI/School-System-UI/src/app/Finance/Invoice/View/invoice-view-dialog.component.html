@@ -154,7 +154,9 @@
     </div>
 
     <!-- ── Apply Discount ─────────────────────────────────────────────── -->
-    <div *ngIf="invoice.statusInvoice !== InvoiceStatus.Paid && invoice.statusInvoice !== InvoiceStatus.Cancelled"
+    <div *ngIf="invoice.statusInvoice !== InvoiceStatus.Paid
+          && invoice.statusInvoice !== InvoiceStatus.Cancelled
+          && invoice.statusInvoice !== InvoiceStatus.Refunded"
          class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-5 mb-6">
       <div class="flex items-center justify-between">
         <h3 class="text-sm font-bold text-gray-700 dark:text-gray-300">Apply Discount</h3>

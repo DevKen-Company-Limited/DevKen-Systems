@@ -41,14 +41,15 @@ export class InvoiceViewDialogComponent {
 
   close(): void { this.dialogRef.close(); }
 
+  // invoice-view-dialog.component.ts — getStatusClass (same map, same fix)
   getStatusClass(status: InvoiceStatus): string {
     const map: Record<InvoiceStatus, string> = {
-      [InvoiceStatus.Draft]:          'bg-gray-100 text-gray-600',
-      [InvoiceStatus.Issued]:         'bg-blue-100 text-blue-700',
-      [InvoiceStatus.PartiallyPaid]:  'bg-amber-100 text-amber-700',
-      [InvoiceStatus.Paid]:           'bg-green-100 text-green-700',
-      [InvoiceStatus.Overdue]:        'bg-red-100 text-red-700',
-      [InvoiceStatus.Cancelled]:      'bg-gray-200 text-gray-500',
+      [InvoiceStatus.Pending]:       'bg-gray-100 text-gray-600',
+      [InvoiceStatus.PartiallyPaid]: 'bg-amber-100 text-amber-700',
+      [InvoiceStatus.Paid]:          'bg-green-100 text-green-700',
+      [InvoiceStatus.Overdue]:       'bg-red-100 text-red-700',
+      [InvoiceStatus.Cancelled]:     'bg-gray-200 text-gray-500',
+      [InvoiceStatus.Refunded]:      'bg-violet-100 text-violet-700',
     };
     return map[status] ?? 'bg-gray-100 text-gray-600';
   }

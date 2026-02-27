@@ -1,13 +1,12 @@
 // ── Enums ──────────────────────────────────────────────────────────────────
 export enum InvoiceStatus {
-  Draft     = 0,
-  Issued    = 1,
-  PartiallyPaid = 2,
-  Paid      = 3,
-  Overdue   = 4,
-  Cancelled = 5,
+  Pending       = 0,  // ← was Draft=0 (wrong name, wrong member)
+  PartiallyPaid = 1,  // ← was Issued=1 (wrong name)
+  Paid          = 2,  // ← was PartiallyPaid=2
+  Overdue       = 3,  // ← was Paid=3
+  Cancelled     = 4,  // ← was Overdue=4
+  Refunded      = 5,  // ← was Cancelled=5, Refunded missing entirely
 }
-
 // ── Request DTOs ───────────────────────────────────────────────────────────
 export interface CreateInvoiceItemDto {
   description: string;
