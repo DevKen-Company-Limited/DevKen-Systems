@@ -31,7 +31,8 @@ import { subscriptionStatusInterceptor } from './core/auth/SubscriptionStatusInt
 import { MockApiService } from './mock-api';
 import { NavigationService } from '@fuse/lib/mock-api/NavigationService';
 import { AuthService } from './core/auth/auth.service';
-import { environment } from '../environments/environment';
+import { environment } from 'environments/environment.prod';
+
 
 // API Base URL Injection Token
 export const API_BASE_URL = new InjectionToken<string>('API_BASE_URL');
