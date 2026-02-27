@@ -16,31 +16,9 @@
             <!-- Heading -->
             <div class="cbc-heading">Sign in</div>
             <div class="cbc-sub-heading">
-                Don't have an account?
-                <a class="cbc-link" [routerLink]="['/sign-up']">Sign up</a>
+                No account?
+                <a class="cbc-link" [routerLink]="['/sign-up']">Create one</a>
             </div>
-
-            <!-- Info alert -->
-            <fuse-alert
-                class="mt-6 block"
-                [appearance]="'outline'"
-                [showIcon]="false"
-                [type]="'info'">
-                Use your school credentials to access the
-                <strong>CBC Management System</strong>.
-            </fuse-alert>
-
-            <!-- Error / success alert -->
-            @if (showAlert) {
-                <fuse-alert
-                    class="mt-4 block"
-                    [appearance]="'outline'"
-                    [showIcon]="false"
-                    [type]="alert.type"
-                    [@shake]="alert.type === 'error'">
-                    {{ alert.message }}
-                </fuse-alert>
-            }
 
             <!-- Role switcher -->
             <div class="cbc-role-switcher">
@@ -55,21 +33,44 @@
                 }
             </div>
 
+            <!-- Info alert -->
+            <div style="margin-top:14px; animation: fadeUp .45s .28s ease both;">
+                <fuse-alert
+                    [appearance]="'outline'"
+                    [showIcon]="false"
+                    [type]="'info'">
+                    Use your school credentials to sign in to the
+                    <strong>CBC Management System</strong>.
+                </fuse-alert>
+            </div>
+
+            <!-- Error / success alert -->
+            @if (showAlert) {
+                <div class="cbc-alert-wrap">
+                    <fuse-alert
+                        [appearance]="'outline'"
+                        [showIcon]="false"
+                        [type]="alert.type"
+                        [@shake]="alert.type === 'error'">
+                        {{ alert.message }}
+                    </fuse-alert>
+                </div>
+            }
+
             <!-- Form -->
             <form class="cbc-form" [formGroup]="signInForm" #signInNgForm="ngForm">
 
                 <!-- Email -->
-        <mat-form-field class="w-full cbc-field" appearance="outline">
-        <mat-label>Email address</mat-label>
-        <input id="email" matInput formControlName="email" />
-        
-        <mat-error *ngIf="signInForm.get('email')?.hasError('required')">
-            Email address is required
-        </mat-error>
-        <mat-error *ngIf="signInForm.get('email')?.hasError('email')">
-            Please enter a valid email address
-        </mat-error>
-        </mat-form-field>
+                <mat-form-field class="w-full cbc-field" appearance="outline">
+                    <mat-label>Email address</mat-label>
+                    <input id="email" matInput [formControlName]="'email'" />
+                    <mat-error *ngIf="signInForm.get('email')?.hasError('required')">
+                        Email is required
+                    </mat-error>
+                    <mat-error *ngIf="signInForm.get('email')?.hasError('email')">
+                        Enter a valid email
+                    </mat-error>
+                </mat-form-field>
 
                 <!-- Password -->
                 <mat-form-field class="w-full cbc-field" appearance="outline">
@@ -80,39 +81,32 @@
                         [type]="showPassword ? 'text' : 'password'"
                         [formControlName]="'password'"
                     />
-                    <button
-                        mat-icon-button
-                        type="button"
-                        (click)="showPassword = !showPassword"
-                        matSuffix>
-                        <mat-icon class="icon-size-5" [svgIcon]="showPassword ? 'heroicons_solid:eye-slash' : 'heroicons_solid:eye'"></mat-icon>
+                    <button mat-icon-button type="button" (click)="showPassword = !showPassword" matSuffix>
+                        <mat-icon class="icon-size-5"
+                            [svgIcon]="showPassword ? 'heroicons_solid:eye-slash' : 'heroicons_solid:eye'">
+                        </mat-icon>
                     </button>
                     <mat-error>Password is required</mat-error>
                 </mat-form-field>
 
-                <!-- Remember me + Forgot password -->
+                <!-- Remember + Forgot -->
                 <div class="cbc-actions-row">
-                    <mat-checkbox
-                        class="-ml-2"
-                        [color]="'primary'"
-                        [formControlName]="'rememberMe'">
+                    <mat-checkbox class="-ml-2" [color]="'primary'" [formControlName]="'rememberMe'">
                         Remember me
                     </mat-checkbox>
-                    <a class="cbc-forgot-link" [routerLink]="['/forgot-password']">
-                        Forgot password?
-                    </a>
+                    <a class="cbc-forgot-link" [routerLink]="['/forgot-password']">Forgot password?</a>
                 </div>
 
                 <!-- Submit -->
                 <button
-                    class="cbc-submit-btn fuse-mat-button-large w-full mt-2"
+                    class="cbc-submit-btn fuse-mat-button-large w-full"
                     mat-flat-button
                     [disabled]="signInForm.disabled"
                     (click)="signIn()">
                     @if (!signInForm.disabled) {
                         <span>Sign in</span>
-                      <ng-container *ngIf="showIcon">
-                        <mat-icon class="icon-size-4 ml-2" svgIcon="heroicons_solid:arrow-right"></mat-icon>
+                        <ng-container *ngIf="showIcon">
+                            <mat-icon class="icon-size-4 ml-2" svgIcon="heroicons_solid:arrow-right"></mat-icon>
                         </ng-container>
                     }
                     @if (signInForm.disabled) {
@@ -127,7 +121,7 @@
                     <div class="cbc-divider-line"></div>
                 </div>
 
-                <!-- SSO buttons -->
+                <!-- SSO -->
                 <div class="cbc-sso-row">
                     <button class="cbc-sso-btn flex-auto" type="button" mat-stroked-button>
                         <mat-icon class="icon-size-5" [svgIcon]="'feather:facebook'"></mat-icon>
@@ -146,16 +140,21 @@
 
     <!-- ══ RIGHT PANEL: HERO ══ -->
     <div class="cbc-right-panel">
-        <!-- Background decorations -->
+
+        <!-- Decorative rings -->
         <div class="cbc-ring cbc-ring-1"></div>
         <div class="cbc-ring cbc-ring-2"></div>
-        <div class="cbc-glow"></div>
+        <div class="cbc-ring cbc-ring-3"></div>
 
-        <svg class="cbc-dots" viewBox="0 0 220 192" width="200" height="175" fill="none"
-             aria-hidden="true">
+        <!-- Glows -->
+        <div class="cbc-glow cbc-glow-1"></div>
+        <div class="cbc-glow cbc-glow-2"></div>
+
+        <!-- Dot grid -->
+        <svg class="cbc-dots" viewBox="0 0 220 192" width="180" height="160" fill="none" aria-hidden="true">
             <defs>
                 <pattern id="cbc-dotpat" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-                    <rect x="0" y="0" width="4" height="4" fill="rgba(255,255,255,0.35)" rx="1"/>
+                    <rect x="0" y="0" width="3.5" height="3.5" fill="rgba(255,255,255,0.4)" rx="1"/>
                 </pattern>
             </defs>
             <rect width="220" height="192" fill="url(#cbc-dotpat)"/>
@@ -163,10 +162,15 @@
 
         <!-- Content -->
         <div class="cbc-right-content">
-            <div class="cbc-right-tag">CBC Accredited Platform</div>
+
+            <div class="cbc-right-tag">
+                <span class="dot"></span>
+                CBC Accredited Platform
+            </div>
 
             <div class="cbc-right-headline">
-                Manage your<br>school with <span class="cbc-accent-text">clarity</span>
+                Manage your<br>
+                school with <span class="accent">clarity</span>
             </div>
 
             <p class="cbc-right-desc">
@@ -174,6 +178,23 @@
                 teachers, assessments, lesson plans, and finance — all in one place.
             </p>
 
+            <!-- Stat chips -->
+            <div class="cbc-stats-row">
+                <div class="cbc-stat-chip">
+                    <div class="val">500+</div>
+                    <div class="lbl">Schools</div>
+                </div>
+                <div class="cbc-stat-chip">
+                    <div class="val">98%</div>
+                    <div class="lbl">Uptime</div>
+                </div>
+                <div class="cbc-stat-chip">
+                    <div class="val">12</div>
+                    <div class="lbl">Grade Levels</div>
+                </div>
+            </div>
+
+            <!-- Feature list -->
             <ul class="cbc-feature-list">
                 @for (feature of features; track feature) {
                     <li class="cbc-feature-item">
@@ -183,6 +204,7 @@
                 }
             </ul>
 
+            <!-- Avatars -->
             <div class="cbc-avatars-row">
                 <div class="cbc-avatar-stack">
                     @for (av of avatars; track av.initials) {
@@ -190,9 +212,10 @@
                     }
                 </div>
                 <p class="cbc-av-text">
-                    <strong>500+ schools</strong> trust Devken CBC
+                    <strong>500+ schools</strong><br>trust Devken CBC
                 </p>
             </div>
+
         </div>
     </div>
 

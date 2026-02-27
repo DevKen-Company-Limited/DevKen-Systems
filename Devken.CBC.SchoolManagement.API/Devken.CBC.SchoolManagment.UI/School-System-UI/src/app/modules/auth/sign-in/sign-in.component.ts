@@ -10,33 +10,34 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIcon, MatIconModule } from '@angular/material/icon';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { NgStyle } from '@angular/common';
+import { NgIf, NgStyle } from '@angular/common';
 import { fuseAnimations } from '@fuse/animations';
 import { FuseAlertComponent, FuseAlertType } from '@fuse/components/alert';
 import { AuthService } from 'app/core/auth/auth.service';
 
-interface RolePreset {
+export interface RolePreset {
     label: string;
     email: string;
     password: string;
 }
 
-interface Avatar {
+export interface Avatar {
     initials: string;
     bg: string;
 }
 
 @Component({
-    selector: 'auth-sign-in',
-    templateUrl: './sign-in.component.html',
-    styleUrls: ['./sign-in.component.scss'],
+    selector     : 'auth-sign-in',
+    templateUrl  : './sign-in.component.html',
+    styleUrls    : ['./sign-in.component.scss'],
     encapsulation: ViewEncapsulation.None,
-    animations: fuseAnimations,
-    imports: [
+    animations   : fuseAnimations,
+    standalone   : true,
+    imports      : [
         RouterLink,
         NgStyle,
         FuseAlertComponent,
@@ -48,33 +49,34 @@ interface Avatar {
         MatIconModule,
         MatCheckboxModule,
         MatProgressSpinnerModule,
-        MatIcon
     ],
 })
-export class AuthSignInComponent implements OnInit {
+export class AuthSignInComponent implements OnInit
+{
     @ViewChild('signInNgForm') signInNgForm: NgForm;
 
     // ── Alert ──────────────────────────────────────────────────────────────────
     alert: { type: FuseAlertType; message: string } = {
-        type: 'success',
+        type   : 'success',
         message: '',
     };
     showAlert = false;
 
-    // ── Password visibility toggle ─────────────────────────────────────────────
+    // ── UI state ───────────────────────────────────────────────────────────────
     showPassword = false;
+    showIcon     = true;
 
     // ── Role switcher ──────────────────────────────────────────────────────────
     activeRole = 'Super Admin';
 
     roles: RolePreset[] = [
-        { label: 'Super Admin', email: 'superadmin@devken.com',  password: 'SuperAdmin@123'  },
-        { label: 'Principal',   email: 'principal@school.com',  password: 'Principal@123'   },
-        { label: 'Teacher',     email: 'teacher@school.com',    password: 'Teacher@123'     },
-        { label: 'Parent',      email: 'parent@school.com',     password: 'Parent@123'      },
+        { label: 'Super Admin', email: 'superadmin@devken.com', password: 'SuperAdmin@123'  },
+        { label: 'Principal',   email: 'principal@school.com', password: 'Principal@123'   },
+        { label: 'Teacher',     email: 'teacher@school.com',   password: 'Teacher@123'     },
+        { label: 'Parent',      email: 'parent@school.com',    password: 'Parent@123'      },
     ];
 
-    // ── Right panel static content ─────────────────────────────────────────────
+    // ── Right panel ────────────────────────────────────────────────────────────
     features: string[] = [
         'Competency-based assessment tracking (EE · ME · AE · BE)',
         'Full CBC grade support: PP1, PP2, Grade 1–6, JHS 1–3',
@@ -92,40 +94,42 @@ export class AuthSignInComponent implements OnInit {
     // ── Form ───────────────────────────────────────────────────────────────────
     signInForm: UntypedFormGroup;
 
+    // ── Constructor ────────────────────────────────────────────────────────────
     constructor(
         private _activatedRoute: ActivatedRoute,
-        private _authService: AuthService,
-        private _formBuilder: UntypedFormBuilder,
-        private _router: Router,
+        private _authService   : AuthService,
+        private _formBuilder   : UntypedFormBuilder,
+        private _router        : Router,
     ) {}
 
     // ── Lifecycle ──────────────────────────────────────────────────────────────
-
-    ngOnInit(): void {
+    ngOnInit(): void
+    {
         this.signInForm = this._formBuilder.group({
-            email:      ['superadmin@devken.com', [Validators.required, Validators.email]],
-            password:   ['SuperAdmin@123',         Validators.required],
+            email     : ['superadmin@devken.com', [Validators.required, Validators.email]],
+            password  : ['SuperAdmin@123',         Validators.required],
             rememberMe: [''],
         });
     }
 
     // ── Public methods ─────────────────────────────────────────────────────────
 
-    /** Switch the pre-filled credentials by role */
-    setRole(role: RolePreset): void {
+    /** Pre-fill credentials for the selected role */
+    setRole(role: RolePreset): void
+    {
         this.activeRole = role.label;
         this.signInForm.patchValue({ email: role.email, password: role.password });
         this.showAlert = false;
     }
 
-    /** Sign in — unchanged business logic, same flow as original */
-    signIn(): void {
-        if (this.signInForm.invalid) {
-            return;
-        }
+    /** Submit sign-in */
+    signIn(): void
+    {
+        if (this.signInForm.invalid) { return; }
 
         this.signInForm.disable();
-        this.showAlert = false;
+        this.showAlert  = false;
+        this.showIcon   = false;
 
         const email        = this.signInForm.get('email').value as string;
         const isSuperAdmin = email.toLowerCase().includes('superadmin');
@@ -135,8 +139,10 @@ export class AuthSignInComponent implements OnInit {
             : this._authService.signIn(this.signInForm.value);
 
         authCall.subscribe({
-            next: (response) => {
-                if (response.data.user.requirePasswordChange) {
+            next: (response) =>
+            {
+                if (response.data.user.requirePasswordChange)
+                {
                     this._router.navigate(['/change-password']);
                     return;
                 }
@@ -144,14 +150,17 @@ export class AuthSignInComponent implements OnInit {
                 const redirectURL =
                     this._activatedRoute.snapshot.queryParamMap.get('redirectURL') ||
                     '/signed-in-redirect';
+
                 this._router.navigateByUrl(redirectURL);
             },
-            error: (response) => {
+            error: (response) =>
+            {
                 this.signInForm.enable();
                 this.signInNgForm.resetForm();
+                this.showIcon = true;
 
                 this.alert = {
-                    type:    'error',
+                    type   : 'error',
                     message: response.message || 'Wrong email or password',
                 };
                 this.showAlert = true;
@@ -159,12 +168,14 @@ export class AuthSignInComponent implements OnInit {
         });
     }
 
-    /** Cancel / logout shortcut (unchanged) */
-    logout(): void {
+    /** Cancel — force password change flow logout */
+    logout(): void
+    {
         const confirmed = confirm(
             'Are you sure you want to cancel? You must change your password to access the system.',
         );
-        if (confirmed) {
+        if (confirmed)
+        {
             this._authService.signOut();
             this._router.navigate(['/sign-in']);
         }
