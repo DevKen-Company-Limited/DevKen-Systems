@@ -26,42 +26,42 @@ import { TranslocoHttpLoader } from './core/transloco/transloco.http-loader';
 
 import { mockApiInterceptor } from '@fuse/lib/mock-api/mock-api.interceptor';
 import { authInterceptor } from './core/auth/auth.interceptor';
+import { subscriptionStatusInterceptor } from './core/auth/SubscriptionStatusInterceptor';
 
 import { MockApiService } from './mock-api';
 import { NavigationService } from '@fuse/lib/mock-api/NavigationService';
 import { AuthService } from './core/auth/auth.service';
-import { subscriptionStatusInterceptor } from './core/auth/SubscriptionStatusInterceptor';
 import { environment } from '../environments/environment';
 
-// API Base URL
+// API Base URL Injection Token
 export const API_BASE_URL = new InjectionToken<string>('API_BASE_URL');
 
 export const appConfig: ApplicationConfig = {
     providers: [
         provideAnimations(),
 
-        // 👇 HttpClient with ALL interceptors
+        // HttpClient with interceptors
         provideHttpClient(
-        withInterceptors([
-            mockApiInterceptor,
-            authInterceptor,
-            subscriptionStatusInterceptor
-        ])
-        )
-        ,
+            withInterceptors([
+                mockApiInterceptor,
+                authInterceptor,
+                subscriptionStatusInterceptor
+            ])
+        ),
 
+        // Router setup
         provideRouter(
             appRoutes,
             withInMemoryScrolling({ scrollPositionRestoration: 'enabled' })
         ),
 
-        // Material providers needed by the interceptor
-        importProvidersFrom(
-            MatSnackBarModule,
-            MatDialogModule
-        ),
+        // Material providers
+        importProvidersFrom(MatSnackBarModule, MatDialogModule),
 
+        // API Base URL from environment
         { provide: API_BASE_URL, useValue: environment.apiUrl },
+
+        // Date adapter
         { provide: DateAdapter, useClass: LuxonDateAdapter },
         {
             provide: MAT_DATE_FORMATS,
@@ -76,6 +76,7 @@ export const appConfig: ApplicationConfig = {
             }
         },
 
+        // Transloco setup
         provideTransloco({
             config: {
                 availableLangs: [
@@ -90,6 +91,7 @@ export const appConfig: ApplicationConfig = {
             loader: TranslocoHttpLoader
         }),
 
+        // Initialize default language
         provideAppInitializer(() => {
             const translocoService = inject(TranslocoService);
             const defaultLang = translocoService.getDefaultLang();
@@ -105,12 +107,7 @@ export const appConfig: ApplicationConfig = {
             fuse: {
                 layout: 'classy',
                 scheme: 'light',
-                screens: {
-                    sm: '600px',
-                    md: '960px',
-                    lg: '1280px',
-                    xl: '1440px'
-                },
+                screens: { sm: '600px', md: '960px', lg: '1280px', xl: '1440px' },
                 theme: 'theme-default',
                 themes: [
                     { id: 'theme-default', name: 'Default' },
@@ -123,6 +120,7 @@ export const appConfig: ApplicationConfig = {
             }
         }),
 
+        // Auth and navigation initializer
         provideAppInitializer(() => {
             const authService = inject(AuthService);
             const navigationService = inject(NavigationService);
