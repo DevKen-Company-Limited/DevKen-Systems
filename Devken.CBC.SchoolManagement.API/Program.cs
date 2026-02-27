@@ -2,7 +2,7 @@
 using Devken.CBC.SchoolManagement.API.Registration;
 using Devken.CBC.SchoolManagement.API.Services;
 using Devken.CBC.SchoolManagement.Application.Service;
-using Devken.CBC.SchoolManagement.Application.Service.ISubscription; // ADD THIS
+using Devken.CBC.SchoolManagement.Application.Service.ISubscription;
 using Devken.CBC.SchoolManagement.Infrastructure;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF;
 using Devken.CBC.SchoolManagement.Infrastructure.Middleware;
@@ -27,26 +27,9 @@ if (!Directory.Exists(uploadsPath))
 
 QuestPDF.Settings.License = LicenseType.Community;
 
-
-
 // ══════════════════════════════════════════════════════════════
 // CORS Configuration
 // ══════════════════════════════════════════════════════════════
-//var angularCorsPolicy = "AngularDevCors";
-//builder.Services.AddCors(options =>
-//{
-//    options.AddPolicy(angularCorsPolicy, policy =>
-//    {
-//        policy.WithOrigins(
-//                "http://localhost:4200",
-//                "https://dev-ken-systems.vercel.app"
-//              )
-//              .AllowAnyHeader()
-//              .AllowAnyMethod()
-//              .AllowCredentials();
-//    });
-//});
-
 var angularCorsPolicy = "AngularDevCors";
 builder.Services.AddCors(options =>
 {
@@ -73,7 +56,10 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(connectionString, sql =>
     {
         sql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName);
-        sql.EnableRetryOnFailure();
+        sql.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(30),
+            errorNumbersToAdd: null);
     });
 
     options.UseQueryTrackingBehavior(QueryTrackingBehavior.TrackAll);
@@ -137,7 +123,7 @@ builder.Services.AddApiServices(builder.Configuration);
 builder.Services.AddSchoolManagement(builder.Configuration);
 
 // ══════════════════════════════════════════════════════════════
-// Infrastructure Services (includes JWT Authentication & Authorization)
+// Infrastructure Services
 // ══════════════════════════════════════════════════════════════
 builder.Services.AddInfrastructure(builder.Configuration);
 
@@ -154,7 +140,7 @@ CultureInfo.DefaultThreadCurrentUICulture = supportedCultures[0];
 var app = builder.Build();
 
 // ══════════════════════════════════════════════════════════════
-// Database Seeding
+// Database Initialization
 // ══════════════════════════════════════════════════════════════
 using (var scope = app.Services.CreateScope())
 {
@@ -165,25 +151,41 @@ using (var scope = app.Services.CreateScope())
     {
         logger.LogInformation("Starting database initialization...");
 
-        // Run pending migrations
-        var pendingMigrations = dbContext.Database.GetPendingMigrations().ToList();
-        if (pendingMigrations.Any())
+        // ── Step 1: Apply Migrations or Create Schema ──────────────
+        try
         {
-            logger.LogInformation("Applying {Count} pending migrations...", pendingMigrations.Count);
-            dbContext.Database.Migrate();
-            logger.LogInformation("Migrations applied successfully.");
+            var pendingMigrations = dbContext.Database.GetPendingMigrations().ToList();
+            var appliedMigrations = dbContext.Database.GetAppliedMigrations().ToList();
+
+            if (pendingMigrations.Any())
+            {
+                logger.LogInformation("Applying {Count} pending migrations...", pendingMigrations.Count);
+                await dbContext.Database.MigrateAsync();
+                logger.LogInformation("Migrations applied successfully.");
+            }
+            else if (!appliedMigrations.Any())
+            {
+                // No migrations exist at all — create schema directly from model
+                logger.LogInformation("No migrations found. Creating database schema from model...");
+                await dbContext.Database.EnsureCreatedAsync();
+                logger.LogInformation("Database schema created successfully.");
+            }
+            else
+            {
+                logger.LogInformation("Database is up to date. No pending migrations.");
+            }
         }
-        else
+        catch (Exception migEx)
         {
-            logger.LogInformation("Database is up to date. No pending migrations.");
+            logger.LogWarning(migEx, "Migration failed. Attempting EnsureCreated as fallback...");
+            await dbContext.Database.EnsureCreatedAsync();
+            logger.LogInformation("Database schema created via EnsureCreated fallback.");
         }
 
-        // Seed database
+        // ── Step 2: Seed Core Data ─────────────────────────────────
         await dbContext.SeedDatabaseAsync(logger);
 
-        // ═══════════════════════════════════════════════════════════
-        // NEW: Seed Subscription Plans
-        // ═══════════════════════════════════════════════════════════
+        // ── Step 3: Seed Subscription Plans ───────────────────────
         try
         {
             var planService = scope.ServiceProvider.GetRequiredService<ISubscriptionPlanService>();
@@ -192,38 +194,44 @@ using (var scope = app.Services.CreateScope())
         catch (Exception ex)
         {
             logger.LogError(ex, "An error occurred while seeding subscription plans.");
-            // Don't throw - allow application to continue even if plan seeding fails
+            // Non-fatal — app continues
         }
-        // ═══════════════════════════════════════════════════════════
 
-        // Seed permissions for default school
-        var defaultSchool = await dbContext.Schools
-            .FirstOrDefaultAsync(s => s.SlugName == "default-school");
-
-        if (defaultSchool != null)
+        // ── Step 4: Seed Permissions for Default School ────────────
+        try
         {
-            var permissionSeeder = scope.ServiceProvider.GetRequiredService<IPermissionSeedService>();
-            await permissionSeeder.SeedPermissionsAndRolesAsync(defaultSchool.Id);
-            logger.LogInformation("Default school permissions seeded successfully.");
+            var defaultSchool = await dbContext.Schools
+                .FirstOrDefaultAsync(s => s.SlugName == "default-school");
+
+            if (defaultSchool != null)
+            {
+                var permissionSeeder = scope.ServiceProvider.GetRequiredService<IPermissionSeedService>();
+                await permissionSeeder.SeedPermissionsAndRolesAsync(defaultSchool.Id);
+                logger.LogInformation("Default school permissions seeded successfully.");
+            }
+            else
+            {
+                logger.LogWarning("Default school not found. Skipping permission seeding.");
+            }
         }
-        else
+        catch (Exception ex)
         {
-            logger.LogWarning("Default school not found. Skipping permission seeding.");
+            logger.LogError(ex, "An error occurred while seeding permissions.");
+            // Non-fatal — app continues
         }
 
         logger.LogInformation("Database initialization completed successfully.");
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "An error occurred during database initialization.");
+        logger.LogError(ex, "A critical error occurred during database initialization.");
         throw;
     }
 }
 
 // ══════════════════════════════════════════════════════════════
-// Middleware Pipeline Configuration
+// Middleware Pipeline
 // ══════════════════════════════════════════════════════════════
-
 app.UseCors(angularCorsPolicy);
 app.UseApiPipeline();
 app.UseStaticFiles(new StaticFileOptions
@@ -245,7 +253,7 @@ app.UseMiddleware<TenantMiddleware>();
 app.UseAuthorization();
 
 // ══════════════════════════════════════════════════════════════
-// Swagger UI (Development Only)
+// Swagger UI
 // ══════════════════════════════════════════════════════════════
 if (app.Environment.IsDevelopment())
 {
@@ -260,21 +268,31 @@ if (app.Environment.IsDevelopment())
 
     app.Logger.LogInformation("Swagger UI is available at: https://localhost:7258");
 }
+else
+{
+    // Enable Swagger in production so you can test the deployed API
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "DevKen School Management API v1");
+        c.RoutePrefix = "swagger";
+        c.DocumentTitle = "DevKen School Management API";
+    });
+}
 
 // ══════════════════════════════════════════════════════════════
 // Map Controllers
 // ══════════════════════════════════════════════════════════════
 app.MapControllers();
-app.UseStaticFiles(); // wwwroot
+app.UseStaticFiles();
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(uploadsPath),
     RequestPath = "/uploads"
 });
 
-
 // ══════════════════════════════════════════════════════════════
-// Angular Development Server Launcher (Development Only)
+// Angular Dev Server (Development Only)
 // ══════════════════════════════════════════════════════════════
 if (builder.Environment.IsDevelopment())
 {
@@ -293,18 +311,15 @@ if (builder.Environment.IsDevelopment())
     }
     catch (Exception ex)
     {
-        app.Logger.LogWarning(ex, "Failed to launch Angular development server. You may need to start it manually.");
+        app.Logger.LogWarning(ex, "Failed to launch Angular development server. Start it manually.");
     }
 }
 
 // ══════════════════════════════════════════════════════════════
-// Application Startup Complete
+// Startup Complete
 // ══════════════════════════════════════════════════════════════
 app.Logger.LogInformation("DevKen School Management API is starting...");
 app.Logger.LogInformation("Environment: {Environment}", app.Environment.EnvironmentName);
 app.Logger.LogInformation("Application started successfully. Press Ctrl+C to shut down.");
 
-// ══════════════════════════════════════════════════════════════
-// Run Application
-// ══════════════════════════════════════════════════════════════
 app.Run();
