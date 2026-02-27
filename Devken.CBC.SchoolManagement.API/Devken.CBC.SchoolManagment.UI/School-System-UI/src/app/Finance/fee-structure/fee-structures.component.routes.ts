@@ -1,10 +1,9 @@
-import { Routes } from "@angular/router";
-import { FeeStructuresComponent } from "./fee-structures.component";
+import { Routes } from '@angular/router';
+import { FeeStructuresComponent } from './fee-structures.component';
 
-
-export default[
+export default [
     {
-        path:'',
+        path: '',
         component: FeeStructuresComponent
     }
 ] as Routes;
