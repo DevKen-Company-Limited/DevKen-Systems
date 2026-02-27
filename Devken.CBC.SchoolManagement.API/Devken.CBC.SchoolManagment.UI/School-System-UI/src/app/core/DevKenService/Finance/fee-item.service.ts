@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { API_BASE_URL } from 'app/app.config';
-import { FeeItemResponseDto, CreateFeeItemDto, UpdateFeeItemDto } from 'app/finance/fee-item/Types/fee-item.model';
+import { FeeItemResponseDto, CreateFeeItemDto, UpdateFeeItemDto } from 'app/Finance/fee-item/Types/fee-item.model';
 
 
 

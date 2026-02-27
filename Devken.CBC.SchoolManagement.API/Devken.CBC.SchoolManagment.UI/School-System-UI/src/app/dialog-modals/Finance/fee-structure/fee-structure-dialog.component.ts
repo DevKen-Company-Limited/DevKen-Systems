@@ -25,7 +25,7 @@ import { inject } from '@angular/core';
 import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
 import { API_BASE_URL } from 'app/app.config';
 import { FeeStructureService } from 'app/core/DevKenService/Finance/FeeStructureService';
-import { CBC_LEVEL_OPTIONS, APPLICABLE_TO_OPTIONS, ApplicableTo } from 'app/finance/fee-item/Types/fee-item.model';
+import { CBC_LEVEL_OPTIONS, APPLICABLE_TO_OPTIONS, ApplicableTo } from 'app/Finance/fee-item/Types/fee-item.model';
 import {
   FeeStructureDto,
   FeeItemLookup,

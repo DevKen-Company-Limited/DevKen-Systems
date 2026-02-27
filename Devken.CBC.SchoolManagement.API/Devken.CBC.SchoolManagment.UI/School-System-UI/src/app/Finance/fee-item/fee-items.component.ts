@@ -19,6 +19,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { FeeItemResponseDto, FEE_TYPE_OPTIONS, resolveFeeTypeLabel, resolveLevelLabel } from './Types/fee-item.model';
 
 
+
 @Component({
   selector: 'app-fee-items',
   standalone: true,
