@@ -7,7 +7,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
 import { ParentService } from 'app/core/DevKenService/Parents/Parent.service';
-import { ParentFormDialogComponent } from 'app/dialog-modals/Parent/parent-form-dialog.component';
 import { DataTableComponent, TableHeader, TableColumn, TableAction, TableEmptyState } from 'app/shared/data-table/data-table.component';
 import { FilterPanelComponent, FilterField, FilterChangeEvent } from 'app/shared/Filter/filter-panel.component';
 import { BaseListComponent } from 'app/shared/Lists/BaseListComponent';
@@ -16,8 +15,9 @@ import { PaginationComponent } from 'app/shared/pagination/pagination.component'
 import { StatsCardsComponent, StatCard } from 'app/shared/stats-cards/stats-cards.component';
 import { ParentSummaryDto, ParentRelationship, ParentQueryDto } from './Types/Parent.types';
 import { Router } from '@angular/router';
-
-
+import { AuthService } from 'app/core/auth/auth.service';
+import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
+import { SchoolDto } from 'app/Tenant/types/school';
 
 @Component({
   selector: 'app-parents-list',
@@ -40,9 +40,11 @@ export class ParentsListComponent extends BaseListComponent<ParentSummaryDto> im
   @ViewChild('relationshipTpl', { static: true }) relationshipTpl!: TemplateRef<any>;
   @ViewChild('actionsTpl', { static: true }) actionsTpl!: TemplateRef<any>;
 
-  private _router        = inject(Router);
+  private _router = inject(Router);
   private destroy$ = new Subject<void>();
   private searchSubject = new Subject<string>();
+  private _authService = inject(AuthService);
+  private _schoolService = inject(SchoolService);
 
   // ── Header ──────────────────────────────────────────────────────────────
   breadcrumbs: Breadcrumb[] = [
@@ -50,6 +52,15 @@ export class ParentsListComponent extends BaseListComponent<ParentSummaryDto> im
     { label: 'People' },
     { label: 'Parents' },
   ];
+
+  // ── SuperAdmin State ──────────────────────────────────────────────────────────
+  get isSuperAdmin(): boolean {
+    return this._authService.authUser?.isSuperAdmin ?? false;
+  }
+
+  // ✅ Schools for SuperAdmin filter
+  schools: SchoolDto[] = [];
+  selectedSchoolId: string | null = null;
 
   // ── Stats ────────────────────────────────────────────────────────────────
   statsCards: StatCard[] = [];
@@ -64,7 +75,7 @@ export class ParentsListComponent extends BaseListComponent<ParentSummaryDto> im
 
   columns: TableColumn<ParentSummaryDto>[] = [
     { id: 'fullName',       label: 'Name',         sortable: true },
-    { id: 'relationship',   label: 'Relationship',  align: 'center' },
+    { id: 'relationshipDisplay',   label: 'Relationship',  align: 'center' },
     { id: 'phoneNumber',    label: 'Phone',         hideOnMobile: true },
     { id: 'email',          label: 'Email',         hideOnMobile: true, hideOnTablet: true },
     { id: 'studentCount',   label: 'Students',      align: 'center' },
@@ -113,6 +124,7 @@ export class ParentsListComponent extends BaseListComponent<ParentSummaryDto> im
       placeholder: 'Name, email or phone...',
       value: '',
     },
+    // School filter will be inserted dynamically for SuperAdmin after schools load
     {
       id: 'relationship',
       label: 'Relationship',
@@ -120,14 +132,12 @@ export class ParentsListComponent extends BaseListComponent<ParentSummaryDto> im
       value: 'all',
       options: [
         { label: 'All Relationships', value: 'all' },
-        { label: 'Father', value: ParentRelationship.Father },
-        { label: 'Mother', value: ParentRelationship.Mother },
-        { label: 'Guardian', value: ParentRelationship.Guardian },
-        { label: 'Sibling', value: ParentRelationship.Sibling },
+        { label: 'Father',      value: ParentRelationship.Father      },
+        { label: 'Mother',      value: ParentRelationship.Mother      },
+        { label: 'Guardian',    value: ParentRelationship.Guardian    },
+        { label: 'Sponsor',     value: ParentRelationship.Sponsor     }, // ← replaces Sibling
         { label: 'Grandparent', value: ParentRelationship.Grandparent },
-        { label: 'Uncle', value: ParentRelationship.Uncle },
-        { label: 'Aunt', value: ParentRelationship.Aunt },
-        { label: 'Other', value: ParentRelationship.Other },
+        { label: 'Other',       value: ParentRelationship.Other       },
       ],
     },
     {
@@ -180,7 +190,15 @@ export class ParentsListComponent extends BaseListComponent<ParentSummaryDto> im
   }
 
   ngOnInit(): void {
-    this.init();
+     this.cellTemplates = {
+    status:              this.statusTpl,
+    badges:              this.badgesTpl,
+    relationshipDisplay: this.relationshipTpl,
+  };
+    // For non‑SuperAdmin, we can init immediately
+    if (!this.isSuperAdmin) {
+      this.init();
+    }
 
     // debounce search
     this.searchSubject.pipe(
@@ -188,13 +206,18 @@ export class ParentsListComponent extends BaseListComponent<ParentSummaryDto> im
       distinctUntilChanged(),
       takeUntil(this.destroy$),
     ).subscribe(() => this.applyFilters());
+
+    // ✅ Load schools for SuperAdmin (this will also trigger data load)
+    if (this.isSuperAdmin) {
+      this.loadSchools();
+    }
   }
 
   ngAfterViewInit(): void {
     this.cellTemplates = {
       status:       this.statusTpl,
       badges:       this.badgesTpl,
-      relationship: this.relationshipTpl,
+      relationshipDisplay: this.relationshipTpl, 
     };
   }
 
@@ -203,9 +226,58 @@ export class ParentsListComponent extends BaseListComponent<ParentSummaryDto> im
     this.destroy$.complete();
   }
 
+  // ✅ Load schools and add school filter
+  private loadSchools(): void {
+    this._schoolService.getAll().pipe(takeUntil(this.destroy$)).subscribe({
+      next: (res: any) => {
+        this.schools = res.data ?? [];
+        if (this.schools.length > 0) {
+          // Default to first school (required by backend)
+          this.selectedSchoolId = this.schools[0].id;
+          this.addSchoolFilter();
+          // Now that schoolId is set, we can load data
+          this.init(); // This will call loadAll() with selectedSchoolId
+        } else {
+          // No schools available – show empty state or disable
+          this.isLoading = false;
+        }
+      },
+      error: (err) => {
+        console.error('Failed to load schools', err);
+        this.alertService.error('Could not load schools. Please refresh.');
+        this.isLoading = false;
+      }
+    });
+  }
+
+  // ✅ Add school filter to filterFields with a new array reference
+  private addSchoolFilter(): void {
+    const schoolFilter: FilterField = {
+      id: 'schoolId',
+      label: 'School',
+      type: 'select',
+      value: this.selectedSchoolId,
+      options: this.schools.map(s => ({ label: s.name, value: s.id })),
+    };
+    // Insert after search filter (index 1) – create new array to trigger change detection
+    this.filterFields = [
+      this.filterFields[0],        // search filter
+      schoolFilter,
+      ...this.filterFields.slice(1) // the rest
+    ];
+  }
+
   protected override loadAll(): void {
+    // For SuperAdmin, wait until a school is selected
+    if (this.isSuperAdmin && !this.selectedSchoolId) {
+      this.isLoading = false;
+      return;
+    }
+
     this.isLoading = true;
-    this.parentService.query(this.activeFilters).subscribe({
+    // For SuperAdmin, always pass selectedSchoolId; for others, undefined
+    const schoolId = this.isSuperAdmin ? this.selectedSchoolId : undefined;
+    this.parentService.query(this.activeFilters, schoolId).subscribe({
       next: (res) => {
         this.isLoading = false;
         if (res.success) {
@@ -214,7 +286,9 @@ export class ParentsListComponent extends BaseListComponent<ParentSummaryDto> im
           this.currentPage = 1;
         }
       },
-      error: () => { this.isLoading = false; },
+      error: () => {
+        this.isLoading = false;
+      },
     });
   }
 
@@ -246,11 +320,29 @@ export class ParentsListComponent extends BaseListComponent<ParentSummaryDto> im
     } else if (event.filterId === 'hasPortalAccess') {
       this.activeFilters.hasPortalAccess = event.value === 'all' ? undefined : event.value === 'true';
       this.applyFilters();
+    } else if (event.filterId === 'schoolId') {
+      this.selectedSchoolId = event.value; // value is school id (no 'all' option)
+      this.applyFilters();
     }
   }
 
   onClearFilters(): void {
     this.activeFilters = {};
+
+    if (this.isSuperAdmin && this.schools.length > 0) {
+      this.selectedSchoolId = this.schools[0].id; // reset to default school
+
+      // Update the school filter's value in the filterFields array (create new array)
+      const schoolIndex = this.filterFields.findIndex(f => f.id === 'schoolId');
+      if (schoolIndex !== -1) {
+        this.filterFields = [
+          ...this.filterFields.slice(0, schoolIndex),
+          { ...this.filterFields[schoolIndex], value: this.selectedSchoolId },
+          ...this.filterFields.slice(schoolIndex + 1)
+        ];
+      }
+    }
+
     this.applyFilters();
   }
 
@@ -260,12 +352,12 @@ export class ParentsListComponent extends BaseListComponent<ParentSummaryDto> im
 
   // ── CRUD ─────────────────────────────────────────────────────────────────
   openCreate(): void {
-  this._router.navigate(['/academic/parents/create']);
-}
+    this._router.navigate(['/academic/parents/create']);
+  }
 
-openEdit(row: ParentSummaryDto): void {
-  this._router.navigate(['/academic/parents/edit', row.id]);
-}
+  openEdit(row: ParentSummaryDto): void {
+    this._router.navigate(['/academic/parents/edit', row.id]);
+  }
 
   onDelete(row: ParentSummaryDto): void {
     this.alertService.confirm({
@@ -276,6 +368,41 @@ openEdit(row: ParentSummaryDto): void {
       onConfirm: () => this.deleteItem(row.id),
     });
   }
+
+  protected override deleteItem(id: string): void {
+  this.parentService.delete(id).subscribe({
+    next: (res) => {
+      if (res.success) {
+        // Remove from local data immediately (optimistic update)
+        this.dataSource.data = this.dataSource.data.filter(item => item.id !== id);
+        this.buildStats(this.dataSource.data);
+
+        this.snackBar.open('Parent deleted successfully', 'Close', { duration: 3000 });
+
+        // Reload from backend to stay in sync
+        this.loadAll();
+      } else {
+        this.alertService.error(res.message || 'Failed to delete parent');
+      }
+    },
+    error: (err) => {
+      const status = err?.status;
+      if (status === 409) {
+        this.alertService.error(
+          'Cannot delete this parent because they are still linked to students. Remove the associations first.'
+        );
+      } else if (status === 403) {
+        this.alertService.error('You do not have permission to delete this parent.');
+      } else if (status === 404) {
+        this.alertService.error('Parent not found. It may have already been deleted.');
+        this.loadAll(); // Refresh to remove stale entry
+      } else {
+        console.error('Delete error', err);
+        this.alertService.error('An error occurred while deleting the parent.');
+      }
+    }
+  });
+}
 
   // ── Pagination ────────────────────────────────────────────────────────────
   onPageChange(page: number): void { this.currentPage = page; }

@@ -10,28 +10,34 @@ import {
 
 @Injectable({ providedIn: 'root' })
 export class ParentService {
-  // ✅ Fixed: was /api/parents, controller route is /api/academic/parents
   private baseUrl = `${inject(API_BASE_URL)}/api/academic/parents`;
   private http    = inject(HttpClient);
 
-  /** GET /api/academic/parents */
+  /** GET /api/academic/parents (with optional schoolId) */
   getAll(schoolId?: string): Observable<ApiResponse<ParentSummaryDto[]>> {
     let params = new HttpParams();
     if (schoolId) {
       params = params.set('schoolId', schoolId);
     }
-    return this.http.get<ApiResponse<ParentSummaryDto[]>>(this.baseUrl);
+    return this.http.get<ApiResponse<ParentSummaryDto[]>>(this.baseUrl, { params });
   }
 
-  /** GET /api/academic/parents?searchTerm=...&relationship=... */
-  query(params: ParentQueryDto): Observable<ApiResponse<ParentSummaryDto[]>> {
+  /** GET /api/academic/parents with query filters and optional schoolId */
+  query(filters: ParentQueryDto, schoolId?: string): Observable<ApiResponse<ParentSummaryDto[]>> {
     let httpParams = new HttpParams();
-    if (params.searchTerm)                 httpParams = httpParams.set('searchTerm',          params.searchTerm);
-    if (params.relationship != null)       httpParams = httpParams.set('relationship',         String(params.relationship));
-    if (params.isPrimaryContact  != null)  httpParams = httpParams.set('isPrimaryContact',     String(params.isPrimaryContact));
-    if (params.isEmergencyContact != null) httpParams = httpParams.set('isEmergencyContact',   String(params.isEmergencyContact));
-    if (params.hasPortalAccess   != null)  httpParams = httpParams.set('hasPortalAccess',      String(params.hasPortalAccess));
-    if (params.isActive          != null)  httpParams = httpParams.set('isActive',             String(params.isActive));
+
+    if (filters.searchTerm)                  httpParams = httpParams.set('searchTerm',          filters.searchTerm);
+    if (filters.relationship != null)        httpParams = httpParams.set('relationship',         String(filters.relationship));
+    if (filters.isPrimaryContact  != null)   httpParams = httpParams.set('isPrimaryContact',     String(filters.isPrimaryContact));
+    if (filters.isEmergencyContact != null)  httpParams = httpParams.set('isEmergencyContact',   String(filters.isEmergencyContact));
+    if (filters.hasPortalAccess   != null)   httpParams = httpParams.set('hasPortalAccess',      String(filters.hasPortalAccess));
+    if (filters.isActive          != null)   httpParams = httpParams.set('isActive',             String(filters.isActive));
+
+    // ✅ Always pass schoolId for SuperAdmin so backend doesn't reject with 400
+    if (schoolId) {
+      httpParams = httpParams.set('schoolId', schoolId);
+    }
+
     return this.http.get<ApiResponse<ParentSummaryDto[]>>(this.baseUrl, { params: httpParams });
   }
 

@@ -1,5 +1,6 @@
 ﻿using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
 using Devken.CBC.SchoolManagement.Domain.Entities.Helpers;
+using Devken.CBC.SchoolManagement.Domain.Enums;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.common;
 using Devken.CBC.SchoolManagement.Infrastructure.Services;
@@ -24,12 +25,12 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academic
         /// matching the SubjectRepository pattern.
         /// </summary>
         public async Task<IEnumerable<Parent>> GetByTenantIdAsync(
-            Guid tenantId, bool trackChanges) =>
-            await FindByCondition(p => p.TenantId == tenantId, trackChanges)
-                .Include(p => p.Students)
-                .OrderBy(p => p.LastName)
-                .ThenBy(p => p.FirstName)
-                .ToListAsync();
+    Guid tenantId, bool trackChanges) =>
+    await FindByCondition(p => p.TenantId == tenantId && p.Status != EntityStatus.Deleted, trackChanges)
+        .Include(p => p.Students)
+        .OrderBy(p => p.LastName)
+        .ThenBy(p => p.FirstName)
+        .ToListAsync();
 
         /// <summary>
         /// Returns a single parent with their linked Students eagerly loaded.
@@ -37,10 +38,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academic
         /// the service validates tenant ownership after loading.
         /// </summary>
         public async Task<Parent?> GetWithStudentsAsync(
-            Guid id, bool trackChanges) =>
-            await FindByCondition(p => p.Id == id, trackChanges)
-                .Include(p => p.Students)
-                .FirstOrDefaultAsync();
+             Guid id, bool trackChanges) =>
+             await FindByCondition(p => p.Id == id && p.Status != EntityStatus.Deleted, trackChanges)
+                 .Include(p => p.Students)
+                 .FirstOrDefaultAsync();
 
         /// <summary>
         /// Returns all parents linked to a specific student within a tenant.
@@ -49,7 +50,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academic
         /// </summary>
         public async Task<IEnumerable<Parent>> GetByStudentIdAsync(
             Guid studentId, Guid tenantId, bool trackChanges) =>
-            await FindByCondition(p => p.TenantId == tenantId, trackChanges)
+            await FindByCondition(
+                    p => p.TenantId == tenantId && p.Status != EntityStatus.Deleted, trackChanges)
                 .Include(p => p.Students)
                 .Where(p => p.Students.Any(s => s.Id == studentId))
                 .OrderBy(p => p.LastName)
@@ -64,9 +66,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academic
             string nationalId, Guid tenantId, Guid? excludeId = null) =>
             await FindByCondition(
                     p => p.TenantId == tenantId &&
-                         p.NationalIdNumber != null &&
-                         p.NationalIdNumber == nationalId &&
-                         (excludeId == null || p.Id != excludeId.Value),
+                            p.Status != EntityStatus.Deleted &&   // ← add this
+                            p.NationalIdNumber != null &&
+                            p.NationalIdNumber == nationalId &&
+                            (excludeId == null || p.Id != excludeId.Value),
                     trackChanges: false)
                 .AnyAsync();
     }

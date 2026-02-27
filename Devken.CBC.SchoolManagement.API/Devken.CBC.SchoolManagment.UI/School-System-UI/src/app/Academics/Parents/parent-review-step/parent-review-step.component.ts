@@ -50,10 +50,8 @@ export class ParentReviewStepComponent {
       [ParentRelationship.Father]:      'Father',
       [ParentRelationship.Mother]:      'Mother',
       [ParentRelationship.Guardian]:    'Guardian',
-      [ParentRelationship.Sibling]:     'Sibling',
+      [ParentRelationship.Sponsor]:     'Sponsor',
       [ParentRelationship.Grandparent]: 'Grandparent',
-      [ParentRelationship.Uncle]:       'Uncle',
-      [ParentRelationship.Aunt]:        'Aunt',
       [ParentRelationship.Other]:       'Other',
     };
     return map[Number(value)] ?? '—';

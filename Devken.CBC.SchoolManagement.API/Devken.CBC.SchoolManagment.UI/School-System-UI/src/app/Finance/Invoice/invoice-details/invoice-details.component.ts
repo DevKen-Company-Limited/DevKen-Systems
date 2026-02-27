@@ -12,7 +12,11 @@ import { MatNativeDateModule } from '@angular/material/core';
 import { MatIconModule }       from '@angular/material/icon';
 import { MatCardModule }       from '@angular/material/card';
 import { FuseAlertComponent }  from '@fuse/components/alert';
-import { SchoolDto }          from 'app/Tenant/types/school';
+import { SchoolDto } from 'app/Tenant/types/school';
+import { AuthService } from 'app/core/auth/auth.service';
+import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
+import { Subject, takeUntil } from 'rxjs';
+import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
 
 // ── Shared lookup type (also imported by invoice-enrollment) ──────────────────
 export interface InvoiceLookupItem {
@@ -42,15 +46,22 @@ export class InvoiceDetailsComponent implements OnInit, OnChanges {
   // ── Scalar inputs ────────────────────────────────────────────────────────
   @Input() formData:    any     = {};
   @Input() isEditMode:  boolean = false;
-  @Input() isSuperAdmin: boolean = false;
+  // @Input() isSuperAdmin: boolean = false;
 
   // ── Lookup arrays — populated by invoice-enrollment.component.ts ─────────
   @Input() students:      InvoiceLookupItem[] = [];
   @Input() academicYears: InvoiceLookupItem[] = [];
   @Input() terms:         InvoiceLookupItem[] = [];
   @Input() parents:       InvoiceLookupItem[] = [];
-  @Input() schools:      SchoolDto[] = [];
-  
+  private _authService = inject(AuthService);
+  private _schoolService = inject(SchoolService);
+  private destroy$ = new Subject<void>();
+  private alertService= inject (AlertService);
+  schools: SchoolDto[] = [];
+   // ✅ SuperAdmin getter
+  get isSuperAdmin(): boolean {
+    return this._authService.authUser?.isSuperAdmin ?? false;
+  }
   // ── Outputs ──────────────────────────────────────────────────────────────
   @Output() formChanged = new EventEmitter<any>();
   @Output() formValid   = new EventEmitter<boolean>();
@@ -143,5 +154,19 @@ export class InvoiceDetailsComponent implements OnInit, OnChanges {
       dueDate:        'Due date',
     };
     return map[field] ?? field;
+  }
+
+   private loadSchools(): void {
+    this._schoolService.getAll()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (res: any) => {
+          this.schools = res.data ?? [];
+        },
+        error: (err) => {
+          console.error('Failed to load schools', err);
+          this.alertService.error('Could not load schools. Please refresh.');
+        }
+      });
   }
 }

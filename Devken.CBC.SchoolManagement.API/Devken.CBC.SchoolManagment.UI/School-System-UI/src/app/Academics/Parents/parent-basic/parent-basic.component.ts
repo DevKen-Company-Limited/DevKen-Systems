@@ -42,13 +42,12 @@ export class ParentBasicComponent implements OnInit, OnChanges {
     { value: ParentRelationship.Father,      label: 'Father'      },
     { value: ParentRelationship.Mother,      label: 'Mother'      },
     { value: ParentRelationship.Guardian,    label: 'Guardian'    },
-    { value: ParentRelationship.Sibling,     label: 'Sibling'     },
+    { value: ParentRelationship.Sponsor,     label: 'Sponsor'     }, // ← replaces Sibling
     { value: ParentRelationship.Grandparent, label: 'Grandparent' },
-    { value: ParentRelationship.Uncle,       label: 'Uncle'       },
-    { value: ParentRelationship.Aunt,        label: 'Aunt'        },
     { value: ParentRelationship.Other,       label: 'Other'       },
+    // removed: Sibling, Uncle, Aunt
   ];
-
+  
   ngOnInit(): void {
     this.buildForm();
     this.setupListeners();

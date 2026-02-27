@@ -180,7 +180,7 @@ export class ParentEnrollmentComponent implements OnInit, OnDestroy {
         },
         error: (err) => {
           this._alertService.error(err?.error?.message || 'Could not load parent data.');
-          this._router.navigate(['/people/parents']);
+          this._router.navigate(['/academic/parents']);
         },
       });
   }
@@ -308,7 +308,7 @@ export class ParentEnrollmentComponent implements OnInit, OnDestroy {
       }
 
       this.clearDraft();
-      setTimeout(() => this._router.navigate(['/people/parents']), 1500);
+      setTimeout(() => this._router.navigate(['/academic/parents']), 1500);
     } catch (err: any) {
       console.error('[ParentEnrollment] Submission error:', err);
       this._alertService.error(
@@ -384,5 +384,5 @@ export class ParentEnrollmentComponent implements OnInit, OnDestroy {
     return circumference * (1 - this.completedSteps.size / (this.steps.length - 1));
   }
 
-  goBack(): void { this._router.navigate(['/people/parents']); }
+  goBack(): void { this._router.navigate(['/academic/parents']); }
 }

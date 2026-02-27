@@ -1,13 +1,12 @@
 // ── Enums ──────────────────────────────────────────────────────────────────
 export enum ParentRelationship {
-  Father = 0,
-  Mother = 1,
-  Guardian = 2,
-  Sibling = 3,
-  Grandparent = 4,
-  Uncle = 5,
-  Aunt = 6,
-  Other = 7,
+  Father      = 1,   // ← was 0
+  Mother      = 2,   // ← was 1
+  Guardian    = 3,   // ← was 2
+  Sponsor     = 4,   // ← was Sibling = 3 (wrong member entirely)
+  Grandparent = 5,   // ← was 4
+  Other       = 6,   // ← was 7
+  // removed: Sibling, Uncle, Aunt — these don't exist in C#
 }
 
 // ── Request DTOs ───────────────────────────────────────────────────────────

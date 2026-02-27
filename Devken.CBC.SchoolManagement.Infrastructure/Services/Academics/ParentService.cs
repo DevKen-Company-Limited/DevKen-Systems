@@ -238,8 +238,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
 
             ValidateAccess(parent.TenantId, userSchoolId, isSuperAdmin);
 
+            // ✅ Set fields directly — EF is already tracking this entity (trackChanges: true)
+            // Do NOT call _repositories.Parent.Update() — it explicitly marks Status.IsModified = false
             parent.Status = EntityStatus.Deleted;
-            _repositories.Parent.Update(parent);
+            parent.UpdatedOn = DateTime.UtcNow;
+
             await _repositories.SaveAsync();
         }
 
@@ -254,11 +257,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
             ValidateAccess(parent.TenantId, userSchoolId, isSuperAdmin);
 
             parent.Status = EntityStatus.Active;
-            _repositories.Parent.Update(parent);
+            parent.UpdatedOn = DateTime.UtcNow;
+
             await _repositories.SaveAsync();
 
-            var updated = await _repositories.Parent.GetWithStudentsAsync(
-                id, trackChanges: false)
+            var updated = await _repositories.Parent.GetWithStudentsAsync(id, trackChanges: false)
                 ?? throw new NotFoundException($"Parent with ID '{id}' not found.");
 
             return MapToDto(updated);
@@ -275,11 +278,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
             ValidateAccess(parent.TenantId, userSchoolId, isSuperAdmin);
 
             parent.Status = EntityStatus.Inactive;
-            _repositories.Parent.Update(parent);
+            parent.UpdatedOn = DateTime.UtcNow;
+
             await _repositories.SaveAsync();
 
-            var updated = await _repositories.Parent.GetWithStudentsAsync(
-                id, trackChanges: false)
+            var updated = await _repositories.Parent.GetWithStudentsAsync(id, trackChanges: false)
                 ?? throw new NotFoundException($"Parent with ID '{id}' not found.");
 
             return MapToDto(updated);
