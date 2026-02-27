@@ -119,6 +119,7 @@ export const appRoutes: Route[] = [
                     { path: 'grades', loadChildren: () => import('./grades/grades.routes') }
                 ]
             },
+            
 
             // Settings
             {
