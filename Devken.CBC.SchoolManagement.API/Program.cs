@@ -32,18 +32,29 @@ QuestPDF.Settings.License = LicenseType.Community;
 // ══════════════════════════════════════════════════════════════
 // CORS Configuration
 // ══════════════════════════════════════════════════════════════
+//var angularCorsPolicy = "AngularDevCors";
+//builder.Services.AddCors(options =>
+//{
+//    options.AddPolicy(angularCorsPolicy, policy =>
+//    {
+//        policy.WithOrigins(
+//                "http://localhost:4200",
+//                "https://dev-ken-systems.vercel.app"
+//              )
+//              .AllowAnyHeader()
+//              .AllowAnyMethod()
+//              .AllowCredentials();
+//    });
+//});
+
 var angularCorsPolicy = "AngularDevCors";
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(angularCorsPolicy, policy =>
     {
-        policy.WithOrigins(
-                "http://localhost:4200",
-                "https://dev-ken-systems-wt5v-git-main-dicksons-projects-cfe3f9b8.vercel.app"
-              )
+        policy.AllowAnyOrigin()
               .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+              .AllowAnyMethod();
     });
 });
 

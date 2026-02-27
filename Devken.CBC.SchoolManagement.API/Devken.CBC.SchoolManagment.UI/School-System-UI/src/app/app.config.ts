@@ -31,6 +31,7 @@ import { MockApiService } from './mock-api';
 import { NavigationService } from '@fuse/lib/mock-api/NavigationService';
 import { AuthService } from './core/auth/auth.service';
 import { subscriptionStatusInterceptor } from './core/auth/SubscriptionStatusInterceptor';
+import { environment } from '../environments/environment';
 
 // API Base URL
 export const API_BASE_URL = new InjectionToken<string>('API_BASE_URL');
@@ -60,7 +61,7 @@ provideHttpClient(
             MatDialogModule
         ),
 
-        { provide: API_BASE_URL, useValue: 'http://localhost:5167' },
+        { provide: API_BASE_URL, useValue: environment.apiUrl },
         { provide: DateAdapter, useClass: LuxonDateAdapter },
         {
             provide: MAT_DATE_FORMATS,
