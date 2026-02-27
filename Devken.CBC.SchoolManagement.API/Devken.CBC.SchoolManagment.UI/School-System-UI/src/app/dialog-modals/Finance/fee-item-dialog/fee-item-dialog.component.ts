@@ -22,7 +22,7 @@ import { takeUntil, finalize }     from 'rxjs/operators';
 
 import { AuthService }             from 'app/core/auth/auth.service';
 
-import { FeeItemResponseDto, FEE_TYPE_OPTIONS, RECURRENCE_OPTIONS, CBC_LEVEL_OPTIONS, APPLICABLE_TO_OPTIONS, CreateFeeItemDto, UpdateFeeItemDto } from 'app/finance/fee-item/Types/fee-item.model';
+import { FeeItemResponseDto, FEE_TYPE_OPTIONS, RECURRENCE_OPTIONS, CBC_LEVEL_OPTIONS, APPLICABLE_TO_OPTIONS, CreateFeeItemDto, UpdateFeeItemDto } from 'app/Finance/fee-item/Types/fee-item.model';
 import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
 import { SchoolDto } from 'app/Tenant/types/school';
 import { AlertService } from 'app/core/DevKenService/Alert/AlertService';

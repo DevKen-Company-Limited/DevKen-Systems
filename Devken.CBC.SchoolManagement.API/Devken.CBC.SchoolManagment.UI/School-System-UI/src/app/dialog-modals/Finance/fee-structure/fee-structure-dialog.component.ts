@@ -33,7 +33,7 @@ import {
   TermLookup,
   UpdateFeeStructureDto,
   CreateFeeStructureDto,
-} from 'app/finance/fee-structure/types/fee-structure.model';
+} from 'app/Finance/fee-structure/types/fee-structure.model';
 import { ApiResponse } from 'app/Tenant/types/school';
 
 // ─────────────────────────────────────────────────────────────────────────────
