@@ -101,17 +101,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Finance
         /// Items can be added to invoice.Items after this call — EF tracks them.
         /// </summary>
         public Invoice CreateNew(
-            Guid id,
-            Guid tenantId,
-            string invoiceNumber,
-            Guid studentId,
-            Guid academicYearId,
-            Guid? termId,
-            Guid? parentId,
-            DateTime invoiceDate,
-            DateTime dueDate,
-            string? description,
-            string? notes)
+            Guid id, Guid tenantId, string invoiceNumber,
+            Guid studentId, Guid academicYearId, Guid? termId, Guid? parentId,
+            DateTime invoiceDate, DateTime dueDate, string? description, string? notes)
         {
             // GetUninitializedObject skips all constructors — no private-setter conflict.
             var invoice = (Invoice)RuntimeHelpers.GetUninitializedObject(typeof(Invoice));
@@ -119,6 +111,14 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Finance
             // Attach to context so EF tracks it
             _context.Set<Invoice>().Add(invoice);
 
+            // ✅ GetUninitializedObject skips constructors so collection initializers
+            // never run — initialize manually via reflection (private set workaround)
+            typeof(Invoice).GetProperty(nameof(Invoice.Items))!
+                .SetValue(invoice, new List<InvoiceItem>());
+            typeof(Invoice).GetProperty(nameof(Invoice.Payments))!
+                .SetValue(invoice, new List<Payment>());
+            typeof(Invoice).GetProperty(nameof(Invoice.CreditNotes))!
+                .SetValue(invoice, new List<CreditNote>());
             var entry = _context.Entry(invoice);
 
             // ── BaseEntity fields (normally set by RepositoryBase.Create) ─────
