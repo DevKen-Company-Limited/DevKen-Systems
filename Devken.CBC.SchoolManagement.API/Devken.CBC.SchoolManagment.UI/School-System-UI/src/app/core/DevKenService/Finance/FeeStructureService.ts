@@ -3,7 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { API_BASE_URL } from 'app/app.config';
 import { CBCLevel } from 'app/Classes/Types/Class';
-import { FeeStructureDto, CreateFeeStructureDto, UpdateFeeStructureDto } from 'app/finance/fee-structure/types/fee-structure.model';
+import { FeeStructureDto, CreateFeeStructureDto, UpdateFeeStructureDto } from 'app/Finance/fee-structure/types/fee-structure.model';
 
 
 export interface ApiResponse<T> {

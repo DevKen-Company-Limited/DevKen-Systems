@@ -18,7 +18,7 @@ import {
   resolveLevelLabel,
   resolveApplicableToLabel,
   ApplicableTo,
-} from 'app/finance/fee-structure/types/fee-structure.model';
+} from 'app/Finance/fee-structure/types/fee-structure.model';
 
 import {
   DataTableComponent, TableHeader, TableColumn, TableAction,
