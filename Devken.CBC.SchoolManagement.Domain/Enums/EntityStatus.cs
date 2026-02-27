@@ -36,6 +36,20 @@ namespace Devken.CBC.SchoolManagement.Domain.Enums
         Mixed = 3
     }
 
+    public enum SubjectType
+    {
+        [Description("Core Subject (Compulsory for all learners)")]
+        Core = 1,
+
+        [Description("Optional Subject (School-based choice)")]
+        Optional = 2,
+
+        [Description("Elective Subject (Learner selected subject)")]
+        Elective = 3,
+
+        [Description("Co-Curricular Activity (Non-examinable activity)")]
+        CoCurricular = 4
+    }
 
 
 
@@ -226,29 +240,29 @@ namespace Devken.CBC.SchoolManagement.Domain.Enums
 
     #endregion
 
-    /// <summary>
-    /// General Payment status
-    /// </summary>
-    public enum PaymentStatus
-    {
-        [Description("Awaiting payment")]
-        Pending = 1,
+    ///// <summary>
+    ///// General Payment status
+    ///// </summary>
+    //public enum PaymentStatus
+    //{
+    //    [Description("Awaiting payment")]
+    //    Pending = 1,
 
-        [Description("Partially paid")]
-        Partial = 2,
+    //    [Description("Partially paid")]
+    //    Partial = 2,
 
-        [Description("Fully paid")]
-        Paid = 3,
+    //    [Description("Fully paid")]
+    //    Paid = 3,
 
-        [Description("Payment overdue")]
-        Overdue = 4,
+    //    [Description("Payment overdue")]
+    //    Overdue = 4,
 
-        [Description("Payment cancelled")]
-        Cancelled = 5,
+    //    [Description("Payment cancelled")]
+    //    Cancelled = 5,
 
-        [Description("Payment refunded")]
-        Refunded = 6
-    }
+    //    [Description("Payment refunded")]
+    //    Refunded = 6
+    //}
 
     /// <summary>
     /// Subscription status for school accounts
@@ -424,7 +438,47 @@ namespace Devken.CBC.SchoolManagement.Domain.Enums
         [Description("Other")]
         Other = 22
     }
+    /// <summary>
+    /// Academic grading letters
+    /// </summary>
+    public enum GradeLetter
+    {
+        [Description("Excellent")]
+        A = 1,
 
+        [Description("Very Good")]
+        B = 2,
+
+        [Description("Good")]
+        C = 3,
+
+        [Description("Satisfactory")]
+        D = 4,
+
+        [Description("Needs Improvement")]
+        E = 5,
+
+        [Description("Fail")]
+        F = 6
+    }
+
+    public enum ParentRelationship
+    {
+        Father = 1,
+        Mother = 2,
+        Guardian = 3,
+        Sponsor = 4,
+        Grandparent = 5,
+        Other = 6
+    }
+
+    public enum ParentStatus
+    {
+        Active = 1,
+        Inactive = 2,
+        Blacklisted = 3,
+        Deceased = 4
+    }
     /// <summary>
     /// Mpesa Result Codes
     /// </summary>

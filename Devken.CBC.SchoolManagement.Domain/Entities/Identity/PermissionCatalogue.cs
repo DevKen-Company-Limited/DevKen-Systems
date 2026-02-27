@@ -44,6 +44,10 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
             (PermissionKeys.ClassWrite,   "Manage Classes",         "Academic", "Create or update classes"),
             (PermissionKeys.GradeRead,    "View Grades",            "Academic", "Access grading records"),
             (PermissionKeys.GradeWrite,   "Manage Grades",          "Academic", "Enter or update grades"),
+            (PermissionKeys.ParentRead,   "View Parents",   "Academic", "Access parent/guardian records"),
+            (PermissionKeys.ParentWrite,  "Manage Parents", "Academic", "Add or update parent/guardian data"),
+            (PermissionKeys.ParentDelete, "Delete Parents", "Academic", "Remove parent/guardian records"),
+
 
             // Assessment
             (PermissionKeys.AssessmentRead,  "View Assessments",    "Assessment", "Access assessment records"),

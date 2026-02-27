@@ -1,6 +1,7 @@
 ﻿using Devken.CBC.SchoolManagement.Domain.Common;
 using Devken.CBC.SchoolManagement.Domain.Entities.Academic;
 using Devken.CBC.SchoolManagement.Domain.Entities.Assessments;
+using Devken.CBC.SchoolManagement.Domain.Entities.Assessments.Academic;
 using Devken.CBC.SchoolManagement.Domain.Entities.Reports;
 using System.ComponentModel.DataAnnotations;
 

@@ -1,0 +1,57 @@
+<div class="max-w-6xl">
+
+  <!-- Section Header -->
+  <div class="flex items-start gap-4 mb-8">
+    <div class="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 shadow-lg">
+      <mat-icon class="text-white !w-7 !h-7">contacts</mat-icon>
+    </div>
+    <div class="flex-1">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Contact Details</h2>
+      <p class="text-gray-600 dark:text-gray-400">
+        Add phone numbers, email, and physical address. All fields are optional.
+      </p>
+    </div>
+  </div>
+
+  <!-- Info Alert -->
+  <fuse-alert type="info" appearance="soft" [showIcon]="true" class="mb-6">
+    <strong>No required fields here.</strong> You can skip this section if contact information is not available.
+  </fuse-alert>
+
+  <form [formGroup]="form" novalidate class="space-y-6">
+
+    <mat-card class="shadow-md">
+      <mat-card-content class="!p-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          <mat-form-field appearance="outline">
+            <mat-label>Phone Number</mat-label>
+            <input matInput formControlName="phoneNumber" placeholder="+254 700 000 000">
+            <mat-icon matPrefix class="text-gray-400">phone</mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Alternative Phone</mat-label>
+            <input matInput formControlName="alternativePhoneNumber" placeholder="+254 711 111 111">
+            <mat-icon matPrefix class="text-gray-400">phone_in_talk</mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="md:col-span-2">
+            <mat-label>Email Address</mat-label>
+            <input matInput formControlName="email" type="email" placeholder="parent@example.com">
+            <mat-icon matPrefix class="text-gray-400">email</mat-icon>
+            <mat-error *ngIf="isInvalid('email')">{{ getError('email') }}</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="md:col-span-2">
+            <mat-label>Physical Address</mat-label>
+            <textarea matInput formControlName="address" rows="3" placeholder="Street, City, County..."></textarea>
+            <mat-icon matPrefix class="text-gray-400">location_on</mat-icon>
+          </mat-form-field>
+
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+  </form>
+</div>

@@ -18,37 +18,24 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Fina
         {
             builder.ToTable("FeeItems");
 
-            builder.HasKey(fi => fi.Id);
+            builder.Property(x => x.Name).HasMaxLength(100).IsRequired();
+            builder.Property(x => x.Code).HasMaxLength(20).IsRequired();
+            builder.Property(x => x.Description).HasMaxLength(500);
+            builder.Property(x => x.DefaultAmount).HasColumnType("decimal(18,2)");
+            builder.Property(x => x.TaxRate).HasColumnType("decimal(5,2)");
+            builder.Property(x => x.GlCode).HasMaxLength(100);
+            builder.Property(x => x.ApplicableTo).HasConversion<string>().HasMaxLength(20);
+            builder.Property(x => x.FeeType).HasConversion<string>().HasMaxLength(30);
+            builder.Property(x => x.Recurrence).HasConversion<string>().HasMaxLength(20);
+            builder.Property(x => x.ApplicableLevel).HasConversion<string>().HasMaxLength(30);
 
-            builder.HasQueryFilter(fi =>
-                _tenantContext.TenantId == null ||
-                fi.TenantId == _tenantContext.TenantId);
+            // Ignore computed property
+            builder.Ignore(x => x.DisplayName);
 
             // Indexes
-            builder.HasIndex(fi => new { fi.TenantId, fi.Code }).IsUnique();
-            builder.HasIndex(fi => new { fi.TenantId, fi.FeeType });
-
-            // Properties
-            builder.Property(fi => fi.Name)
-                .IsRequired()
-                .HasMaxLength(100);
-
-            builder.Property(fi => fi.Code)
-                .IsRequired()
-                .HasMaxLength(20);
-
-            builder.Property(fi => fi.DefaultAmount)
-                .HasPrecision(18, 2);
-
-            builder.Property(fi => fi.FeeType)
-                .IsRequired()
-                .HasMaxLength(50);
-
-            // Relationships
-            builder.HasMany(fi => fi.InvoiceItems)
-                .WithOne(ii => ii.FeeItem)
-                .HasForeignKey(ii => ii.FeeItemId)
-                .OnDelete(DeleteBehavior.Restrict);
+            builder.HasIndex(x => new { x.TenantId, x.Code }).IsUnique();
+            builder.HasIndex(x => new { x.TenantId, x.FeeType });
+            builder.HasIndex(x => x.IsActive);
         }
     }
 }

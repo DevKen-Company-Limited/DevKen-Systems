@@ -43,10 +43,14 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
         public const string TermDelete = "Term.Delete";
         public const string SubjectRead = "Subject.Read";
         public const string SubjectWrite = "Subject.Write";
+        public const string SubjectDelete = "Subject.Delete";
         public const string ClassRead = "Class.Read";
         public const string ClassWrite = "Class.Write";
         public const string GradeRead = "Grade.Read";
         public const string GradeWrite = "Grade.Write";
+        public const string ParentRead = "Parent.Read";
+        public const string ParentWrite = "Parent.Write";
+        public const string ParentDelete = "Parent.Delete";
 
 
         // ── Assessment ───────────────────────────────────
@@ -98,6 +102,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
             InvoiceRead, InvoiceWrite,
             CurriculumRead, CurriculumWrite,
             AcademicYearRead, AcademicYearWrite, AcademicYearDelete, AcademicYearClose,
+            ParentRead, ParentWrite, ParentDelete,
             LessonPlanRead, LessonPlanWrite,
             MpesaInitiate, MpesaViewTransactions, MpesaRefund, MpesaReconcile,
             DocumentNumberSeriesRead, DocumentNumberSeriesWrite, DocumentNumberSeriesDelete

@@ -1,0 +1,98 @@
+<div class="flex flex-col h-full w-full">
+  
+  <!-- Page Header -->
+  <app-page-header
+    title="Invoices"
+    description="Manage student fee invoices and track payments"
+    icon="receipt_long"
+    [breadcrumbs]="breadcrumbs"
+    [actionTemplate]="headerActions">
+  </app-page-header>
+
+  <ng-template #headerActions>
+    <button mat-flat-button
+            class="bg-white text-indigo-700 font-semibold shadow hover:bg-indigo-50"
+            (click)="openCreate()">
+      <mat-icon class="icon-size-5">add</mat-icon>
+      <span class="ml-1">New Invoice</span>
+    </button>
+  </ng-template>
+
+  <!-- Content -->
+  <div class="p-6 flex flex-col gap-6">
+
+    <!-- Stats -->
+    <app-stats-cards [cards]="statsCards" [columns]="4"></app-stats-cards>
+
+    <!-- Filters -->
+    <app-filter-panel
+      [fields]="filterFields"
+      [showPanel]="showFilters"
+      [columns]="4"
+      (filterChange)="onFilterChange($event)"
+      (clearAll)="onClearFilters()"
+      (togglePanel)="showFilters = !showFilters">
+    </app-filter-panel>
+
+    <!-- Table -->
+    <app-data-table
+      [columns]="columns"
+      [data]="paginatedData"
+      [actions]="actions"
+      [loading]="isLoading"
+      [header]="tableHeader"
+      [emptyState]="emptyState"
+      [cellTemplates]="cellTemplates"
+      [hoverEffect]="true">
+    </app-data-table>
+
+    <!-- Pagination -->
+    <app-pagination
+      [currentPage]="currentPage"
+      [totalItems]="filteredData.length"
+      [itemsPerPage]="itemsPerPage"
+      [showItemsPerPageSelector]="true"
+      [showPageNumbers]="true"
+      itemLabel="invoices"
+      (pageChange)="onPageChange($event)"
+      (itemsPerPageChange)="onItemsPerPageChange($event)">
+    </app-pagination>
+  </div>
+</div>
+
+<!-- ── Cell Templates ──────────────────────────────────────────────────── -->
+
+<!-- Invoice Status -->
+<ng-template #statusTpl let-row>
+  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold"
+        [ngClass]="getStatusClass(row.statusInvoice)">
+    {{ row.statusDisplay }}
+  </span>
+</ng-template>
+
+<!-- Total Amount -->
+<ng-template #amountTpl let-row>
+  <span class="font-semibold text-gray-800 dark:text-gray-200 tabular-nums">
+    {{ formatCurrency(row.totalAmount) }}
+  </span>
+</ng-template>
+
+<!-- Balance -->
+<ng-template #balanceTpl let-row>
+  <span class="font-semibold tabular-nums"
+        [ngClass]="row.balance > 0
+          ? 'text-red-600 dark:text-red-400'
+          : 'text-green-600 dark:text-green-400'">
+    {{ formatCurrency(row.balance) }}
+  </span>
+</ng-template>
+
+<!-- Overdue -->
+<ng-template #overdueTpl let-row>
+  <span *ngIf="row.isOverdue"
+        class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+    <mat-icon class="icon-size-3">warning</mat-icon> Yes
+  </span>
+  <span *ngIf="!row.isOverdue"
+        class="text-xs text-gray-400 dark:text-gray-600">—</span>
+</ng-template>

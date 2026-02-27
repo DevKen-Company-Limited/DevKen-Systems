@@ -1,0 +1,256 @@
+<!-- form/grade-form.component.html -->
+<div class="absolute inset-0 flex min-w-0 flex-col overflow-y-auto" cdkScrollable>
+
+  <app-page-header
+    [title]="isEditMode ? 'Edit Grade' : 'Add Grade'"
+    [description]="isEditMode ? 'Update grade details' : 'Record a new student grade'"
+    icon="grade"
+    [breadcrumbs]="breadcrumbs"
+    [actionTemplate]="headerActions">
+  </app-page-header>
+
+  <ng-template #headerActions>
+    <button mat-stroked-button class="mr-3" (click)="cancel()">
+      <mat-icon class="icon-size-5">arrow_back</mat-icon>
+      <span class="ml-2">Cancel</span>
+    </button>
+  </ng-template>
+
+  <div class="bg-card -mt-10 flex-auto rounded-t-2xl p-6 shadow sm:p-10">
+
+    <!-- Loading -->
+    <div *ngIf="isLoading" class="flex items-center justify-center py-32">
+      <div class="text-center">
+        <mat-spinner diameter="48" class="mx-auto mb-4"></mat-spinner>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Loading grade details...</p>
+      </div>
+    </div>
+
+    <div *ngIf="!isLoading && form" class="max-w-4xl">
+
+      <!-- Header -->
+      <div class="flex items-start gap-4 mb-8">
+        <div class="flex items-center justify-center w-14 h-14 rounded-xl
+                    bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg">
+          <mat-icon class="text-white !w-7 !h-7">grade</mat-icon>
+        </div>
+        <div class="flex-1">
+          <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+            {{ isEditMode ? 'Edit Grade' : 'New Grade' }}
+          </h2>
+          <p class="text-gray-600 dark:text-gray-400">
+            {{ isEditMode
+              ? 'Update grade score, letter, and remarks.'
+              : 'Fill in the grade details. Fields marked * are required.' }}
+          </p>
+        </div>
+      </div>
+
+      <!-- Info alert -->
+      <fuse-alert *ngIf="isEditMode" type="info" appearance="soft" [showIcon]="true" class="mb-6">
+        <strong>Note:</strong> Student and Subject cannot be changed after creation.
+        Delete and recreate the grade if you need to correct these fields.
+      </fuse-alert>
+
+      <form [formGroup]="form" novalidate class="space-y-6">
+
+        <!-- School (SuperAdmin) -->
+        <mat-card *ngIf="isSuperAdmin && !isEditMode" class="shadow-md">
+          <mat-card-header class="!pb-2">
+            <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+              <mat-icon class="text-indigo-600">apartment</mat-icon>
+              School Assignment
+              <span class="ml-auto text-xs font-medium px-2 py-1 bg-red-100 text-red-700
+                           dark:bg-red-900/30 dark:text-red-300 rounded">Required</span>
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content class="!pt-4">
+            <mat-form-field appearance="outline" class="w-full">
+              <mat-label>School *</mat-label>
+              <mat-select formControlName="tenantId">
+                <mat-option value="">Select school</mat-option>
+                <mat-option *ngFor="let school of schools" [value]="school.id">
+                  {{ school.name }}
+                </mat-option>
+              </mat-select>
+              <mat-icon matPrefix class="text-gray-400">apartment</mat-icon>
+              <mat-error>{{ getError('tenantId') }}</mat-error>
+            </mat-form-field>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Student & Subject -->
+        <mat-card class="shadow-md">
+          <mat-card-header class="!pb-2">
+            <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+              <mat-icon class="text-indigo-600">person</mat-icon>
+              Student & Subject
+              <span class="ml-auto text-xs font-medium px-2 py-1 bg-red-100 text-red-700
+                           dark:bg-red-900/30 dark:text-red-300 rounded">Required</span>
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content class="!pt-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Student ID *</mat-label>
+                <input matInput formControlName="studentId" placeholder="Student UUID">
+                <mat-icon matPrefix class="text-gray-400">person</mat-icon>
+                <mat-hint>{{ isEditMode ? 'Read-only after creation' : 'Enter the student UUID' }}</mat-hint>
+                <mat-error>{{ getError('studentId') }}</mat-error>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Subject ID *</mat-label>
+                <input matInput formControlName="subjectId" placeholder="Subject UUID">
+                <mat-icon matPrefix class="text-gray-400">menu_book</mat-icon>
+                <mat-hint>{{ isEditMode ? 'Read-only after creation' : 'Enter the subject UUID' }}</mat-hint>
+                <mat-error>{{ getError('subjectId') }}</mat-error>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Term ID</mat-label>
+                <input matInput formControlName="termId" placeholder="Term UUID (optional)">
+                <mat-icon matPrefix class="text-gray-400">date_range</mat-icon>
+                <mat-hint>Optional — leave blank if not term-specific</mat-hint>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Assessment ID</mat-label>
+                <input matInput formControlName="assessmentId" placeholder="Assessment UUID (optional)">
+                <mat-icon matPrefix class="text-gray-400">assignment</mat-icon>
+                <mat-hint>Optional — link to a specific assessment</mat-hint>
+              </mat-form-field>
+
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Score & Grade -->
+        <mat-card class="shadow-md">
+          <mat-card-header class="!pb-2">
+            <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+              <mat-icon class="text-indigo-600">grade</mat-icon>
+              Score & Grade
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content class="!pt-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Score</mat-label>
+                <input matInput type="number" min="0" formControlName="score" placeholder="e.g. 78">
+                <mat-icon matPrefix class="text-gray-400">numbers</mat-icon>
+                <mat-hint>Marks obtained by the student</mat-hint>
+                <mat-error>{{ getError('score') }}</mat-error>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Maximum Score</mat-label>
+                <input matInput type="number" min="0" formControlName="maximumScore" placeholder="e.g. 100">
+                <mat-icon matPrefix class="text-gray-400">numbers</mat-icon>
+                <mat-hint>Total possible marks</mat-hint>
+                <mat-error>{{ getError('maximumScore') }}</mat-error>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Grade Letter</mat-label>
+                <mat-select formControlName="gradeLetter">
+                  <mat-option [value]="null">None</mat-option>
+                  <mat-option *ngFor="let opt of gradeLetterOptions" [value]="opt.value">
+                    {{ opt.label }}
+                  </mat-option>
+                </mat-select>
+                <mat-icon matPrefix class="text-gray-400">star</mat-icon>
+                <mat-hint>Letter grade (auto-derived or manual)</mat-hint>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Grade Type</mat-label>
+                <mat-select formControlName="gradeType">
+                  <mat-option [value]="null">Not specified</mat-option>
+                  <mat-option *ngFor="let opt of gradeTypeOptions" [value]="opt.value">
+                    {{ opt.label }}
+                  </mat-option>
+                </mat-select>
+                <mat-icon matPrefix class="text-gray-400">category</mat-icon>
+                <mat-hint>Formative, Summative or Competency</mat-hint>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Assessment Date *</mat-label>
+                <input matInput [matDatepicker]="datePicker" formControlName="assessmentDate">
+                <mat-datepicker-toggle matSuffix [for]="datePicker"></mat-datepicker-toggle>
+                <mat-datepicker #datePicker></mat-datepicker>
+                <mat-icon matPrefix class="text-gray-400">event</mat-icon>
+                <mat-error>{{ getError('assessmentDate') }}</mat-error>
+              </mat-form-field>
+
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Remarks & Settings -->
+        <mat-card class="shadow-md">
+          <mat-card-header class="!pb-2">
+            <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+              <mat-icon class="text-indigo-600">notes</mat-icon>
+              Remarks & Status
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content class="!pt-4 space-y-4">
+
+            <mat-form-field appearance="outline" class="w-full">
+              <mat-label>Remarks</mat-label>
+              <textarea matInput formControlName="remarks" rows="3"
+                placeholder="Teacher's remarks or comments about this grade…"></textarea>
+              <mat-icon matPrefix class="text-gray-400">notes</mat-icon>
+              <mat-hint>Optional — up to 500 characters</mat-hint>
+              <mat-error>{{ getError('remarks') }}</mat-error>
+            </mat-form-field>
+
+            <!-- Finalized toggle (edit only) -->
+            <div *ngIf="isEditMode"
+                 class="flex items-center justify-between p-4 rounded-xl
+                        bg-green-50 dark:bg-green-900/10
+                        border border-green-200 dark:border-green-800">
+              <div class="flex items-center gap-3">
+                <div class="flex items-center justify-center w-10 h-10 rounded-lg
+                            bg-green-100 dark:bg-green-900/30">
+                  <mat-icon class="text-green-600">lock</mat-icon>
+                </div>
+                <div>
+                  <div class="font-semibold text-gray-900 dark:text-white">Finalized</div>
+                  <div class="text-sm text-gray-600 dark:text-gray-400">
+                    Finalized grades cannot be edited or deleted
+                  </div>
+                </div>
+              </div>
+              <mat-slide-toggle formControlName="isFinalized" color="primary"></mat-slide-toggle>
+            </div>
+
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Actions -->
+        <div class="flex items-center justify-end gap-4 pt-2">
+          <button mat-stroked-button type="button" (click)="cancel()" [disabled]="isSubmitting">
+            <mat-icon class="icon-size-5">close</mat-icon>
+            <span class="ml-2">Cancel</span>
+          </button>
+          <button mat-flat-button color="primary" type="button"
+            (click)="submit()" [disabled]="isSubmitting || form.invalid">
+            <mat-spinner *ngIf="isSubmitting" diameter="18" class="mr-2"></mat-spinner>
+            <mat-icon *ngIf="!isSubmitting" class="icon-size-5">
+              {{ isEditMode ? 'save' : 'add_circle' }}
+            </mat-icon>
+            <span class="ml-2">
+              {{ isSubmitting ? 'Saving…' : (isEditMode ? 'Update Grade' : 'Create Grade') }}
+            </span>
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+</div>

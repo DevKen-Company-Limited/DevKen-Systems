@@ -1,0 +1,266 @@
+<div class="max-w-6xl">
+
+  <!-- Section Header -->
+  <div class="flex items-start gap-4 mb-8">
+    <div class="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg">
+      <mat-icon class="text-white !w-7 !h-7">check_circle</mat-icon>
+    </div>
+    <div class="flex-1">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Review & Submit</h2>
+      <p class="text-gray-600 dark:text-gray-400">Review all information before submitting. Click any section to edit.</p>
+    </div>
+  </div>
+
+  <!-- Completion Progress Bar -->
+  <div class="mb-6">
+    <div class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
+      <div
+        class="h-full bg-gradient-to-r from-green-500 to-emerald-600 transition-all duration-500"
+        [style.width.%]="getCompletionPct()">
+      </div>
+    </div>
+    <p class="text-sm text-gray-600 dark:text-gray-400">
+      {{ completedCount() }} of {{ steps.length - 1 }} sections completed
+    </p>
+  </div>
+
+  <!-- Incomplete Warning -->
+  <fuse-alert
+    *ngIf="!allComplete()"
+    type="warning"
+    appearance="soft"
+    [showIcon]="true"
+    class="mb-6">
+    Some sections are incomplete. Please go back and fill in all required fields before submitting.
+  </fuse-alert>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    <!-- Basic Info Card -->
+    <mat-card class="shadow-md hover:shadow-lg transition-shadow cursor-pointer" (click)="editSection.emit(0)">
+      <mat-card-header class="!pb-2">
+        <div class="flex items-center justify-between w-full">
+          <div class="flex items-center gap-3">
+            <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-teal-100 dark:bg-teal-900/20">
+              <mat-icon class="text-teal-600">person</mat-icon>
+            </div>
+            <mat-card-title class="!text-base !font-semibold !mb-0">Basic Information</mat-card-title>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-medium px-2 py-1 rounded"
+              [ngClass]="isComplete(0)
+                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'">
+              {{ isComplete(0) ? '✓ Complete' : 'Incomplete' }}
+            </span>
+            <mat-icon class="text-gray-400 icon-size-4">edit</mat-icon>
+          </div>
+        </div>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <div class="space-y-2">
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-500 dark:text-gray-400">Name</span>
+            <span class="font-semibold text-gray-900 dark:text-white">
+              {{ basic.firstName || '—' }} {{ basic.middleName }} {{ basic.lastName || '' }}
+            </span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-500 dark:text-gray-400">Relationship</span>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300">
+              {{ basic.relationship !== null && basic.relationship !== undefined ? getRelationshipLabel(basic.relationship) : '—' }}
+            </span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Contact Card -->
+    <mat-card class="shadow-md hover:shadow-lg transition-shadow cursor-pointer" (click)="editSection.emit(1)">
+      <mat-card-header class="!pb-2">
+        <div class="flex items-center justify-between w-full">
+          <div class="flex items-center gap-3">
+            <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/20">
+              <mat-icon class="text-blue-600">contacts</mat-icon>
+            </div>
+            <mat-card-title class="!text-base !font-semibold !mb-0">Contact Details</mat-card-title>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-medium px-2 py-1 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+              ✓ Saved
+            </span>
+            <mat-icon class="text-gray-400 icon-size-4">edit</mat-icon>
+          </div>
+        </div>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <div class="space-y-2">
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-500 dark:text-gray-400">Phone</span>
+            <span class="font-semibold text-gray-900 dark:text-white">{{ contact.phoneNumber || '—' }}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-500 dark:text-gray-400">Alt Phone</span>
+            <span class="font-semibold text-gray-900 dark:text-white">{{ contact.alternativePhoneNumber || '—' }}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-500 dark:text-gray-400">Email</span>
+            <span class="font-semibold text-gray-900 dark:text-white">{{ contact.email || '—' }}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-500 dark:text-gray-400">Address</span>
+            <span class="font-semibold text-gray-900 dark:text-white truncate max-w-48">{{ contact.address || '—' }}</span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Identity Card -->
+    <mat-card class="shadow-md hover:shadow-lg transition-shadow cursor-pointer" (click)="editSection.emit(2)">
+      <mat-card-header class="!pb-2">
+        <div class="flex items-center justify-between w-full">
+          <div class="flex items-center gap-3">
+            <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-violet-100 dark:bg-violet-900/20">
+              <mat-icon class="text-violet-600">badge</mat-icon>
+            </div>
+            <mat-card-title class="!text-base !font-semibold !mb-0">Identity</mat-card-title>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-medium px-2 py-1 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+              ✓ Saved
+            </span>
+            <mat-icon class="text-gray-400 icon-size-4">edit</mat-icon>
+          </div>
+        </div>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <div class="space-y-2">
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-500 dark:text-gray-400">National ID</span>
+            <span class="font-semibold text-gray-900 dark:text-white">{{ identity.nationalIdNumber || '—' }}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-500 dark:text-gray-400">Passport</span>
+            <span class="font-semibold text-gray-900 dark:text-white">{{ identity.passportNumber || '—' }}</span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Employment Card -->
+    <mat-card class="shadow-md hover:shadow-lg transition-shadow cursor-pointer" (click)="editSection.emit(3)">
+      <mat-card-header class="!pb-2">
+        <div class="flex items-center justify-between w-full">
+          <div class="flex items-center gap-3">
+            <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/20">
+              <mat-icon class="text-amber-600">work</mat-icon>
+            </div>
+            <mat-card-title class="!text-base !font-semibold !mb-0">Employment</mat-card-title>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-medium px-2 py-1 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+              ✓ Saved
+            </span>
+            <mat-icon class="text-gray-400 icon-size-4">edit</mat-icon>
+          </div>
+        </div>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <div class="space-y-2">
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-500 dark:text-gray-400">Occupation</span>
+            <span class="font-semibold text-gray-900 dark:text-white">{{ employment.occupation || '—' }}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-500 dark:text-gray-400">Employer</span>
+            <span class="font-semibold text-gray-900 dark:text-white">{{ employment.employer || '—' }}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-500 dark:text-gray-400">Employer Contact</span>
+            <span class="font-semibold text-gray-900 dark:text-white">{{ employment.employerContact || '—' }}</span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Settings Card (full width) -->
+    <mat-card class="shadow-md hover:shadow-lg transition-shadow cursor-pointer lg:col-span-2" (click)="editSection.emit(4)">
+      <mat-card-header class="!pb-2">
+        <div class="flex items-center justify-between w-full">
+          <div class="flex items-center gap-3">
+            <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-teal-100 dark:bg-teal-900/20">
+              <mat-icon class="text-teal-600">settings</mat-icon>
+            </div>
+            <mat-card-title class="!text-base !font-semibold !mb-0">Settings</mat-card-title>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-medium px-2 py-1 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+              ✓ Saved
+            </span>
+            <mat-icon class="text-gray-400 icon-size-4">edit</mat-icon>
+          </div>
+        </div>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+          <div class="flex items-center gap-4 p-4 rounded-xl"
+               [ngClass]="settings.isPrimaryContact
+                 ? 'bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800'
+                 : 'bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700'">
+            <div class="flex items-center justify-center w-10 h-10 rounded-lg"
+                 [ngClass]="settings.isPrimaryContact ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-gray-100 dark:bg-gray-700'">
+              <mat-icon [ngClass]="settings.isPrimaryContact ? 'text-amber-600' : 'text-gray-400'">star</mat-icon>
+            </div>
+            <div>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Primary Contact</p>
+              <p class="font-bold" [ngClass]="settings.isPrimaryContact ? 'text-amber-700 dark:text-amber-300' : 'text-gray-600 dark:text-gray-400'">
+                {{ settings.isPrimaryContact ? 'Yes' : 'No' }}
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-4 p-4 rounded-xl"
+               [ngClass]="settings.isEmergencyContact
+                 ? 'bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800'
+                 : 'bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700'">
+            <div class="flex items-center justify-center w-10 h-10 rounded-lg"
+                 [ngClass]="settings.isEmergencyContact ? 'bg-red-100 dark:bg-red-900/30' : 'bg-gray-100 dark:bg-gray-700'">
+              <mat-icon [ngClass]="settings.isEmergencyContact ? 'text-red-600' : 'text-gray-400'">emergency</mat-icon>
+            </div>
+            <div>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Emergency Contact</p>
+              <p class="font-bold" [ngClass]="settings.isEmergencyContact ? 'text-red-700 dark:text-red-300' : 'text-gray-600 dark:text-gray-400'">
+                {{ settings.isEmergencyContact ? 'Yes' : 'No' }}
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-4 p-4 rounded-xl"
+               [ngClass]="settings.hasPortalAccess
+                 ? 'bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800'
+                 : 'bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700'">
+            <div class="flex items-center justify-center w-10 h-10 rounded-lg"
+                 [ngClass]="settings.hasPortalAccess ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-gray-100 dark:bg-gray-700'">
+              <mat-icon [ngClass]="settings.hasPortalAccess ? 'text-blue-600' : 'text-gray-400'">manage_accounts</mat-icon>
+            </div>
+            <div>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Portal Access</p>
+              <p class="font-bold" [ngClass]="settings.hasPortalAccess ? 'text-blue-700 dark:text-blue-300' : 'text-gray-600 dark:text-gray-400'">
+                {{ settings.hasPortalAccess ? 'Enabled' : 'Disabled' }}
+              </p>
+            </div>
+          </div>
+
+        </div>
+        <div *ngIf="settings.hasPortalAccess && settings.portalUserId"
+             class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <p class="text-sm text-gray-700 dark:text-gray-300">
+            <span class="font-semibold">Portal User ID:</span> {{ settings.portalUserId }}
+          </p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+  </div>
+</div>

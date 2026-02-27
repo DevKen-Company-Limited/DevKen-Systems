@@ -1,9 +1,14 @@
-﻿using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
+﻿// Devken.CBC.SchoolManagement.Application/RepositoryManagers/Interfaces/Common/IRepositoryManager.cs
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academics;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Assessments;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Curriculum;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Finance;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Identity;
-using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.NumberSeries; // ← Added
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.NumberSeries;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Payments;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Tenant;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.UserActivities1;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using System.Threading.Tasks;
@@ -12,18 +17,40 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
 {
     public interface IRepositoryManager
     {
+
         // ================= ACADEMIC =================
+        IInvoiceRepository Invoice { get; }
+        IParentRepository Parent { get; }
         IStudentRepository Student { get; }
         ITeacherRepository Teacher { get; }
         ISchoolRepository School { get; }
         IAcademicYearRepository AcademicYear { get; }
         ITermRepository Term { get; }
         IClassRepository Class { get; }
+        ISubjectRepository Subject { get; }
+        IUserActivityRepository UserActivity { get; }
+        IGradeRepository Grade { get; }
 
+        // ================= CBC CURRICULUM =================
+        ILearningAreaRepository LearningArea { get; }
+        IStrandRepository Strand { get; }
+        ISubStrandRepository SubStrand { get; }
+        ILearningOutcomeRepository LearningOutcome { get; }
+
+        // ================= FINANCE =================
+        IFeeItemRepository FeeItem { get; }   
         /// <summary>
-        /// Exposes the underlying DbContext for advanced scenarios like execution strategy
+        /// Exposes the underlying DbContext for advanced scenarios like execution strategy.
         /// </summary>
         DbContext Context { get; }
+
+        // ================= ASSESSMENTS =================
+        IFormativeAssessmentRepository FormativeAssessment { get; }
+        ISummativeAssessmentRepository SummativeAssessment { get; }
+        ICompetencyAssessmentRepository CompetencyAssessment { get; }
+        IFormativeAssessmentScoreRepository FormativeAssessmentScore { get; }
+        ISummativeAssessmentScoreRepository SummativeAssessmentScore { get; }
+        ICompetencyAssessmentScoreRepository CompetencyAssessmentScore { get; }
 
         // ================= IDENTITY =================
         IUserRepository User { get; }
@@ -38,7 +65,7 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
         IMpesaPaymentRepository MpesaPayment { get; }
 
         // ================= NUMBER SERIES =================
-        IDocumentNumberSeriesRepository DocumentNumberSeries { get; }  // ← Added
+        IDocumentNumberSeriesRepository DocumentNumberSeries { get; }
 
         // ================= UNIT OF WORK =================
         Task SaveAsync();

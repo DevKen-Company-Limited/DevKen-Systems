@@ -10,42 +10,53 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Acad
         private readonly TenantContext _tenantContext;
 
         public TeacherConfiguration(TenantContext tenantContext)
-        {
-            _tenantContext = tenantContext;
-        }
+            => _tenantContext = tenantContext;
 
         public void Configure(EntityTypeBuilder<Teacher> builder)
         {
             builder.ToTable("Teachers");
-
             builder.HasKey(t => t.Id);
 
             builder.HasQueryFilter(t =>
                 _tenantContext.TenantId == null || t.TenantId == _tenantContext.TenantId);
 
-            // Indexes
+            // ── Indexes ──────────────────────────────────────────────────
             builder.HasIndex(t => new { t.TenantId, t.TeacherNumber }).IsUnique();
             builder.HasIndex(t => t.TscNumber).IsUnique().HasFilter("[TscNumber] IS NOT NULL");
             builder.HasIndex(t => new { t.TenantId, t.IsActive });
 
-            // Properties
+            // ── Properties ───────────────────────────────────────────────
             builder.Property(t => t.FirstName).IsRequired().HasMaxLength(100);
             builder.Property(t => t.LastName).IsRequired().HasMaxLength(100);
             builder.Property(t => t.TeacherNumber).IsRequired().HasMaxLength(50);
             builder.Property(t => t.TscNumber).HasMaxLength(50);
 
-            // Relationships
+            // ── Computed — not persisted ─────────────────────────────────
+            builder.Ignore(t => t.FullName);
+            builder.Ignore(t => t.DisplayName);
+            builder.Ignore(t => t.Age);
+
+            // ── Relationships ────────────────────────────────────────────
+
+            // FIX: CurrentClass was never explicitly mapped — EF was creating
+            // a second shadow FK (CurrentClassId1) because it auto-discovered
+            // the CurrentClass navigation separately from CurrentClassId.
+            builder.HasOne(t => t.CurrentClass)
+                   .WithMany()
+                   .HasForeignKey(t => t.CurrentClassId)
+                   .IsRequired(false)
+                   .OnDelete(DeleteBehavior.Restrict);
+
             builder.HasMany(t => t.Classes)
                    .WithOne(c => c.ClassTeacher)
                    .HasForeignKey(c => c.TeacherId)
                    .OnDelete(DeleteBehavior.SetNull);
+
             builder.HasOne(t => t.School)
                    .WithMany(s => s.Teachers)
                    .HasForeignKey(t => t.TenantId)
                    .OnDelete(DeleteBehavior.Restrict);
 
-
-            // CBC Levels
             builder.HasMany(t => t.CBCLevels)
                    .WithOne(c => c.Teacher)
                    .HasForeignKey(c => c.TeacherId)
