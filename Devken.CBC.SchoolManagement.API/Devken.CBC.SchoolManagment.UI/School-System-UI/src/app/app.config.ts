@@ -41,14 +41,14 @@ export const appConfig: ApplicationConfig = {
         provideAnimations(),
 
         // 👇 HttpClient with ALL interceptors
-provideHttpClient(
-  withInterceptors([
-    mockApiInterceptor,
-    authInterceptor,
-    subscriptionStatusInterceptor
-  ])
-)
-,
+        provideHttpClient(
+        withInterceptors([
+            mockApiInterceptor,
+            authInterceptor,
+            subscriptionStatusInterceptor
+        ])
+        )
+        ,
 
         provideRouter(
             appRoutes,
