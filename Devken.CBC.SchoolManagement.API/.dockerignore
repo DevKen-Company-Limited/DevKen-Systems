@@ -1,16 +1,18 @@
-# Ignore build artifacts and local tooling
+# Exclude build output
 **/bin/
 **/obj/
+
+# Exclude IDE files
 **/.vs/
 **/.vscode/
 *.user
 *.suo
 
-# Ignore git and docs
+# Exclude git
 .git/
 .gitignore
-README.md
 
-# Ignore local env files
+# Exclude docs/config not needed for build
+README.md
+*.md
 .env
-*.local
