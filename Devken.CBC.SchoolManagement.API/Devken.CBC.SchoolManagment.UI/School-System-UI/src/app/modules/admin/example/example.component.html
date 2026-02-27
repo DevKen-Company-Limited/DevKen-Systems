@@ -1,57 +1,56 @@
 <div class="flex flex-col flex-auto min-w-0">
 
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row flex-0 sm:items-center sm:justify-between p-6 sm:py-8 sm:px-10 border-b bg-card dark:bg-transparent">
-        <div class="flex-1 min-w-0">
-            <div class="flex flex-wrap items-center font-medium">
-                <span class="text-secondary">Home</span>
-                <span class="mx-2 text-secondary">/</span>
-                <span class="text-secondary">Dashboard</span>
+    <!-- ── HEADER ── -->
+    <div class="dk-header">
+        <div>
+            <div class="dk-breadcrumb">
+                <span>Home</span>
+                <span class="sep">›</span>
+                <span>Dashboard</span>
             </div>
-            <div class="mt-2">
-                <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight leading-7 sm:leading-10 truncate">
-                    School Overview
-                </h2>
-                <p class="text-secondary mt-1">Competency-Based Curriculum — Academic year 2025</p>
-            </div>
+            <div class="dk-page-title">School Overview</div>
+            <div class="dk-page-sub">Competency-Based Curriculum — Academic year 2025</div>
         </div>
-        <div class="flex shrink-0 items-center mt-6 sm:mt-0 sm:ml-4">
-            <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border bg-card text-sm font-medium">
-                <span class="w-2 h-2 rounded-full bg-green-500"></span>
+        <div class="dk-header-right">
+            <div class="dk-term-badge">
+                <span class="dot"></span>
                 Term 1 · 2025
-            </span>
+            </div>
+            <button class="dk-icon-btn">🔍</button>
+            <button class="dk-icon-btn">
+                🔔
+                <span class="notif"></span>
+            </button>
+            <button class="dk-icon-btn">⚙️</button>
         </div>
     </div>
 
-    <!-- Main content -->
-    <div class="flex-auto p-6 sm:p-10 overflow-y-auto">
+    <!-- ── SCROLLABLE CONTENT ── -->
+    <div class="dk-content">
 
-        <!-- CBC Level Pills -->
-        <div class="flex flex-wrap gap-2 mb-8">
-            <button *ngFor="let level of levels"
-                    (click)="setActiveLevel(level)"
-                    [class.bg-gray-900]="activeLevel === level"
-                    [class.text-white]="activeLevel === level"
-                    [class.border-gray-900]="activeLevel === level"
-                    [class.text-gray-500]="activeLevel !== level"
-                    class="px-4 py-1.5 rounded-full border text-sm font-medium transition-all cursor-pointer bg-white hover:border-blue-500 hover:text-blue-600">
+        <!-- Level Pills -->
+        <div class="dk-level-strip">
+            <button
+                *ngFor="let level of levels"
+                class="dk-level-pill"
+                [class.active]="activeLevel === level"
+                (click)="setActiveLevel(level)">
                 {{ level }}
             </button>
         </div>
 
-        <!-- Stats Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
-            <div *ngFor="let stat of stats"
-                 class="relative overflow-hidden bg-card rounded-2xl border p-5 hover:-translate-y-0.5 hover:shadow-lg transition-all">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
-                         [ngStyle]="{'background': stat.iconBg, 'color': stat.color}">
-                        {{ stat.icon }}
-                    </div>
+        <!-- Stats -->
+        <div class="dk-stats">
+            <div *ngFor="let stat of stats; let i = index"
+                 class="dk-stat"
+                 [ngClass]="['blue','green','amber','red'][i]">
+                <div class="dk-stat-icon"
+                     [ngStyle]="{'background': stat.iconBg, 'color': stat.color}">
+                    {{ stat.icon }}
                 </div>
-                <div class="text-3xl font-extrabold tracking-tight">{{ stat.value }}</div>
-                <div class="text-secondary text-sm mt-1">{{ stat.label }}</div>
-                <div class="inline-flex items-center gap-1 mt-3 px-2 py-1 rounded-full text-xs font-medium"
+                <div class="dk-stat-value">{{ stat.value }}</div>
+                <div class="dk-stat-label">{{ stat.label }}</div>
+                <div class="dk-stat-trend"
                      [ngStyle]="{'background': stat.trendBg, 'color': stat.trendColor}">
                     {{ stat.trend }}
                 </div>
@@ -59,65 +58,62 @@
         </div>
 
         <!-- Main Row -->
-        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4">
+        <div class="dk-main-row">
 
             <!-- Class Performance -->
-            <div class="xl:col-span-2 bg-card rounded-2xl border overflow-hidden">
-                <div class="flex items-center justify-between px-6 pt-5 pb-2">
-                    <h3 class="font-bold text-base">Class Performance — Term 1</h3>
-                    <button class="text-sm text-blue-600 font-medium hover:underline">View all classes →</button>
+            <div class="dk-card">
+                <div class="dk-card-head">
+                    <span class="dk-card-title">Class Performance — Term 1</span>
+                    <button class="dk-card-action">View all classes →</button>
                 </div>
-                <div class="px-6 pb-4">
-                    <div *ngFor="let cls of classes"
-                         class="flex items-center gap-3 py-2.5 border-b last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg px-2 -mx-2 transition-colors">
-                        <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-bold shrink-0"
-                             [ngStyle]="{'background': cls.color}">
+                <div class="dk-class-body">
+                    <div *ngFor="let cls of classes" class="dk-class-row">
+                        <div class="dk-class-badge" [ngStyle]="{'background': cls.color}">
                             {{ cls.badge }}
                         </div>
-                        <div class="flex-1 min-w-0">
-                            <div class="text-sm font-medium">{{ cls.name }}</div>
-                            <div class="text-secondary text-xs mt-0.5">{{ cls.meta }}</div>
+                        <div class="dk-class-info">
+                            <div class="dk-class-name">{{ cls.name }}</div>
+                            <div class="dk-class-meta">{{ cls.meta }}</div>
                         </div>
-                        <div class="w-28 shrink-0">
-                            <div class="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                                <div class="h-full rounded-full transition-all duration-1000"
-                                     [ngStyle]="{'width': cls.pct + '%', 'background': cls.color}"></div>
+                        <div class="dk-bar-wrap">
+                            <div class="dk-bar-track">
+                                <div class="dk-bar-fill"
+                                     [ngStyle]="{'width': cls.pct + '%', 'background': cls.color}">
+                                </div>
                             </div>
-                            <div class="text-xs font-semibold text-right mt-1">{{ cls.pct }}%</div>
+                            <div class="dk-bar-pct">{{ cls.pct }}%</div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Competency Distribution -->
-            <div class="bg-card rounded-2xl border overflow-hidden">
-                <div class="flex items-center justify-between px-6 pt-5 pb-2">
-                    <h3 class="font-bold text-base">Competency Distribution</h3>
-                    <button class="text-sm text-blue-600 font-medium hover:underline">Details</button>
+            <!-- Competency + Quick Actions -->
+            <div class="dk-card">
+                <div class="dk-card-head">
+                    <span class="dk-card-title">Competency Distribution</span>
+                    <button class="dk-card-action">Details</button>
                 </div>
-                <div class="px-6 pb-4">
-                    <div *ngFor="let comp of competencies" class="flex items-center gap-3 mb-4">
-                        <div class="w-2 h-2 rounded-full shrink-0" [ngStyle]="{'background': comp.color}"></div>
-                        <div class="flex-1 min-w-0">
-                            <div class="text-xs font-medium text-secondary">{{ comp.label }}</div>
-                            <div class="h-1.5 bg-gray-200 rounded-full mt-1 overflow-hidden">
-                                <div class="h-full rounded-full" [ngStyle]="{'width': comp.pct + '%', 'background': comp.color}"></div>
+                <div class="dk-comp-body">
+                    <div *ngFor="let comp of competencies" class="dk-comp-row">
+                        <div class="dk-comp-dot" [ngStyle]="{'background': comp.color}"></div>
+                        <div class="dk-comp-info">
+                            <div class="dk-comp-label">{{ comp.label }}</div>
+                            <div class="dk-comp-track">
+                                <div class="dk-comp-fill"
+                                     [ngStyle]="{'width': comp.pct + '%', 'background': comp.color}">
+                                </div>
                             </div>
                         </div>
-                        <div class="text-xs font-semibold w-8 text-right shrink-0" [ngStyle]="{'color': comp.color}">
-                            {{ comp.pct }}%
-                        </div>
+                        <div class="dk-comp-pct" [ngStyle]="{'color': comp.color}">{{ comp.pct }}%</div>
                     </div>
                 </div>
 
-                <!-- Quick Actions -->
-                <div class="border-t mx-6 pt-4 pb-4">
-                    <div class="text-sm font-bold mb-3">Quick Actions</div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button *ngFor="let action of quickActions"
-                                class="flex flex-col items-center gap-2 p-3 rounded-xl border border-dashed hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all">
-                            <span class="text-xl">{{ action.icon }}</span>
-                            <span class="text-xs font-medium text-center leading-tight">{{ action.label }}</span>
+                <div class="dk-qa-block">
+                    <div class="dk-qa-title">Quick Actions</div>
+                    <div class="dk-qa-grid">
+                        <button *ngFor="let action of quickActions" class="dk-qa-btn">
+                            <div class="qa-icon">{{ action.icon }}</div>
+                            <div class="qa-label">{{ action.label }}</div>
                         </button>
                     </div>
                 </div>
@@ -125,72 +121,73 @@
         </div>
 
         <!-- Bottom Row -->
-        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <div class="dk-bottom-row">
 
             <!-- Recent Assessments -->
-            <div class="xl:col-span-2 bg-card rounded-2xl border overflow-hidden">
-                <div class="flex items-center justify-between px-6 pt-5 pb-2">
-                    <h3 class="font-bold text-base">Recent Assessments</h3>
-                    <button class="text-sm text-blue-600 font-medium hover:underline">All assessments →</button>
+            <div class="dk-card">
+                <div class="dk-card-head">
+                    <span class="dk-card-title">Recent Assessments</span>
+                    <button class="dk-card-action">All assessments →</button>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
+                <div class="dk-table-wrap">
+                    <table class="dk-table">
                         <thead>
-                            <tr class="border-b">
-                                <th class="text-left text-xs font-medium text-secondary uppercase tracking-wide px-6 py-3 whitespace-nowrap">Student</th>
-                                <th class="text-left text-xs font-medium text-secondary uppercase tracking-wide px-6 py-3">Area</th>
-                                <th class="text-left text-xs font-medium text-secondary uppercase tracking-wide px-6 py-3">Type</th>
-                                <th class="text-left text-xs font-medium text-secondary uppercase tracking-wide px-6 py-3">Level</th>
-                                <th class="text-left text-xs font-medium text-secondary uppercase tracking-wide px-6 py-3">Date</th>
+                            <tr>
+                                <th>Student</th>
+                                <th>Learning Area</th>
+                                <th>Type</th>
+                                <th>Level</th>
+                                <th>Date</th>
+                                <th>Teacher</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr *ngFor="let a of assessments" class="border-b last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                                <td class="px-6 py-3 whitespace-nowrap">
-                                    <span class="font-semibold">{{ a.student }}</span>
-                                    <span class="ml-1 text-xs text-secondary">{{ a.class }}</span>
+                            <tr *ngFor="let a of assessments">
+                                <td>
+                                    <strong>{{ a.student }}</strong>
+                                    <span style="color:var(--muted,#6b7280);font-size:11px;margin-left:4px;">{{ a.class }}</span>
                                 </td>
-                                <td class="px-6 py-3 text-secondary">{{ a.area }}</td>
-                                <td class="px-6 py-3">
-                                    <span class="px-2 py-0.5 rounded-md text-xs font-medium"
+                                <td style="color:#6b7280;">{{ a.area }}</td>
+                                <td>
+                                    <span class="dk-badge"
                                           [ngStyle]="{'background': a.typeBg, 'color': a.typeColor}">
                                         {{ a.type }}
                                     </span>
                                 </td>
-                                <td class="px-6 py-3">
-                                    <span class="px-2 py-0.5 rounded-md text-xs font-semibold"
+                                <td>
+                                    <span class="dk-badge"
                                           [ngStyle]="{'background': a.levelBg, 'color': a.levelColor}">
                                         {{ a.level }}
                                     </span>
                                 </td>
-                                <td class="px-6 py-3 text-secondary text-xs whitespace-nowrap">{{ a.date }}</td>
+                                <td style="color:#6b7280;font-size:12px;white-space:nowrap;">{{ a.date }}</td>
+                                <td style="color:#6b7280;font-size:12px;">{{ a.teacher }}</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- Right Column -->
-            <div class="flex flex-col gap-4">
+            <!-- Right column -->
+            <div class="dk-right-col">
 
-                <!-- Upcoming Events -->
-                <div class="bg-card rounded-2xl border overflow-hidden">
-                    <div class="flex items-center justify-between px-6 pt-5 pb-2">
-                        <h3 class="font-bold text-base">Upcoming Events</h3>
-                        <button class="text-sm text-blue-600 font-medium hover:underline">View calendar</button>
+                <!-- Events -->
+                <div class="dk-card">
+                    <div class="dk-card-head">
+                        <span class="dk-card-title">Upcoming Events</span>
+                        <button class="dk-card-action">View calendar</button>
                     </div>
-                    <div class="px-6 pb-4">
-                        <div *ngFor="let event of events"
-                             class="flex gap-3 py-2.5 border-b last:border-0 items-start">
-                            <div class="bg-gray-50 dark:bg-gray-800 border rounded-lg px-2.5 py-1.5 text-center shrink-0 min-w-[42px]">
-                                <div class="text-lg font-extrabold leading-none">{{ event.day }}</div>
-                                <div class="text-xs text-secondary uppercase tracking-wide mt-0.5">{{ event.month }}</div>
+                    <div class="dk-event-body">
+                        <div *ngFor="let event of events" class="dk-event-item">
+                            <div class="dk-event-date">
+                                <div class="day">{{ event.day }}</div>
+                                <div class="mon">{{ event.month }}</div>
                             </div>
-                            <div class="flex-1 min-w-0">
-                                <div class="text-sm font-medium">{{ event.title }}</div>
-                                <div class="text-xs text-secondary mt-0.5">{{ event.sub }}</div>
+                            <div class="dk-event-info">
+                                <div class="dk-event-title">{{ event.title }}</div>
+                                <div class="dk-event-sub">{{ event.sub }}</div>
                             </div>
-                            <span class="text-xs font-medium px-2 py-0.5 rounded-md shrink-0 mt-1"
+                            <span class="dk-event-tag"
                                   [ngStyle]="{'background': event.tagBg, 'color': event.tagColor}">
                                 {{ event.tag }}
                             </span>
@@ -199,32 +196,32 @@
                 </div>
 
                 <!-- Fee Collection -->
-                <div class="bg-card rounded-2xl border overflow-hidden">
-                    <div class="flex items-center justify-between px-6 pt-5 pb-2">
-                        <h3 class="font-bold text-base">Fee Collection</h3>
-                        <button class="text-sm text-blue-600 font-medium hover:underline">Payments →</button>
+                <div class="dk-card">
+                    <div class="dk-card-head">
+                        <span class="dk-card-title">Fee Collection</span>
+                        <button class="dk-card-action">Payments →</button>
                     </div>
-                    <div class="flex justify-center py-4">
-                        <div class="relative w-24 h-24">
-                            <svg viewBox="0 0 36 36" class="w-full h-full -rotate-90">
-                                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e5e7eb" stroke-width="3"/>
+                    <div class="dk-donut-wrap">
+                        <div class="dk-donut">
+                            <svg viewBox="0 0 36 36" width="90" height="90">
+                                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e8e6de" stroke-width="3"/>
                                 <circle cx="18" cy="18" r="15.9" fill="none" stroke="#2563EB" stroke-width="3"
                                         stroke-dasharray="78 100" stroke-linecap="round"/>
                             </svg>
-                            <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                <span class="text-xl font-extrabold leading-none">78%</span>
-                                <span class="text-xs text-secondary uppercase tracking-wide">Collected</span>
+                            <div class="dk-donut-label">
+                                <span class="pct">78%</span>
+                                <span class="lbl">Collected</span>
                             </div>
                         </div>
                     </div>
-                    <div class="px-6 pb-4">
-                        <div *ngFor="let fin of finance"
-                             class="flex justify-between items-center py-2 border-b last:border-0 text-sm">
-                            <span class="text-secondary">{{ fin.label }}</span>
-                            <span class="font-semibold" [ngStyle]="{'color': fin.color}">{{ fin.value }}</span>
+                    <div class="dk-finance-body">
+                        <div *ngFor="let fin of finance" class="dk-fin-row">
+                            <span class="lbl">{{ fin.label }}</span>
+                            <span class="val" [ngClass]="fin.cls">{{ fin.value }}</span>
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
 
