@@ -1,1320 +1,232 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Devken CBC — School Management</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --ink: #0e1117;
-    --surface: #f7f6f2;
-    --card: #ffffff;
-    --accent: #2563EB;
-    --accent2: #16a34a;
-    --accent3: #d97706;
-    --accent4: #dc2626;
-    --muted: #6b7280;
-    --border: #e5e3dc;
-    --sidebar-w: 260px;
-  }
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--surface);
-    color: var(--ink);
-    min-height: 100vh;
-    display: flex;
-    overflow-x: hidden;
-  }
-
-  /* ── SIDEBAR ── */
-  aside {
-    width: var(--sidebar-w);
-    min-height: 100vh;
-    background: var(--ink);
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
-    position: fixed;
-    top: 0; left: 0;
-    z-index: 100;
-    overflow: hidden;
-  }
-
-  aside::before {
-    content: '';
-    position: absolute;
-    top: -80px; right: -80px;
-    width: 240px; height: 240px;
-    background: radial-gradient(circle, rgba(37,99,235,0.35) 0%, transparent 70%);
-    pointer-events: none;
-  }
-
-  .logo-area {
-    padding: 28px 24px 20px;
-    border-bottom: 1px solid rgba(255,255,255,0.07);
-  }
-
-  .logo-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .logo-icon {
-    width: 36px; height: 36px;
-    background: var(--accent);
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Syne', sans-serif;
-    font-weight: 800;
-    font-size: 14px;
-    color: #fff;
-    letter-spacing: -0.5px;
-  }
-
-  .logo-text {
-    font-family: 'Syne', sans-serif;
-    font-size: 16px;
-    font-weight: 700;
-    color: #fff;
-    letter-spacing: -0.3px;
-    line-height: 1.1;
-  }
-
-  .logo-sub {
-    font-size: 10px;
-    font-weight: 400;
-    color: rgba(255,255,255,0.4);
-    letter-spacing: 0.8px;
-    text-transform: uppercase;
-    display: block;
-  }
-
-  .school-selector {
-    margin: 16px 16px 0;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 10px;
-    padding: 10px 14px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    transition: background .15s;
-  }
-
-  .school-selector:hover { background: rgba(255,255,255,0.08); }
-
-  .school-name {
-    font-size: 12px;
-    font-weight: 500;
-    color: rgba(255,255,255,0.85);
-    display: block;
-  }
-
-  .school-type {
-    font-size: 10px;
-    color: rgba(255,255,255,0.35);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .chevron { color: rgba(255,255,255,0.3); font-size: 12px; }
-
-  nav { flex: 1; padding: 20px 0; overflow-y: auto; }
-
-  .nav-section-label {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: rgba(255,255,255,0.25);
-    padding: 12px 24px 6px;
-    font-weight: 500;
-  }
-
-  .nav-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 9px 24px;
-    font-size: 13.5px;
-    font-weight: 400;
-    color: rgba(255,255,255,0.55);
-    cursor: pointer;
-    transition: all .15s;
-    position: relative;
-    border-radius: 0;
-    text-decoration: none;
-  }
-
-  .nav-item:hover {
-    color: rgba(255,255,255,0.9);
-    background: rgba(255,255,255,0.05);
-  }
-
-  .nav-item.active {
-    color: #fff;
-    background: rgba(37,99,235,0.2);
-  }
-
-  .nav-item.active::before {
-    content: '';
-    position: absolute;
-    left: 0; top: 0; bottom: 0;
-    width: 3px;
-    background: var(--accent);
-    border-radius: 0 2px 2px 0;
-  }
-
-  .nav-icon {
-    width: 18px; height: 18px;
-    opacity: 0.7;
-    flex-shrink: 0;
-  }
-
-  .nav-item.active .nav-icon { opacity: 1; }
-
-  .nav-badge {
-    margin-left: auto;
-    background: var(--accent);
-    color: #fff;
-    font-size: 10px;
-    font-weight: 600;
-    padding: 2px 7px;
-    border-radius: 20px;
-    min-width: 20px;
-    text-align: center;
-  }
-
-  .nav-badge.warn { background: var(--accent3); }
-
-  .sidebar-bottom {
-    padding: 16px;
-    border-top: 1px solid rgba(255,255,255,0.07);
-  }
-
-  .user-card {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: background .15s;
-  }
-
-  .user-card:hover { background: rgba(255,255,255,0.05); }
-
-  .avatar {
-    width: 32px; height: 32px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #2563EB, #7c3aed);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 700;
-    color: #fff;
-    flex-shrink: 0;
-  }
-
-  .user-name {
-    font-size: 12.5px;
-    font-weight: 500;
-    color: rgba(255,255,255,0.85);
-  }
-
-  .user-role {
-    font-size: 10px;
-    color: rgba(255,255,255,0.35);
-  }
-
-  /* ── MAIN ── */
-  main {
-    margin-left: var(--sidebar-w);
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-  }
-
-  /* ── TOPBAR ── */
-  .topbar {
-    background: var(--card);
-    border-bottom: 1px solid var(--border);
-    padding: 0 32px;
-    height: 64px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 50;
-  }
-
-  .page-breadcrumb {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    color: var(--muted);
-  }
-
-  .page-breadcrumb span:last-child {
-    color: var(--ink);
-    font-weight: 500;
-  }
-
-  .topbar-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .icon-btn {
-    width: 36px; height: 36px;
-    border-radius: 9px;
-    border: 1px solid var(--border);
-    background: transparent;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--muted);
-    transition: all .15s;
-    position: relative;
-    font-size: 16px;
-  }
-
-  .icon-btn:hover { background: var(--surface); color: var(--ink); }
-
-  .notif-dot {
-    position: absolute;
-    top: 6px; right: 6px;
-    width: 6px; height: 6px;
-    background: var(--accent4);
-    border-radius: 50%;
-    border: 1.5px solid white;
-  }
-
-  .term-pill {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 6px 12px;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--ink);
-    cursor: pointer;
-  }
-
-  .term-dot { width: 6px; height: 6px; background: var(--accent2); border-radius: 50%; }
-
-  /* ── CONTENT ── */
-  .content {
-    padding: 32px;
-    flex: 1;
-    animation: fadeUp .4s ease both;
-  }
-
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(12px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .page-header {
-    margin-bottom: 28px;
-  }
-
-  .page-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 26px;
-    font-weight: 800;
-    color: var(--ink);
-    letter-spacing: -0.5px;
-    line-height: 1.1;
-  }
-
-  .page-subtitle {
-    font-size: 13.5px;
-    color: var(--muted);
-    margin-top: 4px;
-  }
-
-  /* ── STATS GRID ── */
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-    margin-bottom: 28px;
-  }
-
-  .stat-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 20px 22px;
-    position: relative;
-    overflow: hidden;
-    transition: transform .2s, box-shadow .2s;
-    cursor: default;
-  }
-
-  .stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.07);
-  }
-
-  .stat-card::after {
-    content: '';
-    position: absolute;
-    top: 0; right: 0;
-    width: 80px; height: 80px;
-    border-radius: 0 14px 0 80px;
-    opacity: 0.07;
-  }
-
-  .stat-card.blue::after { background: var(--accent); }
-  .stat-card.green::after { background: var(--accent2); }
-  .stat-card.amber::after { background: var(--accent3); }
-  .stat-card.red::after { background: var(--accent4); }
-
-  .stat-icon {
-    width: 38px; height: 38px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 17px;
-    margin-bottom: 14px;
-  }
-
-  .stat-card.blue .stat-icon { background: rgba(37,99,235,0.1); color: var(--accent); }
-  .stat-card.green .stat-icon { background: rgba(22,163,74,0.1); color: var(--accent2); }
-  .stat-card.amber .stat-icon { background: rgba(217,119,6,0.1); color: var(--accent3); }
-  .stat-card.red .stat-icon { background: rgba(220,38,38,0.1); color: var(--accent4); }
-
-  .stat-value {
-    font-family: 'Syne', sans-serif;
-    font-size: 30px;
-    font-weight: 800;
-    letter-spacing: -1px;
-    line-height: 1;
-    color: var(--ink);
-  }
-
-  .stat-label {
-    font-size: 12.5px;
-    color: var(--muted);
-    margin-top: 4px;
-    font-weight: 400;
-  }
-
-  .stat-trend {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    font-size: 11px;
-    font-weight: 500;
-    margin-top: 10px;
-    padding: 3px 8px;
-    border-radius: 20px;
-  }
-
-  .stat-trend.up { background: rgba(22,163,74,0.1); color: var(--accent2); }
-  .stat-trend.down { background: rgba(220,38,38,0.1); color: var(--accent4); }
-
-  /* ── MAIN ROW ── */
-  .main-row {
-    display: grid;
-    grid-template-columns: 1fr 340px;
-    gap: 16px;
-    margin-bottom: 16px;
-  }
-
-  .card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    overflow: hidden;
-  }
-
-  .card-header {
-    padding: 18px 22px 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .card-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: -0.2px;
-  }
-
-  .card-action {
-    font-size: 12px;
-    color: var(--accent);
-    cursor: pointer;
-    font-weight: 500;
-  }
-
-  .card-action:hover { text-decoration: underline; }
-
-  /* ── CLASS PERFORMANCE ── */
-  .class-list { padding: 16px 22px; }
-
-  .class-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 0;
-    border-bottom: 1px solid var(--border);
-    cursor: pointer;
-    transition: background .15s;
-    border-radius: 6px;
-    padding-left: 4px;
-    padding-right: 4px;
-  }
-
-  .class-row:last-child { border-bottom: none; }
-  .class-row:hover { background: var(--surface); }
-
-  .class-badge {
-    width: 36px; height: 36px;
-    border-radius: 9px;
-    background: var(--ink);
-    color: #fff;
-    font-family: 'Syne', sans-serif;
-    font-size: 11px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    letter-spacing: 0.3px;
-  }
-
-  .class-info { flex: 1; min-width: 0; }
-  .class-name { font-size: 13px; font-weight: 500; color: var(--ink); }
-  .class-meta { font-size: 11px; color: var(--muted); margin-top: 1px; }
-
-  .class-bar-wrap { width: 100px; }
-
-  .bar-track {
-    height: 5px;
-    background: var(--border);
-    border-radius: 99px;
-    overflow: hidden;
-  }
-
-  .bar-fill {
-    height: 100%;
-    border-radius: 99px;
-    transition: width 1s ease;
-  }
-
-  .bar-pct {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--ink);
-    text-align: right;
-    margin-top: 3px;
-  }
-
-  /* ── COMPETENCY LEVELS ── */
-  .competency-wrap { padding: 16px 22px; }
-
-  .comp-level {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 14px;
-  }
-
-  .comp-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
-  .comp-info { flex: 1; }
-  .comp-label { font-size: 12px; font-weight: 500; color: var(--ink); }
-
-  .comp-bar-track {
-    height: 6px;
-    background: var(--border);
-    border-radius: 99px;
-    margin-top: 4px;
-    overflow: hidden;
-  }
-
-  .comp-bar-fill {
-    height: 100%;
-    border-radius: 99px;
-  }
-
-  .comp-pct {
-    font-size: 12px;
-    font-weight: 600;
-    min-width: 36px;
-    text-align: right;
-  }
-
-  /* ── BOTTOM ROW ── */
-  .bottom-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 16px;
-  }
-
-  /* ── ASSESSMENTS TABLE ── */
-  .table-wrap { overflow-x: auto; }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-
-  th {
-    text-align: left;
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    color: var(--muted);
-    font-weight: 500;
-    padding: 10px 22px;
-    border-bottom: 1px solid var(--border);
-    white-space: nowrap;
-  }
-
-  td {
-    padding: 10px 22px;
-    font-size: 13px;
-    color: var(--ink);
-    border-bottom: 1px solid var(--border);
-    vertical-align: middle;
-  }
-
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: var(--surface); }
-
-  .level-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 3px 8px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 500;
-  }
-
-  .level-EE { background: rgba(37,99,235,0.1); color: var(--accent); }
-  .level-ME { background: rgba(22,163,74,0.1); color: var(--accent2); }
-  .level-AE { background: rgba(217,119,6,0.1); color: var(--accent3); }
-  .level-BE { background: rgba(220,38,38,0.1); color: var(--accent4); }
-
-  /* ── UPCOMING ── */
-  .event-list { padding: 12px 22px; }
-
-  .event-item {
-    display: flex;
-    gap: 12px;
-    padding: 10px 0;
-    border-bottom: 1px solid var(--border);
-    align-items: flex-start;
-  }
-
-  .event-item:last-child { border-bottom: none; }
-
-  .event-date-box {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 6px 10px;
-    text-align: center;
-    flex-shrink: 0;
-    min-width: 42px;
-  }
-
-  .event-day {
-    font-family: 'Syne', sans-serif;
-    font-size: 16px;
-    font-weight: 800;
-    color: var(--ink);
-    line-height: 1;
-  }
-
-  .event-mon {
-    font-size: 9px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--muted);
-    margin-top: 1px;
-  }
-
-  .event-title { font-size: 13px; font-weight: 500; color: var(--ink); }
-  .event-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
-
-  .event-tag {
-    margin-left: auto;
-    font-size: 10px;
-    font-weight: 500;
-    padding: 3px 7px;
-    border-radius: 5px;
-    flex-shrink: 0;
-    margin-top: 2px;
-  }
-
-  .tag-assess { background: rgba(37,99,235,0.1); color: var(--accent); }
-  .tag-report { background: rgba(22,163,74,0.1); color: var(--accent2); }
-  .tag-meeting { background: rgba(217,119,6,0.1); color: var(--accent3); }
-
-  /* ── FINANCE ── */
-  .finance-summary { padding: 16px 22px; }
-
-  .fin-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 9px 0;
-    border-bottom: 1px solid var(--border);
-    font-size: 13px;
-  }
-
-  .fin-row:last-child { border-bottom: none; }
-  .fin-label { color: var(--muted); }
-  .fin-value { font-weight: 600; color: var(--ink); }
-  .fin-value.positive { color: var(--accent2); }
-  .fin-value.negative { color: var(--accent4); }
-
-  .progress-circle-wrap {
-    display: flex;
-    justify-content: center;
-    padding: 16px 0 8px;
-  }
-
-  .donut {
-    width: 100px; height: 100px;
-    position: relative;
-  }
-
-  .donut svg { transform: rotate(-90deg); }
-
-  .donut-label {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .donut-pct {
-    font-family: 'Syne', sans-serif;
-    font-size: 20px;
-    font-weight: 800;
-    color: var(--ink);
-    line-height: 1;
-  }
-
-  .donut-sub {
-    font-size: 9px;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  /* ── QUICK ACTIONS ── */
-  .quick-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    padding: 16px 22px;
-  }
-
-  .qa-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    padding: 14px 8px;
-    border-radius: 10px;
-    border: 1.5px dashed var(--border);
-    cursor: pointer;
-    transition: all .15s;
-    text-align: center;
-    background: transparent;
-    font-family: inherit;
-  }
-
-  .qa-btn:hover {
-    border-color: var(--accent);
-    background: rgba(37,99,235,0.04);
-  }
-
-  .qa-icon {
-    font-size: 20px;
-    width: 38px; height: 38px;
-    border-radius: 9px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--surface);
-  }
-
-  .qa-label {
-    font-size: 11.5px;
-    font-weight: 500;
-    color: var(--ink);
-    line-height: 1.2;
-  }
-
-  /* ── CBC LEVELS STRIP ── */
-  .levels-strip {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 28px;
-    flex-wrap: wrap;
-  }
-
-  .level-pill {
-    padding: 5px 14px;
-    border-radius: 99px;
-    border: 1.5px solid var(--border);
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all .15s;
-    background: var(--card);
-    color: var(--muted);
-  }
-
-  .level-pill:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-  }
-
-  .level-pill.active {
-    background: var(--ink);
-    border-color: var(--ink);
-    color: #fff;
-  }
-
-  /* animations */
-  .stat-card { animation: fadeUp .4s ease both; }
-  .stat-card:nth-child(1) { animation-delay: .05s; }
-  .stat-card:nth-child(2) { animation-delay: .1s; }
-  .stat-card:nth-child(3) { animation-delay: .15s; }
-  .stat-card:nth-child(4) { animation-delay: .2s; }
-
-  .bar-fill { animation: growWidth 1.2s ease both; animation-delay: .5s; }
-
-  @keyframes growWidth {
-    from { width: 0 !important; }
-  }
-
-  /* scrollbar */
-  ::-webkit-scrollbar { width: 5px; height: 5px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
-</style>
-</head>
-<body>
-
-<!-- ── SIDEBAR ── -->
-<aside>
-  <div class="logo-area">
-    <div class="logo-badge">
-      <div class="logo-icon">DK</div>
-      <div class="logo-text">
-        Devken CBC
-        <span class="logo-sub">School Management</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="school-selector">
-    <div>
-      <span class="school-name">Sunrise Primary School</span>
-      <span class="school-type">CBC Accredited</span>
-    </div>
-    <span class="chevron">⌄</span>
-  </div>
-
-  <nav>
-    <div class="nav-section-label">Overview</div>
-    <a class="nav-item active" href="#">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-      Dashboard
-    </a>
-    <a class="nav-item" href="#">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      Students
-      <span class="nav-badge">1,248</span>
-    </a>
-    <a class="nav-item" href="#">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      Teachers
-    </a>
-    <a class="nav-item" href="#">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-      Classes
-    </a>
-
-    <div class="nav-section-label">Curriculum</div>
-    <a class="nav-item" href="#">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-      Learning Areas
-    </a>
-    <a class="nav-item" href="#">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-      Lesson Plans
-    </a>
-    <a class="nav-item" href="#">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-      Assessments
-      <span class="nav-badge warn">12</span>
-    </a>
-    <a class="nav-item" href="#">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-      Progress Reports
-    </a>
-
-    <div class="nav-section-label">Finance</div>
-    <a class="nav-item" href="#">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-      Payments
-    </a>
-    <a class="nav-item" href="#">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-      Fee Structure
-    </a>
-
-    <div class="nav-section-label">System</div>
-    <a class="nav-item" href="#">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 0 1 21 12a10 10 0 0 1-1.93 7.07M4.93 4.93A10 10 0 0 0 3 12a10 10 0 0 0 1.93 7.07"/></svg>
-      Settings
-    </a>
-  </nav>
-
-  <div class="sidebar-bottom">
-    <div class="user-card">
-      <div class="avatar">PM</div>
-      <div>
-        <div class="user-name">Peter Mwangi</div>
-        <div class="user-role">Principal</div>
-      </div>
-    </div>
-  </div>
-</aside>
-
-<!-- ── MAIN ── -->
-<main>
-  <div class="topbar">
-    <div class="page-breadcrumb">
-      <span>Home</span>
-      <span style="color:var(--border)">›</span>
-      <span>Dashboard</span>
-    </div>
-    <div class="topbar-right">
-      <div class="term-pill">
-        <span class="term-dot"></span>
-        Term 1 · 2025
-      </div>
-      <button class="icon-btn">
-        🔍
-      </button>
-      <button class="icon-btn">
-        🔔
-        <span class="notif-dot"></span>
-      </button>
-      <button class="icon-btn">
-        ⚙️
-      </button>
-    </div>
-  </div>
-
-  <div class="content">
-    <div class="page-header">
-      <div class="page-title">School Overview</div>
-      <div class="page-subtitle">Competency-Based Curriculum — Academic year 2025</div>
-    </div>
-
-    <!-- CBC Level Pills -->
-    <div class="levels-strip">
-      <div class="level-pill active">All Levels</div>
-      <div class="level-pill">PP1</div>
-      <div class="level-pill">PP2</div>
-      <div class="level-pill">Grade 1</div>
-      <div class="level-pill">Grade 2</div>
-      <div class="level-pill">Grade 3</div>
-      <div class="level-pill">Grade 4</div>
-      <div class="level-pill">Grade 5</div>
-      <div class="level-pill">Grade 6</div>
-      <div class="level-pill">JHS 1</div>
-      <div class="level-pill">JHS 2</div>
-      <div class="level-pill">JHS 3</div>
-    </div>
-
-    <!-- Stats -->
-    <div class="stats-grid">
-      <div class="stat-card blue">
-        <div class="stat-icon">👥</div>
-        <div class="stat-value">1,248</div>
-        <div class="stat-label">Enrolled Students</div>
-        <div class="stat-trend up">↑ 3.2% from last term</div>
-      </div>
-      <div class="stat-card green">
-        <div class="stat-icon">🎓</div>
-        <div class="stat-value">84</div>
-        <div class="stat-label">Teaching Staff</div>
-        <div class="stat-trend up">↑ 2 new this term</div>
-      </div>
-      <div class="stat-card amber">
-        <div class="stat-icon">📋</div>
-        <div class="stat-value">312</div>
-        <div class="stat-label">Assessments Pending</div>
-        <div class="stat-trend down">↑ 12 overdue</div>
-      </div>
-      <div class="stat-card red">
-        <div class="stat-icon">💰</div>
-        <div class="stat-value">78%</div>
-        <div class="stat-label">Fee Collection Rate</div>
-        <div class="stat-trend down">↓ 4% target gap</div>
-      </div>
-    </div>
-
-    <!-- Main Row -->
-    <div class="main-row">
-      <!-- Class Performance -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">Class Performance — Term 1</div>
-          <span class="card-action">View all classes →</span>
+<div class="flex flex-col flex-auto min-w-0">
+
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row flex-0 sm:items-center sm:justify-between p-6 sm:py-8 sm:px-10 border-b bg-card dark:bg-transparent">
+        <div class="flex-1 min-w-0">
+            <div class="flex flex-wrap items-center font-medium">
+                <span class="text-secondary">Home</span>
+                <span class="mx-2 text-secondary">/</span>
+                <span class="text-secondary">Dashboard</span>
+            </div>
+            <div class="mt-2">
+                <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight leading-7 sm:leading-10 truncate">
+                    School Overview
+                </h2>
+                <p class="text-secondary mt-1">Competency-Based Curriculum — Academic year 2025</p>
+            </div>
         </div>
-        <div class="class-list">
-          <div class="class-row">
-            <div class="class-badge" style="background:#2563EB;">G6A</div>
-            <div class="class-info">
-              <div class="class-name">Grade 6A</div>
-              <div class="class-meta">42 students · Mrs. Achieng</div>
-            </div>
-            <div class="class-bar-wrap">
-              <div class="bar-track"><div class="bar-fill" style="width:88%; background:#2563EB;"></div></div>
-              <div class="bar-pct">88%</div>
-            </div>
-          </div>
-          <div class="class-row">
-            <div class="class-badge" style="background:#16a34a;">G5B</div>
-            <div class="class-info">
-              <div class="class-name">Grade 5B</div>
-              <div class="class-meta">38 students · Mr. Kamau</div>
-            </div>
-            <div class="class-bar-wrap">
-              <div class="bar-track"><div class="bar-fill" style="width:82%; background:#16a34a;"></div></div>
-              <div class="bar-pct">82%</div>
-            </div>
-          </div>
-          <div class="class-row">
-            <div class="class-badge" style="background:#7c3aed;">G4A</div>
-            <div class="class-info">
-              <div class="class-name">Grade 4A</div>
-              <div class="class-meta">40 students · Ms. Wanjiku</div>
-            </div>
-            <div class="class-bar-wrap">
-              <div class="bar-track"><div class="bar-fill" style="width:75%; background:#7c3aed;"></div></div>
-              <div class="bar-pct">75%</div>
-            </div>
-          </div>
-          <div class="class-row">
-            <div class="class-badge" style="background:#d97706;">G3B</div>
-            <div class="class-info">
-              <div class="class-name">Grade 3B</div>
-              <div class="class-meta">35 students · Mr. Omondi</div>
-            </div>
-            <div class="class-bar-wrap">
-              <div class="bar-track"><div class="bar-fill" style="width:68%; background:#d97706;"></div></div>
-              <div class="bar-pct">68%</div>
-            </div>
-          </div>
-          <div class="class-row">
-            <div class="class-badge" style="background:#0891b2;">PP2A</div>
-            <div class="class-info">
-              <div class="class-name">PP2A</div>
-              <div class="class-meta">30 students · Mrs. Njeri</div>
-            </div>
-            <div class="class-bar-wrap">
-              <div class="bar-track"><div class="bar-fill" style="width:91%; background:#0891b2;"></div></div>
-              <div class="bar-pct">91%</div>
-            </div>
-          </div>
-          <div class="class-row">
-            <div class="class-badge" style="background:#dc2626;">JHS1</div>
-            <div class="class-info">
-              <div class="class-name">JHS 1</div>
-              <div class="class-meta">44 students · Mr. Mutua</div>
-            </div>
-            <div class="class-bar-wrap">
-              <div class="bar-track"><div class="bar-fill" style="width:71%; background:#dc2626;"></div></div>
-              <div class="bar-pct">71%</div>
-            </div>
-          </div>
+        <div class="flex shrink-0 items-center mt-6 sm:mt-0 sm:ml-4">
+            <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border bg-card text-sm font-medium">
+                <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                Term 1 · 2025
+            </span>
         </div>
-      </div>
+    </div>
 
-      <!-- Competency Levels -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">Competency Distribution</div>
-          <span class="card-action">Details</span>
-        </div>
-        <div class="competency-wrap" style="padding-top:20px;">
-          <div class="comp-level">
-            <div class="comp-dot" style="background:#2563EB;"></div>
-            <div class="comp-info">
-              <div class="comp-label">Exceeding Expectations</div>
-              <div class="comp-bar-track">
-                <div class="comp-bar-fill bar-fill" style="width:24%; background:#2563EB;"></div>
-              </div>
-            </div>
-            <div class="comp-pct" style="color:#2563EB;">24%</div>
-          </div>
-          <div class="comp-level">
-            <div class="comp-dot" style="background:#16a34a;"></div>
-            <div class="comp-info">
-              <div class="comp-label">Meeting Expectations</div>
-              <div class="comp-bar-track">
-                <div class="comp-bar-fill bar-fill" style="width:48%; background:#16a34a;"></div>
-              </div>
-            </div>
-            <div class="comp-pct" style="color:#16a34a;">48%</div>
-          </div>
-          <div class="comp-level">
-            <div class="comp-dot" style="background:#d97706;"></div>
-            <div class="comp-info">
-              <div class="comp-label">Approaching Expectations</div>
-              <div class="comp-bar-track">
-                <div class="comp-bar-fill bar-fill" style="width:19%; background:#d97706;"></div>
-              </div>
-            </div>
-            <div class="comp-pct" style="color:#d97706;">19%</div>
-          </div>
-          <div class="comp-level">
-            <div class="comp-dot" style="background:#dc2626;"></div>
-            <div class="comp-info">
-              <div class="comp-label">Below Expectations</div>
-              <div class="comp-bar-track">
-                <div class="comp-bar-fill bar-fill" style="width:9%; background:#dc2626;"></div>
-              </div>
-            </div>
-            <div class="comp-pct" style="color:#dc2626;">9%</div>
-          </div>
-        </div>
+    <!-- Main content -->
+    <div class="flex-auto p-6 sm:p-10 overflow-y-auto">
 
-        <div style="margin: 8px 22px 0; border-top: 1px solid var(--border); padding-top: 16px;">
-          <div class="card-title" style="font-size:13px; margin-bottom:12px;">Quick Actions</div>
-          <div class="quick-actions" style="padding:0;">
-            <button class="qa-btn">
-              <div class="qa-icon">📝</div>
-              <div class="qa-label">Record Assessment</div>
+        <!-- CBC Level Pills -->
+        <div class="flex flex-wrap gap-2 mb-8">
+            <button *ngFor="let level of levels"
+                    (click)="setActiveLevel(level)"
+                    [class.bg-gray-900]="activeLevel === level"
+                    [class.text-white]="activeLevel === level"
+                    [class.border-gray-900]="activeLevel === level"
+                    [class.text-gray-500]="activeLevel !== level"
+                    class="px-4 py-1.5 rounded-full border text-sm font-medium transition-all cursor-pointer bg-white hover:border-blue-500 hover:text-blue-600">
+                {{ level }}
             </button>
-            <button class="qa-btn">
-              <div class="qa-icon">📊</div>
-              <div class="qa-label">Generate Report</div>
-            </button>
-            <button class="qa-btn">
-              <div class="qa-icon">👤</div>
-              <div class="qa-label">Add Student</div>
-            </button>
-            <button class="qa-btn">
-              <div class="qa-icon">📚</div>
-              <div class="qa-label">Lesson Plan</div>
-            </button>
-          </div>
         </div>
-      </div>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+            <div *ngFor="let stat of stats"
+                 class="relative overflow-hidden bg-card rounded-2xl border p-5 hover:-translate-y-0.5 hover:shadow-lg transition-all">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
+                         [ngStyle]="{'background': stat.iconBg, 'color': stat.color}">
+                        {{ stat.icon }}
+                    </div>
+                </div>
+                <div class="text-3xl font-extrabold tracking-tight">{{ stat.value }}</div>
+                <div class="text-secondary text-sm mt-1">{{ stat.label }}</div>
+                <div class="inline-flex items-center gap-1 mt-3 px-2 py-1 rounded-full text-xs font-medium"
+                     [ngStyle]="{'background': stat.trendBg, 'color': stat.trendColor}">
+                    {{ stat.trend }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Row -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4">
+
+            <!-- Class Performance -->
+            <div class="xl:col-span-2 bg-card rounded-2xl border overflow-hidden">
+                <div class="flex items-center justify-between px-6 pt-5 pb-2">
+                    <h3 class="font-bold text-base">Class Performance — Term 1</h3>
+                    <button class="text-sm text-blue-600 font-medium hover:underline">View all classes →</button>
+                </div>
+                <div class="px-6 pb-4">
+                    <div *ngFor="let cls of classes"
+                         class="flex items-center gap-3 py-2.5 border-b last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg px-2 -mx-2 transition-colors">
+                        <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-bold shrink-0"
+                             [ngStyle]="{'background': cls.color}">
+                            {{ cls.badge }}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-sm font-medium">{{ cls.name }}</div>
+                            <div class="text-secondary text-xs mt-0.5">{{ cls.meta }}</div>
+                        </div>
+                        <div class="w-28 shrink-0">
+                            <div class="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                <div class="h-full rounded-full transition-all duration-1000"
+                                     [ngStyle]="{'width': cls.pct + '%', 'background': cls.color}"></div>
+                            </div>
+                            <div class="text-xs font-semibold text-right mt-1">{{ cls.pct }}%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Competency Distribution -->
+            <div class="bg-card rounded-2xl border overflow-hidden">
+                <div class="flex items-center justify-between px-6 pt-5 pb-2">
+                    <h3 class="font-bold text-base">Competency Distribution</h3>
+                    <button class="text-sm text-blue-600 font-medium hover:underline">Details</button>
+                </div>
+                <div class="px-6 pb-4">
+                    <div *ngFor="let comp of competencies" class="flex items-center gap-3 mb-4">
+                        <div class="w-2 h-2 rounded-full shrink-0" [ngStyle]="{'background': comp.color}"></div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-xs font-medium text-secondary">{{ comp.label }}</div>
+                            <div class="h-1.5 bg-gray-200 rounded-full mt-1 overflow-hidden">
+                                <div class="h-full rounded-full" [ngStyle]="{'width': comp.pct + '%', 'background': comp.color}"></div>
+                            </div>
+                        </div>
+                        <div class="text-xs font-semibold w-8 text-right shrink-0" [ngStyle]="{'color': comp.color}">
+                            {{ comp.pct }}%
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="border-t mx-6 pt-4 pb-4">
+                    <div class="text-sm font-bold mb-3">Quick Actions</div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button *ngFor="let action of quickActions"
+                                class="flex flex-col items-center gap-2 p-3 rounded-xl border border-dashed hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all">
+                            <span class="text-xl">{{ action.icon }}</span>
+                            <span class="text-xs font-medium text-center leading-tight">{{ action.label }}</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Row -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+
+            <!-- Recent Assessments -->
+            <div class="xl:col-span-2 bg-card rounded-2xl border overflow-hidden">
+                <div class="flex items-center justify-between px-6 pt-5 pb-2">
+                    <h3 class="font-bold text-base">Recent Assessments</h3>
+                    <button class="text-sm text-blue-600 font-medium hover:underline">All assessments →</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="text-left text-xs font-medium text-secondary uppercase tracking-wide px-6 py-3 whitespace-nowrap">Student</th>
+                                <th class="text-left text-xs font-medium text-secondary uppercase tracking-wide px-6 py-3">Area</th>
+                                <th class="text-left text-xs font-medium text-secondary uppercase tracking-wide px-6 py-3">Type</th>
+                                <th class="text-left text-xs font-medium text-secondary uppercase tracking-wide px-6 py-3">Level</th>
+                                <th class="text-left text-xs font-medium text-secondary uppercase tracking-wide px-6 py-3">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let a of assessments" class="border-b last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                <td class="px-6 py-3 whitespace-nowrap">
+                                    <span class="font-semibold">{{ a.student }}</span>
+                                    <span class="ml-1 text-xs text-secondary">{{ a.class }}</span>
+                                </td>
+                                <td class="px-6 py-3 text-secondary">{{ a.area }}</td>
+                                <td class="px-6 py-3">
+                                    <span class="px-2 py-0.5 rounded-md text-xs font-medium"
+                                          [ngStyle]="{'background': a.typeBg, 'color': a.typeColor}">
+                                        {{ a.type }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-3">
+                                    <span class="px-2 py-0.5 rounded-md text-xs font-semibold"
+                                          [ngStyle]="{'background': a.levelBg, 'color': a.levelColor}">
+                                        {{ a.level }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-3 text-secondary text-xs whitespace-nowrap">{{ a.date }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="flex flex-col gap-4">
+
+                <!-- Upcoming Events -->
+                <div class="bg-card rounded-2xl border overflow-hidden">
+                    <div class="flex items-center justify-between px-6 pt-5 pb-2">
+                        <h3 class="font-bold text-base">Upcoming Events</h3>
+                        <button class="text-sm text-blue-600 font-medium hover:underline">View calendar</button>
+                    </div>
+                    <div class="px-6 pb-4">
+                        <div *ngFor="let event of events"
+                             class="flex gap-3 py-2.5 border-b last:border-0 items-start">
+                            <div class="bg-gray-50 dark:bg-gray-800 border rounded-lg px-2.5 py-1.5 text-center shrink-0 min-w-[42px]">
+                                <div class="text-lg font-extrabold leading-none">{{ event.day }}</div>
+                                <div class="text-xs text-secondary uppercase tracking-wide mt-0.5">{{ event.month }}</div>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-sm font-medium">{{ event.title }}</div>
+                                <div class="text-xs text-secondary mt-0.5">{{ event.sub }}</div>
+                            </div>
+                            <span class="text-xs font-medium px-2 py-0.5 rounded-md shrink-0 mt-1"
+                                  [ngStyle]="{'background': event.tagBg, 'color': event.tagColor}">
+                                {{ event.tag }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fee Collection -->
+                <div class="bg-card rounded-2xl border overflow-hidden">
+                    <div class="flex items-center justify-between px-6 pt-5 pb-2">
+                        <h3 class="font-bold text-base">Fee Collection</h3>
+                        <button class="text-sm text-blue-600 font-medium hover:underline">Payments →</button>
+                    </div>
+                    <div class="flex justify-center py-4">
+                        <div class="relative w-24 h-24">
+                            <svg viewBox="0 0 36 36" class="w-full h-full -rotate-90">
+                                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e5e7eb" stroke-width="3"/>
+                                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#2563EB" stroke-width="3"
+                                        stroke-dasharray="78 100" stroke-linecap="round"/>
+                            </svg>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                <span class="text-xl font-extrabold leading-none">78%</span>
+                                <span class="text-xs text-secondary uppercase tracking-wide">Collected</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="px-6 pb-4">
+                        <div *ngFor="let fin of finance"
+                             class="flex justify-between items-center py-2 border-b last:border-0 text-sm">
+                            <span class="text-secondary">{{ fin.label }}</span>
+                            <span class="font-semibold" [ngStyle]="{'color': fin.color}">{{ fin.value }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
-
-    <!-- Bottom Row -->
-    <div class="bottom-row">
-      <!-- Recent Assessments -->
-      <div class="card" style="grid-column: span 2;">
-        <div class="card-header">
-          <div class="card-title">Recent Assessments</div>
-          <span class="card-action">All assessments →</span>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Student</th>
-                <th>Learning Area</th>
-                <th>Strand</th>
-                <th>Type</th>
-                <th>Level</th>
-                <th>Date</th>
-                <th>Teacher</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><strong>Amina Hassan</strong> <span style="color:var(--muted);font-size:11px;">G5B</span></td>
-                <td>Mathematics</td>
-                <td>Numbers</td>
-                <td><span style="font-size:11px;background:rgba(99,102,241,.1);color:#6366f1;padding:2px 7px;border-radius:5px;">Formative</span></td>
-                <td><span class="level-badge level-EE">EE</span></td>
-                <td style="color:var(--muted);font-size:12px;">14 Mar 2025</td>
-                <td style="color:var(--muted);font-size:12px;">Mr. Kamau</td>
-              </tr>
-              <tr>
-                <td><strong>Brian Otieno</strong> <span style="color:var(--muted);font-size:11px;">G6A</span></td>
-                <td>Languages</td>
-                <td>Reading</td>
-                <td><span style="font-size:11px;background:rgba(168,85,247,.1);color:#a855f7;padding:2px 7px;border-radius:5px;">Summative</span></td>
-                <td><span class="level-badge level-ME">ME</span></td>
-                <td style="color:var(--muted);font-size:12px;">13 Mar 2025</td>
-                <td style="color:var(--muted);font-size:12px;">Mrs. Achieng</td>
-              </tr>
-              <tr>
-                <td><strong>Cynthia Waweru</strong> <span style="color:var(--muted);font-size:11px;">G4A</span></td>
-                <td>Environmental</td>
-                <td>Living Things</td>
-                <td><span style="font-size:11px;background:rgba(99,102,241,.1);color:#6366f1;padding:2px 7px;border-radius:5px;">Formative</span></td>
-                <td><span class="level-badge level-AE">AE</span></td>
-                <td style="color:var(--muted);font-size:12px;">12 Mar 2025</td>
-                <td style="color:var(--muted);font-size:12px;">Ms. Wanjiku</td>
-              </tr>
-              <tr>
-                <td><strong>Daniel Kibet</strong> <span style="color:var(--muted);font-size:11px;">G3B</span></td>
-                <td>Psychomotor</td>
-                <td>Fine Motor</td>
-                <td><span style="font-size:11px;background:rgba(99,102,241,.1);color:#6366f1;padding:2px 7px;border-radius:5px;">Formative</span></td>
-                <td><span class="level-badge level-BE">BE</span></td>
-                <td style="color:var(--muted);font-size:12px;">11 Mar 2025</td>
-                <td style="color:var(--muted);font-size:12px;">Mr. Omondi</td>
-              </tr>
-              <tr>
-                <td><strong>Esther Muthoni</strong> <span style="color:var(--muted);font-size:11px;">JHS1</span></td>
-                <td>Mathematics</td>
-                <td>Algebra</td>
-                <td><span style="font-size:11px;background:rgba(168,85,247,.1);color:#a855f7;padding:2px 7px;border-radius:5px;">Summative</span></td>
-                <td><span class="level-badge level-ME">ME</span></td>
-                <td style="color:var(--muted);font-size:12px;">10 Mar 2025</td>
-                <td style="color:var(--muted);font-size:12px;">Mr. Mutua</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Right col: Events + Finance -->
-      <div style="display:flex; flex-direction:column; gap:16px;">
-        <!-- Upcoming Events -->
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">Upcoming Events</div>
-            <span class="card-action">View calendar</span>
-          </div>
-          <div class="event-list">
-            <div class="event-item">
-              <div class="event-date-box">
-                <div class="event-day">18</div>
-                <div class="event-mon">Mar</div>
-              </div>
-              <div>
-                <div class="event-title">Term 1 Summative Assessments</div>
-                <div class="event-sub">All classes · Grade 4–6</div>
-              </div>
-              <span class="event-tag tag-assess">Assessment</span>
-            </div>
-            <div class="event-item">
-              <div class="event-date-box">
-                <div class="event-day">25</div>
-                <div class="event-mon">Mar</div>
-              </div>
-              <div>
-                <div class="event-title">Progress Reports Due</div>
-                <div class="event-sub">Submit to admin by 5 PM</div>
-              </div>
-              <span class="event-tag tag-report">Report</span>
-            </div>
-            <div class="event-item">
-              <div class="event-date-box">
-                <div class="event-day">28</div>
-                <div class="event-mon">Mar</div>
-              </div>
-              <div>
-                <div class="event-title">Parent-Teacher Meeting</div>
-                <div class="event-sub">All teachers required</div>
-              </div>
-              <span class="event-tag tag-meeting">Meeting</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Fee Collection -->
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">Fee Collection</div>
-            <span class="card-action">Payments →</span>
-          </div>
-          <div class="progress-circle-wrap">
-            <div class="donut">
-              <svg viewBox="0 0 36 36" width="100" height="100">
-                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e5e3dc" stroke-width="3"/>
-                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#2563EB" stroke-width="3"
-                  stroke-dasharray="78 100" stroke-linecap="round"/>
-              </svg>
-              <div class="donut-label">
-                <span class="donut-pct">78%</span>
-                <span class="donut-sub">Collected</span>
-              </div>
-            </div>
-          </div>
-          <div class="finance-summary">
-            <div class="fin-row">
-              <span class="fin-label">Expected (Term 1)</span>
-              <span class="fin-value">KSh 4.2M</span>
-            </div>
-            <div class="fin-row">
-              <span class="fin-label">Collected</span>
-              <span class="fin-value positive">KSh 3.28M</span>
-            </div>
-            <div class="fin-row">
-              <span class="fin-label">Outstanding</span>
-              <span class="fin-value negative">KSh 924K</span>
-            </div>
-            <div class="fin-row">
-              <span class="fin-label">Defaulters</span>
-              <span class="fin-value negative">274 students</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</main>
-
-<script>
-  // Level pills toggle
-  document.querySelectorAll('.level-pill').forEach(pill => {
-    pill.addEventListener('click', () => {
-      document.querySelectorAll('.level-pill').forEach(p => p.classList.remove('active'));
-      pill.classList.add('active');
-    });
-  });
-</script>
-</body>
-</html>
+</div>

@@ -1,0 +1,467 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Devken CBC — Sign-In Page Styles
+   Scoped under .cbc-auth-wrapper (ViewEncapsulation.None safe)
+   ═══════════════════════════════════════════════════════════════════ */
+
+// ── Design tokens ──────────────────────────────────────────────────────────────
+$ink:        #0e1117;
+$surface:    #f7f6f2;
+$card:       #ffffff;
+$accent:     #2563eb;
+$accent-h:   #1d4ed8;
+$green:      #16a34a;
+$muted:      #6b7280;
+$border:     #e5e3dc;
+$error:      #dc2626;
+
+// ── Wrapper ────────────────────────────────────────────────────────────────────
+.cbc-auth-wrapper {
+    display: flex;
+    min-height: 100vh;
+    background: $surface;
+    font-family: 'DM Sans', sans-serif;
+    overflow: hidden;
+
+    // pull in Google Font via Angular (add to styles.scss if not already present)
+    // @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap');
+}
+
+// ── LEFT PANEL ─────────────────────────────────────────────────────────────────
+.cbc-left-panel {
+    width: 50%;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 48px 80px;
+    background: $card;
+    position: relative;
+    animation: cbc-fade-left .5s ease both;
+
+    &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(ellipse at 20% 80%, rgba($accent, .04) 0%, transparent 60%);
+        pointer-events: none;
+    }
+
+    @media (max-width: 960px) {
+        width: 100%;
+        justify-content: center;
+        padding: 40px 24px;
+    }
+}
+
+.cbc-form-container {
+    width: 100%;
+    max-width: 360px;
+}
+
+// ── Logo ───────────────────────────────────────────────────────────────────────
+.cbc-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 36px;
+}
+
+.cbc-logo-icon {
+    width: 40px;
+    height: 40px;
+    background: $ink;
+    border-radius: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 14px;
+    color: #fff;
+    letter-spacing: -.5px;
+    flex-shrink: 0;
+}
+
+.cbc-logo-text {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: $ink;
+    line-height: 1.1;
+    letter-spacing: -.3px;
+}
+
+.cbc-logo-sub {
+    display: block;
+    font-size: 10px;
+    font-weight: 400;
+    color: $muted;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    font-family: 'DM Sans', sans-serif;
+}
+
+// ── Heading ────────────────────────────────────────────────────────────────────
+.cbc-heading {
+    font-family: 'Syne', sans-serif;
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1;
+    color: $ink;
+}
+
+.cbc-sub-heading {
+    margin-top: 6px;
+    font-size: 14px;
+    color: $muted;
+}
+
+.cbc-link {
+    color: $accent;
+    text-decoration: none;
+    font-weight: 500;
+    margin-left: 4px;
+
+    &:hover { text-decoration: underline; }
+}
+
+// ── Role switcher ──────────────────────────────────────────────────────────────
+.cbc-role-switcher {
+    display: flex;
+    gap: 6px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.cbc-role-btn {
+    flex: 1;
+    min-width: 70px;
+    padding: 7px 6px;
+    border-radius: 8px;
+    border: 1.5px solid $border;
+    background: transparent;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: $muted;
+    cursor: pointer;
+    transition: all .15s;
+    text-align: center;
+    line-height: 1;
+
+    &:hover {
+        border-color: $ink;
+        color: $ink;
+    }
+
+    &.active {
+        background: $ink;
+        border-color: $ink;
+        color: #fff;
+    }
+}
+
+// ── Form ───────────────────────────────────────────────────────────────────────
+.cbc-form {
+    margin-top: 24px;
+}
+
+// Override Angular Material outline fields to match design
+.cbc-field {
+    &.mat-mdc-form-field {
+        .mdc-notched-outline__leading,
+        .mdc-notched-outline__notch,
+        .mdc-notched-outline__trailing {
+            border-color: $border !important;
+            border-radius: 10px;
+        }
+
+        &.mat-focused {
+            .mdc-notched-outline__leading,
+            .mdc-notched-outline__notch,
+            .mdc-notched-outline__trailing {
+                border-color: $accent !important;
+                border-width: 1.5px !important;
+            }
+        }
+
+        .mat-mdc-form-field-focus-overlay { background: transparent; }
+
+        // rounded corners
+        .mdc-notched-outline__leading  { border-radius: 10px 0 0 10px; }
+        .mdc-notched-outline__trailing { border-radius: 0 10px 10px 0; }
+    }
+}
+
+// ── Actions row ────────────────────────────────────────────────────────────────
+.cbc-actions-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+
+    .mat-mdc-checkbox { font-size: 13px; color: $muted; }
+}
+
+.cbc-forgot-link {
+    font-size: 13px;
+    font-weight: 500;
+    color: $accent;
+    text-decoration: none;
+
+    &:hover { text-decoration: underline; }
+}
+
+// ── Submit button ──────────────────────────────────────────────────────────────
+.cbc-submit-btn {
+    &.mat-mdc-unelevated-button {
+        background: $ink !important;
+        color: #fff !important;
+        border-radius: 10px !important;
+        height: 46px !important;
+        font-family: 'Syne', sans-serif !important;
+        font-size: 14px !important;
+        font-weight: 700 !important;
+        letter-spacing: .2px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 6px;
+        transition: background .15s, transform .1s !important;
+
+        &:hover { background: #1a1f2e !important; }
+        &:active { transform: scale(.99); }
+
+        &[disabled] {
+            background: #374151 !important;
+            color: rgba(255,255,255,.5) !important;
+        }
+    }
+}
+
+// ── Divider ────────────────────────────────────────────────────────────────────
+.cbc-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 24px 0;
+}
+
+.cbc-divider-line {
+    flex: 1;
+    height: 1px;
+    background: $border;
+}
+
+.cbc-divider-text {
+    font-size: 12px;
+    color: $muted;
+    white-space: nowrap;
+}
+
+// ── SSO buttons ────────────────────────────────────────────────────────────────
+.cbc-sso-row {
+    display: flex;
+    gap: 10px;
+}
+
+.cbc-sso-btn {
+    &.mat-mdc-outlined-button {
+        border-radius: 10px !important;
+        height: 42px !important;
+        border-color: $border !important;
+        color: $muted !important;
+        transition: all .15s !important;
+
+        &:hover {
+            border-color: $ink !important;
+            color: $ink !important;
+        }
+    }
+}
+
+// ── RIGHT PANEL ────────────────────────────────────────────────────────────────
+.cbc-right-panel {
+    width: 50%;
+    min-height: 100vh;
+    background: $ink;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 64px 80px;
+    position: relative;
+    overflow: hidden;
+    animation: cbc-fade-right .5s ease both;
+
+    @media (max-width: 960px) { display: none; }
+}
+
+// Decorative rings
+.cbc-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 80px solid rgba(255,255,255,.04);
+    pointer-events: none;
+}
+
+.cbc-ring-1 { width: 468px; height: 468px; top: -130px;    left: -130px;  }
+.cbc-ring-2 { width: 468px; height: 468px; bottom: -130px; right: -130px; }
+
+// Accent glow
+.cbc-glow {
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba($accent, .28) 0%, transparent 70%);
+    bottom: 100px;
+    right: 80px;
+    pointer-events: none;
+}
+
+// Dot pattern
+.cbc-dots {
+    position: absolute;
+    top: -40px;
+    right: -40px;
+    opacity: .15;
+    pointer-events: none;
+}
+
+// Right panel content
+.cbc-right-content {
+    position: relative;
+    z-index: 10;
+    max-width: 440px;
+}
+
+.cbc-right-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 99px;
+    padding: 5px 14px;
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(255,255,255,.6);
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+
+    &::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        background: $green;
+        border-radius: 50%;
+    }
+}
+
+.cbc-right-headline {
+    font-family: 'Syne', sans-serif;
+    font-size: 50px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -2px;
+    color: #fff;
+    margin-bottom: 18px;
+}
+
+.cbc-accent-text { color: $accent; }
+
+.cbc-right-desc {
+    font-size: 15px;
+    line-height: 1.65;
+    color: rgba(255,255,255,.45);
+    font-weight: 300;
+    margin-bottom: 32px;
+}
+
+// Feature list
+.cbc-feature-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 36px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    @for $i from 1 through 4 {
+        li:nth-child(#{$i}) {
+            animation: cbc-fade-right .5s #{$i * .1}s ease both;
+        }
+    }
+}
+
+.cbc-feature-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13.5px;
+    color: rgba(255,255,255,.65);
+}
+
+.cbc-feature-check {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    background: rgba($green, .15);
+    border: 1px solid rgba($green, .3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: $green;
+    flex-shrink: 0;
+}
+
+// Avatars
+.cbc-avatars-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.cbc-avatar-stack {
+    display: flex;
+}
+
+.cbc-av {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid $ink;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    margin-left: -8px;
+
+    &:first-child { margin-left: 0; }
+}
+
+.cbc-av-text {
+    font-size: 12px;
+    color: rgba(255,255,255,.4);
+
+    strong {
+        color: rgba(255,255,255,.75);
+        font-weight: 500;
+    }
+}
+
+// ── Keyframes ──────────────────────────────────────────────────────────────────
+@keyframes cbc-fade-left {
+    from { opacity: 0; transform: translateX(-16px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes cbc-fade-right {
+    from { opacity: 0; transform: translateX(16px); }
+    to   { opacity: 1; transform: translateX(0); }
+}

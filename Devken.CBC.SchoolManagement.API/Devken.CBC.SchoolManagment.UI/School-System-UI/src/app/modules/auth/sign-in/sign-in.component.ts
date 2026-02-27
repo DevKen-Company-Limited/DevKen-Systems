@@ -10,21 +10,35 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
+import { MatIcon, MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { NgStyle } from '@angular/common';
 import { fuseAnimations } from '@fuse/animations';
 import { FuseAlertComponent, FuseAlertType } from '@fuse/components/alert';
 import { AuthService } from 'app/core/auth/auth.service';
 
+interface RolePreset {
+    label: string;
+    email: string;
+    password: string;
+}
+
+interface Avatar {
+    initials: string;
+    bg: string;
+}
+
 @Component({
     selector: 'auth-sign-in',
     templateUrl: './sign-in.component.html',
+    styleUrls: ['./sign-in.component.scss'],
     encapsulation: ViewEncapsulation.None,
     animations: fuseAnimations,
     imports: [
         RouterLink,
+        NgStyle,
         FuseAlertComponent,
         FormsModule,
         ReactiveFormsModule,
@@ -34,106 +48,125 @@ import { AuthService } from 'app/core/auth/auth.service';
         MatIconModule,
         MatCheckboxModule,
         MatProgressSpinnerModule,
+        MatIcon
     ],
 })
 export class AuthSignInComponent implements OnInit {
     @ViewChild('signInNgForm') signInNgForm: NgForm;
 
+    // ── Alert ──────────────────────────────────────────────────────────────────
     alert: { type: FuseAlertType; message: string } = {
         type: 'success',
         message: '',
     };
-    signInForm: UntypedFormGroup;
-    showAlert: boolean = false;
+    showAlert = false;
 
-    /**
-     * Constructor
-     */
+    // ── Password visibility toggle ─────────────────────────────────────────────
+    showPassword = false;
+
+    // ── Role switcher ──────────────────────────────────────────────────────────
+    activeRole = 'Super Admin';
+
+    roles: RolePreset[] = [
+        { label: 'Super Admin', email: 'superadmin@devken.com',  password: 'SuperAdmin@123'  },
+        { label: 'Principal',   email: 'principal@school.com',  password: 'Principal@123'   },
+        { label: 'Teacher',     email: 'teacher@school.com',    password: 'Teacher@123'     },
+        { label: 'Parent',      email: 'parent@school.com',     password: 'Parent@123'      },
+    ];
+
+    // ── Right panel static content ─────────────────────────────────────────────
+    features: string[] = [
+        'Competency-based assessment tracking (EE · ME · AE · BE)',
+        'Full CBC grade support: PP1, PP2, Grade 1–6, JHS 1–3',
+        'Lesson plans, strands & learning area management',
+        'Progress reports, fee collection & parent portal',
+    ];
+
+    avatars: Avatar[] = [
+        { initials: 'PM', bg: 'linear-gradient(135deg,#3b82f6,#8b5cf6)' },
+        { initials: 'AK', bg: 'linear-gradient(135deg,#10b981,#3b82f6)' },
+        { initials: 'NW', bg: 'linear-gradient(135deg,#f59e0b,#ef4444)' },
+        { initials: 'JO', bg: 'linear-gradient(135deg,#8b5cf6,#ec4899)' },
+    ];
+
+    // ── Form ───────────────────────────────────────────────────────────────────
+    signInForm: UntypedFormGroup;
+
     constructor(
         private _activatedRoute: ActivatedRoute,
         private _authService: AuthService,
         private _formBuilder: UntypedFormBuilder,
-        private _router: Router
+        private _router: Router,
     ) {}
 
-    // -----------------------------------------------------------------------------------------------------
-    // @ Lifecycle hooks
-    // -----------------------------------------------------------------------------------------------------
+    // ── Lifecycle ──────────────────────────────────────────────────────────────
 
-    /**
-     * On init
-     */
     ngOnInit(): void {
-        // Create the form
         this.signInForm = this._formBuilder.group({
-            email: [
-                'superadmin@devken.com',
-                [Validators.required, Validators.email],
-            ],
-            password: ['SuperAdmin@123', Validators.required],
+            email:      ['superadmin@devken.com', [Validators.required, Validators.email]],
+            password:   ['SuperAdmin@123',         Validators.required],
             rememberMe: [''],
         });
     }
 
-    // -----------------------------------------------------------------------------------------------------
-    // @ Public methods
-    // -----------------------------------------------------------------------------------------------------
+    // ── Public methods ─────────────────────────────────────────────────────────
 
-    /**
- * Logout
- */
-logout(): void {
-    // Show confirmation dialog if needed
-    const confirmed = confirm('Are you sure you want to cancel? You must change your password to access the system.');
-    
-    if (confirmed) {
-        this._authService.signOut();
-        this._router.navigate(['/sign-in']);
-    }
-}
-    /**
-     * Sign in
-     */
-// In your sign-in.component.ts
-signIn(): void {
-    if (this.signInForm.invalid) {
-        return;
+    /** Switch the pre-filled credentials by role */
+    setRole(role: RolePreset): void {
+        this.activeRole = role.label;
+        this.signInForm.patchValue({ email: role.email, password: role.password });
+        this.showAlert = false;
     }
 
-    this.signInForm.disable();
-    this.showAlert = false;
-
-    const email = this.signInForm.get('email').value;
-    const isSuperAdmin = email.toLowerCase().includes('superadmin');
-    
-    const authService = isSuperAdmin 
-        ? this._authService.superAdminSignIn(this.signInForm.value)
-        : this._authService.signIn(this.signInForm.value);
-
-    authService.subscribe({
-        next: (response) => {
-            // Check if password change is required
-            if (response.data.user.requirePasswordChange) {
-                // Redirect to change password page
-                this._router.navigate(['/change-password']);
-                return;
-            }
-
-            // Normal redirect
-            const redirectURL = this._activatedRoute.snapshot.queryParamMap.get('redirectURL') || '/signed-in-redirect';
-            this._router.navigateByUrl(redirectURL);
-        },
-        error: (response) => {
-            this.signInForm.enable();
-            this.signInNgForm.resetForm();
-            
-            this.alert = {
-                type: 'error',
-                message: response.message || 'Wrong email or password'
-            };
-            
-            this.showAlert = true;
+    /** Sign in — unchanged business logic, same flow as original */
+    signIn(): void {
+        if (this.signInForm.invalid) {
+            return;
         }
-    });
-}
+
+        this.signInForm.disable();
+        this.showAlert = false;
+
+        const email        = this.signInForm.get('email').value as string;
+        const isSuperAdmin = email.toLowerCase().includes('superadmin');
+
+        const authCall = isSuperAdmin
+            ? this._authService.superAdminSignIn(this.signInForm.value)
+            : this._authService.signIn(this.signInForm.value);
+
+        authCall.subscribe({
+            next: (response) => {
+                if (response.data.user.requirePasswordChange) {
+                    this._router.navigate(['/change-password']);
+                    return;
+                }
+
+                const redirectURL =
+                    this._activatedRoute.snapshot.queryParamMap.get('redirectURL') ||
+                    '/signed-in-redirect';
+                this._router.navigateByUrl(redirectURL);
+            },
+            error: (response) => {
+                this.signInForm.enable();
+                this.signInNgForm.resetForm();
+
+                this.alert = {
+                    type:    'error',
+                    message: response.message || 'Wrong email or password',
+                };
+                this.showAlert = true;
+            },
+        });
+    }
+
+    /** Cancel / logout shortcut (unchanged) */
+    logout(): void {
+        const confirmed = confirm(
+            'Are you sure you want to cancel? You must change your password to access the system.',
+        );
+        if (confirmed) {
+            this._authService.signOut();
+            this._router.navigate(['/sign-in']);
+        }
+    }
 }
