@@ -1,0 +1,581 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Devken CBC — Sign-In  (ViewEncapsulation.None)
+   One-screen layout: left form | right hero
+   ═══════════════════════════════════════════════════════════════════ */
+
+// ── Tokens ─────────────────────────────────────────────────────────────────────
+$ink:      #0a0d14;
+$surface:  #f5f4f0;
+$card:     #ffffff;
+$accent:   #2563eb;
+$accent-h: #1d4ed8;
+$green:    #16a34a;
+$muted:    #6b7280;
+$border:   #e4e2da;
+
+// ── Host: fill viewport exactly ─────────────────────────────────────────────
+auth-sign-in {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+}
+
+// ── Wrapper: two columns, exactly 100vh ────────────────────────────────────────
+.cbc-auth-wrapper {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
+    font-family: 'DM Sans', sans-serif;
+    background: $surface;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// LEFT PANEL
+// ══════════════════════════════════════════════════════════════════
+.cbc-left-panel {
+    width: 46%;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: $card;
+    position: relative;
+    flex-shrink: 0;
+    overflow: hidden;
+    animation: slideLeft .55s cubic-bezier(.22,1,.36,1) both;
+
+    // Subtle radial tint bottom-left
+    &::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background:
+            radial-gradient(ellipse at 10% 90%, rgba($accent,.06) 0%, transparent 55%),
+            radial-gradient(ellipse at 90% 10%, rgba($green,.04) 0%, transparent 50%);
+        pointer-events: none;
+    }
+
+    // Fine grid texture
+    &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image:
+            linear-gradient(rgba($ink,.025) 1px, transparent 1px),
+            linear-gradient(90deg, rgba($ink,.025) 1px, transparent 1px);
+        background-size: 32px 32px;
+        pointer-events: none;
+    }
+
+    @media (max-width: 900px) {
+        width: 100%;
+        &::after { display: none; }
+    }
+}
+
+.cbc-form-container {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 340px;
+    padding: 0 16px;
+}
+
+// ── Logo ───────────────────────────────────────────────────────────────────────
+.cbc-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 28px;
+    animation: fadeUp .45s .1s ease both;
+}
+
+.cbc-logo-icon {
+    width: 38px;
+    height: 38px;
+    background: $ink;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 13px;
+    color: #fff;
+    letter-spacing: -.5px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba($ink, .25);
+}
+
+.cbc-logo-text {
+    font-family: 'Syne', sans-serif;
+    font-size: 14.5px;
+    font-weight: 700;
+    color: $ink;
+    line-height: 1.15;
+    letter-spacing: -.3px;
+}
+
+.cbc-logo-sub {
+    display: block;
+    font-size: 9.5px;
+    font-weight: 400;
+    color: $muted;
+    letter-spacing: .6px;
+    text-transform: uppercase;
+    font-family: 'DM Sans', sans-serif;
+}
+
+// ── Heading ────────────────────────────────────────────────────────────────────
+.cbc-heading {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1;
+    color: $ink;
+    animation: fadeUp .45s .15s ease both;
+}
+
+.cbc-sub-heading {
+    margin-top: 5px;
+    font-size: 13px;
+    color: $muted;
+    animation: fadeUp .45s .2s ease both;
+}
+
+.cbc-link {
+    color: $accent;
+    text-decoration: none;
+    font-weight: 500;
+    margin-left: 4px;
+    &:hover { text-decoration: underline; }
+}
+
+// ── Role switcher ──────────────────────────────────────────────────────────────
+.cbc-role-switcher {
+    display: flex;
+    gap: 5px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+    animation: fadeUp .45s .25s ease both;
+}
+
+.cbc-role-btn {
+    flex: 1;
+    min-width: 64px;
+    padding: 6px 4px;
+    border-radius: 8px;
+    border: 1.5px solid $border;
+    background: transparent;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    color: $muted;
+    cursor: pointer;
+    transition: all .15s;
+    text-align: center;
+    line-height: 1;
+    white-space: nowrap;
+
+    &:hover {
+        border-color: $ink;
+        color: $ink;
+        background: rgba($ink,.03);
+    }
+
+    &.active {
+        background: $ink;
+        border-color: $ink;
+        color: #fff;
+        box-shadow: 0 2px 8px rgba($ink,.2);
+    }
+}
+
+// ── Alert ──────────────────────────────────────────────────────────────────────
+.cbc-alert-wrap {
+    margin-top: 14px;
+    animation: fadeUp .3s ease both;
+}
+
+// ── Form ───────────────────────────────────────────────────────────────────────
+.cbc-form {
+    margin-top: 18px;
+    animation: fadeUp .45s .3s ease both;
+
+    // tighten mat-form-field vertical spacing
+    .mat-mdc-form-field {
+        margin-bottom: 4px;
+    }
+}
+
+.cbc-field {
+    &.mat-mdc-form-field {
+        .mdc-notched-outline__leading,
+        .mdc-notched-outline__notch,
+        .mdc-notched-outline__trailing {
+            border-color: $border !important;
+        }
+
+        .mdc-notched-outline__leading  { border-radius: 10px 0 0 10px !important; }
+        .mdc-notched-outline__trailing { border-radius: 0 10px 10px 0 !important; }
+
+        &.mat-focused {
+            .mdc-notched-outline__leading,
+            .mdc-notched-outline__notch,
+            .mdc-notched-outline__trailing {
+                border-color: $accent !important;
+                border-width: 1.5px !important;
+            }
+        }
+
+        .mat-mdc-form-field-focus-overlay { background: transparent !important; }
+
+        .mat-mdc-form-field-infix { padding-top: 10px !important; padding-bottom: 10px !important; }
+    }
+}
+
+// ── Actions row ────────────────────────────────────────────────────────────────
+.cbc-actions-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+
+    .mat-mdc-checkbox { font-size: 12.5px; color: $muted; }
+}
+
+.cbc-forgot-link {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: $accent;
+    text-decoration: none;
+    &:hover { text-decoration: underline; }
+}
+
+// ── Submit ─────────────────────────────────────────────────────────────────────
+.cbc-submit-btn {
+    &.mat-mdc-unelevated-button {
+        background: $ink !important;
+        color: #fff !important;
+        border-radius: 10px !important;
+        height: 44px !important;
+        font-family: 'Syne', sans-serif !important;
+        font-size: 13.5px !important;
+        font-weight: 700 !important;
+        letter-spacing: .2px !important;
+        transition: background .15s, transform .1s, box-shadow .15s !important;
+        box-shadow: 0 4px 14px rgba($ink,.2) !important;
+
+        &:hover {
+            background: #1a1f2e !important;
+            box-shadow: 0 6px 20px rgba($ink,.28) !important;
+        }
+
+        &:active { transform: scale(.99); }
+
+        &[disabled] {
+            background: #374151 !important;
+            color: rgba(255,255,255,.5) !important;
+            box-shadow: none !important;
+        }
+    }
+}
+
+// ── Divider ────────────────────────────────────────────────────────────────────
+.cbc-divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 16px 0;
+}
+
+.cbc-divider-line {
+    flex: 1;
+    height: 1px;
+    background: $border;
+}
+
+.cbc-divider-text {
+    font-size: 11px;
+    color: $muted;
+    white-space: nowrap;
+}
+
+// ── SSO ────────────────────────────────────────────────────────────────────────
+.cbc-sso-row { display: flex; gap: 8px; }
+
+.cbc-sso-btn {
+    &.mat-mdc-outlined-button {
+        border-radius: 10px !important;
+        height: 40px !important;
+        border-color: $border !important;
+        color: $muted !important;
+        transition: all .15s !important;
+
+        &:hover {
+            border-color: $ink !important;
+            color: $ink !important;
+            background: rgba($ink,.03) !important;
+        }
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// RIGHT PANEL
+// ══════════════════════════════════════════════════════════════════
+.cbc-right-panel {
+    flex: 1;
+    height: 100vh;
+    background: $ink;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 56px 72px;
+    position: relative;
+    overflow: hidden;
+    animation: slideRight .55s cubic-bezier(.22,1,.36,1) both;
+
+    @media (max-width: 900px) { display: none; }
+}
+
+// ── Noise grain overlay ────────────────────────────────────────────────────────
+.cbc-right-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+    pointer-events: none;
+    opacity: .6;
+    z-index: 0;
+}
+
+// ── Decorative rings ───────────────────────────────────────────────────────────
+.cbc-ring {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.cbc-ring-1 {
+    width: 500px; height: 500px;
+    border: 1px solid rgba(255,255,255,.06);
+    top: -160px; right: -160px;
+}
+
+.cbc-ring-2 {
+    width: 340px; height: 340px;
+    border: 1px solid rgba(255,255,255,.05);
+    top: -60px; right: -60px;
+}
+
+.cbc-ring-3 {
+    width: 600px; height: 600px;
+    border: 1px solid rgba(255,255,255,.03);
+    bottom: -200px; left: -200px;
+}
+
+// ── Glow blobs ─────────────────────────────────────────────────────────────────
+.cbc-glow {
+    position: absolute;
+    pointer-events: none;
+    border-radius: 50%;
+
+    &-1 {
+        width: 280px; height: 280px;
+        background: radial-gradient(circle, rgba($accent,.22) 0%, transparent 70%);
+        top: 60px; right: 60px;
+    }
+
+    &-2 {
+        width: 200px; height: 200px;
+        background: radial-gradient(circle, rgba($green,.14) 0%, transparent 70%);
+        bottom: 100px; left: 40px;
+    }
+}
+
+// ── Dot pattern ───────────────────────────────────────────────────────────────
+.cbc-dots {
+    position: absolute;
+    bottom: 40px;
+    right: 40px;
+    opacity: .12;
+    pointer-events: none;
+}
+
+// ── Content ────────────────────────────────────────────────────────────────────
+.cbc-right-content {
+    position: relative;
+    z-index: 2;
+    max-width: 430px;
+}
+
+.cbc-right-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 99px;
+    padding: 5px 14px;
+    font-size: 10.5px;
+    font-weight: 500;
+    color: rgba(255,255,255,.55);
+    letter-spacing: .6px;
+    text-transform: uppercase;
+    margin-bottom: 22px;
+    animation: fadeUp .5s .2s ease both;
+
+    .dot {
+        width: 6px; height: 6px;
+        background: $green;
+        border-radius: 50%;
+        box-shadow: 0 0 6px rgba($green,.6);
+    }
+}
+
+.cbc-right-headline {
+    font-family: 'Syne', sans-serif;
+    font-size: 46px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -2.5px;
+    color: #fff;
+    margin-bottom: 16px;
+    animation: fadeUp .5s .25s ease both;
+
+    span.hi { color: rgba(255,255,255,.2); }
+    span.accent { color: $accent; }
+}
+
+.cbc-right-desc {
+    font-size: 14px;
+    line-height: 1.7;
+    color: rgba(255,255,255,.38);
+    font-weight: 300;
+    margin-bottom: 28px;
+    animation: fadeUp .5s .3s ease both;
+    max-width: 380px;
+}
+
+// ── Feature list ──────────────────────────────────────────────────────────────
+.cbc-feature-list {
+    list-style: none;
+    padding: 0; margin: 0 0 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    @for $i from 1 through 4 {
+        li:nth-child(#{$i}) { animation: fadeUp .5s #{.3 + $i * .07}s ease both; }
+    }
+}
+
+.cbc-feature-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+    font-size: 13px;
+    color: rgba(255,255,255,.58);
+    line-height: 1.4;
+}
+
+.cbc-feature-check {
+    width: 20px; height: 20px;
+    border-radius: 5px;
+    background: rgba($green,.12);
+    border: 1px solid rgba($green,.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: $green;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+// ── Avatars row ────────────────────────────────────────────────────────────────
+.cbc-avatars-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: fadeUp .5s .65s ease both;
+}
+
+.cbc-avatar-stack {
+    display: flex;
+}
+
+.cbc-av {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 2px solid $ink;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    margin-left: -7px;
+    &:first-child { margin-left: 0; }
+}
+
+.cbc-av-text {
+    font-size: 11.5px;
+    color: rgba(255,255,255,.35);
+    line-height: 1.4;
+    strong { color: rgba(255,255,255,.7); font-weight: 500; }
+}
+
+// ── Stat chips row ─────────────────────────────────────────────────────────────
+.cbc-stats-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 30px;
+    animation: fadeUp .5s .35s ease both;
+}
+
+.cbc-stat-chip {
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 10px;
+    padding: 10px 16px;
+
+    .val {
+        font-family: 'Syne', sans-serif;
+        font-size: 22px;
+        font-weight: 800;
+        color: #fff;
+        letter-spacing: -1px;
+        line-height: 1;
+    }
+
+    .lbl {
+        font-size: 10px;
+        color: rgba(255,255,255,.35);
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        margin-top: 2px;
+    }
+}
+
+// ── Keyframes ──────────────────────────────────────────────────────────────────
+@keyframes slideLeft {
+    from { opacity: 0; transform: translateX(-24px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideRight {
+    from { opacity: 0; transform: translateX(24px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}

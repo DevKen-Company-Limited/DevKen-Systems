@@ -97,6 +97,7 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             Icon = "heroicons_outline:banknotes",
             Items = new[]
             {
+                new NavItem("fee-structure", "Fee Structure", "heroicons_outline:chart-bar", "/finance/fee-structure", PermissionKeys.FeeStructureRead),
                 new NavItem("fees", "Fees", "heroicons_outline:currency-dollar", "/finance/fees", PermissionKeys.FeeRead),
                 new NavItem("payments", "Payments", "heroicons_outline:credit-card", "/finance/payments", PermissionKeys.PaymentRead),
                 new NavItem("invoices", "Invoices", "heroicons_outline:document-text", "/finance/invoices", PermissionKeys.InvoiceRead)

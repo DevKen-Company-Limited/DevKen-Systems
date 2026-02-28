@@ -1,4 +1,3 @@
-﻿// Devken.CBC.SchoolManagement.Application/RepositoryManagers/Interfaces/Common/IRepositoryManager.cs
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academics;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Assessments;
@@ -17,7 +16,6 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
 {
     public interface IRepositoryManager
     {
-
         // ================= ACADEMIC =================
         IInvoiceRepository Invoice { get; }
         IParentRepository Parent { get; }
@@ -38,11 +36,8 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
         ILearningOutcomeRepository LearningOutcome { get; }
 
         // ================= FINANCE =================
-        IFeeItemRepository FeeItem { get; }   
-        /// <summary>
-        /// Exposes the underlying DbContext for advanced scenarios like execution strategy.
-        /// </summary>
-        DbContext Context { get; }
+        IFeeItemRepository FeeItem { get; }
+        IFeeStructureRepository FeeStructure { get; }
 
         // ================= ASSESSMENTS =================
         IFormativeAssessmentRepository FormativeAssessment { get; }
@@ -66,6 +61,9 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
 
         // ================= NUMBER SERIES =================
         IDocumentNumberSeriesRepository DocumentNumberSeries { get; }
+
+        // ================= ADVANCED =================
+        DbContext Context { get; }
 
         // ================= UNIT OF WORK =================
         Task SaveAsync();

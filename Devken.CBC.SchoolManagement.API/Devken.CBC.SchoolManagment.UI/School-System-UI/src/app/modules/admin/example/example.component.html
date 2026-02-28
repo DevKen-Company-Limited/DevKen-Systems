@@ -1,9 +1,229 @@
-<div class="flex min-w-0 flex-auto flex-col">
-    <!-- Main -->
-    <div class="flex-auto p-6 sm:p-10">
-        <!-- CONTENT GOES HERE -->
-        <div
-            class="h-400 max-h-400 min-h-400 rounded-2xl border-2 border-dashed border-gray-300"
-        ></div>
+<div class="flex flex-col flex-auto min-w-0">
+
+    <!-- ── HEADER ── -->
+    <div class="dk-header">
+        <div>
+            <div class="dk-breadcrumb">
+                <span>Home</span>
+                <span class="sep">›</span>
+                <span>Dashboard</span>
+            </div>
+            <div class="dk-page-title">School Overview</div>
+            <div class="dk-page-sub">Competency-Based Curriculum — Academic year 2025</div>
+        </div>
+        <div class="dk-header-right">
+            <div class="dk-term-badge">
+                <span class="dot"></span>
+                Term 1 · 2025
+            </div>
+            <button class="dk-icon-btn">🔍</button>
+            <button class="dk-icon-btn">
+                🔔
+                <span class="notif"></span>
+            </button>
+            <button class="dk-icon-btn">⚙️</button>
+        </div>
+    </div>
+
+    <!-- ── SCROLLABLE CONTENT ── -->
+    <div class="dk-content">
+
+        <!-- Level Pills -->
+        <div class="dk-level-strip">
+            <button
+                *ngFor="let level of levels"
+                class="dk-level-pill"
+                [class.active]="activeLevel === level"
+                (click)="setActiveLevel(level)">
+                {{ level }}
+            </button>
+        </div>
+
+        <!-- Stats -->
+        <div class="dk-stats">
+            <div *ngFor="let stat of stats; let i = index"
+                 class="dk-stat"
+                 [ngClass]="['blue','green','amber','red'][i]">
+                <div class="dk-stat-icon"
+                     [ngStyle]="{'background': stat.iconBg, 'color': stat.color}">
+                    {{ stat.icon }}
+                </div>
+                <div class="dk-stat-value">{{ stat.value }}</div>
+                <div class="dk-stat-label">{{ stat.label }}</div>
+                <div class="dk-stat-trend"
+                     [ngStyle]="{'background': stat.trendBg, 'color': stat.trendColor}">
+                    {{ stat.trend }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Row -->
+        <div class="dk-main-row">
+
+            <!-- Class Performance -->
+            <div class="dk-card">
+                <div class="dk-card-head">
+                    <span class="dk-card-title">Class Performance — Term 1</span>
+                    <button class="dk-card-action">View all classes →</button>
+                </div>
+                <div class="dk-class-body">
+                    <div *ngFor="let cls of classes" class="dk-class-row">
+                        <div class="dk-class-badge" [ngStyle]="{'background': cls.color}">
+                            {{ cls.badge }}
+                        </div>
+                        <div class="dk-class-info">
+                            <div class="dk-class-name">{{ cls.name }}</div>
+                            <div class="dk-class-meta">{{ cls.meta }}</div>
+                        </div>
+                        <div class="dk-bar-wrap">
+                            <div class="dk-bar-track">
+                                <div class="dk-bar-fill"
+                                     [ngStyle]="{'width': cls.pct + '%', 'background': cls.color}">
+                                </div>
+                            </div>
+                            <div class="dk-bar-pct">{{ cls.pct }}%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Competency + Quick Actions -->
+            <div class="dk-card">
+                <div class="dk-card-head">
+                    <span class="dk-card-title">Competency Distribution</span>
+                    <button class="dk-card-action">Details</button>
+                </div>
+                <div class="dk-comp-body">
+                    <div *ngFor="let comp of competencies" class="dk-comp-row">
+                        <div class="dk-comp-dot" [ngStyle]="{'background': comp.color}"></div>
+                        <div class="dk-comp-info">
+                            <div class="dk-comp-label">{{ comp.label }}</div>
+                            <div class="dk-comp-track">
+                                <div class="dk-comp-fill"
+                                     [ngStyle]="{'width': comp.pct + '%', 'background': comp.color}">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="dk-comp-pct" [ngStyle]="{'color': comp.color}">{{ comp.pct }}%</div>
+                    </div>
+                </div>
+
+                <div class="dk-qa-block">
+                    <div class="dk-qa-title">Quick Actions</div>
+                    <div class="dk-qa-grid">
+                        <button *ngFor="let action of quickActions" class="dk-qa-btn">
+                            <div class="qa-icon">{{ action.icon }}</div>
+                            <div class="qa-label">{{ action.label }}</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Row -->
+        <div class="dk-bottom-row">
+
+            <!-- Recent Assessments -->
+            <div class="dk-card">
+                <div class="dk-card-head">
+                    <span class="dk-card-title">Recent Assessments</span>
+                    <button class="dk-card-action">All assessments →</button>
+                </div>
+                <div class="dk-table-wrap">
+                    <table class="dk-table">
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Learning Area</th>
+                                <th>Type</th>
+                                <th>Level</th>
+                                <th>Date</th>
+                                <th>Teacher</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let a of assessments">
+                                <td>
+                                    <strong>{{ a.student }}</strong>
+                                    <span style="color:var(--muted,#6b7280);font-size:11px;margin-left:4px;">{{ a.class }}</span>
+                                </td>
+                                <td style="color:#6b7280;">{{ a.area }}</td>
+                                <td>
+                                    <span class="dk-badge"
+                                          [ngStyle]="{'background': a.typeBg, 'color': a.typeColor}">
+                                        {{ a.type }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="dk-badge"
+                                          [ngStyle]="{'background': a.levelBg, 'color': a.levelColor}">
+                                        {{ a.level }}
+                                    </span>
+                                </td>
+                                <td style="color:#6b7280;font-size:12px;white-space:nowrap;">{{ a.date }}</td>
+                                <td style="color:#6b7280;font-size:12px;">{{ a.teacher }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Right column -->
+            <div class="dk-right-col">
+
+                <!-- Events -->
+                <div class="dk-card">
+                    <div class="dk-card-head">
+                        <span class="dk-card-title">Upcoming Events</span>
+                        <button class="dk-card-action">View calendar</button>
+                    </div>
+                    <div class="dk-event-body">
+                        <div *ngFor="let event of events" class="dk-event-item">
+                            <div class="dk-event-date">
+                                <div class="day">{{ event.day }}</div>
+                                <div class="mon">{{ event.month }}</div>
+                            </div>
+                            <div class="dk-event-info">
+                                <div class="dk-event-title">{{ event.title }}</div>
+                                <div class="dk-event-sub">{{ event.sub }}</div>
+                            </div>
+                            <span class="dk-event-tag"
+                                  [ngStyle]="{'background': event.tagBg, 'color': event.tagColor}">
+                                {{ event.tag }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fee Collection -->
+                <div class="dk-card">
+                    <div class="dk-card-head">
+                        <span class="dk-card-title">Fee Collection</span>
+                        <button class="dk-card-action">Payments →</button>
+                    </div>
+                    <div class="dk-donut-wrap">
+                        <div class="dk-donut">
+                            <svg viewBox="0 0 36 36" width="90" height="90">
+                                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e8e6de" stroke-width="3"/>
+                                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#2563EB" stroke-width="3"
+                                        stroke-dasharray="78 100" stroke-linecap="round"/>
+                            </svg>
+                            <div class="dk-donut-label">
+                                <span class="pct">78%</span>
+                                <span class="lbl">Collected</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="dk-finance-body">
+                        <div *ngFor="let fin of finance" class="dk-fin-row">
+                            <span class="lbl">{{ fin.label }}</span>
+                            <span class="val" [ngClass]="fin.cls">{{ fin.value }}</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
     </div>
 </div>

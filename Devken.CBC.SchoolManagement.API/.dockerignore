@@ -1,0 +1,18 @@
+# Exclude build output
+**/bin/
+**/obj/
+
+# Exclude IDE files
+**/.vs/
+**/.vscode/
+*.user
+*.suo
+
+# Exclude git
+.git/
+.gitignore
+
+# Exclude docs/config not needed for build
+README.md
+*.md
+.env

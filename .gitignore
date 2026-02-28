@@ -23,7 +23,7 @@ appsettings.Local.json
 # ====================
 # Database Migrations (Entity Framework)
 # ====================
-Migrations/
+# Migrations/
 *.sql
 
 # ====================

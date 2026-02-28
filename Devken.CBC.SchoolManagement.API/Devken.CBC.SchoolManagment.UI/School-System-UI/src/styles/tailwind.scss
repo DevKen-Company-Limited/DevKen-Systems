@@ -1,4 +1,6 @@
 /* ----------------------------------------------------------------------------------------------------- */
-/*  @ Main Tailwind file for injecting utilities.
+/*  @ Main Tailwind file for injecting utilities.                                                      */
 /* ----------------------------------------------------------------------------------------------------- */
+@tailwind base;
+@tailwind components;
 @tailwind utilities;
