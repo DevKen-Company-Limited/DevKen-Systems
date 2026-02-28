@@ -1,15 +1,3 @@
-﻿// ─────────────────────────────────────────────────────────────────────────────
-// DIFF / ADDITION for IRepositoryManager.cs
-// Add the following property to the "FINANCE" section:
-// ─────────────────────────────────────────────────────────────────────────────
-//
-//   // ================= FINANCE =================
-//   IFeeItemRepository      FeeItem      { get; }
-//   IFeeStructureRepository FeeStructure { get; }   // ← ADD THIS LINE
-//
-// Full updated interface shown below for reference.
-// ─────────────────────────────────────────────────────────────────────────────
-
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academics;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Assessments;
@@ -29,6 +17,8 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
     public interface IRepositoryManager
     {
         // ================= ACADEMIC =================
+        IInvoiceRepository Invoice { get; }
+        IParentRepository Parent { get; }
         IStudentRepository Student { get; }
         ITeacherRepository Teacher { get; }
         ISchoolRepository School { get; }
@@ -47,7 +37,7 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
 
         // ================= FINANCE =================
         IFeeItemRepository FeeItem { get; }
-        IFeeStructureRepository FeeStructure { get; }   // ← NEW
+        IFeeStructureRepository FeeStructure { get; }
 
         // ================= ASSESSMENTS =================
         IFormativeAssessmentRepository FormativeAssessment { get; }
@@ -73,7 +63,6 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
         IDocumentNumberSeriesRepository DocumentNumberSeries { get; }
 
         // ================= ADVANCED =================
-        /// <summary>Exposes the underlying DbContext for advanced scenarios.</summary>
         DbContext Context { get; }
 
         // ================= UNIT OF WORK =================

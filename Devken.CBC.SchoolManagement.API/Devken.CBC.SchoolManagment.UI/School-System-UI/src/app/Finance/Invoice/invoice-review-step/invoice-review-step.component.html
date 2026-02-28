@@ -1,0 +1,182 @@
+<div class="max-w-6xl">
+
+  <!-- Section Header -->
+  <div class="flex items-start gap-4 mb-8">
+    <div class="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg">
+      <mat-icon class="text-white !w-7 !h-7">check_circle</mat-icon>
+    </div>
+    <div class="flex-1">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Review & Submit</h2>
+      <p class="text-gray-600 dark:text-gray-400">Review all information before submitting. Click any section to edit.</p>
+    </div>
+  </div>
+
+  <!-- Completion Progress Bar -->
+  <div class="mb-6">
+    <div class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
+      <div
+        class="h-full bg-gradient-to-r from-green-500 to-emerald-600 transition-all duration-500"
+        [style.width.%]="getCompletionPct()">
+      </div>
+    </div>
+    <p class="text-sm text-gray-600 dark:text-gray-400">
+      {{ completedCount() }} of {{ steps.length - 1 }} sections completed
+    </p>
+  </div>
+
+  <!-- Incomplete Warning -->
+  <fuse-alert
+    *ngIf="!allComplete()"
+    type="warning"
+    appearance="soft"
+    [showIcon]="true"
+    class="mb-6">
+    Some sections are incomplete. Please go back and fill in all required fields before submitting.
+  </fuse-alert>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    <!-- Invoice Details Card -->
+    <mat-card
+      class="shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+      (click)="editSection.emit(0)">
+      <mat-card-header class="!pb-2">
+        <div class="flex items-center justify-between w-full">
+          <div class="flex items-center gap-3">
+            <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/20">
+              <mat-icon class="text-blue-600">receipt</mat-icon>
+            </div>
+            <mat-card-title class="!text-base !font-semibold !mb-0">Invoice Details</mat-card-title>
+          </div>
+          <div class="flex items-center gap-2">
+            <span
+              class="text-xs font-medium px-2 py-1 rounded"
+              [ngClass]="{
+                'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300': isComplete(0),
+                'bg-gray-100  text-gray-600  dark:bg-gray-700      dark:text-gray-400': !isComplete(0)
+              }">
+              {{ isComplete(0) ? '✓ Complete' : 'Incomplete' }}
+            </span>
+            <mat-icon class="text-gray-400 icon-size-4">edit</mat-icon>
+          </div>
+        </div>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <div class="space-y-2">
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-500 dark:text-gray-400">Student</span>
+            <span class="font-semibold text-gray-900 dark:text-white">{{ details.studentId || '—' }}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-500 dark:text-gray-400">Academic Year</span>
+            <span class="font-semibold text-gray-900 dark:text-white">{{ details.academicYearId || '—' }}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-500 dark:text-gray-400">Term</span>
+            <span class="font-semibold text-gray-900 dark:text-white">{{ details.termId || '—' }}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-500 dark:text-gray-400">Invoice Date</span>
+            <span class="font-semibold text-gray-900 dark:text-white">{{ formatDate(details.invoiceDate) }}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-500 dark:text-gray-400">Due Date</span>
+            <span class="font-semibold text-gray-900 dark:text-white">{{ formatDate(details.dueDate) }}</span>
+          </div>
+          <div *ngIf="details.description" class="flex justify-between text-sm">
+            <span class="text-gray-500 dark:text-gray-400">Description</span>
+            <span class="font-semibold text-gray-900 dark:text-white max-w-48 truncate">{{ details.description }}</span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Line Items Card -->
+    <mat-card
+      class="shadow-md hover:shadow-lg transition-shadow cursor-pointer lg:col-span-2"
+      (click)="editSection.emit(1)">
+      <mat-card-header class="!pb-2">
+        <div class="flex items-center justify-between w-full">
+          <div class="flex items-center gap-3">
+            <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/20">
+              <mat-icon class="text-blue-600">list_alt</mat-icon>
+            </div>
+            <mat-card-title class="!text-base !font-semibold !mb-0">Line Items</mat-card-title>
+          </div>
+          <div class="flex items-center gap-2">
+            <span
+              class="text-xs font-medium px-2 py-1 rounded"
+              [ngClass]="{
+                'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300': isComplete(1),
+                'bg-gray-100  text-gray-600  dark:bg-gray-700      dark:text-gray-400': !isComplete(1)
+              }">
+              {{ isComplete(1) ? '✓ Complete' : 'Incomplete' }}
+            </span>
+            <mat-icon class="text-gray-400 icon-size-4">edit</mat-icon>
+          </div>
+        </div>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-gray-200 dark:border-gray-700">
+                <th class="text-left py-2 font-medium text-gray-500">Description</th>
+                <th class="text-center py-2 font-medium text-gray-500">Qty</th>
+                <th class="text-right py-2 font-medium text-gray-500">Unit Price</th>
+                <th class="text-right py-2 font-medium text-gray-500">Discount</th>
+                <th class="text-right py-2 font-medium text-gray-500">Tax</th>
+                <th class="text-right py-2 font-medium text-gray-500">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of items" class="border-b border-gray-100 dark:border-gray-800">
+                <td class="py-2">{{ item.description }}</td>
+                <td class="text-center py-2">{{ item.quantity }}</td>
+                <td class="text-right py-2">{{ formatCurrency(item.unitPrice) }}</td>
+                <td class="text-right py-2">{{ formatCurrency(item.discount || 0) }}</td>
+                <td class="text-right py-2">
+                  <span *ngIf="item.isTaxable">{{ item.taxRate }}%</span>
+                  <span *ngIf="!item.isTaxable">—</span>
+                </td>
+                <td class="text-right py-2 font-semibold">{{ formatCurrency(getItemTotal(item)) }}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="5" class="text-right py-3 font-bold text-gray-700 dark:text-gray-300">Grand Total</td>
+                <td class="text-right py-3 font-extrabold text-gray-900 dark:text-white">{{ formatCurrency(grandTotal) }}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Notes Card -->
+    <mat-card
+      class="shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+      (click)="editSection.emit(2)">
+      <mat-card-header class="!pb-2">
+        <div class="flex items-center justify-between w-full">
+          <div class="flex items-center gap-3">
+            <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/20">
+              <mat-icon class="text-blue-600">sticky_note_2</mat-icon>
+            </div>
+            <mat-card-title class="!text-base !font-semibold !mb-0">Notes</mat-card-title>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-medium px-2 py-1 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+              ✓ Saved
+            </span>
+            <mat-icon class="text-gray-400 icon-size-4">edit</mat-icon>
+          </div>
+        </div>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ notes || '—' }}</p>
+      </mat-card-content>
+    </mat-card>
+
+  </div>
+</div>

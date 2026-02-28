@@ -1,0 +1,176 @@
+<div class="max-w-6xl">
+
+  <!-- Section Header -->
+  <div class="flex items-start gap-4 mb-8">
+    <div class="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 shadow-lg">
+      <mat-icon class="text-white !w-7 !h-7">settings</mat-icon>
+    </div>
+    <div class="flex-1">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Parent Settings</h2>
+      <p class="text-gray-600 dark:text-gray-400">
+        Configure flags and portal access.
+      </p>
+    </div>
+  </div>
+
+  <fuse-alert type="info" appearance="soft" [showIcon]="true" class="mb-6">
+    <strong>No required fields.</strong> Defaults are safe.
+  </fuse-alert>
+
+  <form [formGroup]="form" novalidate class="space-y-6">
+
+    <!-- Primary Contact -->
+    <mat-card class="shadow-md overflow-hidden">
+      <mat-card-content class="!p-0">
+        <div class="flex items-start gap-4 p-6
+                    bg-amber-50 dark:bg-amber-900/10
+                    border border-amber-200 dark:border-amber-800 rounded-xl">
+          <div class="flex items-center justify-center w-14 h-14 rounded-xl
+                      bg-amber-100 dark:bg-amber-900/30 flex-shrink-0">
+            <mat-icon class="text-amber-600 dark:text-amber-400 !w-7 !h-7">star</mat-icon>
+          </div>
+          <div class="flex-1">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <h3 class="text-base font-bold text-gray-900 dark:text-white mb-1">Primary Contact</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                  When enabled, this parent is the first point of contact for communications.
+                </p>
+                <div
+                  class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold"
+                  [ngClass]="{
+                    'bg-amber-200 text-amber-800 dark:bg-amber-800/40 dark:text-amber-300': isPrimary,
+                    'bg-gray-100  text-gray-600  dark:bg-gray-700      dark:text-gray-400':  !isPrimary
+                  }">
+                  <mat-icon class="icon-size-3">{{ isPrimary ? 'check_circle' : 'remove_circle' }}</mat-icon>
+                  {{ isPrimary ? 'Primary contact' : 'Not primary' }}
+                </div>
+              </div>
+              <mat-slide-toggle formControlName="isPrimaryContact" color="accent" class="flex-shrink-0"></mat-slide-toggle>
+            </div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Emergency Contact -->
+    <mat-card class="shadow-md overflow-hidden">
+      <mat-card-content class="!p-0">
+        <div class="flex items-start gap-4 p-6
+                    bg-red-50 dark:bg-red-900/10
+                    border border-red-200 dark:border-red-800 rounded-xl">
+          <div class="flex items-center justify-center w-14 h-14 rounded-xl
+                      bg-red-100 dark:bg-red-900/30 flex-shrink-0">
+            <mat-icon class="text-red-600 dark:text-red-400 !w-7 !h-7">emergency</mat-icon>
+          </div>
+          <div class="flex-1">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <h3 class="text-base font-bold text-gray-900 dark:text-white mb-1">Emergency Contact</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                  Mark this parent as the person to contact in case of an emergency.
+                </p>
+                <div
+                  class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold"
+                  [ngClass]="{
+                    'bg-red-200 text-red-800 dark:bg-red-800/40 dark:text-red-300': isEmergency,
+                    'bg-gray-100  text-gray-600  dark:bg-gray-700      dark:text-gray-400':  !isEmergency
+                  }">
+                  <mat-icon class="icon-size-3">{{ isEmergency ? 'warning' : 'remove_circle' }}</mat-icon>
+                  {{ isEmergency ? 'Emergency contact' : 'Not emergency' }}
+                </div>
+              </div>
+              <mat-slide-toggle formControlName="isEmergencyContact" color="warn" class="flex-shrink-0"></mat-slide-toggle>
+            </div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Portal Access -->
+    <mat-card class="shadow-md overflow-hidden">
+      <mat-card-content class="!p-0">
+        <div class="flex items-start gap-4 p-6
+                    bg-blue-50 dark:bg-blue-900/10
+                    border border-blue-200 dark:border-blue-800 rounded-xl">
+          <div class="flex items-center justify-center w-14 h-14 rounded-xl
+                      bg-blue-100 dark:bg-blue-900/30 flex-shrink-0">
+            <mat-icon class="text-blue-600 dark:text-blue-400 !w-7 !h-7">manage_accounts</mat-icon>
+          </div>
+          <div class="flex-1">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <h3 class="text-base font-bold text-gray-900 dark:text-white mb-1">Portal Access</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                  Allow this parent to log in to the parent portal and view their child’s information.
+                </p>
+                <div
+                  class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold"
+                  [ngClass]="{
+                    'bg-blue-200 text-blue-800 dark:bg-blue-800/40 dark:text-blue-300': hasPortal,
+                    'bg-gray-100  text-gray-600  dark:bg-gray-700      dark:text-gray-400':  !hasPortal
+                  }">
+                  <mat-icon class="icon-size-3">{{ hasPortal ? 'check_circle' : 'remove_circle' }}</mat-icon>
+                  {{ hasPortal ? 'Portal access enabled' : 'No portal access' }}
+                </div>
+              </div>
+              <mat-slide-toggle formControlName="hasPortalAccess" color="primary" class="flex-shrink-0"></mat-slide-toggle>
+            </div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Conditional Portal User ID -->
+    <mat-card *ngIf="hasPortal" class="shadow-md">
+      <mat-card-content class="!p-6">
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>Portal User ID (optional)</mat-label>
+          <input matInput formControlName="portalUserId" placeholder="Linked portal user account ID">
+          <mat-icon matPrefix class="text-gray-400">account_circle</mat-icon>
+          <mat-hint>If left blank, a new user account may be created automatically.</mat-hint>
+        </mat-form-field>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Summary -->
+    <mat-card class="shadow-sm border border-gray-200 dark:border-gray-700">
+      <mat-card-content class="!pt-4">
+        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+          <mat-icon class="icon-size-4 text-teal-500">summarize</mat-icon>
+          Current Settings Summary
+        </h4>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="flex items-center gap-2 text-sm">
+            <mat-icon class="icon-size-4" [ngClass]="isPrimary ? 'text-amber-500' : 'text-gray-400'">
+              {{ isPrimary ? 'star' : 'star_border' }}
+            </mat-icon>
+            <span class="text-gray-600 dark:text-gray-400">Primary:</span>
+            <span class="font-semibold" [ngClass]="isPrimary ? 'text-amber-600' : 'text-gray-500'">
+              {{ isPrimary ? 'Yes' : 'No' }}
+            </span>
+          </div>
+          <div class="flex items-center gap-2 text-sm">
+            <mat-icon class="icon-size-4" [ngClass]="isEmergency ? 'text-red-500' : 'text-gray-400'">
+              {{ isEmergency ? 'emergency' : 'emergency' }}
+            </mat-icon>
+            <span class="text-gray-600 dark:text-gray-400">Emergency:</span>
+            <span class="font-semibold" [ngClass]="isEmergency ? 'text-red-600' : 'text-gray-500'">
+              {{ isEmergency ? 'Yes' : 'No' }}
+            </span>
+          </div>
+          <div class="flex items-center gap-2 text-sm">
+            <mat-icon class="icon-size-4" [ngClass]="hasPortal ? 'text-blue-500' : 'text-gray-400'">
+              {{ hasPortal ? 'check_circle' : 'remove_circle' }}
+            </mat-icon>
+            <span class="text-gray-600 dark:text-gray-400">Portal:</span>
+            <span class="font-semibold" [ngClass]="hasPortal ? 'text-blue-600' : 'text-gray-500'">
+              {{ hasPortal ? 'Enabled' : 'Disabled' }}
+            </span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+  </form>
+</div>

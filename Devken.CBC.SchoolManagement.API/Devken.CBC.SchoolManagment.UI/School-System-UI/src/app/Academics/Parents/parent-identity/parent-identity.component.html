@@ -1,0 +1,43 @@
+<div class="max-w-6xl">
+
+  <!-- Section Header -->
+  <div class="flex items-start gap-4 mb-8">
+    <div class="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 shadow-lg">
+      <mat-icon class="text-white !w-7 !h-7">badge</mat-icon>
+    </div>
+    <div class="flex-1">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Identity Documents</h2>
+      <p class="text-gray-600 dark:text-gray-400">
+        Optional: National ID or Passport number.
+      </p>
+    </div>
+  </div>
+
+  <fuse-alert type="info" appearance="soft" [showIcon]="true" class="mb-6">
+    <strong>Optional.</strong> These fields are not required but can be used for official records.
+  </fuse-alert>
+
+  <form [formGroup]="form" novalidate class="space-y-6">
+
+    <mat-card class="shadow-md">
+      <mat-card-content class="!p-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          <mat-form-field appearance="outline">
+            <mat-label>National ID Number</mat-label>
+            <input matInput formControlName="nationalIdNumber" placeholder="e.g. 12345678">
+            <mat-icon matPrefix class="text-gray-400">badge</mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Passport Number</mat-label>
+            <input matInput formControlName="passportNumber" placeholder="e.g. AB123456">
+            <mat-icon matPrefix class="text-gray-400">travel_explore</mat-icon>
+          </mat-form-field>
+
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+  </form>
+</div>

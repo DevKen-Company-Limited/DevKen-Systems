@@ -1,0 +1,153 @@
+<app-form-dialog
+  [header]="dialogHeader"
+  [tabs]="tabs"
+  [form]="form"
+  [activeTab]="activeTab"
+  [footer]="footerConfig"
+  [tabTemplates]="tabTemplates"
+  [formSubmitted]="formSubmitted"
+  [size]="{ width: 'w-full', maxWidth: 'max-w-3xl', maxHeight: 'max-h-screen' }"
+  (tabChange)="onTabChange($event)"
+  (cancel)="onCancel()"
+  (submit)="onSubmit()">
+</app-form-dialog>
+
+<!-- ── Tab Templates (referenced via @ViewChild in TS) ──────────────────── -->
+
+<!-- Basic Info -->
+<ng-template #basicTab let-form="form">
+  <ng-container [formGroup]="form">
+    <mat-form-field appearance="outline">
+      <mat-label>First Name <span class="text-red-500">*</span></mat-label>
+      <input matInput formControlName="firstName" placeholder="e.g. John" />
+      <mat-error *ngIf="form.get('firstName')?.hasError('required')">First name is required</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Middle Name</mat-label>
+      <input matInput formControlName="middleName" placeholder="Optional" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Last Name <span class="text-red-500">*</span></mat-label>
+      <input matInput formControlName="lastName" placeholder="e.g. Doe" />
+      <mat-error *ngIf="form.get('lastName')?.hasError('required')">Last name is required</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Relationship <span class="text-red-500">*</span></mat-label>
+      <mat-select formControlName="relationship">
+        <mat-option *ngFor="let r of relationships" [value]="r.value">{{ r.label }}</mat-option>
+      </mat-select>
+      <mat-error *ngIf="form.get('relationship')?.hasError('required')">Relationship is required</mat-error>
+    </mat-form-field>
+  </ng-container>
+</ng-template>
+
+<!-- Contact -->
+<ng-template #contactTab let-form="form">
+  <ng-container [formGroup]="form">
+    <mat-form-field appearance="outline">
+      <mat-label>Phone Number</mat-label>
+      <mat-icon matPrefix class="text-gray-400 icon-size-5 mr-1">phone</mat-icon>
+      <input matInput formControlName="phoneNumber" placeholder="+254 700 000 000" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Alternative Phone</mat-label>
+      <mat-icon matPrefix class="text-gray-400 icon-size-5 mr-1">phone_in_talk</mat-icon>
+      <input matInput formControlName="alternativePhoneNumber" placeholder="Optional" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="md:col-span-2">
+      <mat-label>Email Address</mat-label>
+      <mat-icon matPrefix class="text-gray-400 icon-size-5 mr-1">email</mat-icon>
+      <input matInput formControlName="email" type="email" placeholder="parent@email.com" />
+      <mat-error *ngIf="form.get('email')?.hasError('email')">Enter a valid email</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="md:col-span-2">
+      <mat-label>Physical Address</mat-label>
+      <mat-icon matPrefix class="text-gray-400 icon-size-5 mr-1">location_on</mat-icon>
+      <textarea matInput formControlName="address" rows="3" placeholder="Street, City, County..."></textarea>
+    </mat-form-field>
+  </ng-container>
+</ng-template>
+
+<!-- Identity -->
+<ng-template #identityTab let-form="form">
+  <ng-container [formGroup]="form">
+    <mat-form-field appearance="outline">
+      <mat-label>National ID Number</mat-label>
+      <mat-icon matPrefix class="text-gray-400 icon-size-5 mr-1">badge</mat-icon>
+      <input matInput formControlName="nationalIdNumber" placeholder="e.g. 12345678" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Passport Number</mat-label>
+      <mat-icon matPrefix class="text-gray-400 icon-size-5 mr-1">travel_explore</mat-icon>
+      <input matInput formControlName="passportNumber" placeholder="Optional" />
+    </mat-form-field>
+  </ng-container>
+</ng-template>
+
+<!-- Employment -->
+<ng-template #employmentTab let-form="form">
+  <ng-container [formGroup]="form">
+    <mat-form-field appearance="outline">
+      <mat-label>Occupation</mat-label>
+      <mat-icon matPrefix class="text-gray-400 icon-size-5 mr-1">work</mat-icon>
+      <input matInput formControlName="occupation" placeholder="e.g. Engineer" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Employer / Company</mat-label>
+      <mat-icon matPrefix class="text-gray-400 icon-size-5 mr-1">business</mat-icon>
+      <input matInput formControlName="employer" placeholder="e.g. ABC Ltd" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="md:col-span-2">
+      <mat-label>Employer Contact</mat-label>
+      <mat-icon matPrefix class="text-gray-400 icon-size-5 mr-1">contact_phone</mat-icon>
+      <input matInput formControlName="employerContact" placeholder="HR phone or email" />
+    </mat-form-field>
+  </ng-container>
+</ng-template>
+
+<!-- Settings -->
+<ng-template #settingsTab let-form="form">
+  <ng-container [formGroup]="form" class="md:col-span-2">
+    <div class="md:col-span-2 flex flex-col gap-4">
+
+      <div class="flex items-center justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div>
+          <p class="font-semibold text-gray-800 dark:text-white text-sm">Primary Contact</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">First person to be contacted for this student</p>
+        </div>
+        <mat-slide-toggle formControlName="isPrimaryContact" color="primary"></mat-slide-toggle>
+      </div>
+
+      <div class="flex items-center justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div>
+          <p class="font-semibold text-gray-800 dark:text-white text-sm">Emergency Contact</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Contact in case of an emergency</p>
+        </div>
+        <mat-slide-toggle formControlName="isEmergencyContact" color="warn"></mat-slide-toggle>
+      </div>
+
+      <div class="flex items-center justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div>
+          <p class="font-semibold text-gray-800 dark:text-white text-sm">Portal Access</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Allow parent to log in to the parent portal</p>
+        </div>
+        <mat-slide-toggle formControlName="hasPortalAccess" color="accent"></mat-slide-toggle>
+      </div>
+
+      <mat-form-field appearance="outline" *ngIf="form.get('hasPortalAccess')?.value">
+        <mat-label>Portal User ID</mat-label>
+        <mat-icon matPrefix class="text-gray-400 icon-size-5 mr-1">account_circle</mat-icon>
+        <input matInput formControlName="portalUserId" placeholder="Linked portal user ID" />
+      </mat-form-field>
+    </div>
+  </ng-container>
+</ng-template>

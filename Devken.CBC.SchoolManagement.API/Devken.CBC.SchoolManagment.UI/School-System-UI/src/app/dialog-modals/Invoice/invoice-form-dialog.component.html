@@ -1,0 +1,175 @@
+<app-form-dialog
+  [header]="dialogHeader"
+  [tabs]="tabs"
+  [form]="form"
+  [activeTab]="activeTab"
+  [footer]="footerConfig"
+  [formSubmitted]="formSubmitted"
+  [size]="{ width: 'w-full', maxWidth: 'max-w-4xl', maxHeight: 'max-h-screen' }"
+  (tabChange)="onTabChange($event)"
+  (cancel)="onCancel()"
+  (submit)="onSubmit()">
+</app-form-dialog>
+
+<!-- NOTE: Because FormDialogComponent uses tabTemplates @Input map, -->
+<!-- you wire these up in ngAfterViewInit in the TS (see pattern below). -->
+<!-- The templates are rendered here and referenced via @ViewChild.   -->
+
+<!-- Tab 0 – Invoice Details -->
+<ng-template #detailsTab>
+  <ng-container [formGroup]="form">
+
+    <mat-form-field appearance="outline">
+      <mat-label>Student ID <span class="text-red-500">*</span></mat-label>
+      <mat-icon matPrefix class="text-gray-400 icon-size-5 mr-1">school</mat-icon>
+      <input matInput formControlName="studentId" placeholder="Student UUID" />
+      <mat-error *ngIf="form.get('studentId')?.hasError('required')">Student is required</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Academic Year ID <span class="text-red-500">*</span></mat-label>
+      <mat-icon matPrefix class="text-gray-400 icon-size-5 mr-1">event</mat-icon>
+      <input matInput formControlName="academicYearId" placeholder="Academic Year UUID" />
+      <mat-error *ngIf="form.get('academicYearId')?.hasError('required')">Academic Year is required</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Term ID</mat-label>
+      <mat-icon matPrefix class="text-gray-400 icon-size-5 mr-1">date_range</mat-icon>
+      <input matInput formControlName="termId" placeholder="Optional" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Parent ID</mat-label>
+      <mat-icon matPrefix class="text-gray-400 icon-size-5 mr-1">family_restroom</mat-icon>
+      <input matInput formControlName="parentId" placeholder="Optional" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Invoice Date <span class="text-red-500">*</span></mat-label>
+      <mat-icon matPrefix class="text-gray-400 icon-size-5 mr-1">calendar_today</mat-icon>
+      <input matInput [matDatepicker]="invoicePicker" formControlName="invoiceDate" />
+      <mat-datepicker-toggle matIconSuffix [for]="invoicePicker"></mat-datepicker-toggle>
+      <mat-datepicker #invoicePicker></mat-datepicker>
+      <mat-error *ngIf="form.get('invoiceDate')?.hasError('required')">Invoice date is required</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Due Date <span class="text-red-500">*</span></mat-label>
+      <mat-icon matPrefix class="text-gray-400 icon-size-5 mr-1">event_busy</mat-icon>
+      <input matInput [matDatepicker]="duePicker" formControlName="dueDate" />
+      <mat-datepicker-toggle matIconSuffix [for]="duePicker"></mat-datepicker-toggle>
+      <mat-datepicker #duePicker></mat-datepicker>
+      <mat-error *ngIf="form.get('dueDate')?.hasError('required')">Due date is required</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="md:col-span-2">
+      <mat-label>Description</mat-label>
+      <textarea matInput formControlName="description" rows="2" placeholder="Brief description of this invoice..."></textarea>
+    </mat-form-field>
+
+  </ng-container>
+</ng-template>
+
+<!-- Tab 1 – Line Items -->
+<ng-template #itemsTab>
+  <div class="md:col-span-2" [formGroup]="form">
+
+    <!-- Items List -->
+    <div formArrayName="items" class="flex flex-col gap-4">
+      <div *ngFor="let item of itemsArray.controls; let i = index"
+           [formGroupName]="i"
+           class="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+
+        <!-- Item Header -->
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Item #{{ i + 1 }}</span>
+          <button type="button" mat-icon-button color="warn"
+                  (click)="removeItem(i)"
+                  [disabled]="itemsArray.length === 1">
+            <mat-icon class="icon-size-4">remove_circle_outline</mat-icon>
+          </button>
+        </div>
+
+        <!-- Item Fields -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+
+          <mat-form-field appearance="outline" class="md:col-span-2">
+            <mat-label>Description *</mat-label>
+            <input matInput formControlName="description" placeholder="e.g. Tuition Fee Term 1" />
+            <mat-error *ngIf="item.get('description')?.hasError('required')">Description is required</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Type</mat-label>
+            <input matInput formControlName="itemType" placeholder="e.g. Tuition" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>GL Code</mat-label>
+            <input matInput formControlName="glCode" placeholder="Optional" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Quantity *</mat-label>
+            <input matInput type="number" formControlName="quantity" min="1" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Unit Price (KES) *</mat-label>
+            <input matInput type="number" formControlName="unitPrice" min="0" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Discount (KES)</mat-label>
+            <input matInput type="number" formControlName="discount" min="0" />
+          </mat-form-field>
+
+          <!-- Taxable Toggle -->
+          <div class="flex flex-col justify-center">
+            <mat-checkbox formControlName="isTaxable" color="primary">Taxable</mat-checkbox>
+            <mat-form-field *ngIf="item.get('isTaxable')?.value" appearance="outline" class="mt-1">
+              <mat-label>Tax Rate %</mat-label>
+              <input matInput type="number" formControlName="taxRate" min="0" max="100" />
+            </mat-form-field>
+          </div>
+
+        </div>
+
+        <!-- Item Total -->
+        <div class="mt-2 text-right">
+          <span class="text-sm font-bold text-gray-700 dark:text-gray-300">
+            Item Total: {{ formatCurrency(getItemTotal(item)) }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Item + Grand Total -->
+    <div class="flex items-center justify-between mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+      <button type="button" mat-stroked-button color="primary" (click)="addItem()">
+        <mat-icon class="icon-size-5">add</mat-icon>
+        Add Line Item
+      </button>
+      <div class="text-right">
+        <p class="text-sm text-gray-500 dark:text-gray-400">Grand Total</p>
+        <p class="text-xl font-extrabold text-gray-900 dark:text-white tabular-nums">
+          {{ formatCurrency(grandTotal) }}
+        </p>
+      </div>
+    </div>
+
+  </div>
+</ng-template>
+
+<!-- Tab 2 – Notes -->
+<ng-template #notesTab>
+  <ng-container [formGroup]="form">
+    <mat-form-field appearance="outline" class="md:col-span-2">
+      <mat-label>Internal Notes</mat-label>
+      <mat-icon matPrefix class="text-gray-400 icon-size-5 mr-1">sticky_note_2</mat-icon>
+      <textarea matInput formControlName="notes" rows="6" placeholder="Any additional notes for this invoice..."></textarea>
+      <mat-hint>Max 1,000 characters</mat-hint>
+    </mat-form-field>
+  </ng-container>
+</ng-template>

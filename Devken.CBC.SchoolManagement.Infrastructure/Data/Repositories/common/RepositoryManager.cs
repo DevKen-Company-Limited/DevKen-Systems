@@ -54,6 +54,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         private readonly TenantContext _tenantContext;
 
         // ── Academic ─────────────────────────────────────────────────────────
+        private readonly Lazy<IParentRepository> _parentRepository;
         private readonly Lazy<IStudentRepository> _studentRepository;
         private readonly Lazy<ITeacherRepository> _teacherRepository;
         private readonly Lazy<ISchoolRepository> _schoolRepository;
@@ -103,6 +104,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
             _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
 
             // Academic
+            _parentRepository = new Lazy<IParentRepository>(() => new ParentRepository(_context, _tenantContext));
             _studentRepository = new Lazy<IStudentRepository>(() => new StudentRepository(_context, _tenantContext));
             _teacherRepository = new Lazy<ITeacherRepository>(() => new TeacherRepository(_context, _tenantContext));
             _schoolRepository = new Lazy<ISchoolRepository>(() => new SchoolRepository(_context, _tenantContext));

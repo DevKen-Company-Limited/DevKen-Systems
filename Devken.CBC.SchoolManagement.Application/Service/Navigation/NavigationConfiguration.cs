@@ -69,10 +69,11 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
         new NavItem("academic-years", "Academic Years", "heroicons_outline:calendar", "/academic/academic-years", PermissionKeys.AcademicYearRead),
         new NavItem("terms", "Terms", "heroicons_outline:calendar-days", "/academic/terms", PermissionKeys.TermRead),
         new NavItem("students", "Students", "heroicons_outline:user-group", "/academic/students", PermissionKeys.StudentRead),
-        new NavItem("subjects", "Subjects", "heroicons_outline:book-open", "/academic/subjects", PermissionKeys.SubjectRead),  // ← ADD THIS
+        new NavItem("subjects", "Subjects", "heroicons_outline:book-open", "/academic/subjects", PermissionKeys.SubjectRead),
+        new NavItem("grades", "Grades", "heroicons_outline:clipboard-document-list", "/academic/grades", PermissionKeys.GradeRead),
         new NavItem("teachers", "Teachers", "heroicons_outline:user-group", "/academic/teachers", PermissionKeys.TeacherRead),
         new NavItem("classes", "Classes", "heroicons_outline:rectangle-group", "/academic/classes", PermissionKeys.ClassRead),
-        new NavItem("grades", "Grades", "heroicons_outline:clipboard-document-list", "/academic/grades", PermissionKeys.GradeRead)
+        new NavItem("parents", "Parents", "heroicons_outline:user-group", "/academic/parents", PermissionKeys.ParentRead),
     }
         };
 

@@ -11,6 +11,7 @@ import { FilterPanelComponent, FilterField, FilterChangeEvent } from 'app/shared
 import { PageHeaderComponent, Breadcrumb } from 'app/shared/Page-Header/page-header.component';
 import { PaginationComponent } from 'app/shared/pagination/pagination.component';
 import { StatsCardsComponent, StatCard } from 'app/shared/stats-cards/stats-cards.component';
+import { FeeItemResponseDto, FEE_TYPE_OPTIONS, resolveFeeTypeLabel, resolveLevelLabel } from './Types/fee-item.model';
 
 import { FeeItemService } from 'app/core/DevKenService/Finance/fee-item.service';
 import { Subject } from 'rxjs';

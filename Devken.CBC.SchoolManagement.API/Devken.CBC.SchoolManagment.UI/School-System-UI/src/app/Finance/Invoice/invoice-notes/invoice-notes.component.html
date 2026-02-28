@@ -1,0 +1,35 @@
+<div class="max-w-6xl">
+
+  <!-- Section Header -->
+  <div class="flex items-start gap-4 mb-8">
+    <div class="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg">
+      <mat-icon class="text-white !w-7 !h-7">sticky_note_2</mat-icon>
+    </div>
+    <div class="flex-1">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Notes</h2>
+      <p class="text-gray-600 dark:text-gray-400">
+        Add any internal notes for this invoice. Optional.
+      </p>
+    </div>
+  </div>
+
+  <fuse-alert type="info" appearance="soft" [showIcon]="true" class="mb-6">
+    <strong>Optional.</strong> Notes are for internal use only.
+  </fuse-alert>
+
+  <form [formGroup]="form" novalidate class="space-y-6">
+
+    <mat-card class="shadow-md">
+      <mat-card-content class="!p-6">
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>Internal Notes</mat-label>
+          <textarea matInput formControlName="notes" rows="6"
+            placeholder="Any additional information..."></textarea>
+          <mat-icon matPrefix class="text-gray-400">sticky_note_2</mat-icon>
+          <mat-hint>Max 1000 characters</mat-hint>
+        </mat-form-field>
+      </mat-card-content>
+    </mat-card>
+
+  </form>
+</div>

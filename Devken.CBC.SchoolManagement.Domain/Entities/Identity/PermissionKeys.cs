@@ -50,6 +50,9 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
         public const string ClassWrite = "Class.Write";
         public const string GradeRead = "Grade.Read";
         public const string GradeWrite = "Grade.Write";
+        public const string ParentRead = "Parent.Read";
+        public const string ParentWrite = "Parent.Write";
+        public const string ParentDelete = "Parent.Delete";
 
         // ── Assessment ───────────────────────────────────
         public const string AssessmentRead = "Assessment.Read";
