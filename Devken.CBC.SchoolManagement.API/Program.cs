@@ -19,25 +19,42 @@ StartupErrorHandler.Initialize();
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ══════════════════════════════════════════════════════════════
+// Uploads Directory
+// ══════════════════════════════════════════════════════════════
 var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
 if (!Directory.Exists(uploadsPath))
-{
     Directory.CreateDirectory(uploadsPath);
-}
 
 QuestPDF.Settings.License = LicenseType.Community;
 
 // ══════════════════════════════════════════════════════════════
 // CORS Configuration
 // ══════════════════════════════════════════════════════════════
-var angularCorsPolicy = "AngularDevCors";
+// FIX: AllowAnyOrigin() cannot be used with AllowCredentials().
+// If your frontend sends cookies or Authorization headers, you must
+// specify exact origins. Add more origins to the array as needed.
+var angularCorsPolicy = "AngularCors";
+
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>()
+    ?? new[]
+    {
+        "https://dev-ken-systems.vercel.app",
+        "http://localhost:4200"
+    };
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(angularCorsPolicy, policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+        policy
+            .WithOrigins(allowedOrigins)   // explicit origins only
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials()            // required for cookie-based refresh tokens
+            .SetPreflightMaxAge(TimeSpan.FromMinutes(10)); // cache preflight responses
     });
 });
 
@@ -91,7 +108,7 @@ builder.Services.AddSwaggerGen(c =>
         Scheme = "bearer",
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Enter your JWT token. Do NOT include 'Bearer ' prefix - it will be added automatically."
+        Description = "Enter your JWT token. Do NOT include 'Bearer ' prefix — it will be added automatically."
     };
 
     c.AddSecurityDefinition("Bearer", securityScheme);
@@ -165,7 +182,6 @@ using (var scope = app.Services.CreateScope())
             }
             else if (!appliedMigrations.Any())
             {
-                // No migrations exist at all — create schema directly from model
                 logger.LogInformation("No migrations found. Creating database schema from model...");
                 await dbContext.Database.EnsureCreatedAsync();
                 logger.LogInformation("Database schema created successfully.");
@@ -194,7 +210,6 @@ using (var scope = app.Services.CreateScope())
         catch (Exception ex)
         {
             logger.LogError(ex, "An error occurred while seeding subscription plans.");
-            // Non-fatal — app continues
         }
 
         // ── Step 4: Seed Permissions for Default School ────────────
@@ -217,7 +232,6 @@ using (var scope = app.Services.CreateScope())
         catch (Exception ex)
         {
             logger.LogError(ex, "An error occurred while seeding permissions.");
-            // Non-fatal — app continues
         }
 
         logger.LogInformation("Database initialization completed successfully.");
@@ -232,64 +246,56 @@ using (var scope = app.Services.CreateScope())
 // ══════════════════════════════════════════════════════════════
 // Middleware Pipeline
 // ══════════════════════════════════════════════════════════════
+// IMPORTANT: Order matters. CORS must come first — before any
+// middleware that can produce a response (auth, pipeline, etc.).
+// If auth middleware runs first, a 401 is returned without CORS
+// headers, causing the browser to report a "CORS error" instead
+// of the actual 401.
+// ──────────────────────────────────────────────────────────────
+
+// 1. CORS — must be first so ALL responses include CORS headers,
+//    including 401/403 errors returned by downstream middleware.
 app.UseCors(angularCorsPolicy);
-app.UseApiPipeline();
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(uploadsPath),
-    RequestPath = "/uploads"
-});
 
-var localizationOptions = new RequestLocalizationOptions
-{
-    DefaultRequestCulture = new RequestCulture("en-US"),
-    SupportedCultures = new List<CultureInfo> { new CultureInfo("en-US") },
-    SupportedUICultures = new List<CultureInfo> { new CultureInfo("en-US") }
-};
-app.UseRequestLocalization(localizationOptions);
-
-app.UseAuthentication();
-app.UseMiddleware<TenantMiddleware>();
-app.UseAuthorization();
-
-// ══════════════════════════════════════════════════════════════
-// Swagger UI
-// ══════════════════════════════════════════════════════════════
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "DevKen School Management API v1");
-        c.RoutePrefix = string.Empty;
-        c.DocumentTitle = "DevKen School Management API";
-        c.DisplayRequestDuration();
-    });
-
-    app.Logger.LogInformation("Swagger UI is available at: https://localhost:7258");
-}
-else
-{
-    // Enable Swagger in production so you can test the deployed API
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "DevKen School Management API v1");
-        c.RoutePrefix = "swagger";
-        c.DocumentTitle = "DevKen School Management API";
-    });
-}
-
-// ══════════════════════════════════════════════════════════════
-// Map Controllers
-// ══════════════════════════════════════════════════════════════
-app.MapControllers();
+// 2. Static files (single registration — FIX: was registered 3×)
 app.UseStaticFiles();
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(uploadsPath),
     RequestPath = "/uploads"
 });
+
+// 3. Request localization
+app.UseRequestLocalization(new RequestLocalizationOptions
+{
+    DefaultRequestCulture = new RequestCulture("en-US"),
+    SupportedCultures = new List<CultureInfo> { new CultureInfo("en-US") },
+    SupportedUICultures = new List<CultureInfo> { new CultureInfo("en-US") }
+});
+
+// 4. Swagger (available in all environments for deployed API testing)
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "DevKen School Management API v1");
+    // Dev: serve at root (/), Production: serve at /swagger
+    c.RoutePrefix = app.Environment.IsDevelopment() ? string.Empty : "swagger";
+    c.DocumentTitle = "DevKen School Management API";
+    c.DisplayRequestDuration();
+});
+
+// 5. Custom API pipeline (exception handling, logging, etc.)
+//    NOTE: If UseApiPipeline() internally calls UseAuthentication() or
+//    UseAuthorization(), remove those calls below to avoid double registration.
+app.UseApiPipeline();
+
+// 6. Authentication & Authorization
+app.UseAuthentication();
+app.UseMiddleware<TenantMiddleware>();
+app.UseAuthorization();
+
+// 7. Controllers
+app.MapControllers();
 
 // ══════════════════════════════════════════════════════════════
 // Angular Dev Server (Development Only)
@@ -320,6 +326,7 @@ if (builder.Environment.IsDevelopment())
 // ══════════════════════════════════════════════════════════════
 app.Logger.LogInformation("DevKen School Management API is starting...");
 app.Logger.LogInformation("Environment: {Environment}", app.Environment.EnvironmentName);
+app.Logger.LogInformation("Allowed CORS Origins: {Origins}", string.Join(", ", allowedOrigins));
 app.Logger.LogInformation("Application started successfully. Press Ctrl+C to shut down.");
 
 app.Run();
