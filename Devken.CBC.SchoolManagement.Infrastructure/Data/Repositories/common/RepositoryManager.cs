@@ -1,27 +1,7 @@
-﻿// ─────────────────────────────────────────────────────────────────────────────
-// DIFF / ADDITION for RepositoryManager.cs
-//
-// 1. Add private field (in the "Finance" region):
-//
-//   private readonly Lazy<IFeeStructureRepository> _feeStructureRepository;
-//
-// 2. In the constructor, after the _feeItemRepository initialisation:
-//
-//   _feeStructureRepository = new Lazy<IFeeStructureRepository>(
-//       () => new FeeStructureRepository(_context, _tenantContext));
-//
-// 3. Add the public property (in the "Finance Properties" region):
-//
-//   public IFeeStructureRepository FeeStructure => _feeStructureRepository.Value;
-//
-// Full updated class shown below for reference.
-// ─────────────────────────────────────────────────────────────────────────────
-
-using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces;
+﻿using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academics;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Assessments;
-using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Curriculum;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Finance;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Identity;
@@ -34,7 +14,7 @@ using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academic;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academics;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessments;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Curriculum;
-using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Finance;       // ← ensure this is present
+using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Finance;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Identity;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSeries;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Payments;
@@ -54,6 +34,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         private readonly TenantContext _tenantContext;
 
         // ── Academic ─────────────────────────────────────────────────────────
+        private readonly Lazy<IInvoiceRepository> _invoiceRepository;
         private readonly Lazy<IParentRepository> _parentRepository;
         private readonly Lazy<IStudentRepository> _studentRepository;
         private readonly Lazy<ITeacherRepository> _teacherRepository;
@@ -96,7 +77,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
 
         // ── Finance ──────────────────────────────────────────────────────────
         private readonly Lazy<IFeeItemRepository> _feeItemRepository;
-        private readonly Lazy<IFeeStructureRepository> _feeStructureRepository; // ← NEW
+        private readonly Lazy<IFeeStructureRepository> _feeStructureRepository;
 
         public RepositoryManager(AppDbContext context, TenantContext tenantContext)
         {
@@ -104,54 +85,87 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
             _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
 
             // Academic
-            _parentRepository = new Lazy<IParentRepository>(() => new ParentRepository(_context, _tenantContext));
-            _studentRepository = new Lazy<IStudentRepository>(() => new StudentRepository(_context, _tenantContext));
-            _teacherRepository = new Lazy<ITeacherRepository>(() => new TeacherRepository(_context, _tenantContext));
-            _schoolRepository = new Lazy<ISchoolRepository>(() => new SchoolRepository(_context, _tenantContext));
-            _academicYearRepository = new Lazy<IAcademicYearRepository>(() => new AcademicYearRepository(_context, _tenantContext));
-            _termRepository = new Lazy<ITermRepository>(() => new TermRepository(_context, _tenantContext));
-            _classRepository = new Lazy<IClassRepository>(() => new ClassRepository(_context, _tenantContext));
-            _subjectRepository = new Lazy<ISubjectRepository>(() => new SubjectRepository(_context, _tenantContext));
-            _userActivityRepository = new Lazy<IUserActivityRepository>(() => new UserActivityRepository(_context, _tenantContext));
-            _gradeRepository = new Lazy<IGradeRepository>(() => new GradeRepository(_context, _tenantContext));
+            _invoiceRepository = new Lazy<IInvoiceRepository>(
+                () => new InvoiceRepository(_context, _tenantContext));
+            _parentRepository = new Lazy<IParentRepository>(
+                () => new ParentRepository(_context, _tenantContext));
+            _studentRepository = new Lazy<IStudentRepository>(
+                () => new StudentRepository(_context, _tenantContext));
+            _teacherRepository = new Lazy<ITeacherRepository>(
+                () => new TeacherRepository(_context, _tenantContext));
+            _schoolRepository = new Lazy<ISchoolRepository>(
+                () => new SchoolRepository(_context, _tenantContext));
+            _academicYearRepository = new Lazy<IAcademicYearRepository>(
+                () => new AcademicYearRepository(_context, _tenantContext));
+            _termRepository = new Lazy<ITermRepository>(
+                () => new TermRepository(_context, _tenantContext));
+            _classRepository = new Lazy<IClassRepository>(
+                () => new ClassRepository(_context, _tenantContext));
+            _subjectRepository = new Lazy<ISubjectRepository>(
+                () => new SubjectRepository(_context, _tenantContext));
+            _userActivityRepository = new Lazy<IUserActivityRepository>(
+                () => new UserActivityRepository(_context, _tenantContext));
+            _gradeRepository = new Lazy<IGradeRepository>(
+                () => new GradeRepository(_context, _tenantContext));
 
             // CBC Curriculum
-            _learningAreaRepository = new Lazy<ILearningAreaRepository>(() => new LearningAreaRepository(_context, _tenantContext));
-            _strandRepository = new Lazy<IStrandRepository>(() => new StrandRepository(_context, _tenantContext));
-            _subStrandRepository = new Lazy<ISubStrandRepository>(() => new SubStrandRepository(_context, _tenantContext));
-            _learningOutcomeRepository = new Lazy<ILearningOutcomeRepository>(() => new LearningOutcomeRepository(_context, _tenantContext));
+            _learningAreaRepository = new Lazy<ILearningAreaRepository>(
+                () => new LearningAreaRepository(_context, _tenantContext));
+            _strandRepository = new Lazy<IStrandRepository>(
+                () => new StrandRepository(_context, _tenantContext));
+            _subStrandRepository = new Lazy<ISubStrandRepository>(
+                () => new SubStrandRepository(_context, _tenantContext));
+            _learningOutcomeRepository = new Lazy<ILearningOutcomeRepository>(
+                () => new LearningOutcomeRepository(_context, _tenantContext));
 
             // Assessments
-            _formativeAssessmentRepository = new Lazy<IFormativeAssessmentRepository>(() => new FormativeAssessmentRepository(_context, _tenantContext));
-            _summativeAssessmentRepository = new Lazy<ISummativeAssessmentRepository>(() => new SummativeAssessmentRepository(_context, _tenantContext));
-            _competencyAssessmentRepository = new Lazy<ICompetencyAssessmentRepository>(() => new CompetencyAssessmentRepository(_context, _tenantContext));
-            _formativeScoreRepository = new Lazy<IFormativeAssessmentScoreRepository>(() => new FormativeAssessmentScoreRepository(_context, _tenantContext));
-            _summativeScoreRepository = new Lazy<ISummativeAssessmentScoreRepository>(() => new SummativeAssessmentScoreRepository(_context, _tenantContext));
-            _competencyScoreRepository = new Lazy<ICompetencyAssessmentScoreRepository>(() => new CompetencyAssessmentScoreRepository(_context, _tenantContext));
+            _formativeAssessmentRepository = new Lazy<IFormativeAssessmentRepository>(
+                () => new FormativeAssessmentRepository(_context, _tenantContext));
+            _summativeAssessmentRepository = new Lazy<ISummativeAssessmentRepository>(
+                () => new SummativeAssessmentRepository(_context, _tenantContext));
+            _competencyAssessmentRepository = new Lazy<ICompetencyAssessmentRepository>(
+                () => new CompetencyAssessmentRepository(_context, _tenantContext));
+            _formativeScoreRepository = new Lazy<IFormativeAssessmentScoreRepository>(
+                () => new FormativeAssessmentScoreRepository(_context, _tenantContext));
+            _summativeScoreRepository = new Lazy<ISummativeAssessmentScoreRepository>(
+                () => new SummativeAssessmentScoreRepository(_context, _tenantContext));
+            _competencyScoreRepository = new Lazy<ICompetencyAssessmentScoreRepository>(
+                () => new CompetencyAssessmentScoreRepository(_context, _tenantContext));
 
             // Identity
-            _userRepository = new Lazy<IUserRepository>(() => new UserRepository(_context, _tenantContext));
-            _roleRepository = new Lazy<IRoleRepository>(() => new RoleRepository(_context, _tenantContext));
-            _permissionRepository = new Lazy<IPermissionRepository>(() => new PermissionRepository(_context, _tenantContext));
-            _rolePermissionRepository = new Lazy<IRolePermissionRepository>(() => new RolePermissionRepository(_context, _tenantContext));
-            _userRoleRepository = new Lazy<IUserRoleRepository>(() => new UserRoleRepository(_context, _tenantContext));
-            _refreshTokenRepository = new Lazy<IRefreshTokenRepository>(() => new RefreshTokenRepository(_context, _tenantContext));
-            _superAdminRepository = new Lazy<ISuperAdminRepository>(() => new SuperAdminRepository(_context, _tenantContext));
+            _userRepository = new Lazy<IUserRepository>(
+                () => new UserRepository(_context, _tenantContext));
+            _roleRepository = new Lazy<IRoleRepository>(
+                () => new RoleRepository(_context, _tenantContext));
+            _permissionRepository = new Lazy<IPermissionRepository>(
+                () => new PermissionRepository(_context, _tenantContext));
+            _rolePermissionRepository = new Lazy<IRolePermissionRepository>(
+                () => new RolePermissionRepository(_context, _tenantContext));
+            _userRoleRepository = new Lazy<IUserRoleRepository>(
+                () => new UserRoleRepository(_context, _tenantContext));
+            _refreshTokenRepository = new Lazy<IRefreshTokenRepository>(
+                () => new RefreshTokenRepository(_context, _tenantContext));
+            _superAdminRepository = new Lazy<ISuperAdminRepository>(
+                () => new SuperAdminRepository(_context, _tenantContext));
 
             // Number Series
             _documentNumberSeriesRepository = new Lazy<IDocumentNumberSeriesRepository>(
                 () => new DocumentNumberService(_context, _tenantContext, this));
 
             // Payments
-            _mpesaPaymentRepository = new Lazy<IMpesaPaymentRepository>(() => new MpesaPaymentRepository(_context, _tenantContext));
+            _mpesaPaymentRepository = new Lazy<IMpesaPaymentRepository>(
+                () => new MpesaPaymentRepository(_context, _tenantContext));
 
             // Finance
-            _feeItemRepository = new Lazy<IFeeItemRepository>(() => new FeeItemRepository(_context, _tenantContext));
-            _feeStructureRepository = new Lazy<IFeeStructureRepository>(      // ← NEW
+            _feeItemRepository = new Lazy<IFeeItemRepository>(
+                () => new FeeItemRepository(_context, _tenantContext));
+            _feeStructureRepository = new Lazy<IFeeStructureRepository>(
                 () => new FeeStructureRepository(_context, _tenantContext));
         }
 
         // ── Academic Properties ──────────────────────────────────────────────
+        public IInvoiceRepository Invoice => _invoiceRepository.Value;
+        public IParentRepository Parent => _parentRepository.Value;
         public IStudentRepository Student => _studentRepository.Value;
         public ITeacherRepository Teacher => _teacherRepository.Value;
         public ISchoolRepository School => _schoolRepository.Value;
@@ -191,7 +205,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
 
         // ── Finance Properties ───────────────────────────────────────────────
         public IFeeItemRepository FeeItem => _feeItemRepository.Value;
-        public IFeeStructureRepository FeeStructure => _feeStructureRepository.Value; // ← NEW
+        public IFeeStructureRepository FeeStructure => _feeStructureRepository.Value;
 
         // ── Number Series Properties ─────────────────────────────────────────
         public IDocumentNumberSeriesRepository DocumentNumberSeries => _documentNumberSeriesRepository.Value;
