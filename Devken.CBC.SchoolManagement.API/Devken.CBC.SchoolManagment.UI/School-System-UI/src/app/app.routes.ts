@@ -16,7 +16,7 @@ export const appRoutes: Route[] = [
     // Redirect signed-in user to the '/example'
     { path: 'signed-in-redirect', pathMatch: 'full', redirectTo: 'example' },
 
-    // Guest Auth routes
+    // ── Guest Auth routes (unauthenticated only) ──────────────────────────────
     {
         path: '',
         canActivate: [NoAuthGuard],
@@ -25,14 +25,14 @@ export const appRoutes: Route[] = [
         data: { layout: 'empty' },
         children: [
             { path: 'confirmation-required', loadChildren: () => import('./modules/auth/confirmation-required/confirmation-required.routes') },
-            { path: 'forgot-password', loadChildren: () => import('./modules/auth/forgot-password/forgot-password.routes') },
-            { path: 'reset-password', loadChildren: () => import('./modules/auth/reset-password/reset-password.routes') },
-            { path: 'sign-in', loadChildren: () => import('./modules/auth/sign-in/sign-in.routes') },
-            { path: 'sign-up', loadChildren: () => import('./modules/auth/sign-up/sign-up.routes') },
+            { path: 'forgot-password',       loadChildren: () => import('./modules/auth/forgot-password/forgot-password.routes') },
+            { path: 'reset-password',        loadChildren: () => import('./modules/auth/reset-password/reset-password.routes') },
+            { path: 'sign-in',               loadChildren: () => import('./modules/auth/sign-in/sign-in.routes') },
+            { path: 'sign-up',               loadChildren: () => import('./modules/auth/sign-up/sign-up.routes') },
         ]
     },
 
-    // Change password route - Only when authenticated & password change required
+    // ── Change password route (authenticated + password change required) ───────
     {
         path: '',
         canActivate: [AuthGuard],
@@ -47,7 +47,7 @@ export const appRoutes: Route[] = [
         ]
     },
 
-    // Auth routes for authenticated users
+    // ── Auth routes for authenticated users ───────────────────────────────────
     {
         path: '',
         canActivate: [AuthGuard],
@@ -55,12 +55,12 @@ export const appRoutes: Route[] = [
         component: LayoutComponent,
         data: { layout: 'empty' },
         children: [
-            { path: 'sign-out', loadChildren: () => import('./modules/auth/sign-out/sign-out.routes') },
+            { path: 'sign-out',       loadChildren: () => import('./modules/auth/sign-out/sign-out.routes') },
             { path: 'unlock-session', loadChildren: () => import('./modules/auth/unlock-session/unlock-session.routes') }
         ]
     },
 
-    // Landing routes
+    // ── Landing routes ────────────────────────────────────────────────────────
     {
         path: '',
         component: LayoutComponent,
@@ -70,7 +70,7 @@ export const appRoutes: Route[] = [
         ]
     },
 
-    // Admin routes - Protected with password change check
+    // ── Admin routes (protected with password change check) ───────────────────
     {
         path: '',
         canActivate: [AuthGuard, passwordChangeRequiredGuard],
@@ -82,7 +82,7 @@ export const appRoutes: Route[] = [
         ]
     },
 
-    // Main App routes (Permission-based)
+    // ── Main App routes (permission-based) ────────────────────────────────────
     {
         path: '',
         component: LayoutComponent,
@@ -94,38 +94,34 @@ export const appRoutes: Route[] = [
             // UI Design
             { path: 'page-design-v1', loadChildren: () => import('./page-design-version-one/page-design-version-one.routes').then(m => m.default) },
 
-            // Administration
+            // ── Administration ────────────────────────────────────────────────
             {
                 path: 'administration',
                 children: [
-                    { path: 'roles', loadChildren: () => import('app/RolesAndPermission/role-assignment.component.routes') },
-                     { path: 'permissions', loadChildren: () => import('app/RolesAndPermission/permission/role-permission-management.component.routes') },
-                    { path: 'schools', loadChildren: () => import('app/Tenant/schools-management.routes') },
-                     { path: 'logs', loadChildren: () => import('app/logs/userActivities/user-activity.component.routes') },
-                    { path: 'users', loadChildren: () => import('app/UserManagement/users-management.component.routes') }
+                    { path: 'roles',       loadChildren: () => import('app/RolesAndPermission/role-assignment.component.routes') },
+                    { path: 'permissions', loadChildren: () => import('app/RolesAndPermission/permission/role-permission-management.component.routes') },
+                    { path: 'schools',     loadChildren: () => import('app/Tenant/schools-management.routes') },
+                    { path: 'logs',        loadChildren: () => import('app/logs/userActivities/user-activity.component.routes') },
+                    { path: 'users',       loadChildren: () => import('app/UserManagement/users-management.component.routes') }
                 ]
             },
 
-            // Academic
+            // ── Academic ──────────────────────────────────────────────────────
             {
                 path: 'academic',
                 children: [
                     { path: 'academic-years', loadChildren: () => import('app/Academics/AcademicYear/academic-years.routes') },
-                    { path: 'terms', loadChildren: () => import('app/Academics/Terms/terms.routes') },
-                    { path: 'parents', loadChildren: () => import('app/Academics/Parents/Parent.routes') },
-                    { path: 'students', loadChildren: () => import('app/administration/students/student.component.routes') },
-                    { path: 'subjects',       loadChildren: () => import('app/Academics/Subject/subjects.routes').then(m => m.default) },  // ← ADD THIS
-                    { path: 'subjects',       loadChildren: () => import('app/Subject/subjects.routes').then(m => m.default) },  // ← ADD THIS
-                    { path: 'teachers', loadChildren: () => import('app/Academics/Teachers/teachers.component.routes') },
-                    { path: 'classes', loadChildren: () => import('app/Classes/classes-management.component.routes') },
-                    { path: 'grades', loadChildren: () => import('app/grades/grades.routes') }
-                  //  { path: 'details', loadChildren: () => import('app/administration/students/details/student-details.component.routes') },
-                    // { path: 'grades', loadChildren: () => import('app/modules/academic/grades/grades.routes') }
+                    { path: 'terms',          loadChildren: () => import('app/Academics/Terms/terms.routes') },
+                    { path: 'parents',        loadChildren: () => import('app/Academics/Parents/Parent.routes') },
+                    { path: 'students',       loadChildren: () => import('app/administration/students/student.component.routes') },
+                    { path: 'subjects',       loadChildren: () => import('app/Academics/Subject/subjects.routes').then(m => m.default) },
+                    { path: 'teachers',       loadChildren: () => import('app/Academics/Teachers/teachers.component.routes') },
+                    { path: 'classes',        loadChildren: () => import('app/Classes/classes-management.component.routes') },
+                    { path: 'grades',         loadChildren: () => import('app/grades/grades.routes') }
                 ]
             },
 
-
-            // Settings
+            // ── Settings ──────────────────────────────────────────────────────
             {
                 path: 'settings',
                 children: [
@@ -133,51 +129,44 @@ export const appRoutes: Route[] = [
                 ]
             },
 
-            // Assessment
+            // ── Assessment ────────────────────────────────────────────────────
             {
                 path: 'assessment',
                 children: [
-                    { path: 'assessments', loadChildren: () => import('app/assessment/Assessments/assessments.component.routes') },
-              
+                    { path: 'assessments', loadChildren: () => import('app/assessment/Assessments/assessments.component.routes') }
                 ]
             },
 
-            // Finance
+            // ── Finance ───────────────────────────────────────────────────────
             {
                 path: 'finance',
                 children: [
-                    { path: 'fees', loadChildren: () => import('app/Finance/fee-item/fee-items.routes') },
-                    { path: 'payments', loadChildren: () => import('app/modules/finance/payments/payments.routes') },
-                    { path: 'invoices', loadChildren: () => import('app/Finance/Invoice/Invoice.routes') }
+                    { path: 'fees',       loadChildren: () => import('app/Finance/fee-item/fee-items.routes') },
+                    { path: 'fee-structures', loadChildren: () => import('app/Finance/fee-structure/fee-structures.component.routes') },
+                    { path: 'invoices',   loadChildren: () => import('app/Finance/Invoice/Invoice.routes') },
+                   // { path: 'payments',   loadChildren: () => import('app/mod') }
                 ]
             },
 
-            // Curriculum
+            // ── Curriculum ────────────────────────────────────────────────────
             {
                 path: 'curriculum',
                 loadChildren: () => import('./curriculum/curriculum.routes'),
                 children: [
-                    { path: 'learning-areas', loadChildren: () => import('app/curriculum/curriculum.routes') },
-                    { path: 'strands', loadChildren: () => import('app/curriculum/curriculum.routes') },
-                    { path: 'sub-strands', loadChildren: () => import('app/curriculum/curriculum.routes') },
-                    { path: 'learning-outcomes', loadChildren: () => import('app/curriculum/curriculum.routes') },
-                    
-                    { path: 'learning-area', loadChildren: () => import('app/curriculum/curriculum.routes') },
-                    { path: 'strand': () => import('app/curriculum/curriculum.routes') },
-                    { path: 'substrand', loadChildren: () => import(app/curriculum/curriculum.routes') },
-                    { path: 'learning-outcome', loadChildren: () => import('app/curriculum/curriculum.routes'}
-
-                    { path: 'structure', loadChildren: () => import('app/modules/curriculum/structure/structure.routes') },
-                    { path: 'lesson-plans', loadChildren: () => import('app/modules/curriculum/lesson-plans/lesson-plans.routes') }
+                   // { path: 'learning-areas',     loadChildren: () => import('app/curriculum/learning-areas/learning-area-form') },
+                    // { path: 'strands',            loadChildren: () => import('app/curriculum/Strand/strand.routes') },
+                    // { path: 'sub-strands',        loadChildren: () => import('app/curriculum/SubStrand/sub-strand.routes') },
+                    // { path: 'learning-outcomes',  loadChildren: () => import('app/curriculum/LearningOutcome/learning-outcome.routes') },
+                    // { path: 'structure',          loadChildren: () => import('app/modules/curriculum/structure/structure.routes') },
+                    // { path: 'lesson-plans',       loadChildren: () => import('app/modules/curriculum/lesson-plans/lesson-plans.routes') }
                 ]
-                loadChildren: () => import('./curriculum/curriculum.routes')
             },
 
-            // Super Admin
+            // ── Super Admin ───────────────────────────────────────────────────
             {
                 path: 'superadmin',
                 children: [
-                    // Add superadmin modules if needed
+                    // Add superadmin modules here when needed
                 ]
             }
 
