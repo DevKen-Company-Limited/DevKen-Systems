@@ -142,7 +142,7 @@ export const appRoutes: Route[] = [
                 path: 'finance',
                 children: [
                     { path: 'fees',       loadChildren: () => import('app/Finance/fee-item/fee-items.routes') },
-                    { path: 'fee-structures', loadChildren: () => import('app/Finance/fee-structure/fee-structures.component.routes') },
+                    { path: 'fee-structure', loadChildren: () => import('app/Finance/fee-structure/fee-structures.component.routes') },
                     { path: 'invoices',   loadChildren: () => import('app/Finance/Invoice/Invoice.routes') },
                    // { path: 'payments',   loadChildren: () => import('app/mod') }
                 ]
@@ -152,14 +152,11 @@ export const appRoutes: Route[] = [
             {
                 path: 'curriculum',
                 loadChildren: () => import('./curriculum/curriculum.routes'),
-                children: [
-                   // { path: 'learning-areas',     loadChildren: () => import('app/curriculum/learning-areas/learning-area-form') },
-                    // { path: 'strands',            loadChildren: () => import('app/curriculum/Strand/strand.routes') },
-                    // { path: 'sub-strands',        loadChildren: () => import('app/curriculum/SubStrand/sub-strand.routes') },
-                    // { path: 'learning-outcomes',  loadChildren: () => import('app/curriculum/LearningOutcome/learning-outcome.routes') },
-                    // { path: 'structure',          loadChildren: () => import('app/modules/curriculum/structure/structure.routes') },
-                    // { path: 'lesson-plans',       loadChildren: () => import('app/modules/curriculum/lesson-plans/lesson-plans.routes') }
-                ]
+                // children: [
+
+                //     {path : 'curriculum', loadChildren: () => import('app/curriculum/curriculum.routes')}
+
+                // ]
             },
 
             // ── Super Admin ───────────────────────────────────────────────────
