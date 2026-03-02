@@ -326,7 +326,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             // Finance Repositories
             services.AddScoped<IFeeItemRepository, FeeItemRepository>();
             services.AddScoped<IFeeStructureRepository, FeeStructureRepository>();
-            services.AddScoped<IInvoiceRepository, InvoiceRepository>();      // ← NEW
+            services.AddScoped<IInvoiceRepository, InvoiceRepository>();
+            services.AddScoped<IInvoiceItemRepository, InvoiceItemRepository>();
 
             // Assessment Repositories
             services.AddScoped<IFormativeAssessmentRepository, FormativeAssessmentRepository>();

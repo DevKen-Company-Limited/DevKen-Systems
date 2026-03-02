@@ -18,6 +18,7 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
     {
         // ================= ACADEMIC =================
         IInvoiceRepository Invoice { get; }
+        IInvoiceItemRepository InvoiceItem { get; }
         IParentRepository Parent { get; }
         IStudentRepository Student { get; }
         ITeacherRepository Teacher { get; }

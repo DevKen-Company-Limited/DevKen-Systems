@@ -144,6 +144,7 @@ export const appRoutes: Route[] = [
                     { path: 'fees',       loadChildren: () => import('app/Finance/fee-item/fee-items.routes') },
                     { path: 'fee-structure', loadChildren: () => import('app/Finance/fee-structure/fee-structures.component.routes') },
                     { path: 'invoices',   loadChildren: () => import('app/Finance/Invoice/Invoice.routes') },
+                    { path: 'invoice-items',   loadChildren: () => import('app/Finance/InvoiceItem/invoice-items.routes') },
                    // { path: 'payments',   loadChildren: () => import('app/mod') }
                 ]
             },
