@@ -234,6 +234,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                 RegisterPermissionPolicy(options, PermissionKeys.FeeStructureWrite);
                 RegisterPermissionPolicy(options, PermissionKeys.FeeStructureDelete);
 
+                RegisterPermissionPolicy(options, PermissionKeys.InvoiceItemRead);   // ← ADD
+                RegisterPermissionPolicy(options, PermissionKeys.InvoiceItemWrite);
+
                 // ── Curriculum permissions ───────────────────────────────────
                 RegisterPermissionPolicy(options, PermissionKeys.CurriculumRead);
                 RegisterPermissionPolicy(options, PermissionKeys.CurriculumWrite);
@@ -326,7 +329,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             // Finance Repositories
             services.AddScoped<IFeeItemRepository, FeeItemRepository>();
             services.AddScoped<IFeeStructureRepository, FeeStructureRepository>();
-            services.AddScoped<IInvoiceRepository, InvoiceRepository>();      // ← NEW
+            services.AddScoped<IInvoiceRepository, InvoiceRepository>();
+            services.AddScoped<IInvoiceItemRepository, InvoiceItemRepository>();
 
             // Assessment Repositories
             services.AddScoped<IFormativeAssessmentRepository, FormativeAssessmentRepository>();

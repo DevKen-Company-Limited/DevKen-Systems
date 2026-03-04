@@ -82,6 +82,8 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
         public const string FeeStructureWrite = "FeeStructure.Write";
         /// <summary>Delete fee structures.</summary>
         public const string FeeStructureDelete = "FeeStructure.Delete";
+        public const string InvoiceItemRead = "InvoiceItem.Read";
+        public const string InvoiceItemWrite = "InvoiceItem.Write";
 
         // ── Curriculum ───────────────────────────────────
         public const string CurriculumRead = "Curriculum.Read";
@@ -130,6 +132,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
             // Finance — granular
             FeeRead, FeeWrite,
             PaymentRead, PaymentWrite,
+            InvoiceItemRead, InvoiceItemWrite,
             InvoiceRead, InvoiceWrite,
             FeeStructureRead, FeeStructureWrite, FeeStructureDelete,
 

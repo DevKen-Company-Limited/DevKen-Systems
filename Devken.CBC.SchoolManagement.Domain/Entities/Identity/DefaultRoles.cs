@@ -33,6 +33,8 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                     PermissionKeys.RoleRead,
                     PermissionKeys.RoleWrite,
                     PermissionKeys.RoleDelete,
+                    PermissionKeys.InvoiceItemRead,
+                    PermissionKeys.InvoiceItemWrite,
 
                     // Academic Year
                     PermissionKeys.AcademicYearRead,
