@@ -1,95 +1,71 @@
-<!-- ═══════════════════════════════════════════════════════════════════════
-     Invoice Items List
-     ═══════════════════════════════════════════════════════════════════════ -->
-<div class="flex flex-col gap-5">
+// ── Response ──────────────────────────────────────────────────────────────────
 
-  <!-- Stats Cards -->
-  <app-stats-cards [cards]="statsCards" [columns]="4"></app-stats-cards>
+export interface InvoiceItemResponseDto {
+  id: string;
+  invoiceId: string;
+  feeItemId?: string;
+  termId?: string;
+  description: string;
+  itemType?: string;
+  quantity: number;
+  unitPrice: number;
+  discount: number;
+  isTaxable: boolean;
+  taxRate?: number;
+  total: number;
+  taxAmount: number;
+  netAmount: number;
+  effectiveUnitPrice: number;
+  glCode?: string;
+  notes?: string;
+  createdOn: string;
+  updatedOn: string;
+}
 
-  <!-- Filter Panel (toggle controlled by parent) -->
-  <app-filter-panel
-    [fields]="filterFields"
-    [showPanel]="showFilters"
-    [showToggleButton]="false"
-    [columns]="2"
-    (filterChange)="onFilterChange($event)"
-    (clearAll)="onClearFilters()">
-  </app-filter-panel>
+// ── Create ────────────────────────────────────────────────────────────────────
 
-  <!-- Data Table -->
-  <app-data-table
-    [columns]="columns"
-    [data]="paginatedItems"
-    [actions]="actions"
-    [loading]="isLoading"
-    [header]="tableHeader"
-    [emptyState]="tableEmptyState"
-    [cellTemplates]="cellTemplates">
-  </app-data-table>
+export interface CreateInvoiceItemDto {
+  invoiceId: string;
+  feeItemId?: string | null;
+  termId?: string | null;
+  description: string;
+  itemType?: string | null;
+  quantity: number;
+  unitPrice: number;
+  discount: number;
+  isTaxable: boolean;
+  taxRate?: number | null;
+  glCode?: string | null;
+  notes?: string | null;
+  discountOverride?: number | null;
+}
 
-  <!-- Pagination -->
-  <app-pagination
-    *ngIf="filteredItems.length > itemsPerPage"
-    [currentPage]="currentPage"
-    [totalItems]="filteredItems.length"
-    [itemsPerPage]="itemsPerPage"
-    [showPageNumbers]="true"
-    itemLabel="items"
-    (pageChange)="onPageChange($event)">
-  </app-pagination>
+// ── Update ────────────────────────────────────────────────────────────────────
 
-</div>
+export interface UpdateInvoiceItemDto {
+  description: string;
+  itemType?: string | null;
+  quantity: number;
+  unitPrice: number;
+  discount: number;
+  isTaxable: boolean;
+  taxRate?: number | null;
+  glCode?: string | null;
+  notes?: string | null;
+  discountOverride?: number | null;
+}
 
-<!-- ═══════════════════════════════════════════════════════════════════════
-     Cell Templates
-     ═══════════════════════════════════════════════════════════════════════ -->
+// ── Dialog data ───────────────────────────────────────────────────────────────
 
-<!-- Description -->
-<ng-template #descriptionCell let-row>
-  <div class="flex flex-col">
-    <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ row.description }}</span>
-    <span *ngIf="row.glCode" class="text-xs text-gray-400 font-mono">{{ row.glCode }}</span>
-  </div>
-</ng-template>
+export interface InvoiceItemDialogData {
+  mode: 'create' | 'edit';
+  invoiceId: string;
+  item?: InvoiceItemResponseDto;
+}
 
-<!-- Type -->
-<ng-template #typeCell let-row>
-  <span *ngIf="row.itemType"
-        class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
-    {{ row.itemType }}
-  </span>
-  <span *ngIf="!row.itemType" class="text-gray-400 text-xs">—</span>
-</ng-template>
+// ── Misc ──────────────────────────────────────────────────────────────────────
 
-<!-- Unit Price -->
-<ng-template #amountCell let-row>
-  <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-    {{ formatCurrency(row.unitPrice) }}
-  </span>
-</ng-template>
-
-<!-- Discount -->
-<ng-template #discountCell let-row>
-  <span *ngIf="row.discount > 0" class="text-sm font-medium text-amber-600">
-    − {{ formatCurrency(row.discount) }}
-  </span>
-  <span *ngIf="row.discount === 0" class="text-gray-400 text-xs">—</span>
-</ng-template>
-
-<!-- Tax -->
-<ng-template #taxCell let-row>
-  <div class="flex flex-col items-end">
-    <span *ngIf="row.taxAmount > 0" class="text-sm font-medium text-blue-600">
-      {{ formatCurrency(row.taxAmount) }}
-    </span>
-    <span *ngIf="row.taxAmount > 0" class="text-xs text-gray-400">{{ row.taxRate }}%</span>
-    <span *ngIf="row.taxAmount === 0" class="text-gray-400 text-xs">—</span>
-  </div>
-</ng-template>
-
-<!-- Net Amount -->
-<ng-template #netCell let-row>
-  <span class="text-sm font-bold text-indigo-600 dark:text-indigo-400">
-    {{ formatCurrency(row.netAmount) }}
-  </span>
-</ng-template>
+export const ITEM_TYPE_OPTIONS: string[] = [
+  'Tuition', 'Transport', 'Meals', 'Accommodation',
+  'Activity', 'Uniform', 'Books', 'Exam', 'Medical', 'Other',
+];

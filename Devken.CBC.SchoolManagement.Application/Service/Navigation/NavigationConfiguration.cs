@@ -101,7 +101,7 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
                 new NavItem("fees", "Fees", "heroicons_outline:currency-dollar", "/finance/fees", PermissionKeys.FeeRead),
                 new NavItem("payments", "Payments", "heroicons_outline:credit-card", "/finance/payments", PermissionKeys.PaymentRead),
                 new NavItem("invoices", "Invoices", "heroicons_outline:document-text", "/finance/invoices", PermissionKeys.InvoiceRead),
-                new NavItem("invoice-items",  "Invoice Items",  "heroicons_outline:document-text",   "/finance/invoice-items",  PermissionKeys.InvoiceItemRead)
+                new NavItem("invoice-items", "Invoice Items", "heroicons_outline:document-text", "/finance/invoice-items",  PermissionKeys.InvoiceItemRead)
             }
         };
 

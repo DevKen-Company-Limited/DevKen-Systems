@@ -1,4 +1,4 @@
-// ── Models ────────────────────────────────────────────────────────────────────
+// ── Response ──────────────────────────────────────────────────────────────────
 
 export interface InvoiceItemResponseDto {
   id: string;
@@ -22,6 +22,8 @@ export interface InvoiceItemResponseDto {
   updatedOn: string;
 }
 
+// ── Create ────────────────────────────────────────────────────────────────────
+
 export interface CreateInvoiceItemDto {
   invoiceId: string;
   feeItemId?: string | null;
@@ -38,6 +40,8 @@ export interface CreateInvoiceItemDto {
   discountOverride?: number | null;
 }
 
+// ── Update ────────────────────────────────────────────────────────────────────
+
 export interface UpdateInvoiceItemDto {
   description: string;
   itemType?: string | null;
@@ -51,21 +55,17 @@ export interface UpdateInvoiceItemDto {
   discountOverride?: number | null;
 }
 
-// ── Form model (internal) ─────────────────────────────────────────────────────
+// ── Dialog data ───────────────────────────────────────────────────────────────
 
-export interface InvoiceItemForm {
-  description: string;
-  itemType: string;
-  quantity: number;
-  unitPrice: number;
-  discount: number;
-  isTaxable: boolean;
-  taxRate: number | null;
-  glCode: string;
-  notes: string;
-  discountOverride: number | null;
+export interface InvoiceItemDialogData {
+  mode: 'create' | 'edit';
+  invoiceId: string;
+  item?: InvoiceItemResponseDto;
 }
 
-// ── Panel mode ────────────────────────────────────────────────────────────────
+// ── Misc ──────────────────────────────────────────────────────────────────────
 
-export type PanelMode = 'create' | 'edit' | null;
+export const ITEM_TYPE_OPTIONS: string[] = [
+  'Tuition', 'Transport', 'Meals', 'Accommodation',
+  'Activity', 'Uniform', 'Books', 'Exam', 'Medical', 'Other',
+];
