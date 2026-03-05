@@ -22,12 +22,28 @@ RUN dotnet publish "Devken.CBC.SchoolManagement.API/Devken.CBC.SchoolManagement.
     -o /app/publish \
     /p:UseAppHost=false
 
+# Install EF Core tools in the SDK stage so we can bundle the migration bundle
+RUN dotnet tool install --global dotnet-ef
+ENV PATH="$PATH:/root/.dotnet/tools"
+
+# Create a self-contained EF migration bundle (no SDK needed at runtime)
+RUN dotnet ef migrations bundle \
+    --project Devken.CBC.SchoolManagement.Infrastructure/Devken.CBC.SchoolManagement.Infrastructure.csproj \
+    --startup-project Devken.CBC.SchoolManagement.API/Devken.CBC.SchoolManagement.API.csproj \
+    --output /app/publish/efbundle \
+    --self-contained \
+    --force
+
 # Stage 2: Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
 WORKDIR /app
 
-# Copy published output from build stage
+# Copy published output (includes efbundle) from build stage
 COPY --from=build /app/publish .
+
+# Copy the startup script
+COPY entrypoint.sh .
+RUN chmod +x entrypoint.sh
 
 # Expose port and set environment
 EXPOSE 10000
@@ -39,4 +55,4 @@ ENV DOTNET_RUNNING_IN_CONTAINER=true
 ENV Cors__AllowedOrigins__0=https://dev-ken-systems.vercel.app
 ENV Cors__AllowedOrigins__1=http://localhost:4200
 
-ENTRYPOINT ["dotnet", "Devken.CBC.SchoolManagement.API.dll"]
+ENTRYPOINT ["./entrypoint.sh"]
