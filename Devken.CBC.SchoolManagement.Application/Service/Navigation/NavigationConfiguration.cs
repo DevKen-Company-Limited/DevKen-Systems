@@ -12,7 +12,10 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             yield return Academic;
             yield return Assessment;
             yield return Finance;
+            yield return Accounting;
             yield return Curriculum;
+            yield return Library;
+            yield return Reports;
             yield return Settings;
         }
 
@@ -23,14 +26,14 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             Icon = "heroicons_outline:swatch",
             RequiredRole = "SuperAdmin",
             Items = new[]
-    {
-        new NavItem(
-            "page-design-v1",
-            "Page Design V1",
-            "heroicons_outline:template",
-            "/page-design-v1"
-        )
-    }
+            {
+                new NavItem(
+                    "page-design-v1",
+                    "Page Design V1",
+                    "heroicons_outline:template",
+                    "/page-design-v1"
+                )
+            }
         };
 
         public static NavigationSection SuperAdmin => new()
@@ -55,7 +58,7 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             {
                 new NavItem("users", "Users", "heroicons_outline:users", "/administration/users", PermissionKeys.UserRead),
                 new NavItem("roles", "Roles", "heroicons_outline:shield-check", "/administration/roles", PermissionKeys.RoleRead),
-                new NavItem("permissions", "permissions", "heroicons_outline:shield-check", "/administration/permissions", PermissionKeys.RoleRead)
+                new NavItem("permissions", "Permissions", "heroicons_outline:lock-closed", "/administration/permissions", PermissionKeys.RoleRead)
             }
         };
 
@@ -65,16 +68,16 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             Title = "Academic",
             Icon = "heroicons_outline:academic-cap",
             Items = new[]
-    {
-        new NavItem("academic-years", "Academic Years", "heroicons_outline:calendar", "/academic/academic-years", PermissionKeys.AcademicYearRead),
-        new NavItem("terms", "Terms", "heroicons_outline:calendar-days", "/academic/terms", PermissionKeys.TermRead),
-        new NavItem("students", "Students", "heroicons_outline:user-group", "/academic/students", PermissionKeys.StudentRead),
-        new NavItem("subjects", "Subjects", "heroicons_outline:book-open", "/academic/subjects", PermissionKeys.SubjectRead),
-        new NavItem("grades", "Grades", "heroicons_outline:clipboard-document-list", "/academic/grades", PermissionKeys.GradeRead),
-        new NavItem("teachers", "Teachers", "heroicons_outline:user-group", "/academic/teachers", PermissionKeys.TeacherRead),
-        new NavItem("classes", "Classes", "heroicons_outline:rectangle-group", "/academic/classes", PermissionKeys.ClassRead),
-        new NavItem("parents", "Parents", "heroicons_outline:user-group", "/academic/parents", PermissionKeys.ParentRead),
-    }
+            {
+                new NavItem("academic-years", "Academic Years", "heroicons_outline:calendar", "/academic/academic-years", PermissionKeys.AcademicYearRead),
+                new NavItem("terms", "Terms", "heroicons_outline:calendar-days", "/academic/terms", PermissionKeys.TermRead),
+                new NavItem("students", "Students", "heroicons_outline:user-group", "/academic/students", PermissionKeys.StudentRead),
+                new NavItem("parents", "Parents", "heroicons_outline:user-group", "/academic/parents", PermissionKeys.ParentRead),
+                new NavItem("teachers", "Teachers", "heroicons_outline:user-group", "/academic/teachers", PermissionKeys.TeacherRead),
+                new NavItem("classes", "Classes", "heroicons_outline:rectangle-group", "/academic/classes", PermissionKeys.ClassRead),
+                new NavItem("grades", "Grades", "heroicons_outline:clipboard-document-list", "/academic/grades", PermissionKeys.GradeRead),
+                new NavItem("subjects", "Subjects", "heroicons_outline:book-open", "/academic/subjects", PermissionKeys.SubjectRead),
+            }
         };
 
         public static NavigationSection Assessment => new()
@@ -88,8 +91,6 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             }
         };
 
-
-
         public static NavigationSection Finance => new()
         {
             Id = "finance",
@@ -99,9 +100,22 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             {
                 new NavItem("fee-structure", "Fee Structure", "heroicons_outline:chart-bar", "/finance/fee-structure", PermissionKeys.FeeStructureRead),
                 new NavItem("fees", "Fees", "heroicons_outline:currency-dollar", "/finance/fees", PermissionKeys.FeeRead),
-                new NavItem("payments", "Payments", "heroicons_outline:credit-card", "/finance/payments", PermissionKeys.PaymentRead),
                 new NavItem("invoices", "Invoices", "heroicons_outline:document-text", "/finance/invoices", PermissionKeys.InvoiceRead),
-                new NavItem("invoice-items",  "Invoice Items",  "heroicons_outline:document-text",   "/finance/invoice-items",  PermissionKeys.InvoiceItemRead)
+                new NavItem("invoice-items", "Invoice Items", "heroicons_outline:document-duplicate", "/finance/invoice-items", PermissionKeys.InvoiceItemRead),
+                new NavItem("payments", "Payments", "heroicons_outline:credit-card", "/finance/payments", PermissionKeys.PaymentRead),
+            }
+        };
+
+        public static NavigationSection Accounting => new()
+        {
+            Id = "accounting",
+            Title = "Accounting",
+            Icon = "heroicons_outline:calculator",
+            Items = new[]
+            {
+                new NavItem("journal-entries", "Journal Entries", "heroicons_outline:book-open", "/accounting/journal-entries", PermissionKeys.AccountingRead),
+                new NavItem("budgets", "Budgets", "heroicons_outline:chart-pie", "/accounting/budgets", PermissionKeys.AccountingRead),
+                new NavItem("expenses", "Expenses", "heroicons_outline:receipt-percent", "/accounting/expenses", PermissionKeys.AccountingRead),
             }
         };
 
@@ -116,16 +130,42 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
                 new NavItem("strands", "Strands", "heroicons_outline:squares-2x2", "/curriculum/strands", PermissionKeys.CurriculumRead),
                 new NavItem("substrands", "Sub-Strands", "heroicons_outline:view-columns", "/curriculum/sub-strands", PermissionKeys.CurriculumRead),
                 new NavItem("learning-outcomes", "Learning Outcomes", "heroicons_outline:clipboard-document", "/curriculum/learning-outcomes", PermissionKeys.CurriculumRead),
-                new NavItem("lessonplans", "Lesson Plans", "heroicons_outline:document-duplicate", "/curriculum/lesson-plans", PermissionKeys.LessonPlanRead)
+                new NavItem("lessonplans", "Lesson Plans", "heroicons_outline:document-duplicate", "/curriculum/lesson-plans", PermissionKeys.LessonPlanRead),
+            }
+        };
+
+        public static NavigationSection Library => new()
+        {
+            Id = "library",
+            Title = "Library",
+            Icon = "heroicons_outline:building-library",
+            Items = new[]
+            {
+                new NavItem("books", "Books", "heroicons_outline:book-open", "/library/books", PermissionKeys.LibraryRead),
+                new NavItem("book-issues", "Book Issues", "heroicons_outline:arrow-right-on-rectangle", "/library/book-issues", PermissionKeys.LibraryRead),
+                new NavItem("book-returns", "Book Returns", "heroicons_outline:arrow-left-on-rectangle", "/library/book-returns", PermissionKeys.LibraryRead),
+            }
+        };
+
+        public static NavigationSection Reports => new()
+        {
+            Id = "reports",
+            Title = "Reports",
+            Icon = "heroicons_outline:chart-bar-square",
+            Items = new[]
+            {
+                new NavItem("academic-reports", "Academic Reports", "heroicons_outline:academic-cap", "/reports/academic", PermissionKeys.ReportRead),
+                new NavItem("finance-reports", "Finance Reports", "heroicons_outline:banknotes", "/reports/finance", PermissionKeys.ReportRead),
+                new NavItem("assessment-reports", "Assessment Reports", "heroicons_outline:clipboard-document-check", "/reports/assessment", PermissionKeys.ReportRead),
             }
         };
 
         public static NavigationSection Settings => new()
-            {
-                Id = "settings",
-                Title = "Settings",
-                Icon = "heroicons_outline:cog-8-tooth",
-                Items = new[]
+        {
+            Id = "settings",
+            Title = "Settings",
+            Icon = "heroicons_outline:cog-8-tooth",
+            Items = new[]
             {
                 new NavItem(
                     "document-number-series",
@@ -134,9 +174,6 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
                     "/settings/document-number-series",
                     PermissionKeys.DocumentNumberSeriesRead
                 ),
-                // You can add more settings items here in the future
-                // new NavItem("general-settings", "General Settings", "heroicons_outline:adjustments-horizontal", "/settings/general", PermissionKeys.SchoolWrite),
-                // new NavItem("email-templates", "Email Templates", "heroicons_outline:envelope", "/settings/email-templates", PermissionKeys.SchoolWrite),
             }
         };
 
