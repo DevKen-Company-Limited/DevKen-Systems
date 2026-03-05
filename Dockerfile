@@ -35,4 +35,8 @@ ENV ASPNETCORE_URLS=http://+:10000
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV DOTNET_RUNNING_IN_CONTAINER=true
 
+# CORS allowed origins (double-underscore = nested config in ASP.NET Core)
+ENV Cors__AllowedOrigins__0=https://dev-ken-systems.vercel.app
+ENV Cors__AllowedOrigins__1=http://localhost:4200
+
 ENTRYPOINT ["dotnet", "Devken.CBC.SchoolManagement.API.dll"]
