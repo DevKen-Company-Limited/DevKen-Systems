@@ -55,6 +55,9 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                     PermissionKeys.ClassWrite,
                     PermissionKeys.GradeRead,
                     PermissionKeys.GradeWrite,
+                    PermissionKeys.ParentRead,
+                    PermissionKeys.ParentWrite,
+                    PermissionKeys.ParentDelete,
 
                     // Term
                     PermissionKeys.TermRead,
@@ -119,6 +122,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                     PermissionKeys.ClassRead,
                     PermissionKeys.AcademicYearRead,
                     PermissionKeys.TermRead,
+                    PermissionKeys.ParentRead,
 
                     // Grades — Read/Write
                     PermissionKeys.GradeRead,
@@ -228,6 +232,8 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                     PermissionKeys.SubjectRead,
                     PermissionKeys.AcademicYearRead,
                     PermissionKeys.TermRead,
+                    PermissionKeys.ParentRead,
+                    PermissionKeys.ParentWrite,
 
                     // Reports — Read Only
                     PermissionKeys.ReportRead,
@@ -256,6 +262,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                     PermissionKeys.AcademicYearWrite,
                     PermissionKeys.TermRead,
                     PermissionKeys.TermWrite,
+                    PermissionKeys.ParentRead,
 
                     // Assessment — Full Access
                     PermissionKeys.AssessmentRead,

@@ -1,4 +1,13 @@
+const isProduction = (() => {
+    if (typeof window === 'undefined') return false;
+
+    const host = window.location.hostname;
+    return host !== 'localhost' && host !== '127.0.0.1';
+})();
+
 export const environment = {
-  production: false,
-  apiUrl: 'https://localhost:44383' // Local/dev API URL
+    production: isProduction,
+    apiUrl: isProduction
+        ? 'https://devken-systems.onrender.com'
+        : 'https://localhost:44383',
 };

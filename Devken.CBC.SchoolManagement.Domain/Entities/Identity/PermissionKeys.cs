@@ -128,6 +128,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
 
             // Finance — broad
             FinanceRead, FinanceWrite,
+            ParentRead, ParentWrite, ParentDelete,
 
             // Finance — granular
             FeeRead, FeeWrite,
