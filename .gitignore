@@ -23,7 +23,7 @@ appsettings.Local.json
 # ====================
 # Database Migrations (Entity Framework)
 # ====================
-# Migrations/
+Devken.CBC.SchoolManagement.Infrastructure/Persistence/Migrations/
 *.sql
 
 # ====================
