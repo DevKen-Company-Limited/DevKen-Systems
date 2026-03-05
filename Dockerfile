@@ -13,13 +13,21 @@ COPY Devken.CBC.SchoolManagement.Application/. Devken.CBC.SchoolManagement.Appli
 COPY Devken.CBC.SchoolManagement.Infrastructure/. Devken.CBC.SchoolManagement.Infrastructure/
 COPY Devken.CBC.SchoolManagement.Domain/. Devken.CBC.SchoolManagement.Domain/
 
+# Install EF tools before publish so we can regenerate migrations
+RUN dotnet tool install --global dotnet-ef
+ENV PATH="$PATH:/root/.dotnet/tools"
+
+# Wipe all existing migrations and regenerate a clean one
+RUN rm -rf Devken.CBC.SchoolManagement.Infrastructure/Persistence/Migrations \
+    && dotnet ef migrations add InitialMigration \
+        --project Devken.CBC.SchoolManagement.Infrastructure/Devken.CBC.SchoolManagement.Infrastructure.csproj \
+        --startup-project Devken.CBC.SchoolManagement.API/Devken.CBC.SchoolManagement.API.csproj \
+        --output-dir Persistence/Migrations
+
 RUN dotnet publish "Devken.CBC.SchoolManagement.API/Devken.CBC.SchoolManagement.API.csproj" \
     -c Release \
     -o /app/publish \
     /p:UseAppHost=false
-
-RUN dotnet tool install --global dotnet-ef
-ENV PATH="$PATH:/root/.dotnet/tools"
 
 RUN dotnet ef migrations bundle \
     --project Devken.CBC.SchoolManagement.Infrastructure/Devken.CBC.SchoolManagement.Infrastructure.csproj \
