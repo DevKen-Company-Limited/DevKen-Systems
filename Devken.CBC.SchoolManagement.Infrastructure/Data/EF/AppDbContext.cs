@@ -127,6 +127,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         public DbSet<MpesaPaymentRecord>     MpesaPayments        { get; set; }
         public DbSet<TeacherCBCLevel>        TeacherCBCLevels     { get; set; } = null!;
         public DbSet<DocumentNumberSeries>   DocumentNumberSeries => Set<DocumentNumberSeries>();
+        public DbSet<SsoSetupToken> SsoSetupTokens => Set<SsoSetupToken>();
+        public DbSet<SsoOtpToken> SsoOtpTokens => Set<SsoOtpToken>();
 
         #endregion
 
