@@ -1,8 +1,5 @@
-// ─── Google Font import ───────────────────────────────────────────────────────
-// Add to your global styles.scss or index.html:
-// <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
 :root {
   --cbc-ink:         #0d1117;
   --cbc-ink-soft:    #4a5568;
@@ -14,26 +11,29 @@
   --cbc-forest:      #1a4731;
   --cbc-forest-2:    #226040;
   --cbc-mint:        #16a34a;
+  --cbc-primary:     #6366f1;
+  --cbc-primary-50:  #eef2ff;
+  --cbc-primary-200: #c7d2fe;
   --cbc-radius:      12px;
   --cbc-shadow-sm:   0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
   --cbc-shadow-md:   0 4px 16px rgba(0,0,0,.10), 0 2px 6px rgba(0,0,0,.06);
 }
 
-// ─── Animations ───────────────────────────────────────────────────────────────
 @keyframes cbc-slideUp {
   from { opacity: 0; transform: translateY(24px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
 @keyframes cbc-fadeUp {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
 @keyframes cbc-pulse {
   0%, 100% { box-shadow: 0 0 0 3px rgba(74,222,128,.25); }
   50%       { box-shadow: 0 0 0 6px rgba(74,222,128,.10); }
 }
 
-// ─── Root wrapper ─────────────────────────────────────────────────────────────
 auth-sign-in {
   display: block;
   position: fixed;
@@ -52,12 +52,10 @@ auth-sign-in {
 
   @media (max-width: 900px) {
     grid-template-columns: 1fr;
-
     .cbc-right-panel { display: none !important; }
   }
 }
 
-// ─── LEFT PANEL ───────────────────────────────────────────────────────────────
 .cbc-left-panel {
   display: flex;
   align-items: center;
@@ -77,6 +75,7 @@ auth-sign-in {
     background: radial-gradient(circle, rgba(22,163,74,.07) 0%, transparent 70%);
     pointer-events: none;
   }
+
   &::after {
     content: '';
     position: absolute;
@@ -94,14 +93,12 @@ auth-sign-in {
 
   > * {
     animation: cbc-fadeUp .45s ease both;
-
     @for $i from 1 through 10 {
       &:nth-child(#{$i}) { animation-delay: #{$i * 0.05}s; }
     }
   }
 }
 
-// ─── Logo ─────────────────────────────────────────────────────────────────────
 .cbc-logo {
   display: flex;
   align-items: center;
@@ -152,7 +149,6 @@ auth-sign-in {
   letter-spacing: .3px;
 }
 
-// ─── Heading ──────────────────────────────────────────────────────────────────
 .cbc-heading {
   font-family: 'Playfair Display', serif;
   font-size: 30px;
@@ -173,49 +169,102 @@ auth-sign-in {
   text-decoration: none;
   font-weight: 500;
   transition: opacity .2s;
-
   &:hover { opacity: .75; }
 }
 
-// ─── Role Switcher ────────────────────────────────────────────────────────────
+.cbc-role-switcher-shell {
+  position: relative;
+  width: 100%;
+  margin-bottom: 22px;
+
+  .cbc-role-fade {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 36px;
+    z-index: 2;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+
+    .cbc-role-arrow {
+      width: 14px; height: 14px;
+      color: var(--cbc-primary);
+      opacity: .7;
+    }
+
+    &--left {
+      left: 0;
+      background: linear-gradient(to right, var(--cbc-surface) 20%, transparent 100%);
+      padding-left: 4px;
+    }
+
+    &--right {
+      right: 0;
+      background: linear-gradient(to left, var(--cbc-surface) 20%, transparent 100%);
+      justify-content: flex-end;
+      padding-right: 4px;
+    }
+  }
+}
+
 .cbc-role-switcher {
   display: flex;
+  flex-wrap: nowrap;
   gap: 6px;
-  background: var(--cbc-surface-2);
-  border: 1px solid var(--cbc-border);
-  border-radius: var(--cbc-radius);
-  padding: 4px;
-  margin-bottom: 22px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 32px;
+  border-bottom: 2px solid var(--cbc-border);
+  margin-bottom: -2px;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
 }
 
 .cbc-role-btn {
-  flex: 1;
-  padding: 7px 6px;
-  border: none;
-  background: transparent;
-  border-radius: 8px;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--cbc-ink-muted);
-  cursor: pointer;
-  transition: all .22s ease;
+  flex-shrink: 0;
+  scroll-snap-align: start;
   white-space: nowrap;
+  padding: 5px 14px;
+  height: 32px;
+  border-radius: 20px;
+  border: 1.5px solid transparent;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .01em;
+  line-height: 1;
+  color: var(--cbc-ink-muted);
+  background: transparent;
+  cursor: pointer;
+  transition: color 180ms ease, background 180ms ease,
+              border-color 180ms ease, box-shadow 180ms ease,
+              transform 120ms ease;
 
-  &:hover {
-    color: var(--cbc-ink);
-    background: rgba(0,0,0,.04);
+  &:hover:not(.active) {
+    color: var(--cbc-primary);
+    background: var(--cbc-primary-50);
+    border-color: var(--cbc-primary-200);
+    transform: translateY(-1px);
   }
 
   &.active {
-    background: var(--cbc-surface);
-    color: var(--cbc-forest);
-    box-shadow: var(--cbc-shadow-sm);
+    color: #fff;
+    background: var(--cbc-primary);
+    border-color: var(--cbc-primary);
+    box-shadow: 0 2px 8px -1px rgba(99,102,241,.45);
     font-weight: 600;
+    scroll-snap-align: center;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cbc-primary);
+    outline-offset: 2px;
   }
 }
 
-// ─── Info Banner ──────────────────────────────────────────────────────────────
 .cbc-info-banner {
   display: flex;
   align-items: flex-start;
@@ -240,16 +289,13 @@ auth-sign-in {
   font-size: 13px;
   color: #166534;
   line-height: 1.45;
-
   strong { font-weight: 600; }
 }
 
-// ─── Alert wrapper ────────────────────────────────────────────────────────────
 .cbc-alert-wrap {
   margin-bottom: 18px;
 }
 
-// ─── Form ─────────────────────────────────────────────────────────────────────
 .cbc-form {
   display: flex;
   flex-direction: column;
@@ -259,16 +305,13 @@ auth-sign-in {
   margin-bottom: 4px;
 }
 
-// Override Angular Material field to match design
 .cbc-mat-field {
   width: 100%;
 
   .mat-mdc-form-field-flex { border-radius: var(--cbc-radius) !important; }
-
   .mdc-notched-outline__leading  { border-radius: var(--cbc-radius) 0 0 var(--cbc-radius) !important; }
   .mdc-notched-outline__trailing { border-radius: 0 var(--cbc-radius) var(--cbc-radius) 0 !important; }
 
-  // Focused border color
   &.mat-focused .mdc-notched-outline__notch,
   &.mat-focused .mdc-notched-outline__leading,
   &.mat-focused .mdc-notched-outline__trailing {
@@ -279,11 +322,9 @@ auth-sign-in {
 .cbc-toggle-pw {
   color: var(--cbc-ink-muted);
   transition: color .18s;
-
   &:hover { color: var(--cbc-ink); }
 }
 
-// ─── Actions Row ──────────────────────────────────────────────────────────────
 .cbc-actions-row {
   display: flex;
   align-items: center;
@@ -295,8 +336,6 @@ auth-sign-in {
 .cbc-remember {
   font-size: 13.5px;
   color: var(--cbc-ink-soft);
-
-  // Override mat-checkbox primary color to forest green
   --mdc-checkbox-selected-checkmark-color: #fff;
   --mdc-checkbox-selected-focus-icon-color: var(--cbc-forest);
   --mdc-checkbox-selected-hover-icon-color: var(--cbc-forest);
@@ -310,11 +349,9 @@ auth-sign-in {
   text-decoration: none;
   font-weight: 500;
   transition: opacity .2s;
-
   &:hover { opacity: .75; }
 }
 
-// ─── Submit Button ────────────────────────────────────────────────────────────
 .cbc-submit-btn {
   width: 100%;
   padding: 13px 20px !important;
@@ -366,7 +403,6 @@ auth-sign-in {
   mat-progress-spinner { --mdc-circular-progress-active-indicator-color: #fff; }
 }
 
-// ─── Divider ──────────────────────────────────────────────────────────────────
 .cbc-divider {
   display: flex;
   align-items: center;
@@ -388,11 +424,34 @@ auth-sign-in {
   letter-spacing: .3px;
 }
 
-// ─── SSO ──────────────────────────────────────────────────────────────────────
 .cbc-sso-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 10px;
+  align-items: center;
+}
+
+.cbc-sso-google-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+}
+
+.cbc-google-btn-host {
+  width: 100%;
+  &.cbc-hidden { display: none; }
+}
+
+.cbc-sso-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--cbc-ink-muted);
+  font-size: 13px;
+  white-space: nowrap;
+
+  mat-progress-spinner { flex-shrink: 0; }
 }
 
 .cbc-sso-btn {
@@ -411,21 +470,29 @@ auth-sign-in {
   transition: all .18s ease !important;
   height: auto !important;
 
-  &:hover {
+  &:hover:not([disabled]) {
     border-color: var(--cbc-border) !important;
     background: var(--cbc-surface-2) !important;
     transform: translateY(-1px);
     box-shadow: var(--cbc-shadow-sm) !important;
   }
+
+  &[disabled] {
+    opacity: .45 !important;
+    cursor: not-allowed !important;
+  }
 }
 
 .cbc-sso-icon {
-  width: 18px;
-  height: 18px;
+  width: 18px; height: 18px;
   flex-shrink: 0;
 }
 
-// ─── RIGHT PANEL ──────────────────────────────────────────────────────────────
+.cbc-sso-spinner {
+  flex-shrink: 0;
+  --mdc-circular-progress-active-indicator-color: var(--cbc-ink-soft);
+}
+
 .cbc-right-panel {
   background: var(--cbc-forest);
   position: relative;
@@ -492,7 +559,6 @@ auth-sign-in {
   animation: cbc-slideUp .65s .1s cubic-bezier(.22,1,.36,1) both;
 }
 
-// Badge
 .cbc-rp-badge {
   display: inline-flex;
   align-items: center;
@@ -520,7 +586,6 @@ auth-sign-in {
   letter-spacing: .3px;
 }
 
-// Headline
 .cbc-rp-headline {
   font-family: 'Playfair Display', serif;
   font-size: 42px;
@@ -554,7 +619,6 @@ auth-sign-in {
   font-weight: 300;
 }
 
-// Stats
 .cbc-stats-row {
   display: flex;
   gap: 12px;
@@ -570,7 +634,6 @@ auth-sign-in {
   text-align: center;
   backdrop-filter: blur(6px);
   transition: background .2s;
-
   &:hover { background: rgba(255,255,255,.13); }
 }
 
@@ -591,7 +654,6 @@ auth-sign-in {
   text-transform: uppercase;
 }
 
-// Features
 .cbc-feature-list {
   list-style: none;
   margin: 0 0 36px;
@@ -625,7 +687,6 @@ auth-sign-in {
   margin-top: 1px;
 }
 
-// Avatars
 .cbc-avatars-row {
   display: flex;
   align-items: center;
@@ -665,4 +726,23 @@ auth-sign-in {
     font-weight: 600;
     color: rgba(255,255,255,.90);
   }
+}
+
+.dark {
+  .cbc-role-switcher-shell {
+    .cbc-role-fade--left  { background: linear-gradient(to right, #1e1e2e 20%, transparent 100%); }
+    .cbc-role-fade--right { background: linear-gradient(to left,  #1e1e2e 20%, transparent 100%); }
+  }
+
+  .cbc-role-btn:hover:not(.active) {
+    background: rgba(99,102,241,.12);
+    border-color: rgba(99,102,241,.35);
+  }
+
+  .cbc-info-banner {
+    background: rgba(22,163,74,.08);
+    border-color: rgba(22,163,74,.20);
+  }
+
+  .cbc-info-text { color: #4ade80; }
 }

@@ -1,8 +1,8 @@
 import { inject, Injectable } from '@angular/core';
-import { BehaviorSubject, Observable, from, of, throwError } from 'rxjs';
-import { catchError, map, shareReplay, switchMap, tap } from 'rxjs/operators';
-import { AuthUtils } from 'app/core/auth/auth.utils';
-import { UserService } from 'app/core/user/user.service';
+import { BehaviorSubject, Observable, from, of } from 'rxjs';
+import { catchError, map, shareReplay, tap } from 'rxjs/operators';
+import { AuthUtils }    from 'app/core/auth/auth.utils';
+import { UserService }  from 'app/core/user/user.service';
 import { API_BASE_URL } from 'app/app.config';
 
 /* =======================
@@ -18,44 +18,43 @@ interface ApiResponse<T> {
    AUTH USER
 ======================= */
 export interface AuthUser {
-    id: string;
-    name: string;
-    email: string;
-    fullName: string;
-    roles: string[];
-    permissions: string[];
-    isSuperAdmin: boolean;
+    id                  : string;
+    name                : string;
+    email               : string;
+    fullName            : string;
+    roles               : string[];
+    permissions         : string[];
+    isSuperAdmin        : boolean;
     requirePasswordChange?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-    private _apiBaseUrl = inject(API_BASE_URL);
+
+    private _apiBaseUrl  = inject(API_BASE_URL);
     private _userService = inject(UserService);
 
-    private _authenticated$ = new BehaviorSubject<boolean>(false);
-    readonly authenticated$ = this._authenticated$.asObservable();
+    private _authenticated$          = new BehaviorSubject<boolean>(false);
+    readonly authenticated$          = this._authenticated$.asObservable();
 
-    private _permissions$ = new BehaviorSubject<string[]>([]);
-    readonly permissions$ = this._permissions$.asObservable();
+    private _permissions$            = new BehaviorSubject<string[]>([]);
+    readonly permissions$            = this._permissions$.asObservable();
 
-    private _requirePasswordChange$ = new BehaviorSubject<boolean>(false);
-    readonly requirePasswordChange$ = this._requirePasswordChange$.asObservable();
+    private _requirePasswordChange$  = new BehaviorSubject<boolean>(false);
+    readonly requirePasswordChange$  = this._requirePasswordChange$.asObservable();
 
     // Prevent multiple simultaneous refresh calls
     private _refreshInProgress$: Observable<boolean> | null = null;
 
-    private readonly ACCESS_TOKEN = 'accessToken';
+    private readonly ACCESS_TOKEN  = 'accessToken';
     private readonly REFRESH_TOKEN = 'refreshToken';
-    private readonly USER = 'authUser';
+    private readonly USER          = 'authUser';
 
-    /* =======================
-       TOKEN STORAGE
-    ======================= */
+    // ── Token / User storage ───────────────────────────────────────────────────
+
     get accessToken(): string {
         return localStorage.getItem(this.ACCESS_TOKEN) ?? '';
     }
-
     set accessToken(token: string) {
         token
             ? localStorage.setItem(this.ACCESS_TOKEN, token)
@@ -65,7 +64,6 @@ export class AuthService {
     get refreshToken(): string {
         return localStorage.getItem(this.REFRESH_TOKEN) ?? '';
     }
-
     set refreshToken(token: string) {
         token
             ? localStorage.setItem(this.REFRESH_TOKEN, token)
@@ -73,170 +71,145 @@ export class AuthService {
     }
 
     get authUser(): AuthUser | null {
-        const user = localStorage.getItem(this.USER);
-        return user ? JSON.parse(user) : null;
+        const raw = localStorage.getItem(this.USER);
+        return raw ? JSON.parse(raw) : null;
     }
-
     set authUser(user: AuthUser | null) {
         user
             ? localStorage.setItem(this.USER, JSON.stringify(user))
             : localStorage.removeItem(this.USER);
     }
 
-    /**
-     * Check if the current user requires a password change
-     */
     get requiresPasswordChange(): boolean {
         return this.authUser?.requirePasswordChange ?? false;
     }
 
-    /* =======================
-       LOGIN
-    ======================= */
+    // ── Email / password login ─────────────────────────────────────────────────
+
     signIn(credentials: { email: string; password: string }): Observable<ApiResponse<any>> {
         return this.post<any>('/api/auth/login', credentials).pipe(
-            tap(res => this.handleLoginResponse(res.data, false))
+            tap(res => this._handleLoginResponse(res.data, false))
         );
     }
 
     superAdminSignIn(credentials: { email: string; password: string }): Observable<ApiResponse<any>> {
         return this.post<any>('/api/auth/super-admin/login', credentials).pipe(
-            tap(res => this.handleLoginResponse(res.data, true))
+            tap(res => this._handleLoginResponse(res.data, true))
         );
     }
 
-    /* =======================
-       APP START / REFRESH
-    ======================= */
+    // ── Google SSO ─────────────────────────────────────────────────────────────
+
+    /**
+     * Called by sign-in.component after SsoService.exchangeGoogleToken() succeeds.
+     *
+     * The backend (SsoController) returns the same LoginResponseDto shape used
+     * by the normal login endpoint, so we reuse _handleLoginResponse.
+     *
+     * @param data  The `response.data` object from POST /api/auth/sso/google
+     */
+    handleSsoLoginResponse(data: any): void {
+        // isSuperAdmin is always false for SSO school users.
+        // The role check inside _handleLoginResponse will catch it if they somehow
+        // have a SuperAdmin role assigned.
+        this._handleLoginResponse(data, false);
+    }
+
+    /**
+     * Convenience method: store tokens + set session from an SSO response.
+     *
+     * Use this when you already have the full `data` object and want a
+     * one-liner in sign-in.component:
+     *
+     *   this._authService.storeTokens(response.data.accessToken,
+     *                                 response.data.refreshToken);
+     *   this._authService.handleSsoLoginResponse(response.data);
+     *
+     * OR just call handleSsoLoginResponse(response.data) alone — it sets
+     * both tokens and the session in one step (preferred).
+     */
+    storeTokens(accessToken: string, refreshToken: string): void {
+        this.accessToken  = accessToken;
+        this.refreshToken = refreshToken;
+    }
+
+    // ── App startup / session restore ──────────────────────────────────────────
+
     checkAuthOnStartup(): Observable<boolean> {
-        // No access token - not authenticated
         if (!this.accessToken) {
             return of(false);
         }
 
-        // Token is expired - try to refresh
         if (AuthUtils.isTokenExpired(this.accessToken)) {
             return this.refreshAccessToken();
         }
 
-        // Token is valid - restore session from stored user
         const user = this.authUser;
         if (user) {
             this.setSession(user);
             return of(true);
         }
 
-        // Edge case: valid token but no stored user - fetch from API
-        return this.fetchCurrentUser().pipe(
+        // Edge case: valid token but no stored user — fetch from API
+        return this._fetchCurrentUser().pipe(
             tap(user => this.setSession(user)),
             map(() => true),
             catchError(err => {
-                console.error('Failed to fetch current user:', err);
+                console.error('[AuthService] Failed to fetch current user:', err);
                 this.signOut();
                 return of(false);
             })
         );
     }
 
-    /**
-     * Fetch current user from API (for edge cases)
-     */
-    private fetchCurrentUser(): Observable<AuthUser> {
-        return this.get<any>('/api/auth/me').pipe(
-            map(res => {
-                const data = res.data;
-                const fullName = `${data.firstName || ''} ${data.lastName || ''}`.trim();
-                
-                // Check for SuperAdmin role from multiple possible sources
-                const hasSuperAdminRole = data.roleNames?.includes('SuperAdmin') || 
-                                         data.roles?.includes('SuperAdmin') || 
-                                         data.isSuperAdmin || 
-                                         false;
-                
-                return {
-                    id: data.id,
-                    name: fullName || data.email,
-                    email: data.email,
-                    fullName,
-                    roles: data.roleNames ?? data.roles ?? [],
-                    permissions: data.permissions ?? [],
-                    isSuperAdmin: hasSuperAdminRole,
-                    requirePasswordChange: data.requirePasswordChange ?? false
-                };
-            })
-        );
-    }
-
-    /**
-     * Refresh the access token using the refresh token
-     * Prevents multiple simultaneous refresh calls using shareReplay
-     */
     refreshAccessToken(): Observable<boolean> {
-        // If refresh is already in progress, return the existing observable
         if (this._refreshInProgress$) {
             return this._refreshInProgress$;
         }
 
-        // No refresh token available
         if (!this.refreshToken) {
             this.signOut();
             return of(false);
         }
 
-        // Create new refresh observable and cache it
         this._refreshInProgress$ = this.post<any>('/api/auth/refresh', {
-            refreshToken: this.refreshToken
+            refreshToken: this.refreshToken,
         }).pipe(
             tap(res => {
-                // Update access token
                 this.accessToken = res.data.accessToken;
-                
-                // Update refresh token if rotated
+
                 if (res.data.refreshToken) {
                     this.refreshToken = res.data.refreshToken;
                 }
-                
-                // Update user session if user data is returned
+
                 if (res.data.user) {
-                    const userData = res.data.user;
-                    const fullName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
-                    
-                    // Check for SuperAdmin role
-                    const hasSuperAdminRole = userData.roleNames?.includes('SuperAdmin') || 
-                                             res.data.roles?.includes('SuperAdmin') || 
-                                             this.authUser?.isSuperAdmin || 
-                                             false;
-                    
+                    const userData   = res.data.user;
+                    const fullName   = this._buildFullName(userData);
+                    const isSuperAdm = this._detectSuperAdmin(userData, res.data, this.authUser?.isSuperAdmin);
+
                     const user: AuthUser = {
-                        id: userData.id,
-                        name: fullName || userData.email,
-                        email: userData.email,
+                        id                   : userData.id,
+                        name                 : fullName || userData.email,
+                        email                : userData.email,
                         fullName,
-                        roles: res.data.roles ?? userData.roleNames ?? [],
-                        permissions: res.data.permissions ?? userData.permissions ?? [],
-                        isSuperAdmin: hasSuperAdminRole,
-                        requirePasswordChange: userData.requirePasswordChange ?? false
+                        roles                : res.data.roles ?? userData.roleNames ?? [],
+                        permissions          : res.data.permissions ?? userData.permissions ?? [],
+                        isSuperAdmin         : isSuperAdm,
+                        requirePasswordChange: userData.requirePasswordChange ?? false,
                     };
                     this.setSession(user);
                 } else if (this.authUser) {
-                    // If no user data returned, just mark as authenticated
                     this._authenticated$.next(true);
                 }
             }),
             map(() => true),
             catchError(err => {
-                console.error('Token refresh failed:', err);
+                console.error('[AuthService] Token refresh failed:', err);
                 this.signOut();
                 return of(false);
             }),
-            // Share the result and replay for simultaneous subscribers
             shareReplay(1),
-            // Clean up after completion
-            tap({
-                finalize: () => {
-                    this._refreshInProgress$ = null;
-                }
-            })
+            tap({ finalize: () => { this._refreshInProgress$ = null; } })
         );
 
         return this._refreshInProgress$;
@@ -247,9 +220,11 @@ export class AuthService {
         this._authenticated$.next(false);
         this._permissions$.next([]);
         this._requirePasswordChange$.next(false);
-        this._userService.user = null;
-        this._refreshInProgress$ = null;
+        this._userService.user    = null;
+        this._refreshInProgress$  = null;
     }
+
+    // ── Permission helpers ─────────────────────────────────────────────────────
 
     hasPermission(permission: string): boolean {
         return this._permissions$.value.includes(permission);
@@ -267,19 +242,17 @@ export class AuthService {
         return this._authenticated$.value;
     }
 
-    /* =======================
-       PASSWORD CHANGE
-    ======================= */
-    changePassword(credentials: { 
-        currentPassword: string; 
-        newPassword: string 
+    // ── Password change ────────────────────────────────────────────────────────
+
+    changePassword(credentials: {
+        currentPassword: string;
+        newPassword    : string;
     }): Observable<ApiResponse<any>> {
         return this.post<any>('/api/auth/change-password', {
             currentPassword: credentials.currentPassword,
-            newPassword: credentials.newPassword
+            newPassword    : credentials.newPassword,
         }).pipe(
             tap(() => {
-                // Update the requirePasswordChange flag
                 const currentUser = this.authUser;
                 if (currentUser) {
                     currentUser.requirePasswordChange = false;
@@ -290,32 +263,87 @@ export class AuthService {
         );
     }
 
-    /* =======================
-       INTERNALS
-    ======================= */
-    private handleLoginResponse(data: any, isSuperAdmin: boolean): void {
-        this.accessToken = data.accessToken;
+    // ── Private helpers ────────────────────────────────────────────────────────
+
+    /**
+     * Single entry point for ALL successful login responses
+     * (email/password, super-admin, AND Google SSO).
+     *
+     * The backend always returns the same LoginResponseDto shape, so
+     * this method works for every auth path.
+     */
+    private _handleLoginResponse(data: any, isSuperAdmin: boolean): void {
+        // Persist tokens
+        this.accessToken  = data.accessToken;
         this.refreshToken = data.refreshToken;
 
-        const fullName = `${data.user.firstName || ''} ${data.user.lastName || ''}`.trim();
-        
-        // Check if user has SuperAdmin role from multiple possible sources
-        const hasSuperAdminRole = data.user.roleNames?.includes('SuperAdmin') || 
-                                  data.roles?.includes('SuperAdmin') || 
-                                  isSuperAdmin;
+        const fullName   = this._buildFullName(data.user);
+        const isSuperAdm = this._detectSuperAdmin(data.user, data, isSuperAdmin);
 
         const user: AuthUser = {
-            id: data.user.id,
-            name: fullName || data.user.email,
-            email: data.user.email,
+            id                   : data.user.id,
+            name                 : fullName || data.user.email,
+            email                : data.user.email,
             fullName,
-            roles: data.roles ?? data.user.roleNames ?? [],
-            permissions: data.permissions ?? data.user.permissions ?? [],
-            isSuperAdmin: hasSuperAdminRole,
-            requirePasswordChange: data.user.requirePasswordChange ?? false
+            roles                : data.roles ?? data.user.roleNames ?? [],
+            permissions          : data.permissions ?? data.user.permissions ?? [],
+            isSuperAdmin         : isSuperAdm,
+            requirePasswordChange: data.user.requirePasswordChange ?? false,
         };
 
         this.setSession(user);
+    }
+
+    /**
+     * Builds a trimmed full name from firstName / lastName fields.
+     * Handles cases where one or both may be absent (e.g. first Google login).
+     */
+    private _buildFullName(userObj: any): string {
+        return `${userObj?.firstName ?? ''} ${userObj?.lastName ?? ''}`.trim();
+    }
+
+    /**
+     * Detects SuperAdmin from all the places the backend might signal it:
+     *  - roleNames array on the user object
+     *  - top-level roles array
+     *  - the isSuperAdmin flag in the login response
+     *  - the boolean passed in by the caller (e.g. superAdminSignIn path)
+     */
+    private _detectSuperAdmin(
+        userObj    : any,
+        responseData: any,
+        fallback   : boolean | undefined,
+    ): boolean {
+        return (
+            userObj?.roleNames?.includes('SuperAdmin')    ||
+            responseData?.roles?.includes('SuperAdmin')   ||
+            responseData?.user?.isSuperAdmin              ||
+            fallback                                       ||
+            false
+        );
+    }
+
+    private fetchCurrentUser = () => this._fetchCurrentUser(); // public alias kept for compatibility
+
+    private _fetchCurrentUser(): Observable<AuthUser> {
+        return this.get<any>('/api/auth/me').pipe(
+            map(res => {
+                const data     = res.data;
+                const fullName = this._buildFullName(data);
+                const isSuperAdm = this._detectSuperAdmin(data, data, false);
+
+                return {
+                    id                   : data.id,
+                    name                 : fullName || data.email,
+                    email                : data.email,
+                    fullName,
+                    roles                : data.roleNames ?? data.roles ?? [],
+                    permissions          : data.permissions ?? [],
+                    isSuperAdmin         : isSuperAdm,
+                    requirePasswordChange: data.requirePasswordChange ?? false,
+                };
+            })
+        );
     }
 
     private setSession(user: AuthUser): void {
@@ -326,9 +354,8 @@ export class AuthService {
         this._userService.user = user;
     }
 
-    /* =======================
-       FETCH WRAPPERS
-    ======================= */
+    // ── HTTP helpers ───────────────────────────────────────────────────────────
+
     private post<T>(url: string, body: any): Observable<ApiResponse<T>> {
         return this.request<T>(url, 'POST', body);
     }
@@ -338,18 +365,16 @@ export class AuthService {
     }
 
     private request<T>(
-        url: string, 
-        method: 'GET' | 'POST' | 'PUT' | 'DELETE', 
-        body?: any
+        url   : string,
+        method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+        body? : any,
     ): Observable<ApiResponse<T>> {
         const config: RequestInit = {
             method,
             headers: {
                 'Content-Type': 'application/json',
-                ...(this.accessToken && {
-                    Authorization: `Bearer ${this.accessToken}`
-                })
-            }
+                ...(this.accessToken && { Authorization: `Bearer ${this.accessToken}` }),
+            },
         };
 
         if (body && method !== 'GET') {
@@ -359,9 +384,7 @@ export class AuthService {
         return from(
             fetch(`${this._apiBaseUrl}${url}`, config).then(async res => {
                 const json = await res.json();
-                if (!res.ok) {
-                    throw json;
-                }
+                if (!res.ok) { throw json; }
                 return json as ApiResponse<T>;
             })
         );
