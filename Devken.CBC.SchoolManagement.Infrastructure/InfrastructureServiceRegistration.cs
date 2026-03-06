@@ -18,6 +18,7 @@ using Devken.CBC.SchoolManagement.Application.Service.Activities;
 using Devken.CBC.SchoolManagement.Application.Service.Administration.Student;
 using Devken.CBC.SchoolManagement.Application.Service.Assessments;
 using Devken.CBC.SchoolManagement.Application.Service.Curriculum;
+using Devken.CBC.SchoolManagement.Application.Service.Email;
 using Devken.CBC.SchoolManagement.Application.Service.Finance;
 using Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment;
 using Devken.CBC.SchoolManagement.Application.Service.Isubscription;
@@ -45,6 +46,7 @@ using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Academics;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Administration.Students;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Curriculum;
+using Devken.CBC.SchoolManagement.Infrastructure.Services.Email;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Finance;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Images;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Reports;
@@ -165,6 +167,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             });
 
             services.AddScoped<IAuthorizationHandler, PermissionHandler>();
+            services.AddScoped<IEmailService, EmailService>();
             services.AddScoped<IAuthorizationHandler, RoleHandler>();
             services.AddScoped<IAuthorizationHandler, TenantAccessHandler>();
 

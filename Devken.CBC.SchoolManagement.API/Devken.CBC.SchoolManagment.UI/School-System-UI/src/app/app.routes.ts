@@ -4,6 +4,7 @@ import { AuthGuard } from './core/auth/guards/auth.guard';
 import { NoAuthGuard } from './core/auth/guards/noAuth.guard';
 import { LayoutComponent } from './layout/layout.component';
 import { changePasswordGuard, passwordChangeRequiredGuard } from './core/auth/guards/password-change-required.guard';
+import { SsoSetPasswordComponent } from './modules/auth/set-up-password/sso-set-password.component';
 
 // @formatter:off
 /* eslint-disable max-len */
@@ -15,6 +16,7 @@ export const appRoutes: Route[] = [
 
     // Redirect signed-in user to the '/example'
     { path: 'signed-in-redirect', pathMatch: 'full', redirectTo: 'example' },
+
 
     // ── Guest Auth routes (unauthenticated only) ──────────────────────────────
     {
@@ -98,11 +100,11 @@ export const appRoutes: Route[] = [
             {
                 path: 'administration',
                 children: [
-                    { path: 'roles',       loadChildren: () => import('app/RolesAndPermission/role-assignment.component.routes') },
+                    { path: 'roles', loadChildren: () => import('app/RolesAndPermission/role-assignment.component.routes') },
                     { path: 'permissions', loadChildren: () => import('app/RolesAndPermission/permission/role-permission-management.component.routes') },
-                    { path: 'schools',     loadChildren: () => import('app/Tenant/schools-management.routes') },
-                    { path: 'logs',        loadChildren: () => import('app/logs/userActivities/user-activity.component.routes') },
-                    { path: 'users',       loadChildren: () => import('app/UserManagement/users-management.component.routes') }
+                    { path: 'schools', loadChildren: () => import('app/Tenant/schools-management.routes') },
+                    { path: 'logs', loadChildren: () => import('app/logs/userActivities/user-activity.component.routes') },
+                    { path: 'users', loadChildren: () => import('app/UserManagement/users-management.component.routes') }
                 ]
             },
 
@@ -111,13 +113,13 @@ export const appRoutes: Route[] = [
                 path: 'academic',
                 children: [
                     { path: 'academic-years', loadChildren: () => import('app/Academics/AcademicYear/academic-years.routes') },
-                    { path: 'terms',          loadChildren: () => import('app/Academics/Terms/terms.routes') },
-                    { path: 'parents',        loadChildren: () => import('app/Academics/Parents/Parent.routes') },
-                    { path: 'students',       loadChildren: () => import('app/administration/students/student.component.routes') },
-                    { path: 'subjects',       loadChildren: () => import('app/Academics/Subject/subjects.routes').then(m => m.default) },
-                    { path: 'teachers',       loadChildren: () => import('app/Academics/Teachers/teachers.component.routes') },
-                    { path: 'classes',        loadChildren: () => import('app/Classes/classes-management.component.routes') },
-                    { path: 'grades',         loadChildren: () => import('app/grades/grades.routes') }
+                    { path: 'terms', loadChildren: () => import('app/Academics/Terms/terms.routes') },
+                    { path: 'parents', loadChildren: () => import('app/Academics/Parents/Parent.routes') },
+                    { path: 'students', loadChildren: () => import('app/administration/students/student.component.routes') },
+                    { path: 'subjects', loadChildren: () => import('app/Academics/Subject/subjects.routes').then(m => m.default) },
+                    { path: 'teachers', loadChildren: () => import('app/Academics/Teachers/teachers.component.routes') },
+                    { path: 'classes', loadChildren: () => import('app/Classes/classes-management.component.routes') },
+                    { path: 'grades', loadChildren: () => import('app/grades/grades.routes') }
                 ]
             },
 
@@ -141,11 +143,11 @@ export const appRoutes: Route[] = [
             {
                 path: 'finance',
                 children: [
-                    { path: 'fees',       loadChildren: () => import('app/Finance/fee-item/fee-items.routes') },
+                    { path: 'fees', loadChildren: () => import('app/Finance/fee-item/fee-items.routes') },
                     { path: 'fee-structure', loadChildren: () => import('app/Finance/fee-structure/fee-structures.component.routes') },
-                    { path: 'invoices',   loadChildren: () => import('app/Finance/Invoice/Invoice.routes') },
-                    { path: 'invoice-items',   loadChildren: () => import('app/Finance/InvoiceItem/invoice-items.routes') },
-                   // { path: 'payments',   loadChildren: () => import('app/mod') }
+                    { path: 'invoices', loadChildren: () => import('app/Finance/Invoice/Invoice.routes') },
+                    { path: 'invoice-items', loadChildren: () => import('app/Finance/InvoiceItem/invoice-items.routes') },
+                    // { path: 'payments',   loadChildren: () => import('app/mod') }
                 ]
             },
 

@@ -1,10 +1,8 @@
 <div class="cbc-wrapper">
 
-  <!-- ══ LEFT: FORM PANEL ══════════════════════════════════════════════════════ -->
   <div class="cbc-left-panel">
     <div class="cbc-form-shell">
 
-      <!-- Logo -->
       <div class="cbc-logo">
         <div class="cbc-logo-mark">DK</div>
         <div class="cbc-logo-text">
@@ -13,26 +11,33 @@
         </div>
       </div>
 
-      <!-- Heading -->
       <div class="cbc-heading">Welcome back</div>
       <div class="cbc-sub-heading">
         No account? <a class="cbc-link" [routerLink]="['/sign-up']">Create one</a>
       </div>
 
-      <!-- Role Switcher -->
-      <div class="cbc-role-switcher">
-        @for (role of roles; track role.label) {
-          <button
-            type="button"
-            class="cbc-role-btn"
-            [class.active]="activeRole === role.label"
-            (click)="setRole(role)">
-            {{ role.label }}
-          </button>
-        }
+      <div class="cbc-role-switcher-shell">
+        <div class="cbc-role-fade cbc-role-fade--left" aria-hidden="true">
+          <mat-icon class="cbc-role-arrow" svgIcon="heroicons_solid:chevron-left"></mat-icon>
+        </div>
+        <div class="cbc-role-switcher" role="tablist" aria-label="Sign in as role" #roleSwitcher>
+          @for (role of roles; track role.label) {
+            <button
+              type="button"
+              role="tab"
+              class="cbc-role-btn"
+              [class.active]="activeRole === role.label"
+              [attr.aria-selected]="activeRole === role.label"
+              (click)="setRole(role)">
+              {{ role.label }}
+            </button>
+          }
+        </div>
+        <div class="cbc-role-fade cbc-role-fade--right" aria-hidden="true">
+          <mat-icon class="cbc-role-arrow" svgIcon="heroicons_solid:chevron-right"></mat-icon>
+        </div>
       </div>
 
-      <!-- Info Banner -->
       <div class="cbc-info-banner">
         <div class="cbc-info-icon">
           <mat-icon class="icon-size-3" svgIcon="heroicons_solid:information-circle"></mat-icon>
@@ -43,32 +48,34 @@
         </div>
       </div>
 
-      <!-- Error / Success Alert -->
       @if (showAlert) {
         <div class="cbc-alert-wrap" [@shake]="alert.type === 'error'">
-          <fuse-alert
-            [appearance]="'outline'"
-            [showIcon]="false"
-            [type]="alert.type">
+          <fuse-alert [appearance]="'outline'" [showIcon]="false" [type]="alert.type">
             {{ alert.message }}
           </fuse-alert>
         </div>
       }
 
-      <!-- Form -->
       <form class="cbc-form" [formGroup]="signInForm" #signInNgForm="ngForm">
 
-        <!-- Email -->
         <div class="cbc-field-group">
           <mat-form-field class="w-full cbc-mat-field" appearance="outline">
             <mat-label>Email address</mat-label>
-            <input id="email" matInput [formControlName]="'email'" autocomplete="email" placeholder="you@school.com"/>
-            <mat-error *ngIf="signInForm.get('email')?.hasError('required')">Email address is required.</mat-error>
-            <mat-error *ngIf="signInForm.get('email')?.hasError('email')">Please enter a valid email address.</mat-error>
+            <input
+              id="email"
+              matInput
+              [formControlName]="'email'"
+              autocomplete="email"
+              placeholder="you@school.com" />
+            <mat-error *ngIf="signInForm.get('email')?.hasError('required')">
+              Email address is required.
+            </mat-error>
+            <mat-error *ngIf="signInForm.get('email')?.hasError('email')">
+              Please enter a valid email address.
+            </mat-error>
           </mat-form-field>
         </div>
 
-        <!-- Password -->
         <div class="cbc-field-group">
           <mat-form-field class="w-full cbc-mat-field" appearance="outline">
             <mat-label>Password</mat-label>
@@ -78,7 +85,7 @@
               [type]="showPassword ? 'text' : 'password'"
               [formControlName]="'password'"
               autocomplete="current-password"
-              placeholder="Enter your password"/>
+              placeholder="Enter your password" />
             <button
               mat-icon-button
               type="button"
@@ -94,18 +101,13 @@
           </mat-form-field>
         </div>
 
-        <!-- Remember + Forgot -->
         <div class="cbc-actions-row">
-          <mat-checkbox
-            class="cbc-remember"
-            [color]="'primary'"
-            [formControlName]="'rememberMe'">
+          <mat-checkbox class="cbc-remember" [color]="'primary'" [formControlName]="'rememberMe'">
             Remember me
           </mat-checkbox>
           <a class="cbc-forgot-link" [routerLink]="['/forgot-password']">Forgot password?</a>
         </div>
 
-        <!-- Submit -->
         <button
           class="cbc-submit-btn w-full"
           mat-flat-button
@@ -113,63 +115,88 @@
           [disabled]="signInForm.disabled"
           (click)="signIn()">
           @if (!signInForm.disabled) {
-            <span>Sign in</span>
-            <mat-icon
-              class="icon-size-4 ml-2"
-              svgIcon="heroicons_solid:arrow-right">
-            </mat-icon>
+            <ng-container>
+              <span>Sign in</span>
+              <mat-icon iconPositionEnd class="icon-size-4 ml-2" svgIcon="heroicons_solid:arrow-right"></mat-icon>
+            </ng-container>
           }
           @if (signInForm.disabled) {
-            <mat-progress-spinner
-              [diameter]="20"
-              [mode]="'indeterminate'">
-            </mat-progress-spinner>
+            <mat-progress-spinner [diameter]="20" mode="indeterminate"></mat-progress-spinner>
           }
         </button>
 
-        <!-- Divider -->
         <div class="cbc-divider">
           <div class="cbc-divider-line"></div>
           <span class="cbc-divider-text">Or continue with</span>
           <div class="cbc-divider-line"></div>
         </div>
 
-        <!-- SSO Buttons -->
+        <!-- SSO row: 3 equal columns -->
         <div class="cbc-sso-row">
-          <button class="cbc-sso-btn" type="button" mat-stroked-button>
-            <!-- Google -->
-            <svg class="cbc-sso-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-            </svg>
-            Google
+
+          <!-- GIS mounts internally here — 0-size, never shown, must stay in DOM -->
+          <div #googleBtnHost style="position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;" aria-hidden="true"></div>
+
+          <!-- Google — always visible; click triggers GIS One Tap popup -->
+          <button
+            class="cbc-sso-btn"
+            type="button"
+            mat-stroked-button
+            [disabled]="googleLoading"
+            (click)="loginWithGoogle()">
+            @if (googleLoading) {
+              <mat-progress-spinner
+                [diameter]="16"
+                mode="indeterminate"
+                class="cbc-sso-spinner">
+              </mat-progress-spinner>
+              <span>Signing in…</span>
+            } @else {
+              <svg class="cbc-sso-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+              </svg>
+              <span>Google</span>
+            }
           </button>
-          <button class="cbc-sso-btn" type="button" mat-stroked-button>
-            <!-- Microsoft -->
+
+          <!-- Microsoft stub -->
+          <button
+            class="cbc-sso-btn"
+            type="button"
+            mat-stroked-button
+            disabled
+            title="Microsoft sign-in coming soon">
             <svg class="cbc-sso-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path fill="#f25022" d="M1 1h10v10H1z"/>
               <path fill="#00a4ef" d="M13 1h10v10H13z"/>
               <path fill="#7fba00" d="M1 13h10v10H1z"/>
               <path fill="#ffb900" d="M13 13h10v10H13z"/>
             </svg>
-            Microsoft
+            <span>Microsoft</span>
           </button>
-          <button class="cbc-sso-btn" type="button" mat-stroked-button>
-            <!-- Apple -->
+
+          <!-- Apple stub -->
+          <button
+            class="cbc-sso-btn"
+            type="button"
+            mat-stroked-button
+            disabled
+            title="Apple sign-in coming soon">
             <svg class="cbc-sso-icon" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
               <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.7 9.05 7.4c1.26.07 2.09.71 2.83.73.87-.16 1.73-.83 3.09-.87 1.44.07 2.5.56 3.2 1.53-2.8 1.72-2.35 5.62.29 6.91-.43 1.18-.87 2.35-1.41 3.58zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
             </svg>
-            Apple
+            <span>Apple</span>
           </button>
+
         </div>
 
       </form>
     </div>
-  </div><!-- /left-panel -->
+  </div>
 
-  <!-- ══ RIGHT: HERO PANEL ══════════════════════════════════════════════════════ -->
   <div class="cbc-right-panel">
     <div class="cbc-rp-dots"></div>
     <div class="cbc-rp-ring cbc-rp-ring-1"></div>
@@ -195,7 +222,6 @@
         teachers, assessments, lesson plans, and finance — all in one place.
       </p>
 
-      <!-- Stats -->
       <div class="cbc-stats-row">
         <div class="cbc-stat-chip">
           <div class="cbc-stat-val">500+</div>
@@ -211,7 +237,6 @@
         </div>
       </div>
 
-      <!-- Feature list -->
       <ul class="cbc-feature-list">
         @for (feature of features; track feature) {
           <li class="cbc-feature-item">
@@ -221,7 +246,6 @@
         }
       </ul>
 
-      <!-- Avatars -->
       <div class="cbc-avatars-row">
         <div class="cbc-avatar-stack">
           @for (av of avatars; track av.initials) {
@@ -234,6 +258,6 @@
       </div>
 
     </div>
-  </div><!-- /right-panel -->
+  </div>
 
 </div>
