@@ -1,4 +1,4 @@
-﻿using Devken.CBC.SchoolManagement.API.Diagnostics;
+using Devken.CBC.SchoolManagement.API.Diagnostics;
 using Devken.CBC.SchoolManagement.API.Registration;
 using Devken.CBC.SchoolManagement.API.Services;
 using Devken.CBC.SchoolManagement.Application.Service;
