@@ -31,9 +31,15 @@ QuestPDF.Settings.License = LicenseType.Community;
 // ══════════════════════════════════════════════════════════════
 // CORS Configuration
 // ══════════════════════════════════════════════════════════════
-// FIX: AllowAnyOrigin() cannot be used with AllowCredentials().
-// If your frontend sends cookies or Authorization headers, you must
-// specify exact origins. Add more origins to the array as needed.
+// RULES:
+//   • AllowAnyOrigin() cannot be combined with AllowCredentials().
+//   • Origins must be scheme + host (+ optional port) ONLY.
+//     Paths, query strings, or trailing slashes are NOT allowed
+//     and will silently break CORS matching.
+//   • Configure production origins via "Cors:AllowedOrigins" in
+//     appsettings.json / environment variables so this fallback
+//     list is only used locally.
+// ──────────────────────────────────────────────────────────────
 var angularCorsPolicy = "AngularCors";
 
 var allowedOrigins = builder.Configuration
@@ -41,9 +47,10 @@ var allowedOrigins = builder.Configuration
     .Get<string[]>()
     ?? new[]
     {
+        // ✅ scheme + host only — NO trailing slash, NO path
         "https://dev-ken-systems.vercel.app",
         "http://localhost:4200",
-        "https://devken-systems.onrender.com/api/auth/sso/google"
+        "https://devken-systems.onrender.com"   // FIX: removed "/api/auth/sso/google" path
     };
 
 builder.Services.AddCors(options =>
@@ -249,16 +256,19 @@ using (var scope = app.Services.CreateScope())
 // ══════════════════════════════════════════════════════════════
 // IMPORTANT: Order matters. CORS must come first — before any
 // middleware that can produce a response (auth, pipeline, etc.).
-// If auth middleware runs first, a 401 is returned without CORS
-// headers, causing the browser to report a "CORS error" instead
-// of the actual 401.
+//
+// Why: If authentication middleware runs before CORS and returns
+// a 401/403, that error response will NOT carry the CORS headers,
+// and the browser will report a misleading "CORS error" instead
+// of the actual 401. Keeping UseCors() first ensures every
+// response — including error responses — includes CORS headers.
 // ──────────────────────────────────────────────────────────────
 
-// 1. CORS — must be first so ALL responses include CORS headers,
-//    including 401/403 errors returned by downstream middleware.
+// 1. CORS — must be FIRST so ALL responses include CORS headers,
+//    including 4xx/5xx errors returned by downstream middleware.
 app.UseCors(angularCorsPolicy);
 
-// 2. Static files (single registration — FIX: was registered 3×)
+// 2. Static files
 app.UseStaticFiles();
 app.UseStaticFiles(new StaticFileOptions
 {
@@ -286,8 +296,9 @@ app.UseSwaggerUI(c =>
 });
 
 // 5. Custom API pipeline (exception handling, logging, etc.)
-//    NOTE: If UseApiPipeline() internally calls UseAuthentication() or
-//    UseAuthorization(), remove those calls below to avoid double registration.
+//    NOTE: If UseApiPipeline() internally registers UseAuthentication()
+//    or UseAuthorization(), remove the explicit calls below to avoid
+//    double-registration.
 app.UseApiPipeline();
 
 // 6. Authentication & Authorization

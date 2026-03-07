@@ -14,6 +14,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
@@ -30,6 +31,11 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
         ILogger<SsoController> logger)
         : BaseApiController(activityService, logger)
     {
+        // ── Constants ─────────────────────────────────────────────────────────
+
+        private const int OtpLength = 6;
+        private const int OtpExpirySeconds = 300;
+
         // ── Request DTOs ──────────────────────────────────────────────────────
 
         public record GoogleSsoRequest(string IdToken);
@@ -47,9 +53,10 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
             string ConfirmPassword);
 
         // ── POST /api/auth/sso/google ─────────────────────────────────────────
-        // Validates the Google id_token, finds/provisions the user,
-        // then ALWAYS issues an OTP — never a session directly.
-
+        /// <summary>
+        /// Validates a Google id_token, finds or provisions the user,
+        /// then ALWAYS issues an OTP — never a session directly.
+        /// </summary>
         [HttpPost("google")]
         public async Task<IActionResult> GoogleAsync([FromBody] GoogleSsoRequest request)
         {
@@ -70,35 +77,44 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                 var clientId = cfg["Sso:Google:ClientId"];
                 if (string.IsNullOrWhiteSpace(clientId))
                 {
-                    logger.LogError("[SsoController] 'Sso:Google:ClientId' is not configured.");
+                    // This means the environment variable Sso__Google__ClientId is missing
+                    // on the host (e.g. Render). Set it and redeploy.
+                    logger.LogError(
+                        "[SsoController] 'Sso:Google:ClientId' is not configured. " +
+                        "Set the environment variable 'Sso__Google__ClientId' on the server.");
+
                     return ErrorResponse(
-                        "SSO is not configured on this server.",
+                        "SSO is not configured on this server. Contact your administrator.",
                         StatusCodes.Status500InternalServerError);
                 }
 
-                var settings = new GoogleJsonWebSignature.ValidationSettings
+                var validationSettings = new GoogleJsonWebSignature.ValidationSettings
                 {
                     Audience = new[] { clientId },
                     IssuedAtClockTolerance = TimeSpan.FromMinutes(5),
                     ExpirationTimeClockTolerance = TimeSpan.FromMinutes(5),
                 };
 
-                payload = await GoogleJsonWebSignature.ValidateAsync(request.IdToken, settings);
+                payload = await GoogleJsonWebSignature.ValidateAsync(
+                    request.IdToken, validationSettings);
 
                 logger.LogInformation(
-                    "[SsoController] Token validated. Subject: {Sub}, Email: {Email}",
+                    "[SsoController] Google token validated. Subject: {Sub}, Email: {Email}",
                     payload.Subject, payload.Email);
             }
             catch (InvalidJwtException ex)
             {
-                logger.LogWarning(ex, "[SsoController] Google id_token validation failed: {Message}", ex.Message);
+                logger.LogWarning(
+                    ex,
+                    "[SsoController] Google id_token validation failed: {Message}", ex.Message);
+
                 return ErrorResponse(
                     $"Invalid Google token: {ex.Message}",
                     StatusCodes.Status401Unauthorized);
             }
 
             // 2. Validate email claim
-            var email = payload.Email?.ToLowerInvariant();
+            var email = payload.Email?.Trim().ToLowerInvariant();
 
             if (string.IsNullOrWhiteSpace(email))
                 return Ok(new
@@ -127,7 +143,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                     message = "Google account email is not verified.",
                     data = new
                     {
-                        email = email,
+                        email = MaskEmail(email),
                         reason = "not_verified",
                         firstName = payload.GivenName ?? string.Empty,
                         lastName = payload.FamilyName ?? string.Empty,
@@ -145,9 +161,14 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                     .FirstOrDefaultAsync(s => s.SlugName == "default-school" && s.IsActive);
 
                 if (defaultSchool == null)
+                {
+                    logger.LogWarning(
+                        "[SsoController] No active default school found for SSO provisioning.");
+
                     return ErrorResponse(
                         "No active school found. Contact your administrator.",
                         StatusCodes.Status403Forbidden);
+                }
 
                 user = new User
                 {
@@ -161,7 +182,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                     IsActive = true,
                     IsEmailVerified = true,
                     RequirePasswordChange = true,
-                    PasswordHash = string.Empty,
+                    PasswordHash = string.Empty,  // triggers password-setup flow after OTP
                     CreatedOn = DateTime.UtcNow,
                 };
 
@@ -174,19 +195,24 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
             }
 
             if (!user.IsActive)
+            {
+                logger.LogWarning(
+                    "[SsoController] SSO attempt for deactivated account: {Email}", email);
+
                 return ErrorResponse(
                     "Your account is deactivated. Contact your administrator.",
                     StatusCodes.Status403Forbidden);
+            }
 
-            // 4. ALWAYS issue an OTP — never return a session from this endpoint.
-            //    The OTP is sent to the user's email. The otpToken is a short-lived
-            //    server-side binding token that links this attempt to the user.
+            // 4. ALWAYS issue an OTP — never return a session directly from this endpoint.
+            //    The otpToken is a short-lived server-side binding token that ties
+            //    this sign-in attempt to the resolved user row.
             var (rawOtp, otpToken) = await authService.GenerateSsoOtpAsync(user.Id);
 
             await authService.SendSsoOtpEmailAsync(user.Email, user.FirstName, rawOtp);
 
             logger.LogInformation(
-                "[SsoController] OTP issued for user {Email}. Token prefix: {Prefix}",
+                "[SsoController] OTP issued for {Email}. Token prefix: {Prefix}",
                 email, otpToken[..Math.Min(8, otpToken.Length)]);
 
             return Ok(new
@@ -196,38 +222,48 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                 requirePasswordSetup = false,
                 requireEmailVerify = false,
                 otpToken,
-                message = "A 6-digit verification code has been sent to your email.",
+                message = $"A {OtpLength}-digit verification code has been sent to your email.",
                 data = new
                 {
                     email = MaskEmail(email),
                     firstName = user.FirstName,
                     lastName = user.LastName,
-                    expiresInSeconds = 300,
+                    expiresInSeconds = OtpExpirySeconds,
                 },
             });
         }
 
         // ── POST /api/auth/sso/verify-otp ─────────────────────────────────────
-        // Validates the OTP. On success either:
-        //   a) issues a full session  (existing user with password)
-        //   b) returns requirePasswordSetup: true  (new user, no password yet)
-
+        /// <summary>
+        /// Validates the OTP. On success either:
+        ///   a) issues a full session  (existing user with a password hash), or
+        ///   b) returns requirePasswordSetup: true  (new user, no password yet).
+        /// </summary>
         [HttpPost("verify-otp")]
         public async Task<IActionResult> VerifyOtpAsync([FromBody] VerifyOtpRequest request)
         {
             if (string.IsNullOrWhiteSpace(request?.OtpToken))
                 return ErrorResponse("OTP token is required.", StatusCodes.Status400BadRequest);
 
-            if (string.IsNullOrWhiteSpace(request.Otp) || request.Otp.Length != 6)
-                return ErrorResponse("A 6-digit code is required.", StatusCodes.Status400BadRequest);
+            // Must be exactly 6 digits — reject anything else before hitting the service
+            if (string.IsNullOrWhiteSpace(request.Otp)
+                || request.Otp.Length != OtpLength
+                || !Regex.IsMatch(request.Otp, @"^\d{6}$"))
+            {
+                return ErrorResponse(
+                    $"A {OtpLength}-digit numeric code is required.",
+                    StatusCodes.Status400BadRequest);
+            }
 
             // Validate OTP — checks hash match, expiry, and one-time-use flag
-            var otpResult = await authService.ValidateSsoOtpAsync(request.OtpToken, request.Otp);
+            var otpResult = await authService.ValidateSsoOtpAsync(
+                request.OtpToken, request.Otp);
 
             if (!otpResult.Success)
             {
                 logger.LogWarning(
-                    "[SsoController] OTP validation failed. Reason: {Reason}", otpResult.Message);
+                    "[SsoController] OTP validation failed. Reason: {Reason}",
+                    otpResult.Message);
 
                 return ErrorResponse(
                     otpResult.Message ?? "Invalid or expired verification code.",
@@ -243,7 +279,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                     "User not found or deactivated.",
                     StatusCodes.Status403Forbidden);
 
-            // New user — still needs to set a password
+            // New user — password hash is empty, route to password-setup flow
             if (string.IsNullOrEmpty(user.PasswordHash))
             {
                 var setupToken = await authService.GenerateSsoSetupTokenAsync(user.Id);
@@ -255,7 +291,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                     requireEmailVerify = false,
                     requireOtp = false,
                     setupToken,
-                    message = "OTP verified. Please set a password to complete setup.",
+                    message = "OTP verified. Please set a password to complete your account setup.",
                     data = new
                     {
                         email = user.Email,
@@ -269,18 +305,16 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
             var loginResult = await authService.LoginSsoAsync(user.Id, user.TenantId);
 
             if (loginResult == null)
+            {
+                logger.LogError(
+                    "[SsoController] LoginSsoAsync returned null for user {UserId}.", user.Id);
+
                 return ErrorResponse(
                     "Could not create session. Please try again.",
                     StatusCodes.Status500InternalServerError);
+            }
 
-            Response.Cookies.Append("refreshToken", loginResult.RefreshToken, new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.Strict,
-                Path = "/",
-                Expires = DateTime.UtcNow.AddDays(jwtSettings.RefreshTokenLifetimeDays),
-            });
+            AppendRefreshTokenCookie(loginResult.RefreshToken);
 
             await LogUserActivityAsync(
                 user.Id, user.TenantId, "GoogleSsoOtpLogin", $"Email: {user.Email}");
@@ -300,8 +334,9 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
         }
 
         // ── POST /api/auth/sso/resend-otp ─────────────────────────────────────
-        // Invalidates the existing OTP and sends a fresh one.
-
+        /// <summary>
+        /// Invalidates the existing OTP and issues a fresh one to the user's email.
+        /// </summary>
         [HttpPost("resend-otp")]
         public async Task<IActionResult> ResendOtpAsync([FromBody] ResendOtpRequest request)
         {
@@ -322,17 +357,22 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
 
             await authService.SendSsoOtpEmailAsync(result.Email, result.FirstName, result.RawOtp);
 
+            logger.LogInformation(
+                "[SsoController] OTP resent for {Email}.", MaskEmail(result.Email));
+
             return Ok(new
             {
                 success = true,
                 message = "A new verification code has been sent to your email.",
-                expiresInSeconds = 300,
+                expiresInSeconds = OtpExpirySeconds,
             });
         }
 
         // ── POST /api/auth/sso/set-password ───────────────────────────────────
-        // Called after OTP is verified for new users who need to set a password.
-
+        /// <summary>
+        /// Called after OTP verification for new SSO users who have not yet set a password.
+        /// Consumes the one-time setup token and issues a full session on success.
+        /// </summary>
         [HttpPost("set-password")]
         public async Task<IActionResult> SetPasswordAsync([FromBody] SetSsoPasswordRequest request)
         {
@@ -347,7 +387,8 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
 
             if (!IsStrongPassword(request.NewPassword))
                 return ErrorResponse(
-                    "Password must be at least 8 characters and include uppercase, lowercase, a digit, and a special character.",
+                    "Password must be at least 8 characters and include an uppercase letter, " +
+                    "a lowercase letter, a digit, and a special character.",
                     StatusCodes.Status400BadRequest);
 
             var result = await authService.ConsumeSsoSetupTokenAsync(
@@ -366,18 +407,17 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
             var loginResult = await authService.LoginSsoAsync(result.UserId, result.TenantId);
 
             if (loginResult == null)
-                return ErrorResponse(
-                    "Password set, but session could not be created. Please sign in.",
-                    StatusCodes.Status500InternalServerError);
-
-            Response.Cookies.Append("refreshToken", loginResult.RefreshToken, new CookieOptions
             {
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.Strict,
-                Path = "/",
-                Expires = DateTime.UtcNow.AddDays(jwtSettings.RefreshTokenLifetimeDays),
-            });
+                logger.LogError(
+                    "[SsoController] LoginSsoAsync returned null after password set for user {UserId}.",
+                    result.UserId);
+
+                return ErrorResponse(
+                    "Password set, but session could not be created. Please sign in manually.",
+                    StatusCodes.Status500InternalServerError);
+            }
+
+            AppendRefreshTokenCookie(loginResult.RefreshToken);
 
             await LogUserActivityAsync(
                 result.UserId, result.TenantId, "SsoPasswordSet", $"UserId: {result.UserId}");
@@ -398,6 +438,26 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
 
         // ── Private helpers ───────────────────────────────────────────────────
 
+        /// <summary>
+        /// Writes the refresh token as an HttpOnly, Secure, SameSite=Strict cookie.
+        /// Centralised here so both verify-otp and set-password use identical options.
+        /// </summary>
+        private void AppendRefreshTokenCookie(string refreshToken)
+        {
+            Response.Cookies.Append("refreshToken", refreshToken, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict,
+                Path = "/",
+                Expires = DateTime.UtcNow.AddDays(jwtSettings.RefreshTokenLifetimeDays),
+            });
+        }
+
+        /// <summary>
+        /// Returns true only if the password meets the minimum complexity policy:
+        /// ≥ 8 chars, at least one uppercase, one lowercase, one digit, one symbol.
+        /// </summary>
         private static bool IsStrongPassword(string password)
         {
             if (password.Length < 8) return false;
@@ -408,9 +468,13 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
             return true;
         }
 
-        /// <summary>Masks email for display: john.doe@gmail.com → j*******@gmail.com</summary>
+        /// <summary>
+        /// Masks an email address for safe display in responses.
+        /// Example: john.doe@gmail.com → j*******@gmail.com
+        /// </summary>
         private static string MaskEmail(string email)
         {
+            if (string.IsNullOrWhiteSpace(email)) return string.Empty;
             var at = email.IndexOf('@');
             if (at <= 1) return email;
             return email[0] + new string('*', at - 1) + email[at..];
