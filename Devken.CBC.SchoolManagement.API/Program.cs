@@ -7,13 +7,16 @@ using Devken.CBC.SchoolManagement.Infrastructure;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF;
 using Devken.CBC.SchoolManagement.Infrastructure.Middleware;
 using Devken.CBC.SchoolManagement.Infrastructure.Seed;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using QuestPDF.Infrastructure;
 using System.Globalization;
 using System.Reflection;
+using System.Text;
 
 StartupErrorHandler.Initialize();
 
@@ -59,8 +62,6 @@ builder.Services.AddCors(options =>
 // Controllers
 // ══════════════════════════════════════════════════════════════
 builder.Services.AddControllers();
-
-// ✅ Required for Swagger to discover endpoints and generate correct schemas
 builder.Services.AddEndpointsApiExplorer();
 
 // ══════════════════════════════════════════════════════════════
@@ -101,7 +102,6 @@ builder.Services.AddSwaggerGen(c =>
         Description = "CBC School Management System API"
     });
 
-    // ✅ JWT Bearer security definition
     var securityScheme = new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -129,7 +129,6 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 
-    // ✅ Include XML doc comments if the file exists
     var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
     if (File.Exists(xmlPath))
@@ -148,28 +147,66 @@ builder.Services.AddSchoolManagement(builder.Configuration);
 builder.Services.AddInfrastructure(builder.Configuration);
 
 // ══════════════════════════════════════════════════════════════
-// Google OAuth Authentication
+// JWT Bearer Authentication
+//
+// ⚠️  NOTE: We do NOT use AddGoogle() / OAuth redirect middleware here.
+//     The SsoController validates Google id_tokens directly via
+//     GoogleJsonWebSignature.ValidateAsync() (Google.Apis.Auth).
+//     Angular obtains the id_token from Google's JS SDK and POSTs it
+//     to POST /api/auth/sso/google — no browser redirect flow involved.
+//     Adding the OAuth middleware would register a /api/auth/sso/google
+//     callback handler that conflicts with that controller route and
+//     causes "oauth state was missing or invalid" errors.
 // ══════════════════════════════════════════════════════════════
-var googleSsoConfig = builder.Configuration.GetSection("Sso:Google");
+var jwtSection = builder.Configuration.GetSection("JwtSettings");
+var secretKey = jwtSection["SecretKey"]
+    ?? throw new InvalidOperationException(
+        "'JwtSettings:SecretKey' is not configured. " +
+        "Set the environment variable 'JwtSettings__SecretKey' on the server.");
 
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultScheme = "Cookies";
-    options.DefaultChallengeScheme = "Google";
-})
-.AddCookie("Cookies")
-.AddGoogle("Google", options =>
-{
-    options.ClientId = googleSsoConfig["ClientId"]!;
-    options.ClientSecret = googleSsoConfig["ClientSecret"]!;
-    options.CallbackPath = "/api/auth/sso/google";
-});
+builder.Services
+    .AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme    = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer           = true,
+            ValidateAudience         = true,
+            ValidateLifetime         = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer              = jwtSection["Issuer"],
+            ValidAudience            = jwtSection["Audience"],
+            IssuerSigningKey         = new SymmetricSecurityKey(
+                                           Encoding.UTF8.GetBytes(secretKey)),
+            ClockSkew                = TimeSpan.FromMinutes(1),
+        };
+
+        // Allow the JWT to be read from the refreshToken cookie as a fallback
+        // (used by refresh-token endpoints).
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = ctx =>
+            {
+                // Let SignalR / cookie-based token pass through if needed
+                if (string.IsNullOrEmpty(ctx.Token)
+                    && ctx.Request.Cookies.TryGetValue("refreshToken", out var cookieToken))
+                {
+                    ctx.Token = cookieToken;
+                }
+                return Task.CompletedTask;
+            },
+        };
+    });
 
 // ══════════════════════════════════════════════════════════════
 // Culture Configuration
 // ══════════════════════════════════════════════════════════════
 var supportedCultures = new[] { new CultureInfo("en-US") };
-CultureInfo.DefaultThreadCurrentCulture = supportedCultures[0];
+CultureInfo.DefaultThreadCurrentCulture   = supportedCultures[0];
 CultureInfo.DefaultThreadCurrentUICulture = supportedCultures[0];
 
 // ══════════════════════════════════════════════════════════════
@@ -183,7 +220,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    var logger = app.Logger;
+    var logger    = app.Logger;
 
     try
     {
@@ -196,13 +233,15 @@ using (var scope = app.Services.CreateScope())
 
             if (pendingMigrations.Any())
             {
-                logger.LogInformation("Applying {Count} pending migrations...", pendingMigrations.Count);
+                logger.LogInformation(
+                    "Applying {Count} pending migrations...", pendingMigrations.Count);
                 await dbContext.Database.MigrateAsync();
                 logger.LogInformation("Migrations applied successfully.");
             }
             else if (!appliedMigrations.Any())
             {
-                logger.LogInformation("No migrations found. Creating database schema from model...");
+                logger.LogInformation(
+                    "No migrations found. Creating database schema from model...");
                 await dbContext.Database.EnsureCreatedAsync();
                 logger.LogInformation("Database schema created successfully.");
             }
@@ -222,7 +261,8 @@ using (var scope = app.Services.CreateScope())
 
         try
         {
-            var planService = scope.ServiceProvider.GetRequiredService<ISubscriptionPlanService>();
+            var planService = scope.ServiceProvider
+                .GetRequiredService<ISubscriptionPlanService>();
             await SubscriptionPlanSeeder.SeedSubscriptionPlansAsync(planService, logger);
         }
         catch (Exception ex)
@@ -237,13 +277,15 @@ using (var scope = app.Services.CreateScope())
 
             if (defaultSchool != null)
             {
-                var permissionSeeder = scope.ServiceProvider.GetRequiredService<IPermissionSeedService>();
+                var permissionSeeder = scope.ServiceProvider
+                    .GetRequiredService<IPermissionSeedService>();
                 await permissionSeeder.SeedPermissionsAndRolesAsync(defaultSchool.Id);
                 logger.LogInformation("Default school permissions seeded successfully.");
             }
             else
             {
-                logger.LogWarning("Default school not found. Skipping permission seeding.");
+                logger.LogWarning(
+                    "Default school not found. Skipping permission seeding.");
             }
         }
         catch (Exception ex)
@@ -264,47 +306,47 @@ using (var scope = app.Services.CreateScope())
 // Middleware Pipeline
 // ══════════════════════════════════════════════════════════════
 
-// ✅ 1. CORS must come first
+// 1. CORS — must come first so preflight requests are handled before any auth checks
 app.UseCors(angularCorsPolicy);
 
-// ✅ 2. Static files
+// 2. Static files
 app.UseStaticFiles();
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(uploadsPath),
-    RequestPath = "/uploads"
+    RequestPath  = "/uploads"
 });
 
-// ✅ 3. Localisation
+// 3. Localisation
 app.UseRequestLocalization(new RequestLocalizationOptions
 {
     DefaultRequestCulture = new RequestCulture("en-US"),
-    SupportedCultures = new List<CultureInfo> { new CultureInfo("en-US") },
-    SupportedUICultures = new List<CultureInfo> { new CultureInfo("en-US") }
+    SupportedCultures     = new List<CultureInfo> { new("en-US") },
+    SupportedUICultures   = new List<CultureInfo> { new("en-US") }
 });
 
-// ✅ 4. Swagger — must be registered BEFORE auth middleware so the UI is always reachable
-//    In development:  served at "/" (root)
-//    In production:   served at "/swagger"
+// 4. Swagger — registered BEFORE auth middleware so the UI is always reachable
+//    Development : served at "/" (root)
+//    Production  : served at "/swagger"
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "DevKen School Management API v1");
-    c.RoutePrefix = app.Environment.IsDevelopment() ? string.Empty : "swagger";
-    c.DocumentTitle = "DevKen School Management API";
+    c.RoutePrefix    = app.Environment.IsDevelopment() ? string.Empty : "swagger";
+    c.DocumentTitle  = "DevKen School Management API";
     c.DisplayRequestDuration();
-    c.EnablePersistAuthorization(); // ✅ keeps the JWT token across page refreshes
+    c.EnablePersistAuthorization();
 });
 
-// ✅ 5. Custom API pipeline (exception handling, logging, etc.)
+// 5. Custom API pipeline (global exception handling, request logging, etc.)
 app.UseApiPipeline();
 
-// ✅ 6. Auth — always after Swagger so the UI itself is never blocked
+// 6. Auth — always after Swagger so the UI is never blocked
 app.UseAuthentication();
 app.UseMiddleware<TenantMiddleware>();
 app.UseAuthorization();
 
-// ✅ 7. Controllers
+// 7. Controllers
 app.MapControllers();
 
 // ══════════════════════════════════════════════════════════════
@@ -327,7 +369,8 @@ if (builder.Environment.IsDevelopment())
     }
     catch (Exception ex)
     {
-        app.Logger.LogWarning(ex, "Failed to launch Angular development server. Start it manually.");
+        app.Logger.LogWarning(
+            ex, "Failed to launch Angular development server. Start it manually.");
     }
 }
 
@@ -336,7 +379,9 @@ if (builder.Environment.IsDevelopment())
 // ══════════════════════════════════════════════════════════════
 app.Logger.LogInformation("DevKen School Management API is starting...");
 app.Logger.LogInformation("Environment: {Environment}", app.Environment.EnvironmentName);
-app.Logger.LogInformation("Allowed CORS Origins: {Origins}", string.Join(", ", allowedOrigins));
-app.Logger.LogInformation("Application started successfully. Press Ctrl+C to shut down.");
+app.Logger.LogInformation(
+    "Allowed CORS Origins: {Origins}", string.Join(", ", allowedOrigins));
+app.Logger.LogInformation(
+    "Application started successfully. Press Ctrl+C to shut down.");
 
 app.Run();

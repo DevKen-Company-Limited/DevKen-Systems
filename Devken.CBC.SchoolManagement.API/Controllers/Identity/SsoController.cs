@@ -19,6 +19,19 @@ using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
 {
+    /// <summary>
+    /// Google SSO authentication flow (id_token path — no OAuth redirect).
+    ///
+    /// Flow:
+    ///   1. Angular calls Google Sign-In JS SDK  →  receives an id_token
+    ///   2. Angular POSTs id_token to POST /api/auth/sso/google
+    ///   3. This controller validates the token, finds/provisions the user,
+    ///      and issues a short-lived OTP to the user's email
+    ///   4. Angular POSTs the OTP to POST /api/auth/sso/verify-otp
+    ///   5. On success: either a full session OR a password-setup token
+    ///      (new users who have never set a password)
+    ///   6. New users POST to POST /api/auth/sso/set-password to complete onboarding
+    /// </summary>
     [ApiController]
     [Route("api/auth/sso")]
     [AllowAnonymous]
@@ -77,8 +90,6 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                 var clientId = cfg["Sso:Google:ClientId"];
                 if (string.IsNullOrWhiteSpace(clientId))
                 {
-                    // This means the environment variable Sso__Google__ClientId is missing
-                    // on the host (e.g. Render). Set it and redeploy.
                     logger.LogError(
                         "[SsoController] 'Sso:Google:ClientId' is not configured. " +
                         "Set the environment variable 'Sso__Google__ClientId' on the server.");
@@ -182,7 +193,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                     IsActive = true,
                     IsEmailVerified = true,
                     RequirePasswordChange = true,
-                    PasswordHash = string.Empty,  // triggers password-setup flow after OTP
+                    PasswordHash = string.Empty, // triggers password-setup flow after OTP
                     CreatedOn = DateTime.UtcNow,
                 };
 
@@ -439,17 +450,33 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
         // ── Private helpers ───────────────────────────────────────────────────
 
         /// <summary>
-        /// Writes the refresh token as an HttpOnly, Secure, SameSite=Strict cookie.
-        /// Centralised here so both verify-otp and set-password use identical options.
+        /// Writes the refresh token as an HttpOnly cookie.
+        ///
+        /// SameSite=None + Secure=true is required because the Angular SPA
+        /// (localhost:4200 or vercel.app) is on a different origin than the API.
+        /// Without this the browser will silently drop the cookie on cross-origin
+        /// requests, breaking token refresh.
+        ///
+        /// In development the API is on HTTPS (localhost:44383) so Secure=true works.
+        /// If you ever run the API on plain HTTP in dev, set Secure=false locally.
         /// </summary>
         private void AppendRefreshTokenCookie(string refreshToken)
         {
+            var isProduction = !string.Equals(
+                Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
+                "Development",
+                StringComparison.OrdinalIgnoreCase);
+
             Response.Cookies.Append("refreshToken", refreshToken, new CookieOptions
             {
                 HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.Strict,
-                Path = "/",
+
+                // SameSite=None is mandatory for cross-origin cookie delivery.
+                // Requires Secure=true in all browsers that enforce SameSite=None.
+                SameSite = SameSiteMode.None,
+                Secure = true,            // must be true when SameSite=None
+
+                Path = "/api/auth",     // scope cookie to auth routes only
                 Expires = DateTime.UtcNow.AddDays(jwtSettings.RefreshTokenLifetimeDays),
             });
         }
