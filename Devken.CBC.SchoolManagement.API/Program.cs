@@ -7,11 +7,9 @@ using Devken.CBC.SchoolManagement.Infrastructure;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF;
 using Devken.CBC.SchoolManagement.Infrastructure.Middleware;
 using Devken.CBC.SchoolManagement.Infrastructure.Seed;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using QuestPDF.Infrastructure;
 using System.Globalization;
@@ -147,60 +145,21 @@ builder.Services.AddSchoolManagement(builder.Configuration);
 builder.Services.AddInfrastructure(builder.Configuration);
 
 // ══════════════════════════════════════════════════════════════
-// JWT Bearer Authentication
+// Authentication
 //
-// ⚠️  NOTE: We do NOT use AddGoogle() / OAuth redirect middleware here.
+// ⚠️  JWT Bearer is registered inside AddInfrastructure() above.
+//     Do NOT call AddAuthentication / AddJwtBearer here — ASP.NET Core
+//     throws "Scheme already exists: Bearer" if the same scheme is
+//     registered twice.
+//
+//     Google SSO also does NOT use AddGoogle() OAuth redirect middleware.
 //     The SsoController validates Google id_tokens directly via
 //     GoogleJsonWebSignature.ValidateAsync() (Google.Apis.Auth).
-//     Angular obtains the id_token from Google's JS SDK and POSTs it
-//     to POST /api/auth/sso/google — no browser redirect flow involved.
-//     Adding the OAuth middleware would register a /api/auth/sso/google
-//     callback handler that conflicts with that controller route and
-//     causes "oauth state was missing or invalid" errors.
+//     Angular gets the id_token from Google's JS SDK and POSTs it to
+//     POST /api/auth/sso/google — no browser redirect or state cookie
+//     involved, so the old AddGoogle() call was causing the
+//     "oauth state was missing or invalid" crash.
 // ══════════════════════════════════════════════════════════════
-var jwtSection = builder.Configuration.GetSection("JwtSettings");
-var secretKey = jwtSection["SecretKey"]
-    ?? throw new InvalidOperationException(
-        "'JwtSettings:SecretKey' is not configured. " +
-        "Set the environment variable 'JwtSettings__SecretKey' on the server.");
-
-builder.Services
-    .AddAuthentication(options =>
-    {
-        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-        options.DefaultChallengeScheme    = JwtBearerDefaults.AuthenticationScheme;
-    })
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer           = true,
-            ValidateAudience         = true,
-            ValidateLifetime         = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer              = jwtSection["Issuer"],
-            ValidAudience            = jwtSection["Audience"],
-            IssuerSigningKey         = new SymmetricSecurityKey(
-                                           Encoding.UTF8.GetBytes(secretKey)),
-            ClockSkew                = TimeSpan.FromMinutes(1),
-        };
-
-        // Allow the JWT to be read from the refreshToken cookie as a fallback
-        // (used by refresh-token endpoints).
-        options.Events = new JwtBearerEvents
-        {
-            OnMessageReceived = ctx =>
-            {
-                // Let SignalR / cookie-based token pass through if needed
-                if (string.IsNullOrEmpty(ctx.Token)
-                    && ctx.Request.Cookies.TryGetValue("refreshToken", out var cookieToken))
-                {
-                    ctx.Token = cookieToken;
-                }
-                return Task.CompletedTask;
-            },
-        };
-    });
 
 // ══════════════════════════════════════════════════════════════
 // Culture Configuration
