@@ -43,6 +43,7 @@ var allowedOrigins = builder.Configuration
     {
         "https://dev-ken-systems.vercel.app",
         "http://localhost:4200",
+        "https://devken-systems.onrender.com/api/auth/sso/google"
     };
 
 builder.Services.AddCors(options =>
