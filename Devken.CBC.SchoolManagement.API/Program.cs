@@ -14,7 +14,6 @@ using Microsoft.OpenApi.Models;
 using QuestPDF.Infrastructure;
 using System.Globalization;
 using System.Reflection;
-using Microsoft.AspNetCore.Authentication;
 
 StartupErrorHandler.Initialize();
 
