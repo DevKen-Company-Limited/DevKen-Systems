@@ -12,12 +12,15 @@ import {
 @Injectable({ providedIn: 'root' })
 export class InvoiceItemService {
   private readonly apiBase = inject(API_BASE_URL);
+  private readonly base    = `${this.apiBase}/api/finance/invoiceitems`;
+
   private readonly http    = inject(HttpClient);
 
-  // Base: /api/finance/invoiceitems
-  private get base(): string {
-    return `${this.apiBase}/api/finance/invoiceitems`;
-  }
+
+  // // Base: /api/finance/invoiceitems
+  // private get base(): string {
+  //   return `${this.apiBase}/api/finance/invoiceitems`;
+  // }
 
   // ── Queries ───────────────────────────────────────────────────────────────
 

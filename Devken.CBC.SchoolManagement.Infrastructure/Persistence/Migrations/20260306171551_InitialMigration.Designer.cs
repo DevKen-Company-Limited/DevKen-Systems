@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Devken.CBC.SchoolManagement.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260306142742_InitialMigration")]
+    [Migration("20260306171551_InitialMigration")]
     partial class InitialMigration
     {
         /// <inheritdoc />

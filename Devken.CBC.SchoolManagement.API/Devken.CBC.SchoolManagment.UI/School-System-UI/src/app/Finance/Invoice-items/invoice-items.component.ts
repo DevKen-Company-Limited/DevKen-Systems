@@ -85,11 +85,21 @@ export class InvoiceItemsComponent implements OnInit, OnDestroy {
     };
 
     tableEmptyState: TableEmptyState = {
-        icon: 'receipt_long',
-        message: 'No line items yet',
-        description: 'Add items to this invoice using the button above.',
-        action: { label: 'Add First Item', icon: 'add', handler: () => this.openCreate() },
-    };
+    icon: 'receipt_long',
+    message: 'No line items yet',
+    description: 'Add items to this invoice using the button above.',
+    action: {
+        label: 'Add First Item',
+        icon: 'add',
+        handler: () => this.hasInvoiceContext ? this.openCreate() : null
+    },
+};
+    // tableEmptyState: TableEmptyState = {
+    //     icon: 'receipt_long',
+    //     message: 'No line items yet',
+    //     description: 'Add items to this invoice using the button above.',
+    //     action: { label: 'Add First Item', icon: 'add', handler: () => this.openCreate() },
+    // };
 
     tableColumns: TableColumn<InvoiceItemResponseDto>[] = [
         { id: 'description', label: 'Description',  align: 'left',   sortable: true },
@@ -269,13 +279,31 @@ export class InvoiceItemsComponent implements OnInit, OnDestroy {
 
     // ── CRUD ───────────────────────────────────────────────────────────────────
 
+    get hasInvoiceContext(): boolean {
+        return !!this.invoiceId;
+    }
+
     openCreate(): void {
+        if (!this.hasInvoiceContext) {
+            this.alertService.warning(
+                'No Invoice Selected',
+                'Please open this page from an invoice to add items.'
+            );
+            return;
+        }
         const data: InvoiceItemDialogData = { mode: 'create', invoiceId: this.invoiceId };
         this.dialog
             .open(InvoiceItemDialogComponent, { data, width: '720px', panelClass: 'rounded-2xl' })
             .afterClosed().pipe(take(1))
             .subscribe(result => { if (result?.success) this.loadAll(); });
     }
+    // openCreate(): void {
+    //     const data: InvoiceItemDialogData = { mode: 'create', invoiceId: this.invoiceId };
+    //     this.dialog
+    //         .open(InvoiceItemDialogComponent, { data, width: '720px', panelClass: 'rounded-2xl' })
+    //         .afterClosed().pipe(take(1))
+    //         .subscribe(result => { if (result?.success) this.loadAll(); });
+    // }
 
     openEdit(item: InvoiceItemResponseDto): void {
         const data: InvoiceItemDialogData = { mode: 'edit', invoiceId: this.invoiceId, item };

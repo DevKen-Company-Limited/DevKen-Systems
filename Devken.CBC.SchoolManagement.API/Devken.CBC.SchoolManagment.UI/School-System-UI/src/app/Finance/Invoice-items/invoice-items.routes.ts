@@ -9,8 +9,8 @@ export default [
     },
     // Navigated from invoice detail page with path param
     // Component already reads paramMap.get('invoiceId') first, so this just works
-    {
-        path: ':invoiceId',
-        component: InvoiceItemsComponent,
-    },
+    // {
+    //     path: ':invoiceId',
+    //     component: InvoiceItemsComponent,
+    // },
 ] as Routes;

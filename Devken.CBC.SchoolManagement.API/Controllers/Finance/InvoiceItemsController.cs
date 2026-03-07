@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Api.Controllers.Finance
 {
-    [Route("api/finance/[controller]")]
+    [Route("api/finance/invoiceitems")]
     [ApiController]
     [Authorize]
     public class InvoiceItemsController : BaseApiController
