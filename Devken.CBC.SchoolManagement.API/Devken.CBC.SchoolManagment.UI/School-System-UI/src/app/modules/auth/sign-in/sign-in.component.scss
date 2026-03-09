@@ -1,13 +1,5 @@
-<<<<<<< HEAD
-// ─── Google Font import ───────────────────────────────────────────────────────
-// Add to your global styles.scss or index.html:
-// <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-
-// ─── Design tokens ────────────────────────────────────────────────────────────
-=======
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
 
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
 :root {
   --cbc-ink:         #0d1117;
   --cbc-ink-soft:    #4a5568;
@@ -19,34 +11,13 @@
   --cbc-forest:      #1a4731;
   --cbc-forest-2:    #226040;
   --cbc-mint:        #16a34a;
-<<<<<<< HEAD
-=======
   --cbc-primary:     #6366f1;
   --cbc-primary-50:  #eef2ff;
   --cbc-primary-200: #c7d2fe;
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
   --cbc-radius:      12px;
   --cbc-shadow-sm:   0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
   --cbc-shadow-md:   0 4px 16px rgba(0,0,0,.10), 0 2px 6px rgba(0,0,0,.06);
 }
-<<<<<<< HEAD
-
-// ─── Animations ───────────────────────────────────────────────────────────────
-@keyframes cbc-slideUp {
-  from { opacity: 0; transform: translateY(24px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes cbc-fadeUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes cbc-pulse {
-  0%, 100% { box-shadow: 0 0 0 3px rgba(74,222,128,.25); }
-  50%       { box-shadow: 0 0 0 6px rgba(74,222,128,.10); }
-}
-
-// ─── Root wrapper ─────────────────────────────────────────────────────────────
-=======
 
 @keyframes cbc-slideUp {
   from { opacity: 0; transform: translateY(24px); }
@@ -63,7 +34,6 @@
   50%       { box-shadow: 0 0 0 6px rgba(74,222,128,.10); }
 }
 
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
 auth-sign-in {
   display: block;
   position: fixed;
@@ -82,18 +52,10 @@ auth-sign-in {
 
   @media (max-width: 900px) {
     grid-template-columns: 1fr;
-<<<<<<< HEAD
-
-=======
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
     .cbc-right-panel { display: none !important; }
   }
 }
 
-<<<<<<< HEAD
-// ─── LEFT PANEL ───────────────────────────────────────────────────────────────
-=======
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
 .cbc-left-panel {
   display: flex;
   align-items: center;
@@ -113,10 +75,6 @@ auth-sign-in {
     background: radial-gradient(circle, rgba(22,163,74,.07) 0%, transparent 70%);
     pointer-events: none;
   }
-<<<<<<< HEAD
-=======
-
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
   &::after {
     content: '';
     position: absolute;
@@ -134,20 +92,12 @@ auth-sign-in {
 
   > * {
     animation: cbc-fadeUp .45s ease both;
-<<<<<<< HEAD
-
-=======
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
     @for $i from 1 through 10 {
       &:nth-child(#{$i}) { animation-delay: #{$i * 0.05}s; }
     }
   }
 }
 
-<<<<<<< HEAD
-// ─── Logo ─────────────────────────────────────────────────────────────────────
-=======
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
 .cbc-logo {
   display: flex;
   align-items: center;
@@ -198,10 +148,6 @@ auth-sign-in {
   letter-spacing: .3px;
 }
 
-<<<<<<< HEAD
-// ─── Heading ──────────────────────────────────────────────────────────────────
-=======
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
 .cbc-heading {
   font-family: 'Playfair Display', serif;
   font-size: 30px;
@@ -222,80 +168,6 @@ auth-sign-in {
   text-decoration: none;
   font-weight: 500;
   transition: opacity .2s;
-<<<<<<< HEAD
-
-  &:hover { opacity: .75; }
-}
-
-// ─── Role Switcher ────────────────────────────────────────────────────────────
-.cbc-role-switcher {
-  display: flex;
-  gap: 6px;
-  background: var(--cbc-surface-2);
-  border: 1px solid var(--cbc-border);
-  border-radius: var(--cbc-radius);
-  padding: 4px;
-  margin-bottom: 22px;
-}
-
-.cbc-role-btn {
-  flex: 1;
-  padding: 7px 6px;
-  border: none;
-  background: transparent;
-  border-radius: 8px;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--cbc-ink-muted);
-  cursor: pointer;
-  transition: all .22s ease;
-  white-space: nowrap;
-
-  &:hover {
-    color: var(--cbc-ink);
-    background: rgba(0,0,0,.04);
-  }
-
-  &.active {
-    background: var(--cbc-surface);
-    color: var(--cbc-forest);
-    box-shadow: var(--cbc-shadow-sm);
-    font-weight: 600;
-  }
-}
-
-// ─── Info Banner ──────────────────────────────────────────────────────────────
-.cbc-info-banner {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  border-radius: var(--cbc-radius);
-  padding: 11px 14px;
-  margin-bottom: 22px;
-}
-
-.cbc-info-icon {
-  width: 20px; height: 20px;
-  color: var(--cbc-mint);
-  flex-shrink: 0;
-  margin-top: 1px;
-  display: grid;
-  place-items: center;
-}
-
-.cbc-info-text {
-  font-size: 13px;
-  color: #166534;
-  line-height: 1.45;
-
-  strong { font-weight: 600; }
-}
-
-// ─── Alert wrapper ────────────────────────────────────────────────────────────
-=======
   &:hover { opacity: .75; }
 }
 
@@ -419,15 +291,10 @@ auth-sign-in {
   strong { font-weight: 600; }
 }
 
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
 .cbc-alert-wrap {
   margin-bottom: 18px;
 }
 
-<<<<<<< HEAD
-// ─── Form ─────────────────────────────────────────────────────────────────────
-=======
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
 .cbc-form {
   display: flex;
   flex-direction: column;
@@ -435,35 +302,6 @@ auth-sign-in {
 
 .cbc-field-group {
   margin-bottom: 4px;
-<<<<<<< HEAD
-}
-
-// Override Angular Material field to match design
-.cbc-mat-field {
-  width: 100%;
-
-  .mat-mdc-form-field-flex { border-radius: var(--cbc-radius) !important; }
-
-  .mdc-notched-outline__leading  { border-radius: var(--cbc-radius) 0 0 var(--cbc-radius) !important; }
-  .mdc-notched-outline__trailing { border-radius: 0 var(--cbc-radius) var(--cbc-radius) 0 !important; }
-
-  // Focused border color
-  &.mat-focused .mdc-notched-outline__notch,
-  &.mat-focused .mdc-notched-outline__leading,
-  &.mat-focused .mdc-notched-outline__trailing {
-    border-color: var(--cbc-forest) !important;
-  }
-}
-
-.cbc-toggle-pw {
-  color: var(--cbc-ink-muted);
-  transition: color .18s;
-
-  &:hover { color: var(--cbc-ink); }
-}
-
-// ─── Actions Row ──────────────────────────────────────────────────────────────
-=======
 }
 
 .cbc-mat-field {
@@ -486,7 +324,6 @@ auth-sign-in {
   &:hover { color: var(--cbc-ink); }
 }
 
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
 .cbc-actions-row {
   display: flex;
   align-items: center;
@@ -498,11 +335,6 @@ auth-sign-in {
 .cbc-remember {
   font-size: 13.5px;
   color: var(--cbc-ink-soft);
-<<<<<<< HEAD
-
-  // Override mat-checkbox primary color to forest green
-=======
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
   --mdc-checkbox-selected-checkmark-color: #fff;
   --mdc-checkbox-selected-focus-icon-color: var(--cbc-forest);
   --mdc-checkbox-selected-hover-icon-color: var(--cbc-forest);
@@ -516,17 +348,9 @@ auth-sign-in {
   text-decoration: none;
   font-weight: 500;
   transition: opacity .2s;
-<<<<<<< HEAD
-
   &:hover { opacity: .75; }
 }
 
-// ─── Submit Button ────────────────────────────────────────────────────────────
-=======
-  &:hover { opacity: .75; }
-}
-
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
 .cbc-submit-btn {
   width: 100%;
   padding: 13px 20px !important;
@@ -578,10 +402,6 @@ auth-sign-in {
   mat-progress-spinner { --mdc-circular-progress-active-indicator-color: #fff; }
 }
 
-<<<<<<< HEAD
-// ─── Divider ──────────────────────────────────────────────────────────────────
-=======
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
 .cbc-divider {
   display: flex;
   align-items: center;
@@ -603,13 +423,6 @@ auth-sign-in {
   letter-spacing: .3px;
 }
 
-<<<<<<< HEAD
-// ─── SSO ──────────────────────────────────────────────────────────────────────
-.cbc-sso-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-=======
 .cbc-sso-row {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
@@ -638,7 +451,6 @@ auth-sign-in {
   white-space: nowrap;
 
   mat-progress-spinner { flex-shrink: 0; }
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
 }
 
 .cbc-sso-btn {
@@ -657,27 +469,12 @@ auth-sign-in {
   transition: all .18s ease !important;
   height: auto !important;
 
-<<<<<<< HEAD
-  &:hover {
-=======
   &:hover:not([disabled]) {
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
     border-color: var(--cbc-border) !important;
     background: var(--cbc-surface-2) !important;
     transform: translateY(-1px);
     box-shadow: var(--cbc-shadow-sm) !important;
   }
-<<<<<<< HEAD
-}
-
-.cbc-sso-icon {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-}
-
-// ─── RIGHT PANEL ──────────────────────────────────────────────────────────────
-=======
 
   &[disabled] {
     opacity: .45 !important;
@@ -695,7 +492,6 @@ auth-sign-in {
   --mdc-circular-progress-active-indicator-color: var(--cbc-ink-soft);
 }
 
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
 .cbc-right-panel {
   background: var(--cbc-forest);
   position: relative;
@@ -762,10 +558,6 @@ auth-sign-in {
   animation: cbc-slideUp .65s .1s cubic-bezier(.22,1,.36,1) both;
 }
 
-<<<<<<< HEAD
-// Badge
-=======
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
 .cbc-rp-badge {
   display: inline-flex;
   align-items: center;
@@ -793,10 +585,6 @@ auth-sign-in {
   letter-spacing: .3px;
 }
 
-<<<<<<< HEAD
-// Headline
-=======
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
 .cbc-rp-headline {
   font-family: 'Playfair Display', serif;
   font-size: 42px;
@@ -830,10 +618,6 @@ auth-sign-in {
   font-weight: 300;
 }
 
-<<<<<<< HEAD
-// Stats
-=======
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
 .cbc-stats-row {
   display: flex;
   gap: 12px;
@@ -849,10 +633,6 @@ auth-sign-in {
   text-align: center;
   backdrop-filter: blur(6px);
   transition: background .2s;
-<<<<<<< HEAD
-
-=======
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
   &:hover { background: rgba(255,255,255,.13); }
 }
 
@@ -873,10 +653,6 @@ auth-sign-in {
   text-transform: uppercase;
 }
 
-<<<<<<< HEAD
-// Features
-=======
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
 .cbc-feature-list {
   list-style: none;
   margin: 0 0 36px;
@@ -910,10 +686,6 @@ auth-sign-in {
   margin-top: 1px;
 }
 
-<<<<<<< HEAD
-// Avatars
-=======
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
 .cbc-avatars-row {
   display: flex;
   align-items: center;
@@ -953,8 +725,6 @@ auth-sign-in {
     font-weight: 600;
     color: rgba(255,255,255,.90);
   }
-<<<<<<< HEAD
-=======
 }
 
 .dark {
@@ -974,5 +744,4 @@ auth-sign-in {
   }
 
   .cbc-info-text { color: #4ade80; }
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
 }
