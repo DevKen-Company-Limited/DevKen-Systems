@@ -7,8 +7,8 @@ import { MatDividerModule } from '@angular/material/divider';
 
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { take } from 'rxjs/operators';
-import { InvoiceService } from 'app/core/DevKenService/Invoice/Invoice.service ';
 import { InvoiceStatus, InvoiceDialogData } from '../Types/Invoice.types';
+import { InvoiceService } from 'app/core/DevKenService/Finance/Invoice/Invoice.service ';
 
 @Component({
   selector: 'app-invoice-view-dialog',

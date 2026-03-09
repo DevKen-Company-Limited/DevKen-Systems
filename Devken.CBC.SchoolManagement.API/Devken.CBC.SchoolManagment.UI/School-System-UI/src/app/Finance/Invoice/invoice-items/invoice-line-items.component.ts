@@ -12,7 +12,7 @@ import { FuseAlertComponent } from '@fuse/components/alert';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
-  selector: 'app-invoice-items',
+  selector: 'app-invoice-line-items',
   standalone: true,
   imports: [
     CommonModule,
@@ -27,9 +27,9 @@ import { MatTooltipModule } from '@angular/material/tooltip';
     FuseAlertComponent,
     MatTooltipModule,
   ],
-  templateUrl: './invoice-items.component.html',
+  templateUrl: './invoice-line-items.component.html',
 })
-export class InvoiceItemsComponent implements OnInit, OnChanges {
+export class InvoiceLineItemsComponent implements OnInit, OnChanges {
   @Input() formData: any[] = [];
   @Input() isEditMode = false;
   @Output() formChanged = new EventEmitter<any[]>();
