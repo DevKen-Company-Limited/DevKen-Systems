@@ -62,6 +62,9 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
         public const string InvoiceWrite = "Invoice.Write";
         public const string InvoiceItemRead = "InvoiceItem.Read";
         public const string InvoiceItemWrite = "InvoiceItem.Write";
+
+        // ── Finance — Fee Structure ──────────────────────
+        /// <summary>View fee structures for a school.</summary>
         public const string FeeStructureRead = "FeeStructure.Read";
         public const string FeeStructureWrite = "FeeStructure.Write";
         public const string FeeStructureDelete = "FeeStructure.Delete";

@@ -7,8 +7,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTableDataSource } from '@angular/material/table';
 import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
-import { InvoiceService } from 'app/core/DevKenService/Invoice/Invoice.service ';
-import { InvoiceFormDialogComponent } from 'app/dialog-modals/Invoice/invoice-form-dialog.component';
 import { DataTableComponent, TableHeader, TableColumn, TableAction, TableEmptyState } from 'app/shared/data-table/data-table.component';
 import { FilterPanelComponent, FilterField, FilterChangeEvent } from 'app/shared/Filter/filter-panel.component';
 import { PageHeaderComponent, Breadcrumb } from 'app/shared/Page-Header/page-header.component';
@@ -20,6 +18,7 @@ import { Router } from '@angular/router';
 import { AuthService } from 'app/core/auth/auth.service';
 import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
 import { SchoolDto } from 'app/Tenant/types/school';
+import { InvoiceService } from 'app/core/DevKenService/Finance/Invoice/Invoice.service ';
 
 
 @Component({
@@ -43,12 +42,11 @@ export class InvoicesListComponent implements OnInit, OnDestroy {
   @ViewChild('balanceTpl', { static: true }) balanceTpl!: TemplateRef<any>;
   @ViewChild('overdueTpl', { static: true }) overdueTpl!: TemplateRef<any>;
 
-  private _router        = inject(Router);
-  private destroy$ = new Subject<void>();
-  dataSource = new MatTableDataSource<InvoiceSummaryResponseDto>([]);
-  isLoading = false;
+  private _router       = inject(Router);
+  private destroy$      = new Subject<void>();
+  dataSource            = new MatTableDataSource<InvoiceSummaryResponseDto>([]);
+  isLoading             = false;
 
-  // Add to class:
   private _authService  = inject(AuthService);
   private _schoolService = inject(SchoolService);
 
@@ -56,7 +54,7 @@ export class InvoicesListComponent implements OnInit, OnDestroy {
     return this._authService.authUser?.isSuperAdmin ?? false;
   }
 
-  schools: SchoolDto[] = [];
+  schools: SchoolDto[]       = [];
   selectedSchoolId: string | null = null;
 
   // ── Header ──────────────────────────────────────────────────────────────
@@ -78,15 +76,15 @@ export class InvoicesListComponent implements OnInit, OnDestroy {
   };
 
   columns: TableColumn<InvoiceSummaryResponseDto>[] = [
-    { id: 'invoiceNumber', label: 'Invoice #',     sortable: true },
-    { id: 'studentName',   label: 'Student',        sortable: true },
-    { id: 'termName',      label: 'Term',           hideOnMobile: true },
-    { id: 'invoiceDate',   label: 'Invoice Date',   hideOnMobile: true, hideOnTablet: true },
-    { id: 'dueDate',       label: 'Due Date',       hideOnMobile: true },
-    { id: 'totalAmount',   label: 'Total (KES)',    align: 'right' },
-    { id: 'balance',       label: 'Balance (KES)',  align: 'right' },
-    { id: 'isOverdue',     label: 'Overdue',        align: 'center', hideOnMobile: true },
-    { id: 'statusInvoice', label: 'Status',         align: 'center' },
+    { id: 'invoiceNumber', label: 'Invoice #',    sortable: true },
+    { id: 'studentName',   label: 'Student',       sortable: true },
+    { id: 'termName',      label: 'Term',          hideOnMobile: true },
+    { id: 'invoiceDate',   label: 'Invoice Date',  hideOnMobile: true, hideOnTablet: true },
+    { id: 'dueDate',       label: 'Due Date',      hideOnMobile: true },
+    { id: 'totalAmount',   label: 'Total (KES)',   align: 'right' },
+    { id: 'balance',       label: 'Balance (KES)', align: 'right' },
+    { id: 'isOverdue',     label: 'Overdue',       align: 'center', hideOnMobile: true },
+    { id: 'statusInvoice', label: 'Status',        align: 'center' },
   ];
 
   actions: TableAction<InvoiceSummaryResponseDto>[] = [
@@ -98,13 +96,21 @@ export class InvoicesListComponent implements OnInit, OnDestroy {
       handler: (row) => this.openView(row),
     },
     {
+      id: 'view-items',
+      label: 'Line Items',
+      icon: 'receipt_long',
+      color: 'indigo',
+      handler: (row) => this.openLineItems(row),
+    },
+    {
       id: 'edit',
       label: 'Edit',
       icon: 'edit',
       color: 'indigo',
-      visible: (row) => row.statusInvoice !== InvoiceStatus.Cancelled
-               && row.statusInvoice !== InvoiceStatus.Paid
-               && row.statusInvoice !== InvoiceStatus.Refunded, 
+      visible: (row) =>
+        row.statusInvoice !== InvoiceStatus.Cancelled &&
+        row.statusInvoice !== InvoiceStatus.Paid &&
+        row.statusInvoice !== InvoiceStatus.Refunded,
       handler: (row) => this.openEdit(row),
     },
     {
@@ -113,8 +119,9 @@ export class InvoicesListComponent implements OnInit, OnDestroy {
       icon: 'cancel',
       color: 'amber',
       divider: true,
-      visible: (row) => row.statusInvoice !== InvoiceStatus.Cancelled
-               && row.statusInvoice !== InvoiceStatus.Refunded, 
+      visible: (row) =>
+        row.statusInvoice !== InvoiceStatus.Cancelled &&
+        row.statusInvoice !== InvoiceStatus.Refunded,
       handler: (row) => this.onCancel(row),
     },
     {
@@ -148,14 +155,14 @@ export class InvoicesListComponent implements OnInit, OnDestroy {
       type: 'select',
       value: 'all',
       options: [
-      { label: 'All Statuses',    value: 'all' },
-      { label: 'Pending',         value: InvoiceStatus.Pending },
-      { label: 'Partially Paid',  value: InvoiceStatus.PartiallyPaid },
-      { label: 'Paid',            value: InvoiceStatus.Paid },
-      { label: 'Overdue',         value: InvoiceStatus.Overdue },
-      { label: 'Cancelled',       value: InvoiceStatus.Cancelled },
-      { label: 'Refunded',        value: InvoiceStatus.Refunded },
-],
+        { label: 'All Statuses',   value: 'all' },
+        { label: 'Pending',        value: InvoiceStatus.Pending },
+        { label: 'Partially Paid', value: InvoiceStatus.PartiallyPaid },
+        { label: 'Paid',           value: InvoiceStatus.Paid },
+        { label: 'Overdue',        value: InvoiceStatus.Overdue },
+        { label: 'Cancelled',      value: InvoiceStatus.Cancelled },
+        { label: 'Refunded',       value: InvoiceStatus.Refunded },
+      ],
     },
     {
       id: 'isOverdue',
@@ -163,29 +170,19 @@ export class InvoicesListComponent implements OnInit, OnDestroy {
       type: 'select',
       value: 'all',
       options: [
-        { label: 'All',       value: 'all' },
-        { label: 'Overdue',   value: 'true' },
-        { label: 'On Time',   value: 'false' },
+        { label: 'All',     value: 'all' },
+        { label: 'Overdue', value: 'true' },
+        { label: 'On Time', value: 'false' },
       ],
     },
-    {
-      id: 'dateFrom',
-      label: 'Date From',
-      type: 'date',
-      value: '',
-    },
-    {
-      id: 'dateTo',
-      label: 'Date To',
-      type: 'date',
-      value: '',
-    },
+    { id: 'dateFrom', label: 'Date From', type: 'date', value: '' },
+    { id: 'dateTo',   label: 'Date To',   type: 'date', value: '' },
   ];
 
   activeFilters: InvoiceQueryDto = {};
 
   // ── Pagination ────────────────────────────────────────────────────────────
-  currentPage = 1;
+  currentPage  = 1;
   itemsPerPage = 10;
 
   get filteredData(): InvoiceSummaryResponseDto[] {
@@ -204,19 +201,21 @@ export class InvoicesListComponent implements OnInit, OnDestroy {
     private alertService: AlertService,
   ) {}
 
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
+
   ngOnInit(): void {
-    // ✅ static: true refs are available here
-  this.cellTemplates = {
-    statusInvoice: this.statusTpl,
-    totalAmount:   this.amountTpl,
-    balance:       this.balanceTpl,
-    isOverdue:     this.overdueTpl,
-  };
-     if (this.isSuperAdmin) {
-    this.loadSchools();       // loads schools, then calls loadAll()
-  } else {
-    this.loadAll();
-  }
+    this.cellTemplates = {
+      statusInvoice: this.statusTpl,
+      totalAmount:   this.amountTpl,
+      balance:       this.balanceTpl,
+      isOverdue:     this.overdueTpl,
+    };
+
+    if (this.isSuperAdmin) {
+      this.loadSchools();
+    } else {
+      this.loadAll();
+    }
   }
 
   ngAfterViewInit(): void {
@@ -233,6 +232,61 @@ export class InvoicesListComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
+  // ── Data ──────────────────────────────────────────────────────────────────
+
+  loadAll(): void {
+    if (this.isSuperAdmin && !this.selectedSchoolId) {
+      this.isLoading = false;
+      return;
+    }
+
+    this.isLoading = true;
+    const schoolId = this.isSuperAdmin ? this.selectedSchoolId! : undefined;
+
+    this.invoiceService.getAll(this.activeFilters, schoolId).subscribe({
+      next: (res) => {
+        this.isLoading = false;
+        if (res.success) {
+          this.dataSource.data = res.data;
+          this.buildStats(res.data);
+          this.currentPage = 1;
+        }
+      },
+      error: () => { this.isLoading = false; },
+    });
+  }
+
+  private loadSchools(): void {
+    this._schoolService.getAll().pipe(takeUntil(this.destroy$)).subscribe({
+      next: (res: any) => {
+        this.schools = res.data ?? [];
+        if (this.schools.length > 0) {
+          this.selectedSchoolId = this.schools[0].id;
+          this.addSchoolFilter();
+          this.loadAll();
+        } else {
+          this.isLoading = false;
+        }
+      },
+      error: () => {
+        this.alertService.error('Could not load schools. Please refresh.');
+        this.isLoading = false;
+      },
+    });
+  }
+
+  private addSchoolFilter(): void {
+    const schoolFilter: FilterField = {
+      id: 'schoolId',
+      label: 'School',
+      type: 'select',
+      value: this.selectedSchoolId,
+      options: this.schools.map(s => ({ label: s.name, value: s.id })),
+    };
+    this.filterFields = [schoolFilter, ...this.filterFields];
+  }
+
+  // ── Stats ─────────────────────────────────────────────────────────────────
 
   private buildStats(data: InvoiceSummaryResponseDto[]): void {
     const total        = data.reduce((s, i) => s + i.totalAmount, 0);
@@ -241,32 +295,29 @@ export class InvoicesListComponent implements OnInit, OnDestroy {
     const overdueCount = data.filter(i => i.isOverdue).length;
 
     this.statsCards = [
-      { label: 'Total Invoiced',  value: this.formatCurrency(total),       icon: 'receipt_long',    iconColor: 'indigo' },
+      { label: 'Total Invoiced',   value: this.formatCurrency(total),       icon: 'receipt_long',    iconColor: 'indigo' },
       { label: 'Amount Collected', value: this.formatCurrency(collected),   icon: 'payments',        iconColor: 'green'  },
       { label: 'Outstanding',      value: this.formatCurrency(outstanding), icon: 'pending_actions', iconColor: 'amber'  },
       { label: 'Overdue',          value: overdueCount,                     icon: 'warning',         iconColor: 'red'    },
     ];
   }
 
-  formatCurrency(val: number): string {
-    return new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(val);
-  }
-
   // ── Filters ───────────────────────────────────────────────────────────────
+
   onFilterChange(event: FilterChangeEvent): void {
-  if (event.filterId === 'schoolId') {
-    this.selectedSchoolId = event.value;
-  } else if (event.filterId === 'invoiceStatus') {
-    this.activeFilters.invoiceStatus = event.value === 'all' ? undefined : Number(event.value);
-  } else if (event.filterId === 'isOverdue') {
-    this.activeFilters.isOverdue = event.value === 'all' ? undefined : event.value === 'true';
-  } else if (event.filterId === 'dateFrom') {
-    this.activeFilters.dateFrom = event.value || undefined;
-  } else if (event.filterId === 'dateTo') {
-    this.activeFilters.dateTo = event.value || undefined;
+    if (event.filterId === 'schoolId') {
+      this.selectedSchoolId = event.value;
+    } else if (event.filterId === 'invoiceStatus') {
+      this.activeFilters.invoiceStatus = event.value === 'all' ? undefined : Number(event.value);
+    } else if (event.filterId === 'isOverdue') {
+      this.activeFilters.isOverdue = event.value === 'all' ? undefined : event.value === 'true';
+    } else if (event.filterId === 'dateFrom') {
+      this.activeFilters.dateFrom = event.value || undefined;
+    } else if (event.filterId === 'dateTo') {
+      this.activeFilters.dateTo = event.value || undefined;
+    }
+    this.loadAll();
   }
-  this.loadAll();
-}
 
   onClearFilters(): void {
     this.activeFilters = {};
@@ -274,13 +325,14 @@ export class InvoicesListComponent implements OnInit, OnDestroy {
   }
 
   // ── CRUD ──────────────────────────────────────────────────────────────────
-  openCreate(): void {
-  this._router.navigate(['/finance/invoices/create']);
-}
 
-openEdit(row: InvoiceSummaryResponseDto): void {
-  this._router.navigate(['/finance/invoices/edit', row.id]);
-}
+  openCreate(): void {
+    this._router.navigate(['/finance/invoices/create']);
+  }
+
+  openEdit(row: InvoiceSummaryResponseDto): void {
+    this._router.navigate(['/finance/invoices/edit', row.id]);
+  }
 
   openView(row: InvoiceSummaryResponseDto): void {
     this.invoiceService.getById(row.id).subscribe((res) => {
@@ -293,6 +345,14 @@ openEdit(row: InvoiceSummaryResponseDto): void {
       }
     });
   }
+
+  // ── Line Items ────────────────────────────────────────────────────────────
+
+  openLineItems(row: InvoiceSummaryResponseDto): void {
+    this._router.navigate(['/finance/invoice-items', row.id]);
+  }
+
+  // ── Cancel / Delete ───────────────────────────────────────────────────────
 
   onCancel(row: InvoiceSummaryResponseDto): void {
     this.alertService.confirm({
@@ -329,11 +389,18 @@ openEdit(row: InvoiceSummaryResponseDto): void {
   }
 
   // ── Pagination ────────────────────────────────────────────────────────────
+
   onPageChange(page: number): void { this.currentPage = page; }
   onItemsPerPageChange(n: number): void { this.itemsPerPage = n; this.currentPage = 1; }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
-  // invoices-list.component.ts — getStatusClass
+
+  formatCurrency(val: number): string {
+    return new Intl.NumberFormat('en-KE', {
+      style: 'currency', currency: 'KES', maximumFractionDigits: 0,
+    }).format(val);
+  }
+
   getStatusClass(status: InvoiceStatus): string {
     const map: Record<InvoiceStatus, string> = {
       [InvoiceStatus.Pending]:       'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
@@ -345,56 +412,4 @@ openEdit(row: InvoiceSummaryResponseDto): void {
     };
     return map[status] ?? map[InvoiceStatus.Pending];
   }
-
-   private loadSchools(): void {
-  this._schoolService.getAll().pipe(takeUntil(this.destroy$)).subscribe({
-    next: (res: any) => {
-      this.schools = res.data ?? [];
-      if (this.schools.length > 0) {
-        this.selectedSchoolId = this.schools[0].id;
-        this.addSchoolFilter();
-        this.loadAll();
-      } else {
-        this.isLoading = false;
-      }
-    },
-    error: () => {
-      this.alertService.error('Could not load schools. Please refresh.');
-      this.isLoading = false;
-    }
-  });
-}
-
-private addSchoolFilter(): void {
-  const schoolFilter: FilterField = {
-    id: 'schoolId',
-    label: 'School',
-    type: 'select',
-    value: this.selectedSchoolId,
-    options: this.schools.map(s => ({ label: s.name, value: s.id })),
-  };
-  this.filterFields = [schoolFilter, ...this.filterFields];
-}
-
-loadAll(): void {
-  if (this.isSuperAdmin && !this.selectedSchoolId) {
-    this.isLoading = false;
-    return;
-  }
-
-  this.isLoading = true;
-  const schoolId = this.isSuperAdmin ? this.selectedSchoolId! : undefined;
-
-  this.invoiceService.getAll(this.activeFilters, schoolId).subscribe({
-    next: (res) => {
-      this.isLoading = false;
-      if (res.success) {
-        this.dataSource.data = res.data;
-        this.buildStats(res.data);
-        this.currentPage = 1;
-      }
-    },
-    error: () => { this.isLoading = false; },
-  });
-}
 }

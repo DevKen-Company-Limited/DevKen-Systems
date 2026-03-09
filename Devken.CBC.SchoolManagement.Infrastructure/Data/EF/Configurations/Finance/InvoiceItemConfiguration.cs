@@ -18,6 +18,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Fina
         {
             builder.ToTable("InvoiceItems");
 
+            // ✅ Add tenant isolation — mirrors InvoiceConfiguration
+            builder.HasQueryFilter(i =>
+                _tenantContext.TenantId == null ||
+                i.TenantId == _tenantContext.TenantId);
+
             builder.Property(x => x.Description).HasMaxLength(200).IsRequired();
             builder.Property(x => x.ItemType).HasMaxLength(50);
             builder.Property(x => x.UnitPrice).HasColumnType("decimal(18,2)");

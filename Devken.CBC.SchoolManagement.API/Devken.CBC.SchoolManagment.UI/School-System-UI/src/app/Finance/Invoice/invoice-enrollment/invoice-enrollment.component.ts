@@ -9,9 +9,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
-import { InvoiceService } from 'app/core/DevKenService/Invoice/Invoice.service ';
+import { InvoiceService } from 'app/core/DevKenService/Finance/Invoice/Invoice.service ';
 import { InvoiceDetailsComponent, InvoiceLookupItem } from '../invoice-details/invoice-details.component';
-import { InvoiceItemsComponent } from '../invoice-items/invoice-items.component';
 import { InvoiceNotesComponent } from '../invoice-notes/invoice-notes.component';
 import { InvoiceReviewStepComponent } from '../invoice-review-step/invoice-review-step.component';
 import { AcademicYearService } from 'app/core/DevKenService/AcademicYearService/AcademicYearService';
@@ -21,6 +20,7 @@ import { TermService } from 'app/core/DevKenService/TermService/term.service';
 import { AuthService } from 'app/core/auth/auth.service';
 import { SchoolDto } from 'app/Tenant/types/school';
 import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
+import { InvoiceLineItemsComponent } from '../invoice-items/invoice-line-items.component';
 
 export interface InvoiceEnrollmentStep {
   label: string;
@@ -36,7 +36,7 @@ export interface InvoiceEnrollmentStep {
     MatButtonModule,
     MatIconModule,
     InvoiceDetailsComponent,
-    InvoiceItemsComponent,
+    InvoiceLineItemsComponent,
     InvoiceNotesComponent,
     InvoiceReviewStepComponent,
   ],

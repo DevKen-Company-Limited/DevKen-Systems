@@ -48,6 +48,8 @@ namespace Devken.CBC.SchoolManagement.Application.DTOs.Finance
         /// If provided, overrides the Discount field during Compute().
         /// </summary>
         public decimal? DiscountOverride { get; set; }
+        /// <summary>Required only when called by SuperAdmin.</summary>
+        public Guid? TenantId { get; set; }
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -115,6 +117,9 @@ namespace Devken.CBC.SchoolManagement.Application.DTOs.Finance
 
         public string? GlCode { get; set; }
         public string? Notes { get; set; }
+        public Guid TenantId { get; set; }
+        public Guid SchoolId => TenantId;
+        public string? SchoolName { get; set; }
 
         // Audit
         public DateTime CreatedOn { get; set; }

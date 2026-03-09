@@ -32,6 +32,9 @@ QuestPDF.Settings.License = LicenseType.Community;
 // ══════════════════════════════════════════════════════════════
 // CORS Configuration
 // ══════════════════════════════════════════════════════════════
+// FIX: AllowAnyOrigin() cannot be used with AllowCredentials().
+// If your frontend sends cookies or Authorization headers, you must
+// specify exact origins. Add more origins to the array as needed.
 var angularCorsPolicy = "AngularCors";
 
 var allowedOrigins = builder.Configuration
@@ -48,11 +51,11 @@ builder.Services.AddCors(options =>
     options.AddPolicy(angularCorsPolicy, policy =>
     {
         policy
-            .WithOrigins(allowedOrigins)
+            .WithOrigins(allowedOrigins)   // explicit origins only
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials()
-            .SetPreflightMaxAge(TimeSpan.FromMinutes(10));
+            .AllowCredentials()            // required for cookie-based refresh tokens
+            .SetPreflightMaxAge(TimeSpan.FromMinutes(10)); // cache preflight responses
     });
 });
 
@@ -199,8 +202,7 @@ using (var scope = app.Services.CreateScope())
             }
             else if (!appliedMigrations.Any())
             {
-                logger.LogInformation(
-                    "No migrations found. Creating database schema from model...");
+                logger.LogInformation("No migrations found. Creating database schema from model...");
                 await dbContext.Database.EnsureCreatedAsync();
                 logger.LogInformation("Database schema created successfully.");
             }
@@ -264,11 +266,18 @@ using (var scope = app.Services.CreateScope())
 // ══════════════════════════════════════════════════════════════
 // Middleware Pipeline
 // ══════════════════════════════════════════════════════════════
+// IMPORTANT: Order matters. CORS must come first — before any
+// middleware that can produce a response (auth, pipeline, etc.).
+// If auth middleware runs first, a 401 is returned without CORS
+// headers, causing the browser to report a "CORS error" instead
+// of the actual 401.
+// ──────────────────────────────────────────────────────────────
 
-// 1. CORS — must come first so preflight requests are handled before any auth checks
+// 1. CORS — must be first so ALL responses include CORS headers,
+//    including 401/403 errors returned by downstream middleware.
 app.UseCors(angularCorsPolicy);
 
-// 2. Static files
+// 2. Static files (single registration — FIX: was registered 3×)
 app.UseStaticFiles();
 app.UseStaticFiles(new StaticFileOptions
 {
@@ -276,31 +285,31 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath  = "/uploads"
 });
 
-// 3. Localisation
+// 3. Request localization
 app.UseRequestLocalization(new RequestLocalizationOptions
 {
     DefaultRequestCulture = new RequestCulture("en-US"),
-    SupportedCultures     = new List<CultureInfo> { new("en-US") },
-    SupportedUICultures   = new List<CultureInfo> { new("en-US") }
+    SupportedCultures = new List<CultureInfo> { new CultureInfo("en-US") },
+    SupportedUICultures = new List<CultureInfo> { new CultureInfo("en-US") }
 });
 
-// 4. Swagger — registered BEFORE auth middleware so the UI is always reachable
-//    Development : served at "/" (root)
-//    Production  : served at "/swagger"
+// 4. Swagger (available in all environments for deployed API testing)
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "DevKen School Management API v1");
-    c.RoutePrefix    = app.Environment.IsDevelopment() ? string.Empty : "swagger";
-    c.DocumentTitle  = "DevKen School Management API";
+    // Dev: serve at root (/), Production: serve at /swagger
+    c.RoutePrefix = app.Environment.IsDevelopment() ? string.Empty : "swagger";
+    c.DocumentTitle = "DevKen School Management API";
     c.DisplayRequestDuration();
-    c.EnablePersistAuthorization();
 });
 
-// 5. Custom API pipeline (global exception handling, request logging, etc.)
+// 5. Custom API pipeline (exception handling, logging, etc.)
+//    NOTE: If UseApiPipeline() internally calls UseAuthentication() or
+//    UseAuthorization(), remove those calls below to avoid double registration.
 app.UseApiPipeline();
 
-// 6. Auth — always after Swagger so the UI is never blocked
+// 6. Authentication & Authorization
 app.UseAuthentication();
 app.UseMiddleware<TenantMiddleware>();
 app.UseAuthorization();
@@ -338,9 +347,7 @@ if (builder.Environment.IsDevelopment())
 // ══════════════════════════════════════════════════════════════
 app.Logger.LogInformation("DevKen School Management API is starting...");
 app.Logger.LogInformation("Environment: {Environment}", app.Environment.EnvironmentName);
-app.Logger.LogInformation(
-    "Allowed CORS Origins: {Origins}", string.Join(", ", allowedOrigins));
-app.Logger.LogInformation(
-    "Application started successfully. Press Ctrl+C to shut down.");
+app.Logger.LogInformation("Allowed CORS Origins: {Origins}", string.Join(", ", allowedOrigins));
+app.Logger.LogInformation("Application started successfully. Press Ctrl+C to shut down.");
 
 app.Run();

@@ -37,10 +37,10 @@ namespace Devken.CBC.SchoolManagement.Application.DTOs.Invoices
         public Guid? TenantId { get; set; }
 
         [Required, MinLength(1, ErrorMessage = "At least one invoice item is required.")]
-        public List<CreateInvoiceItemDto> Items { get; set; } = new();
+        public List<CreateInvoiceLineItemDto> Items { get; set; } = new();
     }
 
-    public class CreateInvoiceItemDto
+    public class CreateInvoiceLineItemDto
     {
         [Required, MaxLength(200)]
         public string Description { get; set; } = null!;
