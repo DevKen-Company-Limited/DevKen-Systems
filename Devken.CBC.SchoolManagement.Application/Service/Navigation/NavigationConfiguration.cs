@@ -103,19 +103,8 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
                 new NavItem("invoices", "Invoices", "heroicons_outline:document-text", "/finance/invoices", PermissionKeys.InvoiceRead),
                 new NavItem("invoice-items", "Invoice Items", "heroicons_outline:document-duplicate", "/finance/invoice-items", PermissionKeys.InvoiceItemRead),
                 new NavItem("payments", "Payments", "heroicons_outline:credit-card", "/finance/payments", PermissionKeys.PaymentRead),
-            }
-        };
-
-        public static NavigationSection Accounting => new()
-        {
-            Id = "accounting",
-            Title = "Accounting",
-            Icon = "heroicons_outline:calculator",
-            Items = new[]
-            {
-                new NavItem("journal-entries", "Journal Entries", "heroicons_outline:book-open", "/accounting/journal-entries", PermissionKeys.AccountingRead),
-                new NavItem("budgets", "Budgets", "heroicons_outline:chart-pie", "/accounting/budgets", PermissionKeys.AccountingRead),
-                new NavItem("expenses", "Expenses", "heroicons_outline:receipt-percent", "/accounting/expenses", PermissionKeys.AccountingRead),
+                new NavItem("invoices", "Invoices", "heroicons_outline:document-text", "/finance/invoices", PermissionKeys.InvoiceRead),
+                new NavItem("invoice-items", "Invoice-Items", "heroicons_outline:document-text", "/finance/invoice-items", PermissionKeys.InvoiceItemRead)
             }
         };
 

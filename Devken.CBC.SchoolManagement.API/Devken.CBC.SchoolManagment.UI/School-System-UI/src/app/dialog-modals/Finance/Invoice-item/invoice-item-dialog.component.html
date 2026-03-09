@@ -1,0 +1,211 @@
+<!-- Dialog Header -->
+<div class="bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 relative overflow-hidden rounded-t-xl px-6 py-5">
+    <div class="absolute inset-0 opacity-10 pointer-events-none">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-yellow-200 rounded-full blur-2xl"></div>
+        <div class="absolute bottom-0 left-0 w-40 h-40 bg-cyan-300 rounded-full blur-2xl"></div>
+    </div>
+    <div class="relative z-10 flex items-center gap-3 pr-10">
+        <div class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center shrink-0">
+            <mat-icon class="text-white icon-size-6">{{ isEditMode ? 'edit' : 'add_circle' }}</mat-icon>
+        </div>
+        <div>
+            <h2 class="text-xl font-bold text-white m-0 leading-tight">{{ dialogTitle }}</h2>
+            <p class="text-white/80 text-sm mt-0.5 mb-0">{{ dialogSubtitle }}</p>
+        </div>
+    </div>
+    <button mat-icon-button class="absolute top-3 right-3 text-white z-20"
+            (click)="onCancel()" matTooltip="Close">
+        <mat-icon>close</mat-icon>
+    </button>
+</div>
+
+<!-- Saving Overlay -->
+<div *ngIf="isSaving"
+     class="absolute inset-0 bg-white/95 dark:bg-gray-900/95 z-50 flex items-center justify-center backdrop-blur-sm">
+    <div class="text-center p-8">
+        <div class="relative w-16 h-16 mx-auto mb-4">
+            <mat-spinner diameter="60"></mat-spinner>
+            <mat-icon class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-indigo-600">
+                receipt_long
+            </mat-icon>
+        </div>
+        <p class="text-lg font-semibold text-gray-800 dark:text-gray-200">
+            {{ isEditMode ? 'Updating...' : 'Adding...' }}
+        </p>
+    </div>
+</div>
+
+<!-- Form -->
+<form [formGroup]="form" (ngSubmit)="onSubmit()" mat-dialog-content class="p-5">
+
+      <!-- School Selection (SuperAdmin only) -->
+    <mat-form-field appearance="outline" class="w-full mb-4" *ngIf="isSuperAdmin">
+      <mat-label>School <span class="text-red-500">*</span></mat-label>
+      <mat-select formControlName="schoolId">
+        <mat-option *ngFor="let school of schools" [value]="school.id">
+          {{ school.name }}
+        </mat-option>
+      </mat-select>
+      <mat-error *ngIf="form.get('schoolId')?.hasError('required')">
+        School is required
+      </mat-error>
+    </mat-form-field>
+    
+    <!-- Validation Summary -->
+    <div *ngIf="formSubmitted && form.invalid"
+         class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg">
+        <div class="flex items-center gap-2 text-red-800 dark:text-red-200">
+            <mat-icon class="icon-size-5">error_outline</mat-icon>
+            <span class="font-medium">Please fix the following errors:</span>
+        </div>
+        <ul class="mt-1 ml-6 text-sm text-red-700 dark:text-red-300 list-disc">
+            <li *ngIf="form.get('description')?.hasError('required')">Description is required</li>
+            <li *ngIf="form.get('quantity')?.hasError('required') || form.get('quantity')?.hasError('min')">
+                Quantity must be at least 1
+            </li>
+            <li *ngIf="form.get('unitPrice')?.hasError('required')">Unit price is required</li>
+            <li *ngIf="form.get('taxRate')?.hasError('required')">Tax rate is required when item is taxable</li>
+        </ul>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        <!-- ── Left Column ── -->
+        <div class="space-y-4">
+
+            <!-- Description -->
+            <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Description <span class="text-red-500">*</span></mat-label>
+                <input matInput formControlName="description"
+                       placeholder="e.g. Term 1 Tuition Fee" autocomplete="off">
+                <mat-icon matPrefix>description</mat-icon>
+                <mat-error>{{ getFieldError('description') }}</mat-error>
+            </mat-form-field>
+
+            <!-- Item Type -->
+            <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Item Type</mat-label>
+                <mat-select formControlName="itemType">
+                    <mat-option value="">— Select type —</mat-option>
+                    <mat-option *ngFor="let t of itemTypeOptions" [value]="t">{{ t }}</mat-option>
+                </mat-select>
+                <mat-icon matPrefix>category</mat-icon>
+            </mat-form-field>
+
+            <!-- Quantity -->
+            <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Quantity <span class="text-red-500">*</span></mat-label>
+                <input matInput type="number" min="1" formControlName="quantity">
+                <mat-icon matPrefix>pin</mat-icon>
+                <mat-error>{{ getFieldError('quantity') }}</mat-error>
+            </mat-form-field>
+
+            <!-- Unit Price -->
+            <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Unit Price (KES) <span class="text-red-500">*</span></mat-label>
+                <input matInput type="number" min="0" step="0.01" formControlName="unitPrice"
+                       placeholder="0.00">
+                <mat-icon matPrefix>attach_money</mat-icon>
+                <mat-error>{{ getFieldError('unitPrice') }}</mat-error>
+            </mat-form-field>
+
+            <!-- Discount -->
+            <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Discount (KES)</mat-label>
+                <input matInput type="number" min="0" step="0.01" formControlName="discount"
+                       placeholder="0.00">
+                <mat-icon matPrefix>discount</mat-icon>
+                <mat-error>{{ getFieldError('discount') }}</mat-error>
+            </mat-form-field>
+
+            <!-- GL Code -->
+            <mat-form-field appearance="outline" class="w-full">
+                <mat-label>GL Code</mat-label>
+                <input matInput formControlName="glCode" placeholder="e.g. 4000-TUI">
+                <mat-icon matPrefix>account_tree</mat-icon>
+                <mat-hint>General ledger account code</mat-hint>
+                <mat-error>{{ getFieldError('glCode') }}</mat-error>
+            </mat-form-field>
+
+        </div>
+
+        <!-- ── Right Column ── -->
+        <div class="space-y-4">
+
+            <!-- Notes -->
+            <mat-form-field appearance="outline" class="w-full">
+                <mat-label>Notes</mat-label>
+                <textarea matInput formControlName="notes" rows="3"
+                          placeholder="Optional notes or remarks…" maxlength="500"></textarea>
+                <mat-icon matPrefix>notes</mat-icon>
+                <mat-error>{{ getFieldError('notes') }}</mat-error>
+            </mat-form-field>
+
+            <!-- Is Taxable -->
+            <div class="border-2 border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                        <mat-icon class="text-amber-600 icon-size-5">receipt_long</mat-icon>
+                        <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Taxable Item</span>
+                    </div>
+                    <mat-slide-toggle formControlName="isTaxable" color="warn"></mat-slide-toggle>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Apply tax to this line item</p>
+            </div>
+
+            <!-- Tax Rate (conditional) -->
+            <mat-form-field *ngIf="showTaxRate" appearance="outline" class="w-full">
+                <mat-label>Tax Rate (%) <span class="text-red-500">*</span></mat-label>
+                <input matInput type="number" min="0" max="100" step="0.1"
+                       formControlName="taxRate" placeholder="e.g. 16">
+                <mat-icon matPrefix>percent</mat-icon>
+                <mat-hint>Percentage, e.g. 16 for 16% VAT</mat-hint>
+                <mat-error>{{ getFieldError('taxRate') }}</mat-error>
+            </mat-form-field>
+
+            <!-- Live Preview -->
+            <div class="rounded-xl bg-white dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 p-4 space-y-2">
+                <p class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                    Computed Preview
+                </p>
+
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-600 dark:text-gray-400">Subtotal</span>
+                    <span class="font-semibold text-gray-900 dark:text-white">
+                        {{ formatCurrency((form.get('quantity')?.value || 0) * (form.get('unitPrice')?.value || 0)) }}
+                    </span>
+                </div>
+
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-600 dark:text-gray-400">Discount</span>
+                    <span class="font-semibold text-amber-600">
+                        − {{ formatCurrency(form.get('discount')?.value || 0) }}
+                    </span>
+                </div>
+
+                <div *ngIf="showTaxRate" class="flex justify-between text-sm">
+                    <span class="text-gray-600 dark:text-gray-400">Tax ({{ form.get('taxRate')?.value || 0 }}%)</span>
+                    <span class="font-semibold text-blue-600">+ {{ formatCurrency(previewTax) }}</span>
+                </div>
+
+                <div class="border-t border-gray-200 dark:border-gray-600 pt-2 flex justify-between">
+                    <span class="text-sm font-bold text-gray-700 dark:text-gray-300">Net Amount</span>
+                    <span class="text-base font-extrabold text-indigo-600 dark:text-indigo-400">
+                        {{ formatCurrency(previewNet) }}
+                    </span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</form>
+
+<!-- Dialog Actions -->
+<div mat-dialog-actions class="flex justify-end gap-3 px-5 py-4 border-t border-gray-200 dark:border-gray-700">
+    <button mat-button type="button" (click)="onCancel()" [disabled]="isSaving">Cancel</button>
+    <button mat-flat-button color="primary" type="button" (click)="onSubmit()" [disabled]="isSaving">
+        <mat-icon class="icon-size-5 mr-1">{{ isEditMode ? 'save' : 'add_circle' }}</mat-icon>
+        {{ isSaving ? 'Saving...' : (isEditMode ? 'Save Changes' : 'Add Item') }}
+    </button>
+</div>
