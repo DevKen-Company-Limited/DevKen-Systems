@@ -4,6 +4,7 @@ import { AuthGuard } from './core/auth/guards/auth.guard';
 import { NoAuthGuard } from './core/auth/guards/noAuth.guard';
 import { LayoutComponent } from './layout/layout.component';
 import { changePasswordGuard, passwordChangeRequiredGuard } from './core/auth/guards/password-change-required.guard';
+import { SsoSetPasswordComponent } from './modules/auth/set-up-password/sso-set-password.component';
 
 // @formatter:off
 /* eslint-disable max-len */
@@ -144,7 +145,7 @@ export const appRoutes: Route[] = [
                     { path: 'fees',       loadChildren: () => import('app/Finance/fee-item/fee-items.routes') },
                     { path: 'fee-structure', loadChildren: () => import('app/Finance/fee-structure/fee-structures.component.routes') },
                     { path: 'invoices',   loadChildren: () => import('app/Finance/Invoice/Invoice.routes') },
-                    { path: 'invoice-items',   loadChildren: () => import('app/Finance/InvoiceItem/invoice-items.routes') },
+                    { path: 'invoice-items',   loadChildren: () => import('app/Finance/Invoice-items/invoice-items.routes') },
                    // { path: 'payments',   loadChildren: () => import('app/mod') }
                 ]
             },

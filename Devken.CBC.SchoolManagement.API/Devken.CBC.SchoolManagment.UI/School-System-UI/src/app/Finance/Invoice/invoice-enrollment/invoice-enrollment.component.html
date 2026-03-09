@@ -181,13 +181,13 @@
         </app-invoice-details>
 
         <!-- Step 1: Items -->
-        <app-invoice-items
+        <app-invoice-line-items
           *ngIf="currentStep === 1"
           [formData]="formSections['items']"
           [isEditMode]="isEditMode"
           (formChanged)="onSectionChanged('items', $event)"
           (formValid)="onSectionValidChanged('items', $event)">
-        </app-invoice-items>
+        </app-invoice-line-items>
 
         <!-- Step 2: Notes -->
         <app-invoice-notes

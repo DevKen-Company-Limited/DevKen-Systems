@@ -1,0 +1,162 @@
+<div class="cbc-wrapper">
+
+  <!-- ── Left panel ─────────────────────────────────────────────────────── -->
+  <div class="cbc-left-panel">
+    <div class="cbc-form-shell">
+
+      <!-- Logo -->
+      <div class="cbc-logo">
+        <div class="cbc-logo-mark">DK</div>
+        <div class="cbc-logo-text">
+          <div class="cbc-logo-name">Devken CBC</div>
+          <div class="cbc-logo-tagline">School Management System</div>
+        </div>
+      </div>
+
+      <!-- Icon badge -->
+      <div class="cbc-verify-icon-wrap">
+        <div class="cbc-verify-icon-ring">
+          <mat-icon class="cbc-verify-icon" [svgIcon]="iconName"></mat-icon>
+        </div>
+      </div>
+
+      <!-- Heading -->
+      <div class="cbc-heading">{{ headingText }}</div>
+
+      <!-- Email pill -->
+      @if (email) {
+        <div class="cbc-verify-email-pill">
+          <mat-icon class="icon-size-4" svgIcon="heroicons_solid:envelope"></mat-icon>
+          <span>{{ email }}</span>
+        </div>
+      }
+
+      <!-- Body text -->
+      <p class="cbc-verify-body">{{ bodyText }}</p>
+
+      <!-- Steps for not_verified -->
+      @if (reason === 'not_verified') {
+        <div class="cbc-verify-steps">
+          <div class="cbc-verify-step">
+            <div class="cbc-step-num">1</div>
+            <div class="cbc-step-text">Open your Google account settings</div>
+          </div>
+          <div class="cbc-verify-step">
+            <div class="cbc-step-num">2</div>
+            <div class="cbc-step-text">Navigate to <strong>Personal info → Email</strong></div>
+          </div>
+          <div class="cbc-verify-step">
+            <div class="cbc-step-num">3</div>
+            <div class="cbc-step-text">Follow Google's verification steps</div>
+          </div>
+          <div class="cbc-verify-step">
+            <div class="cbc-step-num">4</div>
+            <div class="cbc-step-text">Return here and sign in again</div>
+          </div>
+        </div>
+      }
+
+      <!-- Steps for domain_not_allowed -->
+      @if (reason === 'domain_not_allowed') {
+        <div class="cbc-verify-steps">
+          <div class="cbc-verify-step">
+            <div class="cbc-step-num">1</div>
+            <div class="cbc-step-text">Sign out of this Google account</div>
+          </div>
+          <div class="cbc-verify-step">
+            <div class="cbc-step-num">2</div>
+            <div class="cbc-step-text">Sign in with your <strong>school-issued</strong> Google account</div>
+          </div>
+          <div class="cbc-verify-step">
+            <div class="cbc-step-num">3</div>
+            <div class="cbc-step-text">Or use your <strong>email and password</strong> to sign in below</div>
+          </div>
+        </div>
+      }
+
+      <!-- Actions -->
+      <div class="cbc-verify-actions">
+
+        @if (showGoogleLink) {
+          <button
+            class="cbc-submit-btn w-full"
+            mat-flat-button
+            type="button"
+            (click)="openGoogleAccount()">
+            <ng-container>
+              <mat-icon class="icon-size-4 mr-2" svgIcon="heroicons_solid:arrow-top-right-on-square"></mat-icon>
+              <span>Open Google account settings</span>
+            </ng-container>
+          </button>
+        }
+
+        <button
+          class="cbc-sso-outline-btn w-full"
+          mat-stroked-button
+          type="button"
+          (click)="tryAgain()">
+          <ng-container>
+            <mat-icon class="icon-size-4 mr-2" svgIcon="heroicons_solid:arrow-left"></mat-icon>
+            <span>Try a different account</span>
+          </ng-container>
+        </button>
+
+        <div class="cbc-verify-divider">
+          <span>or sign in with email & password</span>
+        </div>
+
+        <a
+          class="cbc-link-btn"
+          mat-button
+          [routerLink]="['/sign-in']">
+          Back to sign in
+        </a>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Right panel ────────────────────────────────────────────────────── -->
+  <div class="cbc-right-panel">
+    <div class="cbc-rp-dots"></div>
+    <div class="cbc-rp-ring cbc-rp-ring-1"></div>
+    <div class="cbc-rp-ring cbc-rp-ring-2"></div>
+    <div class="cbc-rp-ring cbc-rp-ring-3"></div>
+    <div class="cbc-rp-glow cbc-rp-glow-1"></div>
+    <div class="cbc-rp-glow cbc-rp-glow-2"></div>
+
+    <div class="cbc-rp-content">
+      <div class="cbc-rp-badge">
+        <div class="cbc-rp-badge-dot"></div>
+        <span class="cbc-rp-badge-text">CBC Accredited Platform</span>
+      </div>
+      <div class="cbc-rp-headline">
+        One quick<br>step to <span class="accent">access</span>
+      </div>
+      <p class="cbc-rp-desc">
+        Verifying your email keeps your school account secure and ensures
+        only authorised users access sensitive student data.
+      </p>
+      <ul class="cbc-feature-list">
+        <li class="cbc-feature-item">
+          <span class="cbc-feature-check">✓</span>
+          Google-verified emails only
+        </li>
+        <li class="cbc-feature-item">
+          <span class="cbc-feature-check">✓</span>
+          School domain protection
+        </li>
+        <li class="cbc-feature-item">
+          <span class="cbc-feature-check">✓</span>
+          One-click resolution via Google
+        </li>
+        <li class="cbc-feature-item">
+          <span class="cbc-feature-check">✓</span>
+          Email &amp; password always available
+        </li>
+      </ul>
+    </div>
+  </div>
+
+</div>

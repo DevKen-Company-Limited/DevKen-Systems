@@ -12,6 +12,9 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
     /// </summary>
     public interface IInvoiceItemRepository : IRepositoryBase<InvoiceItem, Guid>
     {
+        Task<IEnumerable<InvoiceItem>> GetAllAsync(bool trackChanges);
+        Task<InvoiceItem?> GetByCodeAsync(string code, Guid tenantId);
+        Task<bool> ExistsByNameAsync(string name, Guid tenantId, Guid? excludeId = null);
         /// <summary>Returns all items belonging to a specific invoice.</summary>
         Task<IEnumerable<InvoiceItem>> GetByInvoiceAsync(Guid invoiceId, bool trackChanges = false);
 

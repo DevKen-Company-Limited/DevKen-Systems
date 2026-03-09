@@ -19,16 +19,19 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Finance
     {
         private readonly IRepositoryManager _repositories;
         private readonly IDocumentNumberSeriesRepository _documentNumberService;
+        private readonly TenantContext _tenantContext;   // ✅ add this
 
         private const string INVOICE_NUMBER_SERIES = "Invoice";
         private const string INVOICE_PREFIX = "INV";
 
         public InvoiceService(
             IRepositoryManager repositories,
-            IDocumentNumberSeriesRepository documentNumberService)
+            IDocumentNumberSeriesRepository documentNumberService,
+            TenantContext tenantContext)
         {
             _repositories = repositories ?? throw new ArgumentNullException(nameof(repositories));
             _documentNumberService = documentNumberService ?? throw new ArgumentNullException(nameof(documentNumberService));
+            _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -194,12 +197,22 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Finance
                     notes: dto.Notes?.Trim());
 
                 // Build and compute line items
+                var now = DateTime.UtcNow;
+                var actingUserId = _tenantContext.ActingUserId;
                 foreach (var itemDto in dto.Items)
                 {
                     var item = new InvoiceItem
                     {
                         Id = Guid.NewGuid(),
                         TenantId = tenantId,
+
+                        // ✅ Set BaseEntity fields — bypassed because we add directly to the collection
+                        Status = EntityStatus.Active,
+                        CreatedOn = now,
+                        UpdatedOn = now,
+                        CreatedBy = actingUserId,
+                        UpdatedBy = actingUserId,
+
                         FeeItemId = itemDto.FeeItemId,
                         TermId = itemDto.TermId,
                         Description = itemDto.Description.Trim(),
@@ -215,6 +228,28 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Finance
                     item.Compute();
                     invoice.Items.Add(item);
                 }
+                //// Build and compute line items
+                //foreach (var itemDto in dto.Items)
+                //{
+                //    var item = new InvoiceItem
+                //    {
+                //        Id = Guid.NewGuid(),
+                //        TenantId = tenantId,
+                //        FeeItemId = itemDto.FeeItemId,
+                //        TermId = itemDto.TermId,
+                //        Description = itemDto.Description.Trim(),
+                //        ItemType = itemDto.ItemType?.Trim(),
+                //        Quantity = itemDto.Quantity,
+                //        UnitPrice = itemDto.UnitPrice,
+                //        Discount = itemDto.Discount,
+                //        IsTaxable = itemDto.IsTaxable,
+                //        TaxRate = itemDto.TaxRate,
+                //        GlCode = itemDto.GlCode?.Trim(),
+                //        Notes = itemDto.Notes?.Trim()
+                //    };
+                //    item.Compute();
+                //    invoice.Items.Add(item);
+                //}
 
                 // Domain method RecalculateTotals already exists and is public —
                 // it only reads Items and writes TotalAmount/StatusInvoice via private set,

@@ -18,6 +18,7 @@ using Devken.CBC.SchoolManagement.Application.Service.Activities;
 using Devken.CBC.SchoolManagement.Application.Service.Administration.Student;
 using Devken.CBC.SchoolManagement.Application.Service.Assessments;
 using Devken.CBC.SchoolManagement.Application.Service.Curriculum;
+using Devken.CBC.SchoolManagement.Application.Service.Email;
 using Devken.CBC.SchoolManagement.Application.Service.Finance;
 using Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment;
 using Devken.CBC.SchoolManagement.Application.Service.Isubscription;
@@ -45,6 +46,7 @@ using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Academics;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Administration.Students;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Curriculum;
+using Devken.CBC.SchoolManagement.Infrastructure.Services.Email;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Finance;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Images;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Reports;
@@ -154,6 +156,88 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                 foreach (var permission in PermissionKeys.AllPermissions)
                     RegisterPermissionPolicy(options, permission);
 
+                // ── Administration permissions ───────────────────────────────
+                RegisterPermissionPolicy(options, PermissionKeys.SchoolRead);
+                RegisterPermissionPolicy(options, PermissionKeys.SchoolWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.SchoolDelete);
+                RegisterPermissionPolicy(options, PermissionKeys.UserRead);
+                RegisterPermissionPolicy(options, PermissionKeys.UserWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.UserDelete);
+                RegisterPermissionPolicy(options, PermissionKeys.RoleRead);
+                RegisterPermissionPolicy(options, PermissionKeys.RoleWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.RoleDelete);
+
+                // ── Academic Year permissions ────────────────────────────────
+                RegisterPermissionPolicy(options, PermissionKeys.AcademicYearRead);
+                RegisterPermissionPolicy(options, PermissionKeys.AcademicYearWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.AcademicYearDelete);
+                RegisterPermissionPolicy(options, PermissionKeys.AcademicYearClose);
+
+                // ── Term permissions ─────────────────────────────────────────
+                RegisterPermissionPolicy(options, PermissionKeys.TermRead);
+                RegisterPermissionPolicy(options, PermissionKeys.TermWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.TermDelete);
+
+                // ── Academic permissions ─────────────────────────────────────
+                RegisterPermissionPolicy(options, PermissionKeys.StudentRead);
+                RegisterPermissionPolicy(options, PermissionKeys.StudentWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.StudentDelete);
+                RegisterPermissionPolicy(options, PermissionKeys.TeacherRead);
+                RegisterPermissionPolicy(options, PermissionKeys.TeacherWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.TeacherDelete);
+                RegisterPermissionPolicy(options, PermissionKeys.SubjectRead);
+                RegisterPermissionPolicy(options, PermissionKeys.SubjectWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.SubjectDelete);
+                RegisterPermissionPolicy(options, PermissionKeys.ClassRead);
+                RegisterPermissionPolicy(options, PermissionKeys.ClassWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.GradeRead);
+                RegisterPermissionPolicy(options, PermissionKeys.GradeWrite);
+
+                // ── Parent permissions ───────────────────────────────────────
+                RegisterPermissionPolicy(options, PermissionKeys.ParentRead);
+                RegisterPermissionPolicy(options, PermissionKeys.ParentWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.ParentDelete);
+
+                // ── Assessment permissions ───────────────────────────────────
+                RegisterPermissionPolicy(options, PermissionKeys.AssessmentRead);
+                RegisterPermissionPolicy(options, PermissionKeys.AssessmentWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.AssessmentDelete);
+                RegisterPermissionPolicy(options, PermissionKeys.ReportRead);
+                RegisterPermissionPolicy(options, PermissionKeys.ReportWrite);
+
+                // ── Finance — Broad permissions ──────────────────────────────
+                RegisterPermissionPolicy(options, PermissionKeys.FinanceRead);
+                RegisterPermissionPolicy(options, PermissionKeys.FinanceWrite);
+
+                // ── Finance — Granular permissions ───────────────────────────
+                RegisterPermissionPolicy(options, PermissionKeys.FeeRead);
+                RegisterPermissionPolicy(options, PermissionKeys.FeeWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.PaymentRead);
+                RegisterPermissionPolicy(options, PermissionKeys.PaymentWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.InvoiceRead);
+                RegisterPermissionPolicy(options, PermissionKeys.InvoiceWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.InvoiceItemRead);
+                RegisterPermissionPolicy(options, PermissionKeys.InvoiceItemWrite);
+                //   RegisterPermissionPolicy(options, PermissionKeys.InvoiceDelete);  // ← NEW
+
+                // ── Finance — Fee Structure permissions ──────────────────────
+                RegisterPermissionPolicy(options, PermissionKeys.FeeStructureRead);
+                RegisterPermissionPolicy(options, PermissionKeys.FeeStructureWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.FeeStructureDelete);
+
+                // ── Curriculum permissions ───────────────────────────────────
+                RegisterPermissionPolicy(options, PermissionKeys.CurriculumRead);
+                RegisterPermissionPolicy(options, PermissionKeys.CurriculumWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.LessonPlanRead);
+                RegisterPermissionPolicy(options, PermissionKeys.LessonPlanWrite);
+
+                // ── M-Pesa permissions ───────────────────────────────────────
+                RegisterPermissionPolicy(options, PermissionKeys.MpesaInitiate);
+                RegisterPermissionPolicy(options, PermissionKeys.MpesaViewTransactions);
+                RegisterPermissionPolicy(options, PermissionKeys.MpesaRefund);
+                RegisterPermissionPolicy(options, PermissionKeys.MpesaReconcile);
+
+                // ── Convenience / composite policies ────────────────────────
                 options.AddPolicy("Roles.View", policy =>
                     policy.Requirements.Add(new PermissionRequirement(PermissionKeys.RoleRead)));
 
@@ -165,6 +249,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             });
 
             services.AddScoped<IAuthorizationHandler, PermissionHandler>();
+            services.AddScoped<IEmailService, EmailService>();
             services.AddScoped<IAuthorizationHandler, RoleHandler>();
             services.AddScoped<IAuthorizationHandler, TenantAccessHandler>();
 
@@ -195,8 +280,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
 
             services.AddScoped<IFeeItemRepository, FeeItemRepository>();
             services.AddScoped<IFeeStructureRepository, FeeStructureRepository>();
-            services.AddScoped<IInvoiceRepository, InvoiceRepository>();
-            services.AddScoped<IInvoiceItemRepository, InvoiceItemRepository>();
+            services.AddScoped<IInvoiceRepository, InvoiceRepository>();      // ← NEW
+            services.AddScoped<IInvoiceItemRepository, InvoiceItemRepository>();  // ← NEW
 
             services.AddScoped<IFormativeAssessmentRepository, FormativeAssessmentRepository>();
             services.AddScoped<IFormativeAssessmentScoreRepository, FormativeAssessmentScoreRepository>();
@@ -219,6 +304,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IUserManagementService, UserManagementService>();
             services.AddScoped<IFeeItemService, FeeItemService>();
             services.AddScoped<IInvoiceService, InvoiceService>();
+            //services.AddScoped<IFeeStructureService, FeeStructureService>();  // ← NEW
+            services.AddScoped<IInvoiceService, InvoiceService>();            // ← NEW
+            services.AddScoped<IInvoiceItemService, InvoiceItemService>();    // ← NEW
             services.AddScoped<IJwtService, JwtService>();
             services.AddScoped<IPermissionSeedService, PermissionSeedService>();
             services.AddScoped<ISubscriptionSeedService, SubscriptionSeedService>();

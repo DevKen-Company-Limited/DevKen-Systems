@@ -17,8 +17,6 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
     public interface IRepositoryManager
     {
         // ================= ACADEMIC =================
-        IInvoiceRepository Invoice { get; }
-        IInvoiceItemRepository InvoiceItem { get; }
         IParentRepository Parent { get; }
         IStudentRepository Student { get; }
         ITeacherRepository Teacher { get; }
@@ -39,6 +37,8 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
         // ================= FINANCE =================
         IFeeItemRepository FeeItem { get; }
         IFeeStructureRepository FeeStructure { get; }
+        IInvoiceRepository Invoice { get; }
+        IInvoiceItemRepository InvoiceItem { get; }
 
         // ================= ASSESSMENTS =================
         IFormativeAssessmentRepository FormativeAssessment { get; }

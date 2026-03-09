@@ -471,7 +471,12 @@ namespace Devken.CBC.SchoolManagement.Domain.Enums
         Grandparent = 5,
         Other = 6
     }
-
+    public enum LibraryMemberType
+    {
+        Student,
+        Teacher,
+        Staff
+    }
     public enum ParentStatus
     {
         Active = 1,

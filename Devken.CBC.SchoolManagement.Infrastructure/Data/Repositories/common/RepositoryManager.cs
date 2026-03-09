@@ -1,6 +1,4 @@
 ﻿using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
-using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
-using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academics;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Assessments;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Curriculum;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Finance;
@@ -25,6 +23,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using System;
 using System.Threading.Tasks;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academics;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
 {
@@ -35,7 +35,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
 
         // ── Academic ─────────────────────────────────────────────────────────
         private readonly Lazy<IInvoiceRepository> _invoiceRepository;
-        private readonly Lazy<IInvoiceItemRepository> _invoiceItemRepository;
+        private readonly Lazy<IInvoiceItemRepository> _invoiceItemRepository;   
         private readonly Lazy<IParentRepository> _parentRepository;
         private readonly Lazy<IStudentRepository> _studentRepository;
         private readonly Lazy<ITeacherRepository> _teacherRepository;
@@ -89,7 +89,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
             _invoiceRepository = new Lazy<IInvoiceRepository>(
                 () => new InvoiceRepository(_context, _tenantContext));
             _invoiceItemRepository = new Lazy<IInvoiceItemRepository>(
-                () => new InvoiceItemRepository(_context, _tenantContext)); 
+                () => new InvoiceItemRepository(_context, _tenantContext));
             _parentRepository = new Lazy<IParentRepository>(
                 () => new ParentRepository(_context, _tenantContext));
             _studentRepository = new Lazy<IStudentRepository>(
