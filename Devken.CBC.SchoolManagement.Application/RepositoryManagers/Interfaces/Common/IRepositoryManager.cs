@@ -4,6 +4,7 @@ using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Asse
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Curriculum;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Finance;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Identity;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Library;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.NumberSeries;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Payments;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Tenant;
@@ -56,6 +57,10 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
         IUserRoleRepository UserRole { get; }
         IRefreshTokenRepository RefreshToken { get; }
         ISuperAdminRepository SuperAdmin { get; }
+        // ================= LIBRARY =================
+        IBookAuthorRepository BookAuthor { get; }
+        IBookCategoryRepository BookCategory { get; }
+        IBookPublisherRepository BookPublisher { get; }
 
         // ================= PAYMENTS =================
         IMpesaPaymentRepository MpesaPayment { get; }

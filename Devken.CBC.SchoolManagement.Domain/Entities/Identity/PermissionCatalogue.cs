@@ -60,16 +60,13 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
             (PermissionKeys.PaymentWrite, "Record Payments",    "Finance", "Log new payments"),
             (PermissionKeys.InvoiceRead,  "View Invoices",      "Finance", "Access invoice records"),
             (PermissionKeys.InvoiceWrite, "Generate Invoices",  "Finance", "Create new invoices"),
-<<<<<<< HEAD
             (PermissionKeys.InvoiceItemRead,  "View Invoice Items",   "Finance", "Access individual line items on invoices"),
             (PermissionKeys.InvoiceItemWrite, "Manage Invoice Items", "Finance", "Add or update line items on invoices"),
             (PermissionKeys.FeeStructureRead,   "View Fee Structures",   "Finance - Fee Structure", "View fee amounts per academic year and term"),
             (PermissionKeys.FeeStructureWrite,  "Manage Fee Structures", "Finance - Fee Structure", "Create, update, or activate fee structures"),
             (PermissionKeys.FeeStructureDelete, "Delete Fee Structures", "Finance - Fee Structure", "Permanently remove a fee structure record"),
-=======
              (PermissionKeys.InvoiceItemRead,  "View Invoice items",      "Finance", "Access invoice items records"),
             (PermissionKeys.InvoiceItemWrite, "Generate Invoice items",  "Finance", "Create new invoice items"),
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
 
             (PermissionKeys.AccountingRead,   "View Accounting",   "Accounting", "Broad read access to all accounting records"),
             (PermissionKeys.AccountingWrite,  "Manage Accounting", "Accounting", "Broad write access to all accounting records"),

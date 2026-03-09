@@ -12,11 +12,8 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             yield return Academic;
             yield return Assessment;
             yield return Finance;
-<<<<<<< HEAD
             yield return Accounting;
-=======
            // yield return Accounting;
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
             yield return Curriculum;
             yield return Library;
             yield return Reports;
@@ -104,7 +101,6 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             {
                 new NavItem("fee-structure", "Fee Structure", "heroicons_outline:chart-bar", "/finance/fee-structure", PermissionKeys.FeeStructureRead),
                 new NavItem("fees", "Fees", "heroicons_outline:currency-dollar", "/finance/fees", PermissionKeys.FeeRead),
-<<<<<<< HEAD
                 new NavItem("invoices", "Invoices", "heroicons_outline:document-text", "/finance/invoices", PermissionKeys.InvoiceRead),
                 new NavItem("invoice-items", "Invoice Items", "heroicons_outline:document-duplicate", "/finance/invoice-items", PermissionKeys.InvoiceItemRead),
                 new NavItem("payments", "Payments", "heroicons_outline:credit-card", "/finance/payments", PermissionKeys.PaymentRead),
@@ -121,13 +117,11 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
                 new NavItem("journal-entries", "Journal Entries", "heroicons_outline:book-open", "/accounting/journal-entries", PermissionKeys.AccountingRead),
                 new NavItem("budgets", "Budgets", "heroicons_outline:chart-pie", "/accounting/budgets", PermissionKeys.AccountingRead),
                 new NavItem("expenses", "Expenses", "heroicons_outline:receipt-percent", "/accounting/expenses", PermissionKeys.AccountingRead),
-=======
                 new NavItem("invoices", "Invoices", "heroicons_outline:document-text", "/finance/invoices", PermissionKeys.InvoiceRead),
                 new NavItem("invoice-items", "Invoice Items", "heroicons_outline:document-duplicate", "/finance/invoice-items", PermissionKeys.InvoiceItemRead),
                 new NavItem("payments", "Payments", "heroicons_outline:credit-card", "/finance/payments", PermissionKeys.PaymentRead),
                 new NavItem("invoices", "Invoices", "heroicons_outline:document-text", "/finance/invoices", PermissionKeys.InvoiceRead),
                 new NavItem("invoice-items", "Invoice-Items", "heroicons_outline:document-text", "/finance/invoice-items", PermissionKeys.InvoiceItemRead)
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
             }
         };
 

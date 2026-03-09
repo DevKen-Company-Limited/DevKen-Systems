@@ -25,6 +25,8 @@ using System;
 using System.Threading.Tasks;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academics;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Library;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Library;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
 {
@@ -60,6 +62,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         private readonly Lazy<IFormativeAssessmentScoreRepository> _formativeScoreRepository;
         private readonly Lazy<ISummativeAssessmentScoreRepository> _summativeScoreRepository;
         private readonly Lazy<ICompetencyAssessmentScoreRepository> _competencyScoreRepository;
+
+        // ── Library ──────────────────────────────────────────────────────────
+        private readonly Lazy<IBookAuthorRepository> _bookAuthorRepository;
+        private readonly Lazy<IBookCategoryRepository> _bookCategoryRepository;
+        private readonly Lazy<IBookPublisherRepository> _bookPublisherRepository;
 
         // ── Identity ─────────────────────────────────────────────────────────
         private readonly Lazy<IUserRepository> _userRepository;
@@ -135,6 +142,14 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
             _competencyScoreRepository = new Lazy<ICompetencyAssessmentScoreRepository>(
                 () => new CompetencyAssessmentScoreRepository(_context, _tenantContext));
 
+            // Library
+            _bookAuthorRepository = new Lazy<IBookAuthorRepository>(
+                () => new BookAuthorRepository(_context, _tenantContext));
+            _bookCategoryRepository = new Lazy<IBookCategoryRepository>(
+                () => new BookCategoryRepository(_context, _tenantContext));
+            _bookPublisherRepository = new Lazy<IBookPublisherRepository>(
+                () => new BookPublisherRepository(_context, _tenantContext));
+
             // Identity
             _userRepository = new Lazy<IUserRepository>(
                 () => new UserRepository(_context, _tenantContext));
@@ -194,6 +209,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         public IFormativeAssessmentScoreRepository FormativeAssessmentScore => _formativeScoreRepository.Value;
         public ISummativeAssessmentScoreRepository SummativeAssessmentScore => _summativeScoreRepository.Value;
         public ICompetencyAssessmentScoreRepository CompetencyAssessmentScore => _competencyScoreRepository.Value;
+
+        // ── Library Properties ───────────────────────────────────────────────
+        public IBookAuthorRepository BookAuthor => _bookAuthorRepository.Value;
+        public IBookCategoryRepository BookCategory => _bookCategoryRepository.Value;
+        public IBookPublisherRepository BookPublisher => _bookPublisherRepository.Value;
 
         // ── Identity Properties ──────────────────────────────────────────────
         public IUserRepository User => _userRepository.Value;
