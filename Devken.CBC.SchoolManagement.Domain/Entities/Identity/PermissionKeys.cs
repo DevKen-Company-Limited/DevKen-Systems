@@ -5,6 +5,8 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
 {
     public static class PermissionKeys
     {
+
+
         public const string SuperAdmin = "SuperAdmin";
 
         public const string SchoolRead = "School.Read";
@@ -62,6 +64,9 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
         public const string InvoiceWrite = "Invoice.Write";
         public const string InvoiceItemRead = "InvoiceItem.Read";
         public const string InvoiceItemWrite = "InvoiceItem.Write";
+        public const string InvoiceItemUpdate = "InvoiceItem.Update";
+
+
 
         // ── Finance — Fee Structure ──────────────────────
         /// <summary>View fee structures for a school.</summary>

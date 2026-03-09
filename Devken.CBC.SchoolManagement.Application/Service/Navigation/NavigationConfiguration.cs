@@ -12,7 +12,7 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             yield return Academic;
             yield return Assessment;
             yield return Finance;
-            yield return Accounting;
+           // yield return Accounting;
             yield return Curriculum;
             yield return Library;
             yield return Reports;
