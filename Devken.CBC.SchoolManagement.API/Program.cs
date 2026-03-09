@@ -1,4 +1,4 @@
-﻿using Devken.CBC.SchoolManagement.API.Diagnostics;
+using Devken.CBC.SchoolManagement.API.Diagnostics;
 using Devken.CBC.SchoolManagement.API.Registration;
 using Devken.CBC.SchoolManagement.API.Services;
 using Devken.CBC.SchoolManagement.Application.Service;
@@ -14,6 +14,7 @@ using Microsoft.OpenApi.Models;
 using QuestPDF.Infrastructure;
 using System.Globalization;
 using System.Reflection;
+using System.Text;
 
 StartupErrorHandler.Initialize();
 
@@ -62,6 +63,7 @@ builder.Services.AddCors(options =>
 // Controllers
 // ══════════════════════════════════════════════════════════════
 builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
 
 // ══════════════════════════════════════════════════════════════
 // Database Configuration
@@ -112,6 +114,7 @@ builder.Services.AddSwaggerGen(c =>
     };
 
     c.AddSecurityDefinition("Bearer", securityScheme);
+
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -145,10 +148,27 @@ builder.Services.AddSchoolManagement(builder.Configuration);
 builder.Services.AddInfrastructure(builder.Configuration);
 
 // ══════════════════════════════════════════════════════════════
+// Authentication
+//
+// ⚠️  JWT Bearer is registered inside AddInfrastructure() above.
+//     Do NOT call AddAuthentication / AddJwtBearer here — ASP.NET Core
+//     throws "Scheme already exists: Bearer" if the same scheme is
+//     registered twice.
+//
+//     Google SSO also does NOT use AddGoogle() OAuth redirect middleware.
+//     The SsoController validates Google id_tokens directly via
+//     GoogleJsonWebSignature.ValidateAsync() (Google.Apis.Auth).
+//     Angular gets the id_token from Google's JS SDK and POSTs it to
+//     POST /api/auth/sso/google — no browser redirect or state cookie
+//     involved, so the old AddGoogle() call was causing the
+//     "oauth state was missing or invalid" crash.
+// ══════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════
 // Culture Configuration
 // ══════════════════════════════════════════════════════════════
 var supportedCultures = new[] { new CultureInfo("en-US") };
-CultureInfo.DefaultThreadCurrentCulture = supportedCultures[0];
+CultureInfo.DefaultThreadCurrentCulture   = supportedCultures[0];
 CultureInfo.DefaultThreadCurrentUICulture = supportedCultures[0];
 
 // ══════════════════════════════════════════════════════════════
@@ -162,13 +182,12 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    var logger = app.Logger;
+    var logger    = app.Logger;
 
     try
     {
         logger.LogInformation("Starting database initialization...");
 
-        // ── Step 1: Apply Migrations or Create Schema ──────────────
         try
         {
             var pendingMigrations = dbContext.Database.GetPendingMigrations().ToList();
@@ -176,7 +195,8 @@ using (var scope = app.Services.CreateScope())
 
             if (pendingMigrations.Any())
             {
-                logger.LogInformation("Applying {Count} pending migrations...", pendingMigrations.Count);
+                logger.LogInformation(
+                    "Applying {Count} pending migrations...", pendingMigrations.Count);
                 await dbContext.Database.MigrateAsync();
                 logger.LogInformation("Migrations applied successfully.");
             }
@@ -198,13 +218,12 @@ using (var scope = app.Services.CreateScope())
             logger.LogInformation("Database schema created via EnsureCreated fallback.");
         }
 
-        // ── Step 2: Seed Core Data ─────────────────────────────────
         await dbContext.SeedDatabaseAsync(logger);
 
-        // ── Step 3: Seed Subscription Plans ───────────────────────
         try
         {
-            var planService = scope.ServiceProvider.GetRequiredService<ISubscriptionPlanService>();
+            var planService = scope.ServiceProvider
+                .GetRequiredService<ISubscriptionPlanService>();
             await SubscriptionPlanSeeder.SeedSubscriptionPlansAsync(planService, logger);
         }
         catch (Exception ex)
@@ -212,7 +231,6 @@ using (var scope = app.Services.CreateScope())
             logger.LogError(ex, "An error occurred while seeding subscription plans.");
         }
 
-        // ── Step 4: Seed Permissions for Default School ────────────
         try
         {
             var defaultSchool = await dbContext.Schools
@@ -220,13 +238,15 @@ using (var scope = app.Services.CreateScope())
 
             if (defaultSchool != null)
             {
-                var permissionSeeder = scope.ServiceProvider.GetRequiredService<IPermissionSeedService>();
+                var permissionSeeder = scope.ServiceProvider
+                    .GetRequiredService<IPermissionSeedService>();
                 await permissionSeeder.SeedPermissionsAndRolesAsync(defaultSchool.Id);
                 logger.LogInformation("Default school permissions seeded successfully.");
             }
             else
             {
-                logger.LogWarning("Default school not found. Skipping permission seeding.");
+                logger.LogWarning(
+                    "Default school not found. Skipping permission seeding.");
             }
         }
         catch (Exception ex)
@@ -262,7 +282,7 @@ app.UseStaticFiles();
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(uploadsPath),
-    RequestPath = "/uploads"
+    RequestPath  = "/uploads"
 });
 
 // 3. Request localization
@@ -317,12 +337,13 @@ if (builder.Environment.IsDevelopment())
     }
     catch (Exception ex)
     {
-        app.Logger.LogWarning(ex, "Failed to launch Angular development server. Start it manually.");
+        app.Logger.LogWarning(
+            ex, "Failed to launch Angular development server. Start it manually.");
     }
 }
 
 // ══════════════════════════════════════════════════════════════
-// Startup Complete
+// Startup Logging
 // ══════════════════════════════════════════════════════════════
 app.Logger.LogInformation("DevKen School Management API is starting...");
 app.Logger.LogInformation("Environment: {Environment}", app.Environment.EnvironmentName);

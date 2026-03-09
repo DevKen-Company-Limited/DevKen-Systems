@@ -83,8 +83,8 @@
 
             <mat-select formControlName="currentClassId">
               <mat-option value="">Select class</mat-option>
-              <mat-option *ngFor="let class of classes" [value]="class.id">
-                {{ class.name }}
+              <mat-option *ngFor="let cls of classes" [value]="cls.id">
+                {{ cls.name }}
               </mat-option>
             </mat-select>
             <mat-icon matPrefix svgIcon="heroicons_outline:users" class="text-gray-400"></mat-icon>

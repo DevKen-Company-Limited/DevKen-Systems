@@ -1,17 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
 {
     public static class PermissionKeys
     {
-        // ── Super Admin ───────────────────────────────────
         public const string SuperAdmin = "SuperAdmin";
 
-        // ── Administration ────────────────────────────────
         public const string SchoolRead = "School.Read";
         public const string SchoolWrite = "School.Write";
         public const string SchoolDelete = "School.Delete";
@@ -22,18 +17,15 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
         public const string RoleWrite = "Role.Write";
         public const string RoleDelete = "Role.Delete";
 
-        // ── Settings / Configuration ─────────────────────
         public const string DocumentNumberSeriesRead = "DocumentNumberSeries.Read";
         public const string DocumentNumberSeriesWrite = "DocumentNumberSeries.Write";
         public const string DocumentNumberSeriesDelete = "DocumentNumberSeries.Delete";
 
-        // ── Academic Year ─────────────────────────────────
         public const string AcademicYearRead = "AcademicYear.Read";
         public const string AcademicYearWrite = "AcademicYear.Write";
         public const string AcademicYearDelete = "AcademicYear.Delete";
         public const string AcademicYearClose = "AcademicYear.Close";
 
-        // ── Academic ─────────────────────────────────────
         public const string StudentRead = "Student.Read";
         public const string StudentWrite = "Student.Write";
         public const string StudentDelete = "Student.Delete";
@@ -54,20 +46,14 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
         public const string ParentWrite = "Parent.Write";
         public const string ParentDelete = "Parent.Delete";
 
-        // ── Assessment ───────────────────────────────────
         public const string AssessmentRead = "Assessment.Read";
         public const string AssessmentWrite = "Assessment.Write";
         public const string AssessmentDelete = "Assessment.Delete";
         public const string ReportRead = "Report.Read";
         public const string ReportWrite = "Report.Write";
 
-        // ── Finance (general — covers FeeItem, FeeStructure, etc.) ──────────
-        /// <summary>Broad read access to all finance resources (fees, fee structures, invoices, payments).</summary>
         public const string FinanceRead = "Finance.Read";
-        /// <summary>Broad write access to all finance resources (fees, fee structures, invoices, payments).</summary>
         public const string FinanceWrite = "Finance.Write";
-
-        // ── Finance (granular) ───────────────────────────
         public const string FeeRead = "Fee.Read";
         public const string FeeWrite = "Fee.Write";
         public const string PaymentRead = "Payment.Read";
@@ -80,67 +66,84 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
         // ── Finance — Fee Structure ──────────────────────
         /// <summary>View fee structures for a school.</summary>
         public const string FeeStructureRead = "FeeStructure.Read";
-        /// <summary>Create, update, activate/deactivate fee structures.</summary>
         public const string FeeStructureWrite = "FeeStructure.Write";
-        /// <summary>Delete fee structures.</summary>
         public const string FeeStructureDelete = "FeeStructure.Delete";
 
-        // ── Curriculum ───────────────────────────────────
+        public const string AccountingRead = "Accounting.Read";
+        public const string AccountingWrite = "Accounting.Write";
+        public const string AccountingDelete = "Accounting.Delete";
+        public const string JournalEntryRead = "JournalEntry.Read";
+        public const string JournalEntryWrite = "JournalEntry.Write";
+        public const string JournalEntryDelete = "JournalEntry.Delete";
+        public const string BudgetRead = "Budget.Read";
+        public const string BudgetWrite = "Budget.Write";
+        public const string BudgetDelete = "Budget.Delete";
+        public const string ExpenseRead = "Expense.Read";
+        public const string ExpenseWrite = "Expense.Write";
+        public const string ExpenseDelete = "Expense.Delete";
+
         public const string CurriculumRead = "Curriculum.Read";
         public const string CurriculumWrite = "Curriculum.Write";
         public const string LessonPlanRead = "LessonPlan.Read";
         public const string LessonPlanWrite = "LessonPlan.Write";
 
-        // ── M-Pesa ───────────────────────────────────────
+        public const string LibraryRead = "Library.Read";
+        public const string LibraryWrite = "Library.Write";
+        public const string LibraryDelete = "Library.Delete";
+        public const string BookRead = "Book.Read";
+        public const string BookWrite = "Book.Write";
+        public const string BookDelete = "Book.Delete";
+        public const string BookIssueRead = "BookIssue.Read";
+        public const string BookIssueWrite = "BookIssue.Write";
+        public const string BookReturnRead = "BookReturn.Read";
+        public const string BookReturnWrite = "BookReturn.Write";
+
         public const string MpesaInitiate = "Mpesa.Initiate";
         public const string MpesaViewTransactions = "Mpesa.ViewTransactions";
         public const string MpesaRefund = "Mpesa.Refund";
         public const string MpesaReconcile = "Mpesa.Reconcile";
 
-        /// <summary>
-        /// Returns a list of ALL permission keys.
-        /// Useful for granting full access to admins or super admins.
-        /// </summary>
         public static IEnumerable<string> AllPermissions => new[]
         {
-            // Administration
             SchoolRead, SchoolWrite, SchoolDelete,
             UserRead, UserWrite, UserDelete,
             RoleRead, RoleWrite, RoleDelete,
 
-            // Settings
             DocumentNumberSeriesRead, DocumentNumberSeriesWrite, DocumentNumberSeriesDelete,
 
-            // Academic Year
             AcademicYearRead, AcademicYearWrite, AcademicYearDelete, AcademicYearClose,
 
-            // Academic
             StudentRead, StudentWrite, StudentDelete,
             TeacherRead, TeacherWrite, TeacherDelete,
             TermRead, TermWrite, TermDelete,
             SubjectRead, SubjectWrite, SubjectDelete,
             ClassRead, ClassWrite,
             GradeRead, GradeWrite,
+            ParentRead, ParentWrite, ParentDelete,
 
-            // Assessment
             AssessmentRead, AssessmentWrite, AssessmentDelete,
             ReportRead, ReportWrite,
 
-            // Finance — broad
             FinanceRead, FinanceWrite,
-
-            // Finance — granular
             FeeRead, FeeWrite,
             PaymentRead, PaymentWrite,
             InvoiceRead, InvoiceWrite,
             InvoiceItemRead, InvoiceItemWrite,
             FeeStructureRead, FeeStructureWrite, FeeStructureDelete,
 
-            // Curriculum
+            AccountingRead, AccountingWrite, AccountingDelete,
+            JournalEntryRead, JournalEntryWrite, JournalEntryDelete,
+            BudgetRead, BudgetWrite, BudgetDelete,
+            ExpenseRead, ExpenseWrite, ExpenseDelete,
+
             CurriculumRead, CurriculumWrite,
             LessonPlanRead, LessonPlanWrite,
 
-            // M-Pesa
+            LibraryRead, LibraryWrite, LibraryDelete,
+            BookRead, BookWrite, BookDelete,
+            BookIssueRead, BookIssueWrite,
+            BookReturnRead, BookReturnWrite,
+
             MpesaInitiate, MpesaViewTransactions, MpesaRefund, MpesaReconcile,
         };
     }

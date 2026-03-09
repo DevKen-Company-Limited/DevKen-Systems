@@ -217,20 +217,55 @@ namespace Devken.CBC.SchoolManagement.Application.DTOs.Parents
 
     public class ParentQueryDto
     {
-        /// <summary>Searches across FirstName, LastName, Email and PhoneNumber.</summary>
+        // ── Search ────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Free-text search across FirstName, LastName, Email, PhoneNumber.
+        /// Maps to: query.SearchTerm in ParentService.GetAllAsync()
+        /// </summary>
         public string? SearchTerm { get; set; }
 
+        // ── Enum filter ───────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Filter by relationship type. Nullable — omit to return all relationships.
+        /// Maps to: query.Relationship in ParentService.GetAllAsync()
+        /// </summary>
         public ParentRelationship? Relationship { get; set; }
+
+        // ── Boolean filters ───────────────────────────────────────────────────
+
+        /// <summary>
+        /// true = primary contacts only | false = non-primary | null = all
+        /// Maps to: query.IsPrimaryContact in ParentService.GetAllAsync()
+        /// </summary>
         public bool? IsPrimaryContact { get; set; }
+
+        /// <summary>
+        /// true = emergency contacts only | false = non-emergency | null = all
+        /// Maps to: query.IsEmergencyContact in ParentService.GetAllAsync()
+        /// </summary>
         public bool? IsEmergencyContact { get; set; }
+
+        /// <summary>
+        /// true = has portal access | false = no portal access | null = all
+        /// Maps to: query.HasPortalAccess in ParentService.GetAllAsync()
+        /// </summary>
         public bool? HasPortalAccess { get; set; }
 
         /// <summary>
-        /// Filter by active/inactive state. Null returns all non-deleted records.
-        /// Uses bool rather than EntityStatus so the frontend doesn't need to
-        /// know about internal enum values.
+        /// true = Active only | false = Inactive only | null = all except Deleted
+        /// Maps to: query.IsActive in ParentService.GetAllAsync()
         /// </summary>
         public bool? IsActive { get; set; }
+
+        // ── Pagination ────────────────────────────────────────────────────────
+
+        /// <summary>Page number (1-based). Defaults to 1.</summary>
+        public int Page { get; set; } = 1;
+
+        /// <summary>Records per page. Defaults to 20.</summary>
+        public int PageSize { get; set; } = 20;
     }
 
     // ─────────────────────────────────────────────────────────────

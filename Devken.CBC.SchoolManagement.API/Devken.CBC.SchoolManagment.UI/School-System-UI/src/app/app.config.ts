@@ -31,10 +31,15 @@ import { subscriptionStatusInterceptor } from './core/auth/SubscriptionStatusInt
 import { MockApiService } from './mock-api';
 import { NavigationService } from '@fuse/lib/mock-api/NavigationService';
 import { AuthService } from './core/auth/auth.service';
-import { environment } from 'environments/environment.prod';
 
+// FIX: Import from the single environment file only — no more environment.prod
+import { environment } from 'environments/environment';
 
-// API Base URL Injection Token
+// ─────────────────────────────────────────────────────────────────────────────
+// API Base URL injection token
+// Inject this wherever you need the API URL instead of importing environment
+// directly, e.g.: constructor(@Inject(API_BASE_URL) private apiUrl: string)
+// ─────────────────────────────────────────────────────────────────────────────
 export const API_BASE_URL = new InjectionToken<string>('API_BASE_URL');
 
 export const appConfig: ApplicationConfig = {
@@ -59,7 +64,7 @@ export const appConfig: ApplicationConfig = {
         // Material providers
         importProvidersFrom(MatSnackBarModule, MatDialogModule),
 
-        // API Base URL from environment
+        // API Base URL — resolved at runtime from the single environment file
         { provide: API_BASE_URL, useValue: environment.apiUrl },
 
         // Date adapter

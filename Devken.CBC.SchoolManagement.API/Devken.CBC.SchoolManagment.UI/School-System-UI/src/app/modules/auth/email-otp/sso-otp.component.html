@@ -1,0 +1,137 @@
+<div class="cbc-wrapper">
+
+  <div class="cbc-left-panel">
+    <div class="cbc-form-shell">
+
+      <div class="cbc-logo">
+        <div class="cbc-logo-mark">DK</div>
+        <div class="cbc-logo-text">
+          <div class="cbc-logo-name">Devken CBC</div>
+          <div class="cbc-logo-tagline">School Management System</div>
+        </div>
+      </div>
+
+      <div class="cbc-otp-icon-wrap">
+        <div class="cbc-otp-icon-ring">
+          <mat-icon class="cbc-otp-icon" svgIcon="heroicons_solid:shield-check"></mat-icon>
+        </div>
+      </div>
+
+      <div class="cbc-heading">Verify it's you</div>
+      <div class="cbc-sub-heading">
+        {{ firstName ? 'Hi ' + firstName + '! We' : 'We' }} sent a 6-digit code to
+        <strong>{{ maskedEmail }}</strong>. Enter it below to continue.
+      </div>
+
+      @if (showAlert) {
+        <div class="cbc-alert-wrap">
+          <fuse-alert [appearance]="'outline'" [showIcon]="false" [type]="alert.type">
+            {{ alert.message }}
+          </fuse-alert>
+        </div>
+      }
+
+      <form class="cbc-form" [formGroup]="form">
+
+        <div class="cbc-otp-row" (paste)="onPaste($event)">
+          @for (i of [0,1,2,3,4,5]; track i) {
+            <input
+              #otpInput
+              class="cbc-otp-box"
+              type="text"
+              inputmode="numeric"
+              maxlength="1"
+              autocomplete="one-time-code"
+              [formControlName]="'d' + i"
+              (input)="onDigitInput($event, i)"
+              (keydown)="onKeyDown($event, i)" />
+          }
+        </div>
+
+        <div class="cbc-otp-countdown" [class.expired]="countdown === 0">
+          @if (countdown > 0) {
+            <mat-icon class="icon-size-4" svgIcon="heroicons_solid:clock"></mat-icon>
+            <span>Code expires in <strong>{{ countdownDisplay }}</strong></span>
+          } @else {
+            <mat-icon class="icon-size-4" svgIcon="heroicons_solid:exclamation-circle"></mat-icon>
+            <span>Code expired — request a new one below</span>
+          }
+        </div>
+
+        <button
+          class="cbc-submit-btn w-full"
+          mat-flat-button
+          type="button"
+          [disabled]="form.invalid || loading"
+          (click)="submit()">
+          @if (loading) {
+            <mat-progress-spinner [diameter]="20" mode="indeterminate"></mat-progress-spinner>
+          } @else {
+            <ng-container>
+              <span>Verify &amp; continue</span>
+              <mat-icon class="icon-size-4 ml-2" svgIcon="heroicons_solid:arrow-right"></mat-icon>
+            </ng-container>
+          }
+        </button>
+
+        <div class="cbc-otp-resend-row">
+          <span>Didn't receive a code?</span>
+          <button
+            type="button"
+            class="cbc-resend-btn"
+            [disabled]="!canResend || resending"
+            (click)="resendOtp()">
+            @if (resending) {
+              <mat-progress-spinner [diameter]="14" mode="indeterminate"></mat-progress-spinner>
+              <span>Sending…</span>
+            } @else if (canResend) {
+              <span>Resend code</span>
+            } @else {
+              <span>Resend in {{ countdownDisplay }}</span>
+            }
+          </button>
+        </div>
+
+        <button
+          class="cbc-cancel-btn w-full"
+          mat-button
+          type="button"
+          (click)="cancel()">
+          Cancel — sign in differently
+        </button>
+
+      </form>
+    </div>
+  </div>
+
+  <div class="cbc-right-panel">
+    <div class="cbc-rp-dots"></div>
+    <div class="cbc-rp-ring cbc-rp-ring-1"></div>
+    <div class="cbc-rp-ring cbc-rp-ring-2"></div>
+    <div class="cbc-rp-ring cbc-rp-ring-3"></div>
+    <div class="cbc-rp-glow cbc-rp-glow-1"></div>
+    <div class="cbc-rp-glow cbc-rp-glow-2"></div>
+
+    <div class="cbc-rp-content">
+      <div class="cbc-rp-badge">
+        <div class="cbc-rp-badge-dot"></div>
+        <span class="cbc-rp-badge-text">CBC Accredited Platform</span>
+      </div>
+      <div class="cbc-rp-headline">
+        Your account<br>stays <span class="accent">secure</span>
+      </div>
+      <p class="cbc-rp-desc">
+        This one-time code confirms it's really you signing in —
+        even if someone else has your Google credentials, they
+        cannot access your school account without this code.
+      </p>
+      <ul class="cbc-feature-list">
+        <li class="cbc-feature-item"><span class="cbc-feature-check">✓</span> Mandatory for every Google sign-in</li>
+        <li class="cbc-feature-item"><span class="cbc-feature-check">✓</span> Code sent to your registered email</li>
+        <li class="cbc-feature-item"><span class="cbc-feature-check">✓</span> Expires in 5 minutes</li>
+        <li class="cbc-feature-item"><span class="cbc-feature-check">✓</span> One-time use only</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
