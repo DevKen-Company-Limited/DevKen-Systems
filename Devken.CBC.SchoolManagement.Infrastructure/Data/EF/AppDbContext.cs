@@ -16,6 +16,7 @@ using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Academic
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Assessments;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Finance;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Identity;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Library;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Payments;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Reports;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.SchoolConf;
@@ -308,6 +309,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             //
             // Order: parent tables before children so FK references resolve
             // correctly during migration generation.
+
+            // Library
+            mb.ApplyConfiguration(new BookAuthorConfiguration(_tenantContext));
+            mb.ApplyConfiguration(new BookCategoryConfiguration(_tenantContext));
+            mb.ApplyConfiguration(new BookPublisherConfiguration(_tenantContext));
 
             // Identity & School
             mb.ApplyConfiguration(new SchoolConfiguration());

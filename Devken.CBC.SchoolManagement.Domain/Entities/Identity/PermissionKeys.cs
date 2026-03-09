@@ -5,11 +5,8 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
 {
     public static class PermissionKeys
     {
-<<<<<<< HEAD
-=======
 
 
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
         public const string SuperAdmin = "SuperAdmin";
 
         public const string SchoolRead = "School.Read";
@@ -67,7 +64,6 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
         public const string InvoiceWrite = "Invoice.Write";
         public const string InvoiceItemRead = "InvoiceItem.Read";
         public const string InvoiceItemWrite = "InvoiceItem.Write";
-<<<<<<< HEAD
         public const string FeeStructureRead = "FeeStructure.Read";
         public const string FeeStructureWrite = "FeeStructure.Write";
         public const string FeeStructureDelete = "FeeStructure.Delete";
@@ -85,31 +81,8 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
         public const string ExpenseWrite = "Expense.Write";
         public const string ExpenseDelete = "Expense.Delete";
 
-=======
         public const string InvoiceItemUpdate = "InvoiceItem.Update";
 
-
-
-        // ── Finance — Fee Structure ──────────────────────
-        /// <summary>View fee structures for a school.</summary>
-        public const string FeeStructureRead = "FeeStructure.Read";
-        public const string FeeStructureWrite = "FeeStructure.Write";
-        public const string FeeStructureDelete = "FeeStructure.Delete";
-
-        public const string AccountingRead = "Accounting.Read";
-        public const string AccountingWrite = "Accounting.Write";
-        public const string AccountingDelete = "Accounting.Delete";
-        public const string JournalEntryRead = "JournalEntry.Read";
-        public const string JournalEntryWrite = "JournalEntry.Write";
-        public const string JournalEntryDelete = "JournalEntry.Delete";
-        public const string BudgetRead = "Budget.Read";
-        public const string BudgetWrite = "Budget.Write";
-        public const string BudgetDelete = "Budget.Delete";
-        public const string ExpenseRead = "Expense.Read";
-        public const string ExpenseWrite = "Expense.Write";
-        public const string ExpenseDelete = "Expense.Delete";
-
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
         public const string CurriculumRead = "Curriculum.Read";
         public const string CurriculumWrite = "Curriculum.Write";
         public const string LessonPlanRead = "LessonPlan.Read";

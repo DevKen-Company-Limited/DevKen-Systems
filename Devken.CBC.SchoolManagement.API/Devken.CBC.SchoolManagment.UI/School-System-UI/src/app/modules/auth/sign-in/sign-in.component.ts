@@ -23,14 +23,6 @@ import { MatIconModule }             from '@angular/material/icon';
 import { MatInputModule }            from '@angular/material/input';
 import { MatProgressSpinnerModule }  from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-<<<<<<< HEAD
-import { NgStyle }                   from '@angular/common';
-import { fuseAnimations }            from '@fuse/animations';
-import { FuseAlertComponent, FuseAlertType } from '@fuse/components/alert';
-import { AuthService }               from 'app/core/auth/auth.service';
-
-// ─── Interfaces ───────────────────────────────────────────────────────────────
-=======
 import { NgIf, NgStyle }             from '@angular/common';
 import { fuseAnimations }            from '@fuse/animations';
 import { FuseAlertComponent, FuseAlertType } from '@fuse/components/alert';
@@ -43,7 +35,6 @@ import {
     SsoService,
     SsoLoginResponse,
 } from 'app/core/DevKenService/GoogleService/SsoLoginResponse';
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
 
 export interface RolePreset {
     label   : string;
@@ -95,15 +86,6 @@ export class AuthSignInComponent implements OnInit, AfterViewInit, OnDestroy {
     activeRole = 'Super Admin';
 
     roles: RolePreset[] = [
-<<<<<<< HEAD
-        { label: 'Super Admin', email: 'superadmin@devken.com', password: 'SuperAdmin@123' },
-        { label: 'Principal',   email: 'principal@school.com',  password: 'Principal@123'  },
-        { label: 'Teacher',     email: 'teacher@school.com',    password: 'Teacher@123'    },
-        { label: 'Parent',      email: 'parent@school.com',     password: 'Parent@123'     },
-    ];
-
-    // ── Right panel data ───────────────────────────────────────────────────────
-=======
         { label: 'Super Admin',     email: 'superadmin@devken.com',        password: 'SuperAdmin@123'  },
         { label: 'School Admin',    email: 'admin@defaultschool.com',       password: 'Admin@123'       },
         { label: 'Head Teacher',    email: 'headteacher@defaultschool.com', password: 'HeadTeacher@123' },
@@ -116,7 +98,6 @@ export class AuthSignInComponent implements OnInit, AfterViewInit, OnDestroy {
         { label: 'Parent',          email: 'parent@defaultschool.com',      password: 'Parent@123'      },
     ];
 
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
     features: string[] = [
         'Competency-based assessment tracking (EE · ME · AE · BE)',
         'Full CBC grade support: PP1, PP2, Grade 1–6, JHS 1–3',
@@ -159,43 +140,22 @@ export class AuthSignInComponent implements OnInit, AfterViewInit, OnDestroy {
         });
     }
 
-<<<<<<< HEAD
-    /**
-     * Pre-fill credentials when a role tab is clicked.
-     */
-    setRole(role: RolePreset): void
-    {
-=======
     ngOnDestroy(): void {
         this._ssoService.cancelOneTap();
     }
 
     setRole(role: RolePreset): void {
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
         this.activeRole = role.label;
         this.signInForm.patchValue({ email: role.email, password: role.password });
         this.showAlert = false;
         setTimeout(() => this._scrollActivePillIntoView(), 0);
     }
 
-<<<<<<< HEAD
-    /**
-     * Submit the sign-in form.
-     * Calls superAdminSignIn for super-admin emails, signIn for everyone else.
-     */
-    signIn(): void
-    {
-=======
     signIn(): void {
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
         if (this.signInForm.invalid) { return; }
 
         this.signInForm.disable();
         this.showAlert = false;
-<<<<<<< HEAD
-        this.showIcon  = false;
-=======
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
 
         const email        = this.signInForm.get('email')!.value as string;
         const isSuperAdmin = email.toLowerCase().includes('superadmin');
@@ -205,16 +165,8 @@ export class AuthSignInComponent implements OnInit, AfterViewInit, OnDestroy {
             : this._authService.signIn(this.signInForm.value);
 
         authCall.subscribe({
-<<<<<<< HEAD
-            next: (response) =>
-            {
-                // Redirect to password-change flow if required
-                if (response.data.user.requirePasswordChange)
-                {
-=======
             next : (response) => {
                 if (response.data.user.requirePasswordChange) {
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
                     this._router.navigate(['/change-password']);
                     return;
                 }
@@ -235,21 +187,12 @@ export class AuthSignInComponent implements OnInit, AfterViewInit, OnDestroy {
         });
     }
 
-<<<<<<< HEAD
-    /**
-     * Cancel during a forced password-change flow.
-     * Signs the user out and returns them to the sign-in page.
-     */
-    logout(): void
-    {
-=======
     loginWithGoogle(): void {
         if (this.googleLoading || this.googleScriptFailed) { return; }
         this._ssoService.promptOneTap();
     }
 
     logout(): void {
->>>>>>> eed5cf6203fce924377e02c550155d7fe07d1481
         const confirmed = confirm(
             'Are you sure you want to cancel? You must change your password to access the system.',
         );

@@ -160,6 +160,15 @@ export const appRoutes: Route[] = [
 
                 // ]
             },
+            // ── Library ───────────────────────────────────────────────
+            {
+                path: 'library',
+                children: [
+                    { path: 'authors',    loadChildren: () => import('app/Library/book-author/book-author.routes') },
+                    { path: 'categories', loadChildren: () => import('app/Library/book-category/book-category.routes') },
+                    { path: 'publishers', loadChildren: () => import('app/Library/book-publisher/book-publisher.routes') },
+                ]
+            },
 
             // ── Super Admin ───────────────────────────────────────────────────
             {
