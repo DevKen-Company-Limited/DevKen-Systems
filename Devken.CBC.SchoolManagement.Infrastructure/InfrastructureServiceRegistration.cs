@@ -163,6 +163,18 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                     .RequireAuthenticatedUser()
                     .Build();
 
+                // ── Library permissions ──────────────────────────────────────
+                RegisterPermissionPolicy(options, PermissionKeys.LibraryRead);
+                RegisterPermissionPolicy(options, PermissionKeys.LibraryWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.LibraryDelete);
+                RegisterPermissionPolicy(options, PermissionKeys.BookRead);
+                RegisterPermissionPolicy(options, PermissionKeys.BookWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.BookDelete);
+                RegisterPermissionPolicy(options, PermissionKeys.BookIssueRead);
+                RegisterPermissionPolicy(options, PermissionKeys.BookIssueWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.BookReturnRead);
+                RegisterPermissionPolicy(options, PermissionKeys.BookReturnWrite);
+
                 // ── Role-based policies ──────────────────────────────────────
                 options.AddPolicy("SuperAdmin", policy => policy.RequireRole("SuperAdmin"));
                 options.AddPolicy("SchoolAdmin", policy => policy.RequireRole("SchoolAdmin"));
