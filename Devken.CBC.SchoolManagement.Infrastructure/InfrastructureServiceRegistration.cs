@@ -80,6 +80,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             this IServiceCollection services,
             IConfiguration configuration)
         {
+            // ── JWT Settings ─────────────────────────────────────────────────
             services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
             services.AddSingleton(sp => sp.GetRequiredService<IOptions<JwtSettings>>().Value);
             services.AddHttpContextAccessor();
@@ -96,6 +97,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             if (string.IsNullOrWhiteSpace(jwtSettings.Audience))
                 throw new InvalidOperationException("JWT Audience is not configured in appsettings.json");
 
+            // ── Authentication ───────────────────────────────────────────────
             services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -124,10 +126,12 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                 {
                     OnAuthenticationFailed = context =>
                     {
-                        var logger = context.HttpContext.RequestServices.GetService<ILogger<Program>>();
+                        var logger = context.HttpContext.RequestServices
+                            .GetService<ILogger<Program>>();
                         if (logger != null)
                         {
-                            logger.LogError(context.Exception, "JWT Authentication failed: {Message}", context.Exception.Message);
+                            logger.LogError(context.Exception,
+                                "JWT Authentication failed: {Message}", context.Exception.Message);
                             if (context.Exception is SecurityTokenExpiredException)
                                 context.Response.Headers.Append("Token-Expired", "true");
                         }
@@ -135,31 +139,40 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                     },
                     OnTokenValidated = context =>
                     {
-                        var logger = context.HttpContext.RequestServices.GetService<ILogger<Program>>();
+                        var logger = context.HttpContext.RequestServices
+                            .GetService<ILogger<Program>>();
                         if (logger != null)
                         {
-                            var userId = context.Principal?.FindFirst("user_id")?.Value ?? "Unknown";
-                            var email = context.Principal?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")?.Value ?? "Unknown";
-                            logger.LogInformation("JWT token validated for user: {UserId} ({Email})", userId, email);
+                            var userId = context.Principal?
+                                .FindFirst("user_id")?.Value ?? "Unknown";
+                            var email = context.Principal?
+                                .FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")
+                                ?.Value ?? "Unknown";
+                            logger.LogInformation(
+                                "JWT token validated for user: {UserId} ({Email})", userId, email);
                         }
                         return Task.CompletedTask;
                     }
                 };
             });
 
+            // ── Authorization ────────────────────────────────────────────────
             services.AddAuthorization(options =>
             {
                 options.FallbackPolicy = new AuthorizationPolicyBuilder()
                     .RequireAuthenticatedUser()
                     .Build();
 
+                // ── Role-based policies ──────────────────────────────────────
                 options.AddPolicy("SuperAdmin", policy => policy.RequireRole("SuperAdmin"));
                 options.AddPolicy("SchoolAdmin", policy => policy.RequireRole("SchoolAdmin"));
                 options.AddPolicy("Teacher", policy => policy.RequireRole("Teacher"));
                 options.AddPolicy("Parent", policy => policy.RequireRole("Parent"));
 
-                foreach (var permission in PermissionKeys.AllPermissions)
-                    RegisterPermissionPolicy(options, permission);
+                // ── Settings / Configuration permissions ─────────────────────
+                RegisterPermissionPolicy(options, PermissionKeys.DocumentNumberSeriesRead);
+                RegisterPermissionPolicy(options, PermissionKeys.DocumentNumberSeriesWrite);
+                RegisterPermissionPolicy(options, PermissionKeys.DocumentNumberSeriesDelete);
 
                 // ── Administration permissions ───────────────────────────────
                 RegisterPermissionPolicy(options, PermissionKeys.SchoolRead);
@@ -249,26 +262,59 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                 options.AddPolicy("Roles.AssignPermissions", policy =>
                     policy.Requirements.Add(new PermissionRequirement(PermissionKeys.RoleWrite)));
 
+                // Tenant access policy
                 options.AddPolicy("TenantAccess", policy =>
                     policy.Requirements.Add(new TenantAccessRequirement()));
+
+                // ── Legacy / backward-compat permissions ─────────────────────
+                var legacyPermissions = new List<string>
+                {
+                    "Student.Read",    "Student.Write",    "Student.Delete",
+                    "Assessment.Read", "Assessment.Write",
+                    "Finance.Read",    "Finance.Write",
+                    "Report.Read",     "Report.Write",
+                    "Settings.Read",   "Settings.Write",
+                    "Class.Read",      "Class.Write",
+                    "AcademicYear.Read", "AcademicYear.Write",
+                    "Subject.Read",    "Subject.Write",    "Subject.Delete",
+                    "Grade.Read",      "Grade.Write",
+                    "ProgressReport.Read", "ProgressReport.Write",
+                    "Invoice.Read",    "Invoice.Write",
+                    "Payment.Read",    "Payment.Write",
+                    "Parent.Read",     "Parent.Write",     "Parent.Delete",  // ← NEW
+                };
+
+                foreach (var permission in legacyPermissions)
+                {
+                    if (!options.GetPolicy(permission)?.Requirements.Any() ?? true)
+                        RegisterPermissionPolicy(options, permission);
+                }
             });
 
+            // ── Authorization Handlers ───────────────────────────────────────
             services.AddScoped<IAuthorizationHandler, PermissionHandler>();
             services.AddScoped<IEmailService, EmailService>();
             services.AddScoped<IAuthorizationHandler, RoleHandler>();
             services.AddScoped<IAuthorizationHandler, TenantAccessHandler>();
 
+            // ── Infrastructure Services ──────────────────────────────────────
             services.AddScoped<IPasswordHashingService, BCryptPasswordHashingService>();
             services.AddMemoryCache();
             services.AddScoped(typeof(Lazy<>), typeof(LazyServiceProvider<>));
 
+            // ── Repository Manager (unit of work) ────────────────────────────
             services.AddScoped<IRepositoryManager, RepositoryManager>();
 
-            services.AddScoped<IParentRepository, ParentRepository>();
+            // ── Individual Repositories ──────────────────────────────────────
+            // (Kept for code that resolves them directly rather than via IRepositoryManager)
+
+            // Academic Repositories
+            services.AddScoped<IParentRepository, ParentRepository>();        // ← NEW
             services.AddScoped<IStudentRepository, StudentRepository>();
             services.AddScoped<ITeacherRepository, TeacherRepository>();
             services.AddScoped<ISchoolRepository, SchoolRepository>();
 
+            // Identity Repositories
             services.AddScoped<IRoleRepository, RoleRepository>();
             services.AddScoped<IPermissionRepository, PermissionRepository>();
             services.AddScoped<IRolePermissionRepository, RolePermissionRepository>();
@@ -276,13 +322,18 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
             services.AddScoped<ISuperAdminRepository, SuperAdminRepository>();
 
+            // Other Academic Repositories
             services.AddScoped<ISubjectRepository, SubjectRepository>();
             services.AddScoped<IGradeRepository, GradeRepository>();
             services.AddScoped<IUserActivityRepository, UserActivityRepository>();
 
+            // Payment Repositories
             services.AddScoped<IMpesaPaymentRepository, MpesaPaymentRepository>();
+
+            // Number Series
             services.AddScoped<IDocumentNumberSeriesRepository, DocumentNumberService>();
 
+            // Finance Repositories
             services.AddScoped<IFeeItemRepository, FeeItemRepository>();
             services.AddScoped<IFeeStructureRepository, FeeStructureRepository>();
             services.AddScoped<IInvoiceRepository, InvoiceRepository>();      // ← NEW
@@ -336,14 +387,19 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IRoleAssignmentService, RoleAssignmentService>();
             services.AddScoped<INavigationService, NavigationService>();
             services.AddScoped<IImageUploadService, ImageUploadService>();
-            services.AddScoped<IParentService, ParentService>();
 
             services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
             return services;
         }
 
-        private static void RegisterPermissionPolicy(AuthorizationOptions options, string permissionKey)
+        /// <summary>
+        /// Registers a permission string as an ASP.NET Core authorization policy
+        /// backed by a <see cref="PermissionRequirement"/>.
+        /// </summary>
+        private static void RegisterPermissionPolicy(
+            AuthorizationOptions options,
+            string permissionKey)
         {
             options.AddPolicy(permissionKey, policy =>
                 policy.Requirements.Add(new PermissionRequirement(permissionKey)));
