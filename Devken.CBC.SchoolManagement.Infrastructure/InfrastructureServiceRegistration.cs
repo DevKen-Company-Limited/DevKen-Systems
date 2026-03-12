@@ -402,6 +402,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IPaymentService, PaymentService>();
             services.AddScoped<IImageUploadService, ImageUploadService>();
             services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>(); 
+            services.AddScoped<IImageUploadService, ImageUploadService>();
+            services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
             return services;
         }
