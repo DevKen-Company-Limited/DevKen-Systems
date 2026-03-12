@@ -397,9 +397,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IUserActivityService, UserActivityService>();
             services.AddScoped<IUserActivityService1, UserActivityService1>();
             services.AddScoped<IRoleAssignmentService, RoleAssignmentService>();
-            services.AddScoped<INavigationService, NavigationService>();
+            services.AddScoped<INavigationService, NavigationService>(); 
+            services.AddScoped<IParentService, ParentService>();
             services.AddScoped<IImageUploadService, ImageUploadService>();
-
             services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
             return services;
