@@ -5,6 +5,8 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
 {
     public static class PermissionKeys
     {
+
+
         public const string SuperAdmin = "SuperAdmin";
 
         public const string SchoolRead = "School.Read";
@@ -81,6 +83,8 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
         public const string ExpenseRead = "Expense.Read";
         public const string ExpenseWrite = "Expense.Write";
         public const string ExpenseDelete = "Expense.Delete";
+
+        public const string InvoiceItemUpdate = "InvoiceItem.Update";
 
         public const string CurriculumRead = "Curriculum.Read";
         public const string CurriculumWrite = "Curriculum.Write";

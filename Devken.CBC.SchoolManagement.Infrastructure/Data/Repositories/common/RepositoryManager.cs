@@ -1,6 +1,4 @@
 ﻿using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
-using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
-using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academics;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Assessments;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Curriculum;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Finance;
@@ -25,6 +23,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using System;
 using System.Threading.Tasks;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academics;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Library;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Library;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.payments;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
 {
@@ -61,6 +64,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         private readonly Lazy<ISummativeAssessmentScoreRepository> _summativeScoreRepository;
         private readonly Lazy<ICompetencyAssessmentScoreRepository> _competencyScoreRepository;
 
+        // ── Library ──────────────────────────────────────────────────────────
+        private readonly Lazy<IBookAuthorRepository> _bookAuthorRepository;
+        private readonly Lazy<IBookCategoryRepository> _bookCategoryRepository;
+        private readonly Lazy<IBookPublisherRepository> _bookPublisherRepository;
+
         // ── Identity ─────────────────────────────────────────────────────────
         private readonly Lazy<IUserRepository> _userRepository;
         private readonly Lazy<IRoleRepository> _roleRepository;
@@ -79,11 +87,14 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         // ── Finance ──────────────────────────────────────────────────────────
         private readonly Lazy<IFeeItemRepository> _feeItemRepository;
         private readonly Lazy<IFeeStructureRepository> _feeStructureRepository;
+        private readonly Lazy<IPaymentRepository> _paymentRepository;
 
         public RepositoryManager(AppDbContext context, TenantContext tenantContext)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
+            _paymentRepository = new Lazy<IPaymentRepository>(
+                () => new PaymentRepository(_context, _tenantContext));
 
             // Academic
             _invoiceRepository = new Lazy<IInvoiceRepository>(
@@ -134,6 +145,14 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
                 () => new SummativeAssessmentScoreRepository(_context, _tenantContext));
             _competencyScoreRepository = new Lazy<ICompetencyAssessmentScoreRepository>(
                 () => new CompetencyAssessmentScoreRepository(_context, _tenantContext));
+
+            // Library
+            _bookAuthorRepository = new Lazy<IBookAuthorRepository>(
+                () => new BookAuthorRepository(_context, _tenantContext));
+            _bookCategoryRepository = new Lazy<IBookCategoryRepository>(
+                () => new BookCategoryRepository(_context, _tenantContext));
+            _bookPublisherRepository = new Lazy<IBookPublisherRepository>(
+                () => new BookPublisherRepository(_context, _tenantContext));
 
             // Identity
             _userRepository = new Lazy<IUserRepository>(
@@ -195,6 +214,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         public ISummativeAssessmentScoreRepository SummativeAssessmentScore => _summativeScoreRepository.Value;
         public ICompetencyAssessmentScoreRepository CompetencyAssessmentScore => _competencyScoreRepository.Value;
 
+        // ── Library Properties ───────────────────────────────────────────────
+        public IBookAuthorRepository BookAuthor => _bookAuthorRepository.Value;
+        public IBookCategoryRepository BookCategory => _bookCategoryRepository.Value;
+        public IBookPublisherRepository BookPublisher => _bookPublisherRepository.Value;
+
         // ── Identity Properties ──────────────────────────────────────────────
         public IUserRepository User => _userRepository.Value;
         public IRoleRepository Role => _roleRepository.Value;
@@ -213,6 +237,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
 
         // ── Number Series Properties ─────────────────────────────────────────
         public IDocumentNumberSeriesRepository DocumentNumberSeries => _documentNumberSeriesRepository.Value;
+        public IPaymentRepository Payment => _paymentRepository.Value;
+
+
 
         // ── Unit of Work ─────────────────────────────────────────────────────
         public async Task SaveAsync() => await _context.SaveChangesAsync();

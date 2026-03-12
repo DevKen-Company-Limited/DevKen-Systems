@@ -62,10 +62,10 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Finance
             var accessError = await ValidateInvoiceAccessAsync(invoiceId);
             if (accessError != null) return accessError;
 
-            var item = await _service.GetByIdAsync(invoiceId, id);
-            if (item == null) return NotFoundResponse("Invoice item not found.");
+           // var item = await _service.GetByIdAsync(invoiceId, id);
+          //  if (item == null) return NotFoundResponse("Invoice item not found.");
 
-            return SuccessResponse(item);
+            return SuccessResponse();
         }
 
         // ───────────────────────────────────────────────────────────────────

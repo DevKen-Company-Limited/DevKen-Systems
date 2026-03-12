@@ -7,7 +7,9 @@ using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Asse
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Finance;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Identity;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Library;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.NumberSeries;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.payments;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Payments;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Reports;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Tenant;
@@ -23,6 +25,7 @@ using Devken.CBC.SchoolManagement.Application.Service.Finance;
 using Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment;
 using Devken.CBC.SchoolManagement.Application.Service.Isubscription;
 using Devken.CBC.SchoolManagement.Application.Service.ISubscription;
+using Devken.CBC.SchoolManagement.Application.Service.Library;
 using Devken.CBC.SchoolManagement.Application.Service.Navigation;
 using Devken.CBC.SchoolManagement.Application.Service.Subscription;
 using Devken.CBC.SchoolManagement.Application.Services.Implementations.Academic;
@@ -37,6 +40,7 @@ using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Curriculum;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Finance;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Identity;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Library;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSeries;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Payments;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Tenant;
@@ -49,6 +53,7 @@ using Devken.CBC.SchoolManagement.Infrastructure.Services.Curriculum;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Email;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Finance;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Images;
+using Devken.CBC.SchoolManagement.Infrastructure.Services.Library;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Reports;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.RoleAssignment;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement;
@@ -341,7 +346,16 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<ICompetencyAssessmentRepository, CompetencyAssessmentRepository>();
             services.AddScoped<ICompetencyAssessmentScoreRepository, CompetencyAssessmentScoreRepository>();
 
-            // ── Application Services ─────────────────────────────────────────
+            // Library repositories
+            services.AddScoped<IBookAuthorRepository, BookAuthorRepository>();
+            services.AddScoped<IBookCategoryRepository, BookCategoryRepository>();
+            services.AddScoped<IBookPublisherRepository, BookPublisherRepository>();
+
+            // Library services
+            services.AddScoped<IBookAuthorService, BookAuthorService>();
+            services.AddScoped<IBookCategoryService, BookCategoryService>();
+            services.AddScoped<IBookPublisherService, BookPublisherService>();
+
             services.AddScoped<IStudentService, StudentService>();
             services.AddScoped<ITeacherService, TeacherService>();
             services.AddScoped<ITermService, TermService>();
@@ -355,6 +369,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IReportService, ReportService>();
             services.AddScoped<IUserManagementService, UserManagementService>();
             services.AddScoped<IFeeItemService, FeeItemService>();
+            //services.AddScoped<IFeeStructureService, FeeStructureService>();  // ← NEW
+            services.AddScoped<IPaymentRepository, PaymentRepository>();  // ← NEW
+            services.AddScoped<IInvoiceService, InvoiceService>();
             //services.AddScoped<IFeeStructureService, FeeStructureService>();  // ← NEW
             services.AddScoped<IInvoiceService, InvoiceService>();            // ← NEW
             services.AddScoped<IInvoiceItemService, InvoiceItemService>();    // ← NEW

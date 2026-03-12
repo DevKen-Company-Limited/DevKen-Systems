@@ -7,6 +7,7 @@ using Devken.CBC.SchoolManagement.Infrastructure;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF;
 using Devken.CBC.SchoolManagement.Infrastructure.Middleware;
 using Devken.CBC.SchoolManagement.Infrastructure.Seed;
+using Google.Apis.Auth;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
@@ -146,6 +147,41 @@ builder.Services.AddSchoolManagement(builder.Configuration);
 // Infrastructure Services
 // ══════════════════════════════════════════════════════════════
 builder.Services.AddInfrastructure(builder.Configuration);
+
+// ══════════════════════════════════════════════════════════════
+// Google SSO — Register ValidationSettings with correct audience
+//
+//  Google id_tokens carry an 'aud' claim equal to your OAuth ClientId.
+//  This is completely separate from JwtSettings.Audience ("devken-cbc-clients")
+//  which is only used for the app's own JWT tokens.
+//
+//  Registering GoogleJsonWebSignature.ValidationSettings as a Singleton:
+//    ✅ Ensures every call to ValidateAsync uses the right ClientId audience
+//    ✅ Fails fast at startup if GOOGLE_CLIENT_ID env-var is missing
+//    ✅ Avoids hard-coding ClientId in service classes
+//
+//  Usage in any service:
+//    Inject GoogleJsonWebSignature.ValidationSettings via constructor,
+//    then: await GoogleJsonWebSignature.ValidateAsync(idToken, _settings);
+// ══════════════════════════════════════════════════════════════
+builder.Services.AddSingleton(_ =>
+{
+    var googleClientId = builder.Configuration["Sso:Google:ClientId"];
+
+    if (string.IsNullOrWhiteSpace(googleClientId) ||
+        googleClientId.StartsWith("${", StringComparison.Ordinal))
+    {
+        throw new InvalidOperationException(
+            "Missing or unresolved configuration: Sso:Google:ClientId. " +
+            "Ensure the GOOGLE_CLIENT_ID environment variable is set in your " +
+            "deployment environment (e.g. Render dashboard → Environment → GOOGLE_CLIENT_ID).");
+    }
+
+    return new GoogleJsonWebSignature.ValidationSettings
+    {
+        Audience = new[] { googleClientId }
+    };
+});
 
 // ══════════════════════════════════════════════════════════════
 // Authentication
