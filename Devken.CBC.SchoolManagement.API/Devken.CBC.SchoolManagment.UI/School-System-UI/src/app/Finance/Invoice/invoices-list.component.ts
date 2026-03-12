@@ -348,9 +348,13 @@ export class InvoicesListComponent implements OnInit, OnDestroy {
 
   // ── Line Items ────────────────────────────────────────────────────────────
 
+  // invoices-list.component.ts
   openLineItems(row: InvoiceSummaryResponseDto): void {
-    this._router.navigate(['/finance/invoice-items', row.id]);
+    this._router.navigate(['/finance/invoice-items'], { queryParams: { invoiceId: row.id } });
   }
+  // openLineItems(row: InvoiceSummaryResponseDto): void {
+  //   this._router.navigate(['/finance/invoice-items', row.id]);
+  // }
 
   // ── Cancel / Delete ───────────────────────────────────────────────────────
 

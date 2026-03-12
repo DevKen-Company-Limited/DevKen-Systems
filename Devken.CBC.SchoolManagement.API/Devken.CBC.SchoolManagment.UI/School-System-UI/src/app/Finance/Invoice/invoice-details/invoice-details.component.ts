@@ -59,6 +59,7 @@ export class InvoiceDetailsComponent implements OnInit, OnChanges {
   // ── Outputs ──────────────────────────────────────────────────────────────
   @Output() formChanged = new EventEmitter<any>();
   @Output() formValid   = new EventEmitter<boolean>();
+  @Output() schoolIdChanged = new EventEmitter<string>();
 
   private fb = inject(FormBuilder);
   form!: FormGroup;
@@ -122,6 +123,13 @@ export class InvoiceDetailsComponent implements OnInit, OnChanges {
     this.form.valueChanges.subscribe(value => {
       this.formChanged.emit(value);
       this.formValid.emit(this.form.valid);
+    });
+
+    // Emit school change so parent can re-fetch parents with correct schoolId
+    this.form.get('tenantId')?.valueChanges.subscribe(schoolId => {
+      if (schoolId) {
+        this.schoolIdChanged.emit(schoolId);
+      }
     });
   }
 

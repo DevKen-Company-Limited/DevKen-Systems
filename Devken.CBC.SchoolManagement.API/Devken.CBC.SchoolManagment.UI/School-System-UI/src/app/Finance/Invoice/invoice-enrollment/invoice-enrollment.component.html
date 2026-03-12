@@ -177,7 +177,8 @@
           [terms]="terms"
           [parents]="parents"
           (formChanged)="onSectionChanged('details', $event)"
-          (formValid)="onSectionValidChanged('details', $event)">
+          (formValid)="onSectionValidChanged('details', $event)"
+          (schoolIdChanged)="onSchoolSelected($event)">
         </app-invoice-details>
 
         <!-- Step 1: Items -->
@@ -185,6 +186,7 @@
           *ngIf="currentStep === 1"
           [formData]="formSections['items']"
           [isEditMode]="isEditMode"
+          [schoolId]="formSections['details']?.tenantId"
           (formChanged)="onSectionChanged('items', $event)"
           (formValid)="onSectionValidChanged('items', $event)">
         </app-invoice-line-items>
