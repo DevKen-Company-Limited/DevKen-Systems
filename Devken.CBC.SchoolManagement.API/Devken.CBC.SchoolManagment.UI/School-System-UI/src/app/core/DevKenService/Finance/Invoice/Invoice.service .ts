@@ -35,9 +35,12 @@ export class InvoiceService {
   }
 
   /** GET /api/finance/invoices/by-student/{studentId} */
-  getByStudent(studentId: string): Observable<ApiResponse<InvoiceSummaryResponseDto[]>> {
-    return this.http.get<ApiResponse<InvoiceSummaryResponseDto[]>>(`${this.baseUrl}/by-student/${studentId}`);
-  }
+/** GET /api/finance/invoices/by-student/{studentId} */
+getByStudent(studentId: string, schoolId?: string): Observable<ApiResponse<InvoiceSummaryResponseDto[]>> {
+  let params = new HttpParams();
+  if (schoolId) params = params.set('schoolId', schoolId);
+  return this.http.get<ApiResponse<InvoiceSummaryResponseDto[]>>(`${this.baseUrl}/by-student/${studentId}`, { params });
+}
 
   /** GET /api/finance/invoices/by-parent/{parentId} */
   getByParent(parentId: string): Observable<ApiResponse<InvoiceSummaryResponseDto[]>> {
