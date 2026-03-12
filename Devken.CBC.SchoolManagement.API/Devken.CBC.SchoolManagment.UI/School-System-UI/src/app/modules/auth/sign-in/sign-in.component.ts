@@ -47,6 +47,8 @@ export interface Avatar {
     bg      : string;
 }
 
+// ─── Component ────────────────────────────────────────────────────────────────
+
 @Component({
     selector     : 'auth-sign-in',
     templateUrl  : './sign-in.component.html',

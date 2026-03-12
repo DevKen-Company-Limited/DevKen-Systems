@@ -7,6 +7,7 @@ using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Asse
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Finance;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Identity;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Library;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.NumberSeries;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.payments;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Payments;
@@ -24,6 +25,7 @@ using Devken.CBC.SchoolManagement.Application.Service.Finance;
 using Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment;
 using Devken.CBC.SchoolManagement.Application.Service.Isubscription;
 using Devken.CBC.SchoolManagement.Application.Service.ISubscription;
+using Devken.CBC.SchoolManagement.Application.Service.Library;
 using Devken.CBC.SchoolManagement.Application.Service.Navigation;
 using Devken.CBC.SchoolManagement.Application.Service.Subscription;
 using Devken.CBC.SchoolManagement.Application.Services.Implementations.Academic;
@@ -38,6 +40,7 @@ using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Curriculum;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Finance;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Identity;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Library;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.NumberSeries;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Payments;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Tenant;
@@ -50,6 +53,7 @@ using Devken.CBC.SchoolManagement.Infrastructure.Services.Curriculum;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Email;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Finance;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Images;
+using Devken.CBC.SchoolManagement.Infrastructure.Services.Library;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Reports;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.RoleAssignment;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement;
@@ -76,7 +80,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             this IServiceCollection services,
             IConfiguration configuration)
         {
-            // ── JWT Settings ─────────────────────────────────────────────────
             services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
             services.AddSingleton(sp => sp.GetRequiredService<IOptions<JwtSettings>>().Value);
             services.AddHttpContextAccessor();
@@ -93,7 +96,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             if (string.IsNullOrWhiteSpace(jwtSettings.Audience))
                 throw new InvalidOperationException("JWT Audience is not configured in appsettings.json");
 
-            // ── Authentication ───────────────────────────────────────────────
             services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -122,12 +124,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                 {
                     OnAuthenticationFailed = context =>
                     {
-                        var logger = context.HttpContext.RequestServices
-                            .GetService<ILogger<Program>>();
+                        var logger = context.HttpContext.RequestServices.GetService<ILogger<Program>>();
                         if (logger != null)
                         {
-                            logger.LogError(context.Exception,
-                                "JWT Authentication failed: {Message}", context.Exception.Message);
+                            logger.LogError(context.Exception, "JWT Authentication failed: {Message}", context.Exception.Message);
                             if (context.Exception is SecurityTokenExpiredException)
                                 context.Response.Headers.Append("Token-Expired", "true");
                         }
@@ -135,40 +135,31 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                     },
                     OnTokenValidated = context =>
                     {
-                        var logger = context.HttpContext.RequestServices
-                            .GetService<ILogger<Program>>();
+                        var logger = context.HttpContext.RequestServices.GetService<ILogger<Program>>();
                         if (logger != null)
                         {
-                            var userId = context.Principal?
-                                .FindFirst("user_id")?.Value ?? "Unknown";
-                            var email = context.Principal?
-                                .FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")
-                                ?.Value ?? "Unknown";
-                            logger.LogInformation(
-                                "JWT token validated for user: {UserId} ({Email})", userId, email);
+                            var userId = context.Principal?.FindFirst("user_id")?.Value ?? "Unknown";
+                            var email = context.Principal?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")?.Value ?? "Unknown";
+                            logger.LogInformation("JWT token validated for user: {UserId} ({Email})", userId, email);
                         }
                         return Task.CompletedTask;
                     }
                 };
             });
 
-            // ── Authorization ────────────────────────────────────────────────
             services.AddAuthorization(options =>
             {
                 options.FallbackPolicy = new AuthorizationPolicyBuilder()
                     .RequireAuthenticatedUser()
                     .Build();
 
-                // ── Role-based policies ──────────────────────────────────────
                 options.AddPolicy("SuperAdmin", policy => policy.RequireRole("SuperAdmin"));
                 options.AddPolicy("SchoolAdmin", policy => policy.RequireRole("SchoolAdmin"));
                 options.AddPolicy("Teacher", policy => policy.RequireRole("Teacher"));
                 options.AddPolicy("Parent", policy => policy.RequireRole("Parent"));
 
-                // ── Settings / Configuration permissions ─────────────────────
-                RegisterPermissionPolicy(options, PermissionKeys.DocumentNumberSeriesRead);
-                RegisterPermissionPolicy(options, PermissionKeys.DocumentNumberSeriesWrite);
-                RegisterPermissionPolicy(options, PermissionKeys.DocumentNumberSeriesDelete);
+                foreach (var permission in PermissionKeys.AllPermissions)
+                    RegisterPermissionPolicy(options, permission);
 
                 // ── Administration permissions ───────────────────────────────
                 RegisterPermissionPolicy(options, PermissionKeys.SchoolRead);
@@ -258,59 +249,26 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                 options.AddPolicy("Roles.AssignPermissions", policy =>
                     policy.Requirements.Add(new PermissionRequirement(PermissionKeys.RoleWrite)));
 
-                // Tenant access policy
                 options.AddPolicy("TenantAccess", policy =>
                     policy.Requirements.Add(new TenantAccessRequirement()));
-
-                // ── Legacy / backward-compat permissions ─────────────────────
-                var legacyPermissions = new List<string>
-                {
-                    "Student.Read",    "Student.Write",    "Student.Delete",
-                    "Assessment.Read", "Assessment.Write",
-                    "Finance.Read",    "Finance.Write",
-                    "Report.Read",     "Report.Write",
-                    "Settings.Read",   "Settings.Write",
-                    "Class.Read",      "Class.Write",
-                    "AcademicYear.Read", "AcademicYear.Write",
-                    "Subject.Read",    "Subject.Write",    "Subject.Delete",
-                    "Grade.Read",      "Grade.Write",
-                    "ProgressReport.Read", "ProgressReport.Write",
-                    "Invoice.Read",    "Invoice.Write",
-                    "Payment.Read",    "Payment.Write",
-                    "Parent.Read",     "Parent.Write",     "Parent.Delete",  // ← NEW
-                };
-
-                foreach (var permission in legacyPermissions)
-                {
-                    if (!options.GetPolicy(permission)?.Requirements.Any() ?? true)
-                        RegisterPermissionPolicy(options, permission);
-                }
             });
 
-            // ── Authorization Handlers ───────────────────────────────────────
             services.AddScoped<IAuthorizationHandler, PermissionHandler>();
             services.AddScoped<IEmailService, EmailService>();
             services.AddScoped<IAuthorizationHandler, RoleHandler>();
             services.AddScoped<IAuthorizationHandler, TenantAccessHandler>();
 
-            // ── Infrastructure Services ──────────────────────────────────────
             services.AddScoped<IPasswordHashingService, BCryptPasswordHashingService>();
             services.AddMemoryCache();
             services.AddScoped(typeof(Lazy<>), typeof(LazyServiceProvider<>));
 
-            // ── Repository Manager (unit of work) ────────────────────────────
             services.AddScoped<IRepositoryManager, RepositoryManager>();
 
-            // ── Individual Repositories ──────────────────────────────────────
-            // (Kept for code that resolves them directly rather than via IRepositoryManager)
-
-            // Academic Repositories
-            services.AddScoped<IParentRepository, ParentRepository>();        // ← NEW
+            services.AddScoped<IParentRepository, ParentRepository>();
             services.AddScoped<IStudentRepository, StudentRepository>();
             services.AddScoped<ITeacherRepository, TeacherRepository>();
             services.AddScoped<ISchoolRepository, SchoolRepository>();
 
-            // Identity Repositories
             services.AddScoped<IRoleRepository, RoleRepository>();
             services.AddScoped<IPermissionRepository, PermissionRepository>();
             services.AddScoped<IRolePermissionRepository, RolePermissionRepository>();
@@ -318,18 +276,13 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
             services.AddScoped<ISuperAdminRepository, SuperAdminRepository>();
 
-            // Other Academic Repositories
             services.AddScoped<ISubjectRepository, SubjectRepository>();
             services.AddScoped<IGradeRepository, GradeRepository>();
             services.AddScoped<IUserActivityRepository, UserActivityRepository>();
 
-            // Payment Repositories
             services.AddScoped<IMpesaPaymentRepository, MpesaPaymentRepository>();
-
-            // Number Series
             services.AddScoped<IDocumentNumberSeriesRepository, DocumentNumberService>();
 
-            // Finance Repositories
             services.AddScoped<IFeeItemRepository, FeeItemRepository>();
             services.AddScoped<IFeeStructureRepository, FeeStructureRepository>();
             services.AddScoped<IInvoiceRepository, InvoiceRepository>();      // ← NEW
@@ -342,7 +295,16 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<ICompetencyAssessmentRepository, CompetencyAssessmentRepository>();
             services.AddScoped<ICompetencyAssessmentScoreRepository, CompetencyAssessmentScoreRepository>();
 
-            // ── Application Services ─────────────────────────────────────────
+            // Library repositories
+            services.AddScoped<IBookAuthorRepository, BookAuthorRepository>();
+            services.AddScoped<IBookCategoryRepository, BookCategoryRepository>();
+            services.AddScoped<IBookPublisherRepository, BookPublisherRepository>();
+
+            // Library services
+            services.AddScoped<IBookAuthorService, BookAuthorService>();
+            services.AddScoped<IBookCategoryService, BookCategoryService>();
+            services.AddScoped<IBookPublisherService, BookPublisherService>();
+
             services.AddScoped<IStudentService, StudentService>();
             services.AddScoped<ITeacherService, TeacherService>();
             services.AddScoped<ITermService, TermService>();
@@ -356,7 +318,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IReportService, ReportService>();
             services.AddScoped<IUserManagementService, UserManagementService>();
             services.AddScoped<IFeeItemService, FeeItemService>();
+            //services.AddScoped<IFeeStructureService, FeeStructureService>();  // ← NEW
             services.AddScoped<IPaymentRepository, PaymentRepository>();  // ← NEW
+            services.AddScoped<IInvoiceService, InvoiceService>();
+            //services.AddScoped<IFeeStructureService, FeeStructureService>();  // ← NEW
             services.AddScoped<IInvoiceService, InvoiceService>();            // ← NEW
             services.AddScoped<IInvoiceItemService, InvoiceItemService>();    // ← NEW
             services.AddScoped<IJwtService, JwtService>();
@@ -378,13 +343,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             return services;
         }
 
-        /// <summary>
-        /// Registers a permission string as an ASP.NET Core authorization policy
-        /// backed by a <see cref="PermissionRequirement"/>.
-        /// </summary>
-        private static void RegisterPermissionPolicy(
-            AuthorizationOptions options,
-            string permissionKey)
+        private static void RegisterPermissionPolicy(AuthorizationOptions options, string permissionKey)
         {
             options.AddPolicy(permissionKey, policy =>
                 policy.Requirements.Add(new PermissionRequirement(permissionKey)));
