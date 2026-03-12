@@ -1,0 +1,225 @@
+<!-- payments.component.html -->
+<div class="absolute inset-0 flex min-w-0 flex-col overflow-y-auto" cdkScrollable>
+
+  <!-- ── Page Header ──────────────────────────────────────────────── -->
+  <app-page-header
+    title="Payments"
+    description="Manage fee payments, receipts, M-Pesa transactions and reversals"
+    icon="payments"
+    [breadcrumbs]="breadcrumbs"
+    [actionTemplate]="headerActions">
+  </app-page-header>
+
+  <ng-template #headerActions>
+
+    <!-- Export -->
+    <button mat-stroked-button [matMenuTriggerFor]="exportMenu" [disabled]="isDownloading"
+      class="mr-3 border-green-200 text-green-700 hover:bg-green-50
+             dark:border-green-700 dark:text-green-400">
+      <ng-container *ngIf="isDownloading; else exportIcon">
+        <mat-progress-spinner mode="indeterminate" diameter="18" strokeWidth="2"
+          class="inline-block mr-2">
+        </mat-progress-spinner>
+      </ng-container>
+      <ng-template #exportIcon>
+        <mat-icon class="icon-size-5">download</mat-icon>
+      </ng-template>
+      <span class="ml-2">{{ isDownloading ? 'Generating…' : 'Export' }}</span>
+      <mat-icon class="icon-size-4 ml-1">arrow_drop_down</mat-icon>
+    </button>
+
+    <mat-menu #exportMenu="matMenu">
+      <button mat-menu-item (click)="downloadListReport()" [disabled]="isDownloading">
+        <mat-icon class="text-indigo-600">article</mat-icon>
+        <span>Payments List (PDF)</span>
+      </button>
+      <button mat-menu-item (click)="downloadSummaryReport()" [disabled]="isDownloading">
+        <mat-icon class="text-teal-600">summarize</mat-icon>
+        <span>Summary Report (PDF)</span>
+      </button>
+    </mat-menu>
+
+    <!-- Bulk -->
+    <button mat-stroked-button
+      class="mr-3 border-teal-200 text-teal-700 hover:bg-teal-50
+             dark:border-teal-700 dark:text-teal-400"
+      (click)="createBulk()">
+      <mat-icon class="icon-size-5">playlist_add</mat-icon>
+      <span class="ml-2">Bulk</span>
+    </button>
+
+    <!-- Add -->
+    <button mat-flat-button
+      class="bg-white text-emerald-700 hover:bg-emerald-50 shadow-lg font-bold"
+      (click)="createPayment()">
+      <mat-icon class="icon-size-5">add</mat-icon>
+      <span class="ml-2">Add Payment</span>
+    </button>
+
+  </ng-template>
+
+  <!-- ── Main Content ─────────────────────────────────────────────── -->
+  <div class="bg-card -mt-10 flex-auto rounded-t-2xl p-6 shadow sm:p-10">
+
+    <!-- Stats — server-driven -->
+    <app-stats-cards
+      [cards]="statsCards"
+      [columns]="isSuperAdmin ? 7 : 6">
+    </app-stats-cards>
+
+    <!-- Filters -->
+    <div class="mb-6">
+      <app-filter-panel
+        [fields]="filterFields"
+        [showPanel]="showFilterPanel"
+        [columns]="6"
+        (filterChange)="onFilterChange($event)"
+        (clearAll)="onClearFilters()"
+        (togglePanel)="toggleFilterPanel()">
+      </app-filter-panel>
+    </div>
+
+    <!-- Table — uses tableData (current page only) -->
+    <app-data-table
+      [columns]="tableColumns"
+      [data]="tableData"
+      [actions]="tableActions"
+      [loading]="isLoading"
+      [header]="tableHeader"
+      [emptyState]="tableEmptyState"
+      [cellTemplates]="cellTemplates">
+    </app-data-table>
+
+    <!-- Pagination — totalItems from server -->
+    <app-pagination
+      *ngIf="!isLoading"
+      [currentPage]="currentPage"
+      [totalItems]="totalItems"
+      [itemsPerPage]="itemsPerPage"
+      [itemLabel]="'payments'"
+      [showItemsPerPageSelector]="true"
+      [showPageNumbers]="true"
+      (pageChange)="onPageChange($event)"
+      (itemsPerPageChange)="onItemsPerPageChange($event)">
+    </app-pagination>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     Cell Templates
+     ══════════════════════════════════════════════════════════════════ -->
+
+<!-- Reference -->
+<ng-template #referenceCell let-row>
+  <div class="flex items-center gap-3">
+    <div class="flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0
+                bg-gradient-to-br from-emerald-100 to-teal-100
+                dark:from-emerald-900/30 dark:to-teal-900/30
+                border border-emerald-200 dark:border-emerald-800">
+      <mat-icon class="text-emerald-600 dark:text-emerald-400 icon-size-5">payments</mat-icon>
+    </div>
+    <div>
+      <div class="flex items-center gap-2">
+        <p class="text-sm font-semibold text-gray-900 dark:text-white">
+          {{ row.paymentReference }}
+        </p>
+        <span *ngIf="row.isReversal"
+          class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold
+                 bg-rose-100 text-rose-700 border border-rose-200
+                 dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-800">
+          REVERSAL
+        </span>
+      </div>
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        {{ row.receiptNumber ? 'RCT: ' + row.receiptNumber : 'No receipt' }}
+      </p>
+    </div>
+  </div>
+</ng-template>
+
+<!-- Student -->
+<ng-template #studentCell let-row>
+  <div>
+    <p class="text-sm font-semibold text-gray-900 dark:text-white">
+      {{ row.studentName || '—' }}
+    </p>
+    <p class="text-xs text-gray-500 dark:text-gray-400">
+      {{ row.admissionNumber || 'No Adm. No.' }}
+    </p>
+  </div>
+</ng-template>
+
+<!-- Invoice -->
+<ng-template #invoiceCell let-row>
+  <div>
+    <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
+      {{ row.invoiceNumber || '—' }}
+    </p>
+    <p class="text-xs text-gray-500 dark:text-gray-400">
+      {{ row.receivedByName ? 'By: ' + row.receivedByName : '—' }}
+    </p>
+  </div>
+</ng-template>
+
+<!-- Method -->
+<ng-template #methodCell let-row>
+  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border"
+    [ngClass]="{
+      'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800': row.paymentMethod === 'Cash',
+      'bg-green-50   text-green-700   border-green-200   dark:bg-green-900/30   dark:text-green-300   dark:border-green-800':   row.paymentMethod === 'Mpesa',
+      'bg-blue-50    text-blue-700    border-blue-200    dark:bg-blue-900/30    dark:text-blue-300    dark:border-blue-800':    row.paymentMethod === 'BankTransfer',
+      'bg-amber-50   text-amber-700   border-amber-200   dark:bg-amber-900/30   dark:text-amber-300   dark:border-amber-800':   row.paymentMethod === 'Cheque',
+      'bg-violet-50  text-violet-700  border-violet-200  dark:bg-violet-900/30  dark:text-violet-300  dark:border-violet-800':  row.paymentMethod === 'Card',
+      'bg-indigo-50  text-indigo-700  border-indigo-200  dark:bg-indigo-900/30  dark:text-indigo-300  dark:border-indigo-800':  row.paymentMethod === 'Online',
+      'bg-gray-50    text-gray-700    border-gray-200    dark:bg-gray-800       dark:text-gray-300':
+        !['Cash','Mpesa','BankTransfer','Cheque','Card','Online'].includes(row.paymentMethod)
+    }">
+    <mat-icon class="icon-size-3.5">{{ getMethodIcon(row.paymentMethod) }}</mat-icon>
+    {{ getMethodLabel(row.paymentMethod) }}
+  </span>
+</ng-template>
+
+<!-- Amount -->
+<ng-template #amountCell let-row>
+  <div class="text-right">
+    <p class="text-sm font-bold"
+      [ngClass]="{
+        'text-rose-600    dark:text-rose-400':    row.isReversal,
+        'text-emerald-600 dark:text-emerald-400': !row.isReversal
+      }">
+      <span class="text-xs font-normal text-gray-500 dark:text-gray-400 mr-0.5">KES</span>
+      {{ fmt(row.amount) }}
+    </p>
+  </div>
+</ng-template>
+
+<!-- Date -->
+<ng-template #dateCell let-row>
+  <div>
+    <p class="text-sm text-gray-700 dark:text-gray-300">
+      {{ row.paymentDate | date:'mediumDate' }}
+    </p>
+    <p *ngIf="row.receivedDate" class="text-xs text-gray-500 dark:text-gray-400">
+      Rcvd: {{ row.receivedDate | date:'mediumDate' }}
+    </p>
+  </div>
+</ng-template>
+
+<!-- Status -->
+<ng-template #statusCell let-row>
+  <span class="px-3 py-1 rounded-full text-xs font-semibold"
+    [ngClass]="{
+      'bg-green-100  dark:bg-green-900/30  text-green-700  dark:text-green-400':  row.statusPayment === 'Completed',
+      'bg-amber-100  dark:bg-amber-900/30  text-amber-700  dark:text-amber-400':  row.statusPayment === 'Pending',
+      'bg-red-100    dark:bg-red-900/30    text-red-700    dark:text-red-400':    row.statusPayment === 'Failed',
+      'bg-blue-100   dark:bg-blue-900/30   text-blue-700   dark:text-blue-400':   row.statusPayment === 'Refunded',
+      'bg-gray-100   dark:bg-gray-800      text-gray-600   dark:text-gray-400':   row.statusPayment === 'Cancelled',
+      'bg-rose-100   dark:bg-rose-900/30   text-rose-700   dark:text-rose-400':   row.statusPayment === 'Reversed',
+      'bg-gray-100   dark:bg-gray-800      text-gray-500   dark:text-gray-400':
+        !['Completed','Pending','Failed','Refunded','Cancelled','Reversed'].includes(row.statusPayment)
+    }">
+    {{ row.statusPayment }}
+  </span>
+</ng-template>

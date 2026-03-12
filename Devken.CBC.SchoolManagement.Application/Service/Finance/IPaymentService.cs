@@ -1,4 +1,5 @@
-﻿using Devken.CBC.SchoolManagement.Application.DTOs.Payments;
+﻿using Devken.CBC.SchoolManagement.Application.DTOs.Finance;
+using Devken.CBC.SchoolManagement.Application.DTOs.Payments;
 using Devken.CBC.SchoolManagement.Domain.Enums;
 
 namespace Devken.CBC.SchoolManagement.Application.Service.Finance
@@ -17,6 +18,13 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Finance
             Guid? userSchoolId,
             bool isSuperAdmin);
 
+        Task<PaymentPagedResultDto> GetPagedAsync(
+            Guid? schoolId, Guid? studentId, Guid? invoiceId,
+            PaymentMethod? method, PaymentStatus? status,
+            DateTime? from, DateTime? to, bool? isReversal,
+            string? search,
+            int page, int pageSize,
+            Guid? userSchoolId, bool isSuperAdmin);
         Task<PaymentResponseDto> GetByIdAsync(Guid id, Guid? userSchoolId, bool isSuperAdmin);
         Task<PaymentResponseDto> GetByReferenceAsync(string reference, Guid? userSchoolId, bool isSuperAdmin);
         Task<IEnumerable<PaymentResponseDto>> GetByStudentAsync(Guid studentId, Guid? userSchoolId, bool isSuperAdmin);
