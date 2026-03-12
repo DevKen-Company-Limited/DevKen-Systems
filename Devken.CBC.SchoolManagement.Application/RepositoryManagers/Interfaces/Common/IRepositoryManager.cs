@@ -5,6 +5,7 @@ using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Curr
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Finance;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Identity;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.NumberSeries;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.payments;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Payments;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Tenant;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.UserActivities1;
@@ -59,6 +60,7 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
 
         // ================= PAYMENTS =================
         IMpesaPaymentRepository MpesaPayment { get; }
+        IPaymentRepository Payment { get; }
 
         // ================= NUMBER SERIES =================
         IDocumentNumberSeriesRepository DocumentNumberSeries { get; }

@@ -25,6 +25,7 @@ using System;
 using System.Threading.Tasks;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academics;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.payments;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
 {
@@ -79,11 +80,14 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         // ── Finance ──────────────────────────────────────────────────────────
         private readonly Lazy<IFeeItemRepository> _feeItemRepository;
         private readonly Lazy<IFeeStructureRepository> _feeStructureRepository;
+        private readonly Lazy<IPaymentRepository> _paymentRepository;
 
         public RepositoryManager(AppDbContext context, TenantContext tenantContext)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _tenantContext = tenantContext ?? throw new ArgumentNullException(nameof(tenantContext));
+            _paymentRepository = new Lazy<IPaymentRepository>(
+                () => new PaymentRepository(_context, _tenantContext));
 
             // Academic
             _invoiceRepository = new Lazy<IInvoiceRepository>(
@@ -213,6 +217,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
 
         // ── Number Series Properties ─────────────────────────────────────────
         public IDocumentNumberSeriesRepository DocumentNumberSeries => _documentNumberSeriesRepository.Value;
+        public IPaymentRepository Payment => _paymentRepository.Value;
+
+
 
         // ── Unit of Work ─────────────────────────────────────────────────────
         public async Task SaveAsync() => await _context.SaveChangesAsync();

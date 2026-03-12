@@ -8,6 +8,7 @@ using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Comm
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Finance;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Identity;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.NumberSeries;
+using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.payments;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Payments;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Reports;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Tenant;
@@ -355,7 +356,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IReportService, ReportService>();
             services.AddScoped<IUserManagementService, UserManagementService>();
             services.AddScoped<IFeeItemService, FeeItemService>();
-            //services.AddScoped<IFeeStructureService, FeeStructureService>();  // ← NEW
+            services.AddScoped<IPaymentRepository, PaymentRepository>();  // ← NEW
             services.AddScoped<IInvoiceService, InvoiceService>();            // ← NEW
             services.AddScoped<IInvoiceItemService, InvoiceItemService>();    // ← NEW
             services.AddScoped<IJwtService, JwtService>();
@@ -370,6 +371,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IRoleAssignmentService, RoleAssignmentService>();
             services.AddScoped<INavigationService, NavigationService>();
             services.AddScoped<IImageUploadService, ImageUploadService>();
+            services.AddScoped<IParentService, ParentService>();
 
             services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
