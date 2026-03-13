@@ -4,7 +4,7 @@ import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/materia
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
-
+import { FormsModule } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { take } from 'rxjs/operators';
 import { InvoiceStatus, InvoiceDialogData } from '../Types/Invoice.types';
@@ -15,6 +15,7 @@ import { InvoiceService } from 'app/core/DevKenService/Finance/Invoice/Invoice.s
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     MatDialogModule,
     MatIconModule,
     MatButtonModule,
@@ -41,10 +42,10 @@ export class InvoiceViewDialogComponent {
 
   close(): void { this.dialogRef.close(); }
 
-  // invoice-view-dialog.component.ts — getStatusClass (same map, same fix)
   getStatusClass(status: InvoiceStatus): string {
     const map: Record<InvoiceStatus, string> = {
-      [InvoiceStatus.Pending]:       'bg-gray-100 text-gray-600',
+      [InvoiceStatus.Draft]:         'bg-gray-100 text-gray-500',
+      [InvoiceStatus.Pending]:       'bg-blue-100 text-blue-700',
       [InvoiceStatus.PartiallyPaid]: 'bg-amber-100 text-amber-700',
       [InvoiceStatus.Paid]:          'bg-green-100 text-green-700',
       [InvoiceStatus.Overdue]:       'bg-red-100 text-red-700',
@@ -64,7 +65,6 @@ export class InvoiceViewDialogComponent {
           this.isApplyingDiscount = false;
           if (res.success) {
             this.snackBar.open('Discount applied.', 'Close', { duration: 2500 });
-            // Update local data
             Object.assign(this.data.invoice!, res.data);
             this.showDiscountForm = false;
             this.discountAmount = 0;

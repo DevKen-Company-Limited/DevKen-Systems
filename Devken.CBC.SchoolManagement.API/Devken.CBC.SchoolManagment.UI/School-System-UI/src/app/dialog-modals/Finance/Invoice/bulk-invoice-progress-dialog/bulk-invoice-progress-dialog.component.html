@@ -1,0 +1,93 @@
+<!-- Dialog Header -->
+<div class="bg-gradient-to-r from-violet-600 to-purple-700 rounded-t-2xl px-6 py-5">
+  <div class="flex items-center gap-3">
+    <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+      <mat-icon class="text-white">receipt_long</mat-icon>
+    </div>
+    <div>
+      <h2 class="text-xl font-bold text-white m-0">Generating Invoices</h2>
+      <p class="text-white/70 text-sm mt-0.5 mb-0">
+        Creating {{ data.results.length }} invoice{{ data.results.length !== 1 ? 's' : '' }}…
+      </p>
+    </div>
+  </div>
+</div>
+
+<div mat-dialog-content class="!p-6">
+
+  <!-- Overall Progress Bar -->
+  <div class="mb-6">
+    <div class="flex justify-between text-sm mb-2">
+      <span class="font-medium text-gray-700 dark:text-gray-300">Progress</span>
+      <span class="text-gray-500">{{ doneCount }} / {{ data.results.length }}</span>
+    </div>
+    <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+      <div
+        class="h-full bg-gradient-to-r from-violet-500 to-purple-600 transition-all duration-300 rounded-full"
+        [style.width.%]="progressPct">
+      </div>
+    </div>
+  </div>
+
+  <!-- Results List -->
+  <div class="space-y-2 max-h-80 overflow-y-auto pr-1">
+    <div *ngFor="let r of data.results"
+         class="flex items-center gap-3 p-3 rounded-lg transition-all"
+         [ngClass]="{
+           'bg-green-50 dark:bg-green-900/20':  r.status === 'success',
+           'bg-red-50 dark:bg-red-900/20':     r.status === 'error',
+           'bg-gray-50 dark:bg-gray-800':      r.status === 'pending',
+           'bg-amber-50 dark:bg-amber-900/20': r.status === 'skipped'
+         }">
+
+      <!-- Status Icon -->
+      <div class="flex-shrink-0">
+        <mat-spinner *ngIf="r.status === 'pending'" diameter="20"></mat-spinner>
+        <mat-icon *ngIf="r.status === 'success'" class="text-green-600">check_circle</mat-icon>
+        <mat-icon *ngIf="r.status === 'error'"   class="text-red-600">error</mat-icon>
+        <mat-icon *ngIf="r.status === 'skipped'" class="text-amber-600">skip_next</mat-icon>
+      </div>
+
+      <!-- Name -->
+      <span class="flex-1 text-sm font-medium text-gray-800 dark:text-gray-200">
+        {{ r.studentName }}
+      </span>
+
+      <!-- Result -->
+      <span *ngIf="r.status === 'success'"
+            class="text-xs text-green-700 dark:text-green-400 font-medium">
+        {{ r.invoiceNumber || 'Created' }}
+      </span>
+      <span *ngIf="r.status === 'error'"
+            class="text-xs text-red-600 dark:text-red-400 max-w-36 truncate"
+            [title]="r.errorMessage">
+        {{ r.errorMessage || 'Failed' }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Summary (after completion) -->
+  <div *ngIf="isComplete" class="mt-6 grid grid-cols-3 gap-3">
+    <div class="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
+      <p class="text-2xl font-extrabold text-green-700">{{ successCount }}</p>
+      <p class="text-xs text-green-600 font-medium">Created</p>
+    </div>
+    <div class="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-xl">
+      <p class="text-2xl font-extrabold text-red-700">{{ errorCount }}</p>
+      <p class="text-xs text-red-600 font-medium">Failed</p>
+    </div>
+    <div class="text-center p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl">
+      <p class="text-2xl font-extrabold text-amber-700">{{ skippedCount }}</p>
+      <p class="text-xs text-amber-600 font-medium">Skipped</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- Actions -->
+<div mat-dialog-actions class="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+  <button *ngIf="isComplete" mat-flat-button color="primary" (click)="onDone()">
+    <mat-icon>check</mat-icon>
+    <span class="ml-1">Done</span>
+  </button>
+</div>

@@ -2,20 +2,22 @@
 
   <!-- Section Header -->
   <div class="flex items-start gap-4 mb-8">
-    <div class="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg">
+    <div class="flex items-center justify-center w-14 h-14 rounded-xl
+                bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg">
       <mat-icon class="text-white !w-7 !h-7">list_alt</mat-icon>
     </div>
     <div class="flex-1">
       <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Line Items</h2>
       <p class="text-gray-600 dark:text-gray-400">
-        Add the fee items that make up this invoice. At least one item is required.
+        Pick from the fee catalog to auto-fill details, or add ad-hoc items manually.
+        At least one item is required.
       </p>
     </div>
   </div>
 
   <fuse-alert type="info" appearance="soft" [showIcon]="true" class="mb-6">
-    <strong>Required:</strong> Each item needs a description, quantity (≥ 1), and unit price (≥ 0).
-    Discount and tax are optional.
+    <strong>Tip:</strong> Select a fee from the catalog to auto-fill description, price,
+    type, and tax details. You can still override any field afterwards.
   </fuse-alert>
 
   <form [formGroup]="form" novalidate>
@@ -27,17 +29,26 @@
         [formGroupName]="i"
         class="shadow-md overflow-hidden">
 
-        <!-- Item header bar -->
+        <!-- ── Card Header ── -->
         <div class="flex items-center justify-between px-5 py-3
                     bg-gradient-to-r from-blue-50 to-indigo-50
                     dark:from-blue-900/20 dark:to-indigo-900/20
                     border-b border-blue-100 dark:border-blue-800">
-          <div class="flex items-center gap-2">
-            <div class="flex items-center justify-center w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-bold">
+          <div class="flex items-center gap-2 flex-wrap">
+            <div class="flex items-center justify-center w-7 h-7 rounded-full
+                        bg-blue-600 text-white text-xs font-bold shrink-0">
               {{ i + 1 }}
             </div>
             <span class="text-sm font-semibold text-blue-700 dark:text-blue-300">
               {{ item.get('description')?.value || 'New Item' }}
+            </span>
+            <!-- Catalog badge -->
+            <span *ngIf="item.get('feeItemId')?.value"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium
+                         rounded-full bg-indigo-100 text-indigo-700
+                         dark:bg-indigo-900/30 dark:text-indigo-300">
+              <mat-icon class="icon-size-3">library_books</mat-icon>
+              {{ getFeeItemName(item.get('feeItemId')?.value) }}
             </span>
           </div>
           <div class="flex items-center gap-3">
@@ -55,27 +66,77 @@
         </div>
 
         <mat-card-content class="!p-5">
-          <!-- Row 1: Description + Type + GL Code -->
+
+          <!-- ── Catalog Picker ── -->
+          <div class="mb-4 p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20
+                      border border-indigo-100 dark:border-indigo-800">
+            <p class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 mb-2
+                      flex items-center gap-1">
+              <mat-icon class="icon-size-4">library_books</mat-icon>
+              Fee Catalog — optional, auto-fills fields below
+            </p>
+            <div class="flex items-center gap-3">
+              <mat-form-field appearance="outline" class="flex-1 !mb-0">
+                <mat-label>Pick from catalog</mat-label>
+                <mat-select formControlName="feeItemId"
+                            (selectionChange)="onFeeItemSelected(i, $event.value)">
+                  <mat-option value="">— Ad-hoc (manual entry) —</mat-option>
+                  <mat-option *ngFor="let fee of feeItems" [value]="fee.id">
+                    {{ fee.name }}
+                    <span class="text-gray-400 text-xs ml-2">
+                      ({{ formatCurrency(fee.defaultAmount) }})
+                    </span>
+                  </mat-option>
+                </mat-select>
+                <mat-icon matPrefix class="text-indigo-400">payments</mat-icon>
+              </mat-form-field>
+              <button *ngIf="item.get('feeItemId')?.value"
+                      type="button" mat-stroked-button
+                      class="!text-gray-500 !border-gray-300 whitespace-nowrap"
+                      (click)="clearFeeItem(i)"
+                      matTooltip="Switch to ad-hoc entry">
+                <mat-icon class="icon-size-4">link_off</mat-icon>
+                <span class="ml-1 text-xs">Clear</span>
+              </button>
+            </div>
+          </div>
+
+          <mat-divider class="!mb-4"></mat-divider>
+
+          <!-- ── Row 1: Description + Item Type ── -->
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
             <mat-form-field appearance="outline" class="md:col-span-2">
               <mat-label>Description *</mat-label>
-              <input matInput formControlName="description" placeholder="e.g. Tuition Fee">
+              <input matInput formControlName="description"
+                     placeholder="e.g. Tuition Fee — Term 1">
               <mat-icon matPrefix class="text-gray-400">label</mat-icon>
-              <mat-error *ngIf="item.get('description')?.hasError('required')">Description is required</mat-error>
+              <mat-error *ngIf="item.get('description')?.hasError('required')">
+                Description is required
+              </mat-error>
+              <mat-error *ngIf="item.get('description')?.hasError('maxlength')">
+                Max 200 characters
+              </mat-error>
             </mat-form-field>
 
+            <!-- Item Type dropdown — stores label string e.g. "Tuition" -->
             <mat-form-field appearance="outline">
               <mat-label>Item Type</mat-label>
-              <input matInput formControlName="itemType" placeholder="e.g. Tuition">
+              <mat-select formControlName="itemType">
+                <mat-option value="">— None —</mat-option>
+                <mat-option *ngFor="let t of feeTypeOptions" [value]="t.label">
+                  {{ t.label }}
+                </mat-option>
+              </mat-select>
               <mat-icon matPrefix class="text-gray-400">category</mat-icon>
             </mat-form-field>
           </div>
 
-          <!-- Row 2: Qty + Unit Price + Discount + GL Code -->
+          <!-- ── Row 2: Qty + Unit Price + Discount + GL Code ── -->
           <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
             <mat-form-field appearance="outline">
               <mat-label>Quantity *</mat-label>
-              <input matInput type="number" formControlName="quantity" min="1" placeholder="1">
+              <input matInput type="number" formControlName="quantity"
+                     min="1" placeholder="1">
               <mat-icon matPrefix class="text-gray-400">tag</mat-icon>
               <mat-error *ngIf="item.get('quantity')?.hasError('required')">Required</mat-error>
               <mat-error *ngIf="item.get('quantity')?.hasError('min')">Min 1</mat-error>
@@ -83,15 +144,19 @@
 
             <mat-form-field appearance="outline">
               <mat-label>Unit Price (KES) *</mat-label>
-              <input matInput type="number" formControlName="unitPrice" min="0" placeholder="0.00">
+              <input matInput type="number" formControlName="unitPrice"
+                     min="0" placeholder="0.00">
               <mat-icon matPrefix class="text-gray-400">attach_money</mat-icon>
               <mat-error *ngIf="item.get('unitPrice')?.hasError('required')">Required</mat-error>
+              <mat-error *ngIf="item.get('unitPrice')?.hasError('min')">Must be ≥ 0</mat-error>
             </mat-form-field>
 
             <mat-form-field appearance="outline">
               <mat-label>Discount (KES)</mat-label>
-              <input matInput type="number" formControlName="discount" min="0" placeholder="0">
+              <input matInput type="number" formControlName="discount"
+                     min="0" placeholder="0">
               <mat-icon matPrefix class="text-gray-400">discount</mat-icon>
+              <mat-error *ngIf="item.get('discount')?.hasError('min')">Must be ≥ 0</mat-error>
             </mat-form-field>
 
             <mat-form-field appearance="outline">
@@ -101,40 +166,58 @@
             </mat-form-field>
           </div>
 
-          <!-- Row 3: Tax toggle + Tax rate + Notes -->
+          <!-- ── Row 3: Tax + Notes ── -->
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
 
-            <!-- Taxable toggle -->
             <div class="flex flex-col gap-2">
-              <div class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+              <div class="flex items-center gap-3 p-3 rounded-lg h-14
+                          border border-gray-200 dark:border-gray-700">
                 <mat-checkbox formControlName="isTaxable" color="primary"
                               (change)="onTaxableToggle(i)">
                   Taxable
                 </mat-checkbox>
               </div>
-              <mat-form-field *ngIf="item.get('isTaxable')?.value" appearance="outline">
+              <mat-form-field *ngIf="item.get('isTaxable')?.value"
+                              appearance="outline">
                 <mat-label>Tax Rate %</mat-label>
-                <input matInput type="number" formControlName="taxRate" min="0" max="100" placeholder="16">
+                <input matInput type="number" formControlName="taxRate"
+                       min="0" max="100" placeholder="16">
                 <mat-icon matPrefix class="text-gray-400">percent</mat-icon>
+                <mat-error *ngIf="item.get('taxRate')?.hasError('min')">Min 0</mat-error>
+                <mat-error *ngIf="item.get('taxRate')?.hasError('max')">Max 100</mat-error>
               </mat-form-field>
             </div>
 
-            <!-- Item Notes -->
             <mat-form-field appearance="outline" class="md:col-span-2">
               <mat-label>Item Notes</mat-label>
-              <textarea matInput formControlName="notes" rows="2" placeholder="Optional note for this item"></textarea>
+              <textarea matInput formControlName="notes" rows="2"
+                        placeholder="Optional note for this line item"></textarea>
               <mat-icon matPrefix class="text-gray-400">notes</mat-icon>
             </mat-form-field>
 
           </div>
+
+          <!-- ── Item Subtotal ── -->
+          <div class="flex justify-end mt-3 pt-3
+                      border-t border-gray-100 dark:border-gray-700">
+            <div class="text-right">
+              <span class="text-xs text-gray-500 dark:text-gray-400 mr-3">Item Total</span>
+              <span class="text-base font-bold text-gray-900 dark:text-white tabular-nums">
+                {{ formatCurrency(getItemTotal(item)) }}
+              </span>
+            </div>
+          </div>
+
         </mat-card-content>
       </mat-card>
 
     </div>
 
-    <!-- Add Item + Grand Total footer -->
-    <div class="flex items-center justify-between p-4 bg-white dark:bg-gray-800
-                border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm">
+    <!-- ── Footer: Add Item + Grand Total ── -->
+    <div class="flex items-center justify-between p-4
+                bg-white dark:bg-gray-800
+                border border-gray-200 dark:border-gray-700
+                rounded-xl shadow-sm">
       <button type="button" mat-stroked-button color="primary" (click)="addItem()">
         <mat-icon class="icon-size-5">add_circle_outline</mat-icon>
         <span class="ml-2">Add Line Item</span>

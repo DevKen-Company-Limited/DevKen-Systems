@@ -1,0 +1,120 @@
+<div class="max-w-6xl">
+
+  <!-- Section Header -->
+  <div class="flex items-start gap-4 mb-8">
+    <div class="flex items-center justify-center w-14 h-14 rounded-xl
+                bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg">
+      <mat-icon class="text-white !w-7 !h-7">group</mat-icon>
+    </div>
+    <div class="flex-1">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Invoice Scope</h2>
+      <p class="text-gray-600 dark:text-gray-400">
+        Select the class, academic period, and invoice dates. All students in the chosen class
+        will be loaded in the next step.
+      </p>
+    </div>
+  </div>
+
+  <fuse-alert type="info" appearance="soft" [showIcon]="true" class="mb-6">
+    <strong>Bulk Mode:</strong> One invoice per student will be generated using the same fee items
+    and dates you define.
+  </fuse-alert>
+
+  <form [formGroup]="form" novalidate class="space-y-6">
+
+    <!-- School Assignment (SuperAdmin only) -->
+    <mat-card *ngIf="isSuperAdmin" class="shadow-md">
+      <mat-card-header class="!pb-2">
+        <mat-card-title class="!text-base !font-semibold flex items-center gap-2">
+          <mat-icon class="text-teal-600">apartment</mat-icon>
+          School Assignment
+          <span class="ml-auto text-xs font-medium px-2 py-1 bg-red-100 text-red-700
+                       dark:bg-red-900/30 dark:text-red-300 rounded">Required</span>
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>School *</mat-label>
+          <mat-select formControlName="tenantId">
+            <mat-option value="">— Select school —</mat-option>
+            <mat-option *ngFor="let school of schools" [value]="school.id">
+              {{ school.name }}
+            </mat-option>
+          </mat-select>
+          <mat-icon matPrefix class="text-gray-400">apartment</mat-icon>
+          <mat-error>{{ getError('tenantId') }}</mat-error>
+        </mat-form-field>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Class & Period -->
+    <mat-card class="shadow-md">
+      <mat-card-content class="!pt-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          <!-- Class -->
+          <mat-form-field appearance="outline" class="md:col-span-2">
+            <mat-label>Class / Grade *</mat-label>
+            <mat-select formControlName="classId">
+              <mat-option value="">— Select Class —</mat-option>
+              <mat-option *ngFor="let c of classes" [value]="c.id">{{ c.name }}</mat-option>
+            </mat-select>
+            <mat-icon matPrefix class="text-gray-400">class</mat-icon>
+            <mat-hint>All active students in this class will be imported</mat-hint>
+            <mat-error>{{ getError('classId') }}</mat-error>
+          </mat-form-field>
+
+          <!-- Academic Year -->
+          <mat-form-field appearance="outline">
+            <mat-label>Academic Year *</mat-label>
+            <mat-select formControlName="academicYearId">
+              <mat-option value="">— Select Year —</mat-option>
+              <mat-option *ngFor="let y of academicYears" [value]="y.id">{{ y.name }}</mat-option>
+            </mat-select>
+            <mat-icon matPrefix class="text-gray-400">event</mat-icon>
+            <mat-error>{{ getError('academicYearId') }}</mat-error>
+          </mat-form-field>
+
+          <!-- Term -->
+          <mat-form-field appearance="outline">
+            <mat-label>Term</mat-label>
+            <mat-select formControlName="termId">
+              <mat-option value="">— No specific term —</mat-option>
+              <mat-option *ngFor="let t of terms" [value]="t.id">{{ t.name }}</mat-option>
+            </mat-select>
+            <mat-icon matPrefix class="text-gray-400">date_range</mat-icon>
+          </mat-form-field>
+
+          <!-- Invoice Date -->
+          <mat-form-field appearance="outline">
+            <mat-label>Invoice Date *</mat-label>
+            <input matInput [matDatepicker]="invPicker" formControlName="invoiceDate">
+            <mat-datepicker-toggle matIconSuffix [for]="invPicker"></mat-datepicker-toggle>
+            <mat-datepicker #invPicker></mat-datepicker>
+            <mat-error>{{ getError('invoiceDate') }}</mat-error>
+          </mat-form-field>
+
+          <!-- Due Date -->
+          <mat-form-field appearance="outline">
+            <mat-label>Due Date *</mat-label>
+            <input matInput [matDatepicker]="duePicker" formControlName="dueDate">
+            <mat-datepicker-toggle matIconSuffix [for]="duePicker"></mat-datepicker-toggle>
+            <mat-datepicker #duePicker></mat-datepicker>
+            <mat-error>{{ getError('dueDate') }}</mat-error>
+          </mat-form-field>
+
+          <!-- Description -->
+          <mat-form-field appearance="outline" class="md:col-span-2">
+            <mat-label>Description</mat-label>
+            <textarea matInput formControlName="description" rows="2"
+              placeholder="e.g. Term 1 2025 School Fees — Grade 6"></textarea>
+            <mat-icon matPrefix class="text-gray-400">description</mat-icon>
+            <mat-hint>Optional — applied to every invoice generated</mat-hint>
+          </mat-form-field>
+
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+  </form>
+</div>
