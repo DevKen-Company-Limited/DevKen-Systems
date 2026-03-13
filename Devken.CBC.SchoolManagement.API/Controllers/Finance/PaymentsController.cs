@@ -23,24 +23,27 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Finance
         [HttpGet]
         [Authorize(Policy = PermissionKeys.FeeRead)]
         public async Task<IActionResult> GetAll(
-            [FromQuery] Guid? schoolId = null,
-            [FromQuery] Guid? studentId = null,
-            [FromQuery] Guid? invoiceId = null,
-            [FromQuery] PaymentMethod? method = null,
-            [FromQuery] PaymentStatus? status = null,
-            [FromQuery] DateTime? from = null,
-            [FromQuery] DateTime? to = null,
-            [FromQuery] bool? isReversal = null)
+           [FromQuery] Guid? schoolId = null,
+           [FromQuery] Guid? studentId = null,
+           [FromQuery] Guid? invoiceId = null,
+           [FromQuery] PaymentMethod? method = null,
+           [FromQuery] PaymentStatus? status = null,
+           [FromQuery] DateTime? from = null,
+           [FromQuery] DateTime? to = null,
+           [FromQuery] bool? isReversal = null,
+           [FromQuery] string? search = null,
+           [FromQuery] int page = 1,
+           [FromQuery] int pageSize = 20)
         {
             try
             {
-                var result = await paymentService.GetAllAsync(
-                    schoolId, studentId, invoiceId, method, status, from, to, isReversal,
+                var result = await paymentService.GetPagedAsync(
+                    schoolId, studentId, invoiceId, method, status,
+                    from, to, isReversal, search, page, pageSize,
                     GetUserSchoolIdOrNullWithValidation(), IsSuperAdmin);
 
                 return SuccessResponse(result);
             }
-            catch (UnauthorizedAccessException ex) { return UnauthorizedResponse(ex.Message); }
             catch (UnauthorizedException ex) { return ForbiddenResponse(ex.Message); }
             catch (Exception ex) { return InternalServerErrorResponse(ex.Message); }
         }

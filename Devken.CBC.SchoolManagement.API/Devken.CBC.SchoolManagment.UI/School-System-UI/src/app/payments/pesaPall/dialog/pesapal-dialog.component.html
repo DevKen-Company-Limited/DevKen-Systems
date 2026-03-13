@@ -1,0 +1,80 @@
+<div class="flex flex-col w-full max-w-lg bg-white rounded-2xl overflow-hidden" style="min-width: 480px">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between px-5 py-3.5 bg-white border-b border-slate-200">
+    <div class="flex items-center gap-3">
+      <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-rose-600 shadow-sm">
+        <mat-icon class="text-white !text-[16px]">payments</mat-icon>
+      </div>
+      <div>
+        <p class="text-[14px] font-bold text-slate-800 leading-tight">PesaPal Checkout</p>
+        <p class="text-[11px] text-slate-400 font-medium">KES {{ data.amount | number:'1.2-2' }} · {{ data.description }}</p>
+      </div>
+    </div>
+    <button mat-icon-button (click)="close()" class="!w-7 !h-7 text-slate-400">
+      <mat-icon class="!text-[18px]">close</mat-icon>
+    </button>
+  </div>
+
+  <!-- Checkout iframe -->
+  <div class="flex flex-col">
+    <div *ngIf="isLoadingCheckout" class="flex flex-col items-center justify-center py-16 gap-4">
+      <mat-progress-spinner mode="indeterminate" diameter="44" strokeWidth="3"></mat-progress-spinner>
+      <p class="text-[13px] text-slate-500 font-semibold">Preparing your secure checkout…</p>
+    </div>
+
+    <ng-container *ngIf="!isLoadingCheckout && checkoutUrl">
+      <iframe
+        [src]="checkoutUrl"
+        (load)="onIframeLoad()"
+        class="w-full border-0 transition-all"
+        [style.height]="iframeLoaded ? '480px' : '0'"
+        allow="payment">
+      </iframe>
+
+      <div class="flex items-center justify-between px-4 py-3 border-t border-slate-100 bg-white">
+        <button mat-flat-button (click)="checkPaymentStatus()" [disabled]="isPolling"
+          class="!bg-emerald-600 !text-white !rounded-lg !font-semibold !text-[12px]">
+          <mat-progress-spinner *ngIf="isPolling" mode="indeterminate" diameter="14" strokeWidth="2" class="inline-block mr-1"></mat-progress-spinner>
+          <mat-icon *ngIf="!isPolling" class="!text-[16px]">check_circle</mat-icon>
+          <span class="ml-1">{{ isPolling ? 'Checking…' : "I've Paid" }}</span>
+        </button>
+      </div>
+    </ng-container>
+
+    <!-- Error -->
+    <div *ngIf="errorMessage" class="flex items-start gap-2 p-3 rounded-lg bg-rose-50 border border-rose-200">
+      <mat-icon class="text-rose-500 !text-[15px] flex-shrink-0 mt-0.5">error</mat-icon>
+      <p class="text-[12px] text-rose-700 font-medium">{{ errorMessage }}</p>
+    </div>
+  </div>
+
+  <!-- Result -->
+  <div *ngIf="step==='result' && result" class="p-5 flex flex-col gap-4">
+    <div class="flex flex-col items-center gap-3 py-6 rounded-xl border-2"
+         [class]="result.success ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'">
+      <mat-icon class="!text-5xl !w-12 !h-12" [class]="result.success ? 'text-emerald-600' : 'text-rose-600'">
+        {{ result.success ? 'check_circle' : 'cancel' }}
+      </mat-icon>
+      <div class="text-center">
+        <p class="text-[16px] font-black" [class]="result.success ? 'text-emerald-600' : 'text-rose-600'">
+          {{ result.success ? 'Payment Successful!' : 'Payment Failed' }}
+        </p>
+        <p class="text-[12px] text-slate-500 mt-1 font-medium">{{ result.error ?? '' }}</p>
+      </div>
+    </div>
+
+    <div class="flex gap-2.5 flex-wrap pt-1">
+      <button mat-flat-button (click)="close()"
+        [class]="result.success ? '!bg-emerald-600 !text-white' : '!bg-slate-600 !text-white'">
+        <mat-icon class="!text-[16px]">{{ result.success ? 'check' : 'close' }}</mat-icon>
+        <span class="ml-1">{{ result.success ? 'Done' : 'Close' }}</span>
+      </button>
+      <button *ngIf="!result.success" mat-stroked-button (click)="retry()"
+        class="!border-orange-300 !text-orange-600 !rounded-lg !font-semibold">
+        <mat-icon class="!text-[16px]">refresh</mat-icon>
+        <span class="ml-1">Try Again</span>
+      </button>
+    </div>
+  </div>
+</div>

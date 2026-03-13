@@ -1,0 +1,798 @@
+<!-- payment-bulk-form.component.html — full Tailwind, light theme -->
+
+<!-- Loading overlay -->
+<div *ngIf="isLoadingLookups"
+  class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
+  <mat-progress-spinner mode="indeterminate" diameter="48" strokeWidth="3"></mat-progress-spinner>
+  <p class="mt-4 text-sm font-semibold text-slate-500">Loading students &amp; staff…</p>
+</div>
+
+<!-- Shell -->
+<div class="flex flex-col w-full h-screen overflow-hidden bg-slate-50">
+
+  <!-- ── TOP BAR ─────────────────────────────────────────────── -->
+  <header class="flex-shrink-0 flex items-center justify-between h-14 px-4 bg-white border-b border-slate-200 shadow-sm z-30 gap-3">
+
+    <div class="flex items-center gap-3 min-w-0">
+      <button mat-icon-button (click)="goBack()" matTooltip="Back to Payments" class="text-slate-400">
+        <mat-icon svgIcon="heroicons_outline:arrow-left"></mat-icon>
+      </button>
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-500 shadow flex-shrink-0">
+          <mat-icon class="text-white text-[18px]">payments</mat-icon>
+        </div>
+        <div class="min-w-0">
+          <h1 class="text-[15px] font-bold text-slate-800 leading-tight">Payment Entry</h1>
+          <p class="text-[11px] text-slate-400 font-medium" *ngIf="rows.length === 0">Single student · Class · Whole school</p>
+          <div class="flex items-center gap-1.5 flex-wrap" *ngIf="rows.length > 0">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-600 border border-teal-200">{{ rows.length }} row{{ rows.length !== 1 ? 's' : '' }}</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">KES {{ formatCurrency(totalAmount) }}</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
+              [class]="validRowCount === rows.length ? 'bg-green-50 text-green-600 border border-green-200' : 'bg-amber-50 text-amber-600 border border-amber-200'">
+              {{ validRowCount }}/{{ rows.length }} valid
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2 flex-shrink-0">
+      <button mat-icon-button (click)="showHelp = !showHelp"
+        [class]="showHelp ? '!bg-sky-50 text-sky-500' : 'text-slate-400'"
+        matTooltip="{{ showHelp ? 'Hide help' : 'How to use' }}">
+        <mat-icon>help_outline</mat-icon>
+      </button>
+
+      <!-- PesaPal pay button -->
+      <button mat-stroked-button (click)="openPesaPal()"
+        [disabled]="rows.length === 0 || !totalAmount"
+        class="!border-orange-300 !text-orange-600 hover:!bg-orange-50 !rounded-lg !text-[13px] !font-semibold"
+        matTooltip="Pay via PesaPal — M-Pesa, Airtel, Card, Bank">
+        <mat-icon class="!text-[18px]">account_balance_wallet</mat-icon>
+        <span class="hidden md:inline ml-1">PesaPal</span>
+      </button>
+
+      <button mat-stroked-button (click)="toggleClassPanel()"
+        [disabled]="isSuperAdmin && !shared.schoolId"
+        [class]="showClassImport ? '!border-indigo-400 !text-indigo-600 !bg-indigo-50' : '!border-indigo-200 !text-indigo-600 hover:!bg-indigo-50'"
+        class="!rounded-lg !text-[13px] !font-semibold">
+        <mat-icon class="!text-[18px]">groups</mat-icon>
+        <span class="hidden sm:inline ml-1">{{ showClassImport ? 'Hide Panel' : 'Import by Class' }}</span>
+      </button>
+      <button mat-stroked-button (click)="addRow()"
+        [disabled]="isSuperAdmin && !shared.schoolId"
+        class="!border-emerald-200 !text-emerald-600 hover:!bg-emerald-50 !rounded-lg !text-[13px] !font-semibold">
+        <mat-icon class="!text-[18px]">add</mat-icon>
+        <span class="hidden sm:inline ml-1">Add Row</span>
+      </button>
+      <button mat-flat-button [disabled]="!isValid || isSubmitting" (click)="submit()"
+        class="!bg-gradient-to-r !from-teal-500 !to-emerald-500 !text-white !rounded-lg !text-[13px] !font-semibold !shadow">
+        <mat-progress-spinner *ngIf="isSubmitting" mode="indeterminate" diameter="16" strokeWidth="2" class="inline-block mr-1"></mat-progress-spinner>
+        <mat-icon *ngIf="!isSubmitting" class="!text-[18px]">send</mat-icon>
+        <span class="ml-1">{{ isSubmitting ? 'Submitting…' : 'Submit' }}</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ── BODY: sidebar + main ──────────────────────────────────── -->
+  <div class="flex flex-1 overflow-hidden min-h-0">
+
+    <!-- ═══ SIDEBAR ═══════════════════════════════════════════════ -->
+    <aside class="flex-shrink-0 bg-white border-r border-slate-200 overflow-y-auto transition-all duration-200"
+      [class.w-72]="!sidebarCollapsed"
+      [class.w-12]="sidebarCollapsed">
+
+      <!-- ── Collapsed strip ──────────────────────────────────────── -->
+      <ng-container *ngIf="sidebarCollapsed">
+        <div class="flex flex-col items-center py-3 gap-3 h-full">
+
+          <!-- Expand button -->
+          <button mat-icon-button (click)="sidebarCollapsed = false"
+            matTooltip="Expand Shared Settings" matTooltipPosition="right"
+            class="!w-8 !h-8 text-teal-600">
+            <mat-icon class="!text-[18px]">chevron_right</mat-icon>
+          </button>
+
+          <!-- Rotated label -->
+          <div class="flex flex-col items-center gap-2 mt-1">
+            <span class="flex items-center justify-center w-5 h-5 rounded-full bg-teal-500 text-white text-[9px] font-bold">1</span>
+            <span class="text-[10px] font-bold text-slate-400 tracking-widest uppercase"
+              style="writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg);">
+              Shared Settings
+            </span>
+          </div>
+
+          <!-- Summary chips when collapsed -->
+          <div class="flex flex-col items-center gap-2 mt-auto mb-3">
+            <mat-icon *ngIf="shared.paymentDate" class="text-teal-400 !text-[16px]" matTooltip="{{ shared.paymentDate }}" matTooltipPosition="right">event</mat-icon>
+            <mat-icon *ngIf="shared.paymentMethod" class="text-emerald-400 !text-[16px]" matTooltip="{{ getMethodLabel(shared.paymentMethod) }}" matTooltipPosition="right">{{ getMethodIcon(shared.paymentMethod) }}</mat-icon>
+            <mat-icon *ngIf="shared.invoiceStrategy && shared.invoiceStrategy !== 'none'" class="text-indigo-400 !text-[16px]" matTooltip="Strategy: {{ shared.invoiceStrategy }}" matTooltipPosition="right">auto_fix_high</mat-icon>
+            <span *ngIf="!shared.paymentDate || !shared.paymentMethod"
+              class="w-2 h-2 rounded-full bg-rose-400 animate-pulse"
+              matTooltip="Required fields missing" matTooltipPosition="right">
+            </span>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- ── Expanded panel ───────────────────────────────────────── -->
+      <ng-container *ngIf="!sidebarCollapsed">
+        <div class="p-4 flex flex-col gap-3">
+
+          <!-- Header row with collapse button -->
+          <div class="flex items-center justify-between mb-1">
+            <div class="flex items-center gap-2">
+              <span class="flex items-center justify-center w-5 h-5 rounded-full bg-teal-500 text-white text-[10px] font-bold">1</span>
+              <div>
+                <p class="text-[13px] font-bold text-slate-700">Shared Settings</p>
+                <p class="text-[11px] text-slate-400 font-medium">Applied to every row</p>
+              </div>
+            </div>
+            <button mat-icon-button (click)="sidebarCollapsed = true"
+              matTooltip="Minimise panel" class="!w-7 !h-7 text-slate-400 hover:text-slate-600">
+              <mat-icon class="!text-[18px]">chevron_left</mat-icon>
+            </button>
+          </div>
+
+          <!-- School (super admin) -->
+          <mat-form-field *ngIf="isSuperAdmin" appearance="outline" class="w-full pbf-field-sm">
+            <mat-label>School <span class="text-rose-500">*</span></mat-label>
+            <mat-select [(ngModel)]="shared.schoolId" (ngModelChange)="onSchoolChange($event)">
+              <mat-option value="">— Select school —</mat-option>
+              <mat-option *ngFor="let s of schools" [value]="s.id">{{ s.name }}</mat-option>
+            </mat-select>
+            <mat-icon matPrefix class="text-slate-400 !text-[18px]">corporate_fare</mat-icon>
+          </mat-form-field>
+
+          <!-- Date -->
+          <mat-form-field appearance="outline" class="w-full pbf-field-sm">
+            <mat-label>Payment Date <span class="text-rose-500">*</span></mat-label>
+            <input matInput type="date" [(ngModel)]="shared.paymentDate" />
+            <mat-icon matPrefix class="text-slate-400 !text-[18px]">event</mat-icon>
+          </mat-form-field>
+
+          <!-- Method -->
+          <mat-form-field appearance="outline" class="w-full pbf-field-sm">
+            <mat-label>Method <span class="text-rose-500">*</span></mat-label>
+            <mat-select [(ngModel)]="shared.paymentMethod" (ngModelChange)="onMethodChange()">
+              <mat-option *ngFor="let m of paymentMethods" [value]="m.value">{{ m.label }}</mat-option>
+            </mat-select>
+            <mat-icon matPrefix class="text-slate-400 !text-[18px]">{{ getMethodIcon(shared.paymentMethod) }}</mat-icon>
+          </mat-form-field>
+
+          <!-- Status -->
+          <mat-form-field appearance="outline" class="w-full pbf-field-sm">
+            <mat-label>Status</mat-label>
+            <mat-select [(ngModel)]="shared.statusPayment">
+              <mat-option value="Completed">Completed</mat-option>
+              <mat-option value="Pending">Pending</mat-option>
+            </mat-select>
+            <mat-icon matPrefix class="text-slate-400 !text-[18px]">flag</mat-icon>
+          </mat-form-field>
+
+          <!-- Received By -->
+          <mat-form-field appearance="outline" class="w-full pbf-field-sm">
+            <mat-label>Received By</mat-label>
+            <mat-select [(ngModel)]="shared.receivedBy">
+              <mat-option value="">— Optional —</mat-option>
+              <mat-option *ngFor="let s of staffList" [value]="s.id">{{ s.firstName }} {{ s.lastName }}</mat-option>
+            </mat-select>
+            <mat-icon matPrefix class="text-slate-400 !text-[18px]">badge</mat-icon>
+          </mat-form-field>
+
+          <!-- Bank fields -->
+          <ng-container *ngIf="shared.paymentMethod === 'BankTransfer' || shared.paymentMethod === 'Cheque'">
+            <mat-form-field appearance="outline" class="w-full pbf-field-sm">
+              <mat-label>Bank Name</mat-label>
+              <input matInput [(ngModel)]="shared.bankName" placeholder="e.g. Equity Bank" />
+              <mat-icon matPrefix class="text-slate-400 !text-[18px]">account_balance</mat-icon>
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="w-full pbf-field-sm">
+              <mat-label>Account Number</mat-label>
+              <input matInput [(ngModel)]="shared.accountNumber" />
+              <mat-icon matPrefix class="text-slate-400 !text-[18px]">credit_card</mat-icon>
+            </mat-form-field>
+          </ng-container>
+
+          <!-- Description -->
+          <mat-form-field appearance="outline" class="w-full pbf-field-sm">
+            <mat-label>Description</mat-label>
+            <input matInput [(ngModel)]="shared.description" maxlength="500" placeholder="e.g. Term 2 fee batch" />
+            <mat-icon matPrefix class="text-slate-400 !text-[18px]">short_text</mat-icon>
+          </mat-form-field>
+
+          <!-- Invoice Strategy -->
+          <div class="pt-3 border-t border-slate-100 flex flex-col gap-2.5">
+            <p class="flex items-center gap-1.5 text-[11px] font-bold text-teal-600">
+              <mat-icon class="!text-[14px] !w-[14px] !h-[14px]">auto_fix_high</mat-icon>
+              Invoice Strategy
+            </p>
+            <mat-form-field appearance="outline" class="w-full pbf-field-sm">
+              <mat-label>Auto-select Invoice</mat-label>
+              <mat-select [(ngModel)]="shared.invoiceStrategy" (ngModelChange)="onStrategyChange()">
+                <mat-option value="none">Manual (pick per row)</mat-option>
+                <mat-option value="first">First unpaid invoice</mat-option>
+                <mat-option value="highest">Highest balance due</mat-option>
+                <mat-option value="lowest">Lowest balance due</mat-option>
+              </mat-select>
+              <mat-icon matPrefix class="text-slate-400 !text-[18px]">receipt_long</mat-icon>
+            </mat-form-field>
+            <p class="text-[11px] text-slate-400 leading-relaxed font-medium">{{ strategyHint }}</p>
+            <button *ngIf="rows.length > 0 && shared.invoiceStrategy !== 'none'"
+              mat-stroked-button (click)="applyStrategyToAllRows()"
+              class="!border-teal-200 !text-teal-600 hover:!bg-teal-50 !rounded-lg !text-[12px] !font-semibold w-full">
+              <mat-icon class="!text-[16px]">sync</mat-icon>
+              <span class="ml-1">Re-apply to all rows</span>
+            </button>
+          </div>
+
+        </div>
+      </ng-container>
+    </aside>
+
+    <!-- ═══ MAIN ════════════════════════════════════════════════ -->
+    <main class="flex-1 overflow-y-auto min-w-0 p-4 flex flex-col gap-4">
+
+      <!-- ══ HOW TO USE — help panel ══════════════════════════════ -->
+      <div *ngIf="showHelp" class="rounded-xl border border-sky-200 bg-sky-50 overflow-hidden">
+
+        <!-- Panel header -->
+        <div class="flex items-center justify-between px-4 py-2.5 bg-sky-100 border-b border-sky-200">
+          <div class="flex items-center gap-2 flex-wrap">
+            <mat-icon class="text-sky-500 !text-[18px]">help_outline</mat-icon>
+            <span class="text-[13px] font-bold text-sky-800">How to use Payment Entry</span>
+            <span class="text-[11px] text-sky-500 font-medium hidden sm:inline">— works for 1 student up to your entire school</span>
+          </div>
+          <button mat-icon-button class="!w-7 !h-7 flex-shrink-0" (click)="showHelp = false">
+            <mat-icon class="text-sky-400 !text-[16px]">close</mat-icon>
+          </button>
+        </div>
+
+        <div class="p-4 flex flex-col gap-4">
+
+          <!-- ── Scenario cards ── -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+
+            <!-- Single student -->
+            <div class="bg-white rounded-xl border border-slate-200 p-4 flex flex-col gap-3">
+              <div class="flex items-center gap-2.5">
+                <div class="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex-shrink-0">
+                  <mat-icon class="!text-[18px]">person</mat-icon>
+                </div>
+                <span class="text-[13px] font-bold text-slate-800">Single Student</span>
+              </div>
+              <ol class="flex flex-col gap-2 list-none p-0 m-0">
+                <li class="flex items-start gap-2 text-[12px] text-slate-500 leading-relaxed">
+                  <span class="flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500 text-white text-[9px] font-bold flex-shrink-0 mt-0.5">1</span>
+                  Fill in <strong class="text-slate-700 mx-1">Shared Settings</strong> (date, method).
+                </li>
+                <li class="flex items-start gap-2 text-[12px] text-slate-500 leading-relaxed">
+                  <span class="flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500 text-white text-[9px] font-bold flex-shrink-0 mt-0.5">2</span>
+                  Click <strong class="text-slate-700 mx-1">Add Row</strong> → search and select the student.
+                </li>
+                <li class="flex items-start gap-2 text-[12px] text-slate-500 leading-relaxed">
+                  <span class="flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500 text-white text-[9px] font-bold flex-shrink-0 mt-0.5">3</span>
+                  Pick the invoice, enter amount → <strong class="text-slate-700 ml-1">Submit</strong>.
+                </li>
+              </ol>
+            </div>
+
+            <!-- Multiple students -->
+            <div class="bg-white rounded-xl border border-slate-200 p-4 flex flex-col gap-3">
+              <div class="flex items-center gap-2.5">
+                <div class="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex-shrink-0">
+                  <mat-icon class="!text-[18px]">group</mat-icon>
+                </div>
+                <span class="text-[13px] font-bold text-slate-800">Multiple Students</span>
+              </div>
+              <ol class="flex flex-col gap-2 list-none p-0 m-0">
+                <li class="flex items-start gap-2 text-[12px] text-slate-500 leading-relaxed">
+                  <span class="flex items-center justify-center w-4 h-4 rounded-full bg-indigo-500 text-white text-[9px] font-bold flex-shrink-0 mt-0.5">1</span>
+                  Fill in <strong class="text-slate-700 mx-1">Shared Settings</strong> and set an <strong class="text-slate-700 mx-1">Invoice Strategy</strong>.
+                </li>
+                <li class="flex items-start gap-2 text-[12px] text-slate-500 leading-relaxed">
+                  <span class="flex items-center justify-center w-4 h-4 rounded-full bg-indigo-500 text-white text-[9px] font-bold flex-shrink-0 mt-0.5">2</span>
+                  Open <strong class="text-slate-700 mx-1">Import by Class</strong>, filter to the class → tick students → Import.
+                </li>
+                <li class="flex items-start gap-2 text-[12px] text-slate-500 leading-relaxed">
+                  <span class="flex items-center justify-center w-4 h-4 rounded-full bg-indigo-500 text-white text-[9px] font-bold flex-shrink-0 mt-0.5">3</span>
+                  Invoices auto-selected. Adjust amounts per row →  <strong class="text-slate-700 ml-1">Submit</strong>.
+                </li>
+              </ol>
+            </div>
+
+            <!-- Whole school -->
+            <div class="bg-white rounded-xl border border-slate-200 p-4 flex flex-col gap-3">
+              <div class="flex items-center gap-2.5">
+                <div class="flex items-center justify-center w-8 h-8 rounded-full bg-violet-100 text-violet-600 flex-shrink-0">
+                  <mat-icon class="!text-[18px]">corporate_fare</mat-icon>
+                </div>
+                <span class="text-[13px] font-bold text-slate-800">Whole Class / School</span>
+              </div>
+              <ol class="flex flex-col gap-2 list-none p-0 m-0">
+                <li class="flex items-start gap-2 text-[12px] text-slate-500 leading-relaxed">
+                  <span class="flex items-center justify-center w-4 h-4 rounded-full bg-violet-500 text-white text-[9px] font-bold flex-shrink-0 mt-0.5">1</span>
+                  Set <strong class="text-slate-700 mx-1">Invoice Strategy</strong> to "First unpaid" or "Highest balance".
+                </li>
+                <li class="flex items-start gap-2 text-[12px] text-slate-500 leading-relaxed">
+                  <span class="flex items-center justify-center w-4 h-4 rounded-full bg-violet-500 text-white text-[9px] font-bold flex-shrink-0 mt-0.5">2</span>
+                  Open <strong class="text-slate-700 mx-1">Import by Class</strong>. Leave filters blank. Set a <strong class="text-slate-700 mx-1">Default Amount</strong>, tick "Select all" → Import.
+                </li>
+                <li class="flex items-start gap-2 text-[12px] text-slate-500 leading-relaxed">
+                  <span class="flex items-center justify-center w-4 h-4 rounded-full bg-violet-500 text-white text-[9px] font-bold flex-shrink-0 mt-0.5">3</span>
+                  Review rows, fix any flagged in amber → <strong class="text-slate-700 ml-1">Submit all</strong>.
+                </li>
+              </ol>
+            </div>
+
+          </div><!-- /scenario cards -->
+
+          <!-- ── Feature tips ── -->
+          <div class="bg-white rounded-xl border border-sky-100 p-4">
+            <p class="flex items-center gap-1.5 text-[12px] font-bold text-sky-700 mb-3">
+              <mat-icon class="!text-[14px] !w-[14px] !h-[14px]">tips_and_updates</mat-icon>
+              Useful features to know
+            </p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
+
+              <div class="flex gap-2 text-[12px] text-slate-500 leading-relaxed">
+                <mat-icon class="!text-[14px] !w-[14px] !h-[14px] text-teal-500 flex-shrink-0 mt-0.5">auto_fix_high</mat-icon>
+                <span><strong class="text-slate-700">Invoice Strategy</strong> — Set "First unpaid", "Highest" or "Lowest" in Shared Settings. Invoices auto-picked on import. Hit <em>Re-apply to all rows</em> to update existing rows instantly.</span>
+              </div>
+
+              <div class="flex gap-2 text-[12px] text-slate-500 leading-relaxed">
+                <mat-icon class="!text-[14px] !w-[14px] !h-[14px] text-indigo-500 flex-shrink-0 mt-0.5">content_copy</mat-icon>
+                <span><strong class="text-slate-700">Copy invoice to all rows</strong> — Once a row has an invoice selected, click the copy icon in its header to push that same invoice to every other row.</span>
+              </div>
+
+              <div class="flex gap-2 text-[12px] text-slate-500 leading-relaxed">
+                <mat-icon class="!text-[14px] !w-[14px] !h-[14px] text-emerald-500 flex-shrink-0 mt-0.5">search</mat-icon>
+                <span><strong class="text-slate-700">Student search</strong> — In each row's Student dropdown, start typing a name or admission number. The list filters live with no scrolling needed.</span>
+              </div>
+
+              <div class="flex gap-2 text-[12px] text-slate-500 leading-relaxed">
+                <mat-icon class="!text-[14px] !w-[14px] !h-[14px] text-amber-500 flex-shrink-0 mt-0.5">attach_money</mat-icon>
+                <span><strong class="text-slate-700">Default amount on import</strong> — Set a "Default Amount (KES)" in the Import panel before importing. All rows will be pre-filled — still editable after.</span>
+              </div>
+
+              <div class="flex gap-2 text-[12px] text-slate-500 leading-relaxed">
+                <mat-icon class="!text-[14px] !w-[14px] !h-[14px] text-rose-400 flex-shrink-0 mt-0.5">refresh</mat-icon>
+                <span><strong class="text-slate-700">Retry failed payments</strong> — After submission, if some rows fail, click <em>Retry Failed</em> to reload only those rows without re-entering successful ones.</span>
+              </div>
+
+              <div class="flex gap-2 text-[12px] text-slate-500 leading-relaxed">
+                <mat-icon class="!text-[14px] !w-[14px] !h-[14px] text-slate-400 flex-shrink-0 mt-0.5">radio_button_checked</mat-icon>
+                <span><strong class="text-slate-700">Row status dots</strong> —
+                  <span class="inline-flex items-center gap-1 mx-0.5"><span class="inline-block w-2 h-2 rounded-full bg-slate-300"></span> not started</span>,
+                  <span class="inline-flex items-center gap-1 mx-0.5"><span class="inline-block w-2 h-2 rounded-full bg-amber-400"></span> in progress</span>,
+                  <span class="inline-flex items-center gap-1 mx-0.5"><span class="inline-block w-2 h-2 rounded-full bg-green-500"></span> complete</span>,
+                  <span class="inline-flex items-center gap-1 mx-0.5"><span class="inline-block w-2 h-2 rounded-full bg-rose-500"></span> error</span>.
+                </span>
+              </div>
+
+            </div>
+          </div><!-- /tips -->
+
+        </div>
+      </div><!-- /help panel -->
+
+      <!-- Super admin banner -->
+      <div *ngIf="isSuperAdmin && !shared.schoolId"
+        class="flex items-start gap-3 p-4 rounded-xl border border-amber-200 bg-amber-50">
+        <div class="flex items-center justify-center w-9 h-9 rounded-full bg-amber-100 text-amber-500 flex-shrink-0">
+          <mat-icon class="!text-[20px]">corporate_fare</mat-icon>
+        </div>
+        <div>
+          <p class="text-[13px] font-bold text-amber-800">Select a school to continue</p>
+          <p class="text-[12px] text-amber-700 mt-0.5 leading-relaxed">
+            Choose a school in <strong>Shared Settings</strong> before adding rows or submitting.
+          </p>
+          <div class="flex items-center gap-2 mt-2 flex-wrap">
+            <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">① Pick a school</span>
+            <mat-icon class="text-amber-300 !text-[14px]">arrow_forward</mat-icon>
+            <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">② Add rows / Import</span>
+            <mat-icon class="text-amber-300 !text-[14px]">arrow_forward</mat-icon>
+            <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">③ Submit payments</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Import panel -->
+      <div *ngIf="showClassImport" class="rounded-xl border-2 border-indigo-200 bg-white p-4 flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="flex items-center justify-center w-5 h-5 rounded-full bg-indigo-500 text-white text-[10px] font-bold">2</span>
+            <p class="text-[13px] font-bold text-slate-700">Import Students by Class</p>
+          </div>
+          <button mat-icon-button class="!w-7 !h-7" (click)="showClassImport = false">
+            <mat-icon class="text-slate-400 !text-[16px]">close</mat-icon>
+          </button>
+        </div>
+
+        <!-- Filters -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <mat-form-field appearance="outline" class="w-full pbf-field-sm">
+            <mat-label>CBC Level</mat-label>
+            <mat-select [(ngModel)]="classFilter.cbcLevel" (ngModelChange)="onClassFilterChange('cbcLevel')">
+              <mat-option value="">All Levels</mat-option>
+              <mat-option *ngFor="let l of cbcLevels" [value]="l">{{ l }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="w-full pbf-field-sm">
+            <mat-label>Grade</mat-label>
+            <mat-select [(ngModel)]="classFilter.grade" (ngModelChange)="onClassFilterChange('grade')">
+              <mat-option value="">All Grades</mat-option>
+              <mat-option *ngFor="let g of availableGrades" [value]="g">{{ g }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="w-full pbf-field-sm">
+            <mat-label>Stream</mat-label>
+            <mat-select [(ngModel)]="classFilter.stream" (ngModelChange)="onClassFilterChange('stream')">
+              <mat-option value="">All Streams</mat-option>
+              <mat-option *ngFor="let s of availableStreams" [value]="s">{{ s }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="w-full pbf-field-sm">
+            <mat-label>Search student</mat-label>
+            <input matInput [(ngModel)]="classFilter.search" (ngModelChange)="onClassFilterChange('search')" placeholder="Name or Adm. No." />
+            <mat-icon matSuffix class="text-slate-400 !text-[18px]">search</mat-icon>
+          </mat-form-field>
+        </div>
+
+        <!-- Default amount -->
+        <div class="flex items-center gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
+          <mat-icon class="text-emerald-500 flex-shrink-0">attach_money</mat-icon>
+          <mat-form-field appearance="outline" class="!mb-0 w-44 pbf-field-sm">
+            <mat-label>Default Amount (KES)</mat-label>
+            <input matInput type="number" [(ngModel)]="classImportAmount" min="0.01" step="0.01" placeholder="Optional" />
+          </mat-form-field>
+          <p class="text-[11px] text-slate-400 leading-relaxed">Pre-fills amount for all imported rows. Editable after import.</p>
+        </div>
+
+        <!-- Status bar -->
+        <div class="flex items-center justify-between">
+          <p class="text-[13px] text-slate-500">
+            <span class="font-bold text-indigo-600">{{ filteredClassStudents.length }}</span>
+            student{{ filteredClassStudents.length !== 1 ? 's' : '' }} match
+            <ng-container *ngIf="newSelectionCount > 0">· <span class="font-semibold text-emerald-600">{{ newSelectionCount }} new selected</span></ng-container>
+            <ng-container *ngIf="alreadyAddedCount > 0">· <span class="text-amber-500">{{ alreadyAddedCount }} already added</span></ng-container>
+          </p>
+          <button *ngIf="hasActiveClassFilters" mat-button class="!text-indigo-500 !text-[12px] !min-h-0 !font-semibold" (click)="clearClassFilters()">
+            <mat-icon class="!text-[14px]">filter_alt_off</mat-icon> Clear
+          </button>
+        </div>
+
+        <!-- Select all -->
+        <div *ngIf="filteredClassStudents.length > 0" class="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-indigo-50 border border-indigo-200">
+          <mat-checkbox [checked]="allClassSelected" [indeterminate]="someClassSelected" (change)="toggleSelectAll($event.checked)"></mat-checkbox>
+          <span class="text-[13px] text-indigo-700 font-semibold">
+            {{ allClassSelected ? 'Deselect all' : 'Select all ' + filteredClassStudents.length }}
+          </span>
+        </div>
+
+        <!-- Empty -->
+        <div *ngIf="filteredClassStudents.length === 0" class="flex flex-col items-center py-6">
+          <mat-icon class="text-slate-300 !text-5xl !w-12 !h-12">person_search</mat-icon>
+          <p class="mt-2 text-[13px] text-slate-400">No students match these filters</p>
+        </div>
+
+        <!-- Student list -->
+        <div class="max-h-60 overflow-y-auto rounded-lg border border-slate-200 bg-white divide-y divide-slate-100">
+          <div *ngFor="let s of filteredClassStudents; trackBy: trackById"
+            class="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-slate-50 transition-colors"
+            [class.bg-indigo-50]="s.selected"
+            (click)="toggleStudent(s)">
+            <mat-checkbox [(ngModel)]="s.selected" (ngModelChange)="updateSelectAllState()" (click)="$event.stopPropagation()"></mat-checkbox>
+            <div class="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 text-white text-[10px] font-bold flex-shrink-0">
+              {{ getInitials(s) }}
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-[13px] font-semibold text-slate-700 truncate">{{ s.firstName }} {{ s.lastName }}</p>
+              <p class="text-[11px] text-slate-400 truncate">{{ s.admissionNo || s.admissionNumber || 'No Adm. No.' }}<ng-container *ngIf="getStudentClass(s)"> · {{ getStudentClass(s) }}</ng-container></p>
+            </div>
+            <span *ngIf="isAlreadyAdded(s.id)" class="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-emerald-50 text-emerald-600 border border-emerald-200 flex-shrink-0">Added</span>
+          </div>
+        </div>
+
+        <!-- Import action -->
+        <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+          <p class="text-[13px] text-slate-500">
+            <ng-container *ngIf="newSelectionCount > 0; else noSel">
+              <span class="font-bold text-indigo-600">{{ newSelectionCount }}</span> student{{ newSelectionCount !== 1 ? 's' : '' }} will be imported.
+            </ng-container>
+            <ng-template #noSel>Select students above to import.</ng-template>
+          </p>
+          <button mat-flat-button [disabled]="newSelectionCount === 0 || isImporting" (click)="importSelectedStudents()"
+            class="!bg-indigo-600 !text-white !rounded-lg !text-[13px] !font-semibold">
+            <mat-progress-spinner *ngIf="isImporting" mode="indeterminate" diameter="16" strokeWidth="2" class="inline-block mr-1"></mat-progress-spinner>
+            <mat-icon *ngIf="!isImporting" class="!text-[18px]">group_add</mat-icon>
+            <span class="ml-1">{{ isImporting ? 'Importing…' : 'Import ' + (newSelectionCount > 0 ? newSelectionCount : '') }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── PAYMENT ROWS ───────────────────────────────────────── -->
+      <div>
+        <!-- Section header -->
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <span class="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500 text-white text-[10px] font-bold">{{ showClassImport ? '3' : '2' }}</span>
+            <h2 class="text-[15px] font-bold text-slate-800">Payment Rows</h2>
+            <span *ngIf="rows.length > 0" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-600 border border-teal-200">{{ rows.length }}</span>
+            <span *ngIf="rows.length > 0 && validRowCount < rows.length" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-600 border border-amber-200">{{ rows.length - validRowCount }} incomplete</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button *ngIf="rows.length > 0" mat-button class="!text-rose-400 !text-[12px] !font-semibold !min-h-0" (click)="clearAll()">
+              <mat-icon class="!text-[15px]">delete_sweep</mat-icon> Clear all
+            </button>
+            <button mat-stroked-button (click)="addRow()" class="!border-emerald-200 !text-emerald-600 hover:!bg-emerald-50 !rounded-lg !text-[12px] !font-semibold">
+              <mat-icon class="!text-[16px]">add</mat-icon> Add row
+            </button>
+          </div>
+        </div>
+
+        <!-- Empty state -->
+        <div *ngIf="rows.length === 0" class="flex flex-col items-center gap-4 py-12 border-2 border-dashed border-slate-200 rounded-xl bg-white">
+          <div class="flex items-center justify-center w-14 h-14 rounded-full bg-slate-100 border-2 border-slate-200">
+            <mat-icon class="text-slate-400 !text-4xl !w-9 !h-9">payments</mat-icon>
+          </div>
+          <div class="text-center">
+            <p class="text-[15px] font-bold text-slate-700">Ready to record payments</p>
+            <p class="text-[13px] text-slate-400 mt-1">Use for a single student, a whole class, or everyone in school</p>
+          </div>
+          <div class="grid grid-cols-3 gap-3 w-full max-w-sm px-4">
+            <div class="flex flex-col items-center gap-1 p-3 rounded-xl border border-emerald-200 bg-emerald-50 text-center">
+              <mat-icon class="text-emerald-500 !text-[20px]">person</mat-icon>
+              <span class="text-[11px] font-bold text-emerald-700">Single student</span>
+              <span class="text-[10px] text-slate-400">Click Add Row</span>
+            </div>
+            <div class="flex flex-col items-center gap-1 p-3 rounded-xl border border-indigo-200 bg-indigo-50 text-center">
+              <mat-icon class="text-indigo-500 !text-[20px]">group</mat-icon>
+              <span class="text-[11px] font-bold text-indigo-700">Class / group</span>
+              <span class="text-[10px] text-slate-400">Import by Class</span>
+            </div>
+            <div class="flex flex-col items-center gap-1 p-3 rounded-xl border border-violet-200 bg-violet-50 text-center">
+              <mat-icon class="text-violet-500 !text-[20px]">corporate_fare</mat-icon>
+              <span class="text-[11px] font-bold text-violet-700">Whole school</span>
+              <span class="text-[10px] text-slate-400">Import, no filters</span>
+            </div>
+          </div>
+          <div class="flex gap-2 flex-wrap justify-center">
+            <button mat-stroked-button (click)="toggleClassPanel()"
+              [disabled]="isSuperAdmin && !shared.schoolId"
+              class="!border-indigo-200 !text-indigo-600 hover:!bg-indigo-50 !rounded-lg !font-semibold">
+              <mat-icon>groups</mat-icon><span class="ml-1">Import by Class</span>
+            </button>
+            <button mat-flat-button (click)="addRow()"
+              [disabled]="isSuperAdmin && !shared.schoolId"
+              class="!bg-gradient-to-r !from-teal-500 !to-emerald-500 !text-white !rounded-lg !font-semibold">
+              <mat-icon>add</mat-icon><span class="ml-1">Add Row</span>
+            </button>
+            <button mat-stroked-button (click)="showHelp = true" class="!border-sky-200 !text-sky-600 hover:!bg-sky-50 !rounded-lg !font-semibold">
+              <mat-icon class="!text-[18px]">help_outline</mat-icon><span class="ml-1">How to use</span>
+            </button>
+            <button mat-stroked-button (click)="openPesaPal()"
+              [disabled]="rows.length === 0"
+              class="!border-orange-200 !text-orange-600 hover:!bg-orange-50 !rounded-lg !font-semibold">
+              <mat-icon class="!text-[18px]">account_balance_wallet</mat-icon><span class="ml-1">PesaPal</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Row cards -->
+        <div class="flex flex-col gap-3">
+          <div *ngFor="let row of rows; let i = index; trackBy: trackByIndex"
+            class="rounded-xl bg-white border transition-all"
+            [class.border-rose-200]="row._error"
+            [class.border-green-200]="!row._error && isRowComplete(row)"
+            [class.border-slate-200]="!row._error && !isRowComplete(row)">
+
+            <!-- Card header -->
+            <div class="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 bg-slate-50 rounded-t-xl">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="w-2 h-2 rounded-full flex-shrink-0"
+                  [class.bg-green-500]="isRowComplete(row)"
+                  [class.bg-amber-400]="!isRowComplete(row) && !row._error && !!row.studentId"
+                  [class.bg-slate-300]="!row.studentId && !row._error"
+                  [class.bg-rose-500]="!!row._error">
+                </span>
+                <span class="text-[11px] font-bold text-slate-400 flex-shrink-0">#{{ i + 1 }}</span>
+                <span class="text-[13px] font-semibold text-slate-700 truncate">{{ row._studentName || '— Select a student —' }}</span>
+                <span *ngIf="row.invoiceId" class="text-[11px] text-slate-400 hidden sm:inline truncate">· {{ getInvoiceLabel(row) }}</span>
+              </div>
+              <div class="flex items-center gap-1.5 flex-shrink-0">
+                <span *ngIf="row.amount && +row.amount > 0" class="text-[13px] font-bold text-emerald-600">KES {{ formatCurrency(row.amount) }}</span>
+                <button *ngIf="row.invoiceId && rows.length > 1" mat-icon-button class="!w-7 !h-7"
+                  (click)="applyInvoiceToAll(row)" matTooltip="Apply this invoice to all rows">
+                  <mat-icon class="text-indigo-400 !text-[15px]">content_copy</mat-icon>
+                </button>
+                <mat-icon *ngIf="row._error" class="text-rose-500 !text-[15px]" [matTooltip]="row._error!">error</mat-icon>
+                <button mat-icon-button class="!w-7 !h-7" (click)="removeRow(i)" matTooltip="Remove row">
+                  <mat-icon class="text-slate-400 hover:text-rose-400 !text-[15px]">close</mat-icon>
+                </button>
+              </div>
+            </div>
+
+            <!-- Card body -->
+            <div class="p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+
+              <!-- Student -->
+              <mat-form-field appearance="outline" class="w-full pbf-field-sm">
+                <mat-label>Student <span class="text-rose-500">*</span></mat-label>
+                <mat-icon matPrefix class="text-slate-400 !text-[18px]">person</mat-icon>
+                <mat-select [(ngModel)]="row.studentId" (ngModelChange)="onRowStudentChange(row, $event)"
+                  (openedChange)="onStudentSelectOpened(row, $event)">
+                  <mat-option>
+                    <ngx-mat-select-search [formControl]="row._studentSearchCtrl"
+                      placeholderLabel="Search name or adm. no…"
+                      noEntriesFoundLabel="No students found"
+                      [clearSearchInput]="true">
+                    </ngx-mat-select-search>
+                  </mat-option>
+                  <mat-option value="">— Select student —</mat-option>
+                  <mat-option *ngFor="let s of row._filteredStudents; trackBy: trackStudentById" [value]="s.id">
+                    <div class="flex items-center gap-2">
+                      <span class="flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-br from-teal-400 to-emerald-500 text-white text-[9px] font-bold flex-shrink-0">{{ getInitials(s) }}</span>
+                      <span class="font-medium text-slate-700">{{ s.firstName }} {{ s.lastName }}</span>
+                      <span class="text-[11px] text-slate-400 ml-auto">{{ s.admissionNo || s.admissionNumber || '' }}</span>
+                    </div>
+                  </mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <!-- Invoice -->
+              <mat-form-field appearance="outline" class="w-full pbf-field-sm">
+                <mat-label>Invoice <span class="text-rose-500">*</span></mat-label>
+                <mat-icon matPrefix class="text-slate-400 !text-[18px]">receipt_long</mat-icon>
+                <mat-select [(ngModel)]="row.invoiceId" [disabled]="!row.studentId || row._loadingInvoices">
+                  <mat-option value="">
+                    <ng-container [ngSwitch]="true">
+                      <ng-container *ngSwitchCase="row._loadingInvoices">Loading…</ng-container>
+                      <ng-container *ngSwitchCase="!row.studentId">Select student first</ng-container>
+                      <ng-container *ngSwitchCase="!row._loadingInvoices && row._invoices.length === 0 && !!row.studentId">No invoices found</ng-container>
+                      <ng-container *ngSwitchDefault>— Pick invoice —</ng-container>
+                    </ng-container>
+                  </mat-option>
+                  <mat-option *ngFor="let inv of row._invoices" [value]="inv.id">
+                    {{ inv.invoiceNumber }}
+                    <span class="text-[11px] text-slate-400 ml-1">KES {{ formatCurrency(inv.balanceDue ?? inv.totalAmount) }}</span>
+                  </mat-option>
+                </mat-select>
+                <mat-progress-spinner *ngIf="row._loadingInvoices" matSuffix mode="indeterminate" diameter="16" strokeWidth="2"></mat-progress-spinner>
+              </mat-form-field>
+
+              <!-- Amount -->
+              <mat-form-field appearance="outline" class="w-full pbf-field-sm">
+                <mat-label>Amount (KES) <span class="text-rose-500">*</span></mat-label>
+                <mat-icon matPrefix class="text-slate-400 !text-[18px]">attach_money</mat-icon>
+                <input matInput type="number" [(ngModel)]="row.amount" min="0.01" step="0.01" placeholder="0.00" />
+              </mat-form-field>
+
+              <!-- M-Pesa -->
+              <ng-container *ngIf="shared.paymentMethod === 'Mpesa'">
+                <mat-form-field appearance="outline" class="w-full pbf-field-sm">
+                  <mat-label>M-Pesa Code <span class="text-rose-500">*</span></mat-label>
+                  <mat-icon matPrefix class="text-slate-400 !text-[18px]">confirmation_number</mat-icon>
+                  <input matInput [(ngModel)]="row.mpesaCode" maxlength="20" placeholder="QA12BX…" />
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="w-full pbf-field-sm">
+                  <mat-label>Phone Number</mat-label>
+                  <mat-icon matPrefix class="text-slate-400 !text-[18px]">phone</mat-icon>
+                  <input matInput [(ngModel)]="row.phoneNumber" maxlength="20" placeholder="07…" />
+                </mat-form-field>
+              </ng-container>
+
+              <!-- Notes -->
+              <mat-form-field appearance="outline" class="w-full sm:col-span-3 pbf-field-sm">
+                <mat-label>Notes / Reference</mat-label>
+                <mat-icon matPrefix class="text-slate-400 !text-[18px]">notes</mat-icon>
+                <input matInput [(ngModel)]="row.notes" maxlength="500" placeholder="Optional transaction reference or notes" />
+              </mat-form-field>
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Result panel -->
+      <div *ngIf="result" class="rounded-xl border-2 p-5 flex flex-col gap-4"
+        [class.border-green-200]="result.failed === 0"
+        [class.bg-green-50]="result.failed === 0"
+        [class.border-amber-200]="result.failed > 0 && result.succeeded > 0"
+        [class.bg-amber-50]="result.failed > 0 && result.succeeded > 0"
+        [class.border-rose-200]="result.succeeded === 0"
+        [class.bg-rose-50]="result.succeeded === 0">
+        <div class="flex items-center gap-2">
+          <mat-icon class="!text-[22px]"
+            [class.text-green-500]="result.failed === 0"
+            [class.text-amber-500]="result.failed > 0 && result.succeeded > 0"
+            [class.text-rose-500]="result.succeeded === 0">
+            {{ result.failed === 0 ? 'check_circle' : result.succeeded > 0 ? 'warning' : 'cancel' }}
+          </mat-icon>
+          <span class="text-[15px] font-bold text-slate-800">
+            {{ result.failed === 0 ? 'All payments processed!' : result.succeeded > 0 ? 'Partial success' : 'All payments failed' }}
+          </span>
+          <span class="text-[13px] text-slate-400 font-semibold">({{ result.succeeded }}/{{ result.totalRequested }})</span>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="text-center p-3 rounded-xl bg-white border border-slate-200">
+            <p class="text-2xl font-black text-slate-700">{{ result.totalRequested }}</p>
+            <p class="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Requested</p>
+          </div>
+          <div class="text-center p-3 rounded-xl bg-green-50 border border-green-200">
+            <p class="text-2xl font-black text-green-600">{{ result.succeeded }}</p>
+            <p class="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Succeeded</p>
+          </div>
+          <div class="text-center p-3 rounded-xl bg-rose-50 border border-rose-200">
+            <p class="text-2xl font-black text-rose-600">{{ result.failed }}</p>
+            <p class="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Failed</p>
+          </div>
+          <div class="text-center p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+            <p class="text-[16px] font-black text-emerald-600">KES {{ formatCurrency(result.totalAmountPosted) }}</p>
+            <p class="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Posted</p>
+          </div>
+        </div>
+        <div *ngIf="result.errors?.length" class="flex flex-col gap-2">
+          <p class="text-[13px] font-bold text-rose-600">Failed rows:</p>
+          <div *ngFor="let err of result.errors" class="flex items-start gap-2 p-3 rounded-lg bg-rose-50 border border-rose-200 text-[13px] text-rose-700 font-medium">
+            <mat-icon class="text-rose-500 !text-[15px] flex-shrink-0 mt-0.5">error</mat-icon>
+            {{ err.reason }}
+          </div>
+        </div>
+        <div class="flex gap-2.5 flex-wrap">
+          <button mat-flat-button class="!bg-emerald-600 !text-white !rounded-lg !font-semibold" (click)="goBack()">
+            <mat-icon>arrow_back</mat-icon><span class="ml-1">Back to Payments</span>
+          </button>
+          <button *ngIf="result.failed > 0" mat-stroked-button class="!border-slate-200 !text-slate-600 !rounded-lg !font-semibold" (click)="retryFailed()">
+            <mat-icon>refresh</mat-icon><span class="ml-1">Retry {{ result.failed }} Failed</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="h-20 flex-shrink-0"></div>
+    </main>
+  </div>
+
+  <!-- ── STICKY FOOTER ─────────────────────────────────────────── -->
+  <footer *ngIf="rows.length > 0" class="flex-shrink-0 flex items-center justify-between flex-wrap gap-3 px-5 py-3 bg-white border-t-2 border-teal-200 shadow-[0_-2px_12px_rgba(13,148,136,0.08)] z-20">
+    <div class="flex items-center gap-1 flex-wrap">
+      <div class="flex flex-col items-center px-4">
+        <span class="text-[9px] uppercase tracking-widest text-slate-400 font-bold">Rows</span>
+        <span class="text-[20px] font-black text-slate-700">{{ rows.length }}</span>
+      </div>
+      <div class="w-px h-8 bg-slate-200"></div>
+      <div class="flex flex-col items-center px-4">
+        <span class="text-[9px] uppercase tracking-widest text-slate-400 font-bold">Valid</span>
+        <span class="text-[20px] font-black" [class.text-green-600]="validRowCount === rows.length" [class.text-amber-500]="validRowCount < rows.length">{{ validRowCount }}/{{ rows.length }}</span>
+      </div>
+      <div class="w-px h-8 bg-slate-200"></div>
+      <div class="flex flex-col items-center px-4">
+        <span class="text-[9px] uppercase tracking-widest text-slate-400 font-bold">Total</span>
+        <span class="text-[16px] font-black text-emerald-600">KES {{ formatCurrency(totalAmount) }}</span>
+      </div>
+      <div class="w-px h-8 bg-slate-200"></div>
+      <div class="flex flex-col items-center px-4">
+        <span class="text-[9px] uppercase tracking-widest text-slate-400 font-bold">Method</span>
+        <span class="text-[13px] font-bold text-slate-600">{{ getMethodLabel(shared.paymentMethod) }}</span>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <p *ngIf="!isValid && rows.length > 0" class="text-[12px] text-amber-500 font-semibold max-w-[200px] text-right">{{ validationHint }}</p>
+
+      <!-- PesaPal alternate pay -->
+      <button mat-stroked-button (click)="openPesaPal()"
+        class="!border-orange-300 !text-orange-600 hover:!bg-orange-50 !rounded-xl !font-bold !text-[13px] !h-11 !px-4"
+        matTooltip="Pay via PesaPal — M-Pesa, Card, Airtel, Bank">
+        <mat-icon class="!text-[18px]">account_balance_wallet</mat-icon>
+        <span class="hidden sm:inline ml-1">PesaPal</span>
+      </button>
+      <button mat-flat-button [disabled]="!isValid || isSubmitting" (click)="submit()"
+        class="!bg-gradient-to-r !from-teal-500 !to-emerald-500 !text-white !rounded-xl !font-bold !text-[14px] !px-8 !h-11 !shadow-md">
+        <mat-progress-spinner *ngIf="isSubmitting" mode="indeterminate" diameter="18" strokeWidth="2" class="inline-block mr-2"></mat-progress-spinner>
+        <mat-icon *ngIf="!isSubmitting">send</mat-icon>
+        <span class="ml-2">{{ isSubmitting ? 'Processing…' : 'Submit ' + rows.length + ' Payments' }}</span>
+      </button>
+    </div>
+  </footer>
+
+</div>

@@ -1,0 +1,70 @@
+<!-- pesapal-callback.component.html -->
+<div class="flex flex-col items-center justify-center min-h-screen bg-slate-50 p-6">
+
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="flex flex-col items-center gap-4">
+    <mat-progress-spinner mode="indeterminate" diameter="52" strokeWidth="3"></mat-progress-spinner>
+    <p class="text-[14px] font-semibold text-slate-500">Verifying your payment…</p>
+  </div>
+
+  <!-- Result card -->
+  <div *ngIf="!isLoading" class="w-full max-w-sm bg-white rounded-2xl border shadow-sm overflow-hidden"
+    [class.border-emerald-200]="isSuccess"
+    [class.border-rose-200]="!isSuccess && !error"
+    [class.border-slate-200]="!!error">
+
+    <!-- Header -->
+    <div class="px-6 py-5 flex flex-col items-center gap-3 border-b"
+      [class.bg-emerald-50]="isSuccess"
+      [class.border-emerald-100]="isSuccess"
+      [class.bg-rose-50]="!isSuccess"
+      [class.border-rose-100]="!isSuccess">
+      <mat-icon class="!text-5xl !w-12 !h-12"
+        [class.text-emerald-500]="isSuccess"
+        [class.text-rose-500]="!isSuccess">
+        {{ isSuccess ? 'check_circle' : 'cancel' }}
+      </mat-icon>
+      <p class="text-[18px] font-black"
+        [class.text-emerald-700]="isSuccess"
+        [class.text-rose-700]="!isSuccess">
+        {{ isSuccess ? 'Payment Successful' : 'Payment Unsuccessful' }}
+      </p>
+    </div>
+
+    <!-- Details -->
+    <div class="px-6 py-5 flex flex-col gap-3">
+
+      <ng-container *ngIf="status && isSuccess">
+        <div class="grid grid-cols-2 gap-2.5">
+          <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+            <p class="text-[10px] text-slate-400 font-bold uppercase">Confirmation</p>
+            <p class="text-[13px] font-bold text-slate-700 mt-0.5">{{ status.confirmation_code || '—' }}</p>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+            <p class="text-[10px] text-slate-400 font-bold uppercase">Method</p>
+            <p class="text-[13px] font-bold text-slate-700 mt-0.5">{{ status.payment_method }}</p>
+          </div>
+          <div class="col-span-2 p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+            <p class="text-[10px] text-emerald-600 font-bold uppercase">Amount</p>
+            <p class="text-[20px] font-black text-emerald-700">KES {{ status.amount | number:'1.2-2' }}</p>
+          </div>
+        </div>
+      </ng-container>
+
+      <ng-container *ngIf="!isSuccess">
+        <p class="text-[13px] text-slate-500 text-center">
+          {{ error ?? status?.description ?? 'Your payment could not be completed. Please try again.' }}
+        </p>
+      </ng-container>
+
+      <button mat-flat-button (click)="goToPayments()"
+        class="w-full !rounded-xl !font-semibold"
+        [class.!bg-emerald-600]="isSuccess"
+        [class.!bg-slate-700]="!isSuccess"
+        [class.!text-white]="true">
+        {{ isSuccess ? 'Back to Payments' : 'Try Again' }}
+      </button>
+    </div>
+  </div>
+
+</div>

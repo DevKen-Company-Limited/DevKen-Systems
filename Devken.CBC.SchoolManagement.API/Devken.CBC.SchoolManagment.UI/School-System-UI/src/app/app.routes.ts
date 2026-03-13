@@ -26,10 +26,10 @@ export const appRoutes: Route[] = [
         data: { layout: 'empty' },
         children: [
             { path: 'confirmation-required', loadChildren: () => import('./modules/auth/confirmation-required/confirmation-required.routes') },
-            { path: 'forgot-password',       loadChildren: () => import('./modules/auth/forgot-password/forgot-password.routes') },
-            { path: 'reset-password',        loadChildren: () => import('./modules/auth/reset-password/reset-password.routes') },
-            { path: 'sign-in',               loadChildren: () => import('./modules/auth/sign-in/sign-in.routes') },
-            { path: 'sign-up',               loadChildren: () => import('./modules/auth/sign-up/sign-up.routes') },
+            { path: 'forgot-password', loadChildren: () => import('./modules/auth/forgot-password/forgot-password.routes') },
+            { path: 'reset-password', loadChildren: () => import('./modules/auth/reset-password/reset-password.routes') },
+            { path: 'sign-in', loadChildren: () => import('./modules/auth/sign-in/sign-in.routes') },
+            { path: 'sign-up', loadChildren: () => import('./modules/auth/sign-up/sign-up.routes') },
         ]
     },
 
@@ -56,7 +56,7 @@ export const appRoutes: Route[] = [
         component: LayoutComponent,
         data: { layout: 'empty' },
         children: [
-            { path: 'sign-out',       loadChildren: () => import('./modules/auth/sign-out/sign-out.routes') },
+            { path: 'sign-out', loadChildren: () => import('./modules/auth/sign-out/sign-out.routes') },
             { path: 'unlock-session', loadChildren: () => import('./modules/auth/unlock-session/unlock-session.routes') }
         ]
     },
@@ -99,11 +99,11 @@ export const appRoutes: Route[] = [
             {
                 path: 'administration',
                 children: [
-                    { path: 'roles',       loadChildren: () => import('app/RolesAndPermission/role-assignment.component.routes') },
+                    { path: 'roles', loadChildren: () => import('app/RolesAndPermission/role-assignment.component.routes') },
                     { path: 'permissions', loadChildren: () => import('app/RolesAndPermission/permission/role-permission-management.component.routes') },
-                    { path: 'schools',     loadChildren: () => import('app/Tenant/schools-management.routes') },
-                    { path: 'logs',        loadChildren: () => import('app/logs/userActivities/user-activity.component.routes') },
-                    { path: 'users',       loadChildren: () => import('app/UserManagement/users-management.component.routes') }
+                    { path: 'schools', loadChildren: () => import('app/Tenant/schools-management.routes') },
+                    { path: 'logs', loadChildren: () => import('app/logs/userActivities/user-activity.component.routes') },
+                    { path: 'users', loadChildren: () => import('app/UserManagement/users-management.component.routes') }
                 ]
             },
 
@@ -112,13 +112,13 @@ export const appRoutes: Route[] = [
                 path: 'academic',
                 children: [
                     { path: 'academic-years', loadChildren: () => import('app/Academics/AcademicYear/academic-years.routes') },
-                    { path: 'terms',          loadChildren: () => import('app/Academics/Terms/terms.routes') },
-                    { path: 'parents',        loadChildren: () => import('app/Academics/Parents/Parent.routes') },
-                    { path: 'students',       loadChildren: () => import('app/administration/students/student.component.routes') },
-                    { path: 'subjects',       loadChildren: () => import('app/Academics/Subject/subjects.routes').then(m => m.default) },
-                    { path: 'teachers',       loadChildren: () => import('app/Academics/Teachers/teachers.component.routes') },
-                    { path: 'classes',        loadChildren: () => import('app/Classes/classes-management.component.routes') },
-                    { path: 'grades',         loadChildren: () => import('app/grades/grades.routes') }
+                    { path: 'terms', loadChildren: () => import('app/Academics/Terms/terms.routes') },
+                    { path: 'parents', loadChildren: () => import('app/Academics/Parents/Parent.routes') },
+                    { path: 'students', loadChildren: () => import('app/administration/students/student.component.routes') },
+                    { path: 'subjects', loadChildren: () => import('app/Academics/Subject/subjects.routes').then(m => m.default) },
+                    { path: 'teachers', loadChildren: () => import('app/Academics/Teachers/teachers.component.routes') },
+                    { path: 'classes', loadChildren: () => import('app/Classes/classes-management.component.routes') },
+                    { path: 'grades', loadChildren: () => import('app/grades/grades.routes') }
                 ]
             },
 
@@ -126,7 +126,8 @@ export const appRoutes: Route[] = [
             {
                 path: 'settings',
                 children: [
-                    { path: 'document-number-series', loadChildren: () => import('./Settings/NumberSeries/document-number-series.component.routes') }
+                    { path: 'document-number-series', loadChildren: () => import('./Settings/NumberSeries/document-number-series.component.routes') },
+                      { path: 'pesapal', loadChildren: () => import('./payments/pesaPall/settings/pesapal-settings.component.routes') }
                 ]
             },
 
@@ -142,11 +143,11 @@ export const appRoutes: Route[] = [
             {
                 path: 'finance',
                 children: [
-                    { path: 'fees',       loadChildren: () => import('app/Finance/fee-item/fee-items.routes') },
+                    { path: 'fees', loadChildren: () => import('app/Finance/fee-item/fee-items.routes') },
                     { path: 'fee-structure', loadChildren: () => import('app/Finance/fee-structure/fee-structures.component.routes') },
-                    { path: 'invoices',   loadChildren: () => import('app/Finance/Invoice/Invoice.routes') },
-                    { path: 'invoice-items',   loadChildren: () => import('app/Finance/Invoice-items/invoice-items.routes') },
-                   // { path: 'payments',   loadChildren: () => import('app/mod') }
+                    { path: 'invoices', loadChildren: () => import('app/Finance/Invoice/Invoice.routes') },
+                    { path: 'invoice-items', loadChildren: () => import('app/Finance/Invoice-items/invoice-items.routes') },
+                    { path: 'payments', loadChildren: () => import('app/payments/payments.component.routes') }
                 ]
             },
 
@@ -164,7 +165,7 @@ export const appRoutes: Route[] = [
             {
                 path: 'library',
                 children: [
-                    { path: 'authors',    loadChildren: () => import('app/Library/book-author/book-author.routes') },
+                    { path: 'authors', loadChildren: () => import('app/Library/book-author/book-author.routes') },
                     { path: 'categories', loadChildren: () => import('app/Library/book-category/book-category.routes') },
                     { path: 'publishers', loadChildren: () => import('app/Library/book-publisher/book-publisher.routes') },
                 ]
