@@ -1,0 +1,55 @@
+/* pesapal-dialog.component.scss */
+
+:host {
+  display: block;
+}
+
+/* ── Compact form fields ── */
+.pbf-field-sm {
+  .mat-mdc-form-field-subscript-wrapper { display: none !important; }
+  .mat-mdc-text-field-wrapper          { padding-bottom: 0 !important; }
+}
+
+.mat-mdc-form-field:not(.pbf-field-sm .mat-mdc-form-field) {
+  .mat-mdc-form-field-subscript-wrapper {
+    min-height: 18px;
+  }
+}
+
+/* ── Field text ── */
+.mat-mdc-input-element,
+input.mat-mdc-input-element {
+  color: #334155 !important;
+  font-weight: 500;
+}
+
+.mat-mdc-floating-label { color: #94a3b8 !important; }
+.mat-mdc-select-value-text { color: #334155 !important; font-weight: 500; }
+
+/* ── Outline borders ── */
+.mdc-notched-outline__leading,
+.mdc-notched-outline__notch,
+.mdc-notched-outline__trailing {
+  border-color: #e2e8f0 !important;
+}
+
+.mat-mdc-form-field:hover {
+  .mdc-notched-outline__leading,
+  .mdc-notched-outline__notch,
+  .mdc-notched-outline__trailing {
+    border-color: #f97316 !important;  /* orange-400 on hover */
+  }
+}
+
+.mat-mdc-form-field.mat-focused {
+  .mdc-notched-outline__leading,
+  .mdc-notched-outline__notch,
+  .mdc-notched-outline__trailing {
+    border-color: #ea580c !important;  /* orange-600 when focused */
+  }
+}
+
+/* ── Iframe ── */
+iframe {
+  display: block;
+}
