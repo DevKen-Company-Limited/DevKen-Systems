@@ -72,28 +72,26 @@ export class InvoiceEnrollmentComponent implements OnInit, OnDestroy {
   schools: SchoolDto[] = [];
   private _schoolService = inject(SchoolService);
 
-  // Lookup data for the Details step
   students:      InvoiceLookupItem[] = [];
   academicYears: InvoiceLookupItem[] = [];
   terms:         InvoiceLookupItem[] = [];
   parents:       InvoiceLookupItem[] = [];
 
-  
-  private _authService = inject(AuthService);
+  private _authService  = inject(AuthService);
   private _alertService = inject(AlertService);
-  private destroy$ = new Subject<void>();
+  private destroy$      = new Subject<void>();
 
   isSidebarCollapsed = false;
-  showMobileSidebar = false;
-  isMobileView = false;
+  showMobileSidebar  = false;
+  isMobileView       = false;
 
   @HostListener('window:resize')
   onResize(): void { this.checkViewport(); }
 
-  // ── SuperAdmin State ──────────────────────────────────────────────────────────
   get isSuperAdmin(): boolean {
     return this._authService.authUser?.isSuperAdmin ?? false;
   }
+
   private checkViewport(): void {
     const width = window.innerWidth;
     this.isMobileView = width < 1024;
@@ -110,10 +108,10 @@ export class InvoiceEnrollmentComponent implements OnInit, OnDestroy {
   }
 
   steps: InvoiceEnrollmentStep[] = [
-    { label: 'Invoice Details', icon: 'receipt',        sectionKey: 'details' },
-    { label: 'Line Items',      icon: 'list_alt',        sectionKey: 'items'   },
-    { label: 'Notes',           icon: 'sticky_note_2',   sectionKey: 'notes'   },
-    { label: 'Review & Submit', icon: 'check_circle',    sectionKey: 'review'  },
+    { label: 'Invoice Details', icon: 'receipt',       sectionKey: 'details' },
+    { label: 'Line Items',      icon: 'list_alt',       sectionKey: 'items'   },
+    { label: 'Notes',           icon: 'sticky_note_2',  sectionKey: 'notes'   },
+    { label: 'Review & Submit', icon: 'check_circle',   sectionKey: 'review'  },
   ];
 
   sectionValid: Record<string, boolean> = {
@@ -129,26 +127,30 @@ export class InvoiceEnrollmentComponent implements OnInit, OnDestroy {
   };
 
   constructor(
-    private alertService:       AlertService,
-    private invoiceService:     InvoiceService,
-    private studentService:     StudentService,
+    private alertService:        AlertService,
+    private invoiceService:      InvoiceService,
+    private studentService:      StudentService,
     private academicYearService: AcademicYearService,
-    private termService:        TermService,
-    private parentService:      ParentService,
-    private router:             Router,
-    private route:              ActivatedRoute,
+    private termService:         TermService,
+    private parentService:       ParentService,
+    private router:              Router,
+    private route:               ActivatedRoute,
   ) {}
 
+  // ── Lifecycle ────────────────────────────────────────────────────────────
   ngOnInit(): void {
-    if (this.isSuperAdmin) {
-        this._schoolService.getAll()
-          .pipe(takeUntil(this.destroy$))
-          .subscribe((res: any) => { this.schools = res.data ?? []; });
-      }
     this.invoiceId  = this.route.snapshot.paramMap.get('id');
     this.isEditMode = !!this.invoiceId;
 
-    this.loadLookups();
+    if (this.isSuperAdmin) {
+      // Only load the school picker — all other lookups wait for school selection
+      this._schoolService.getAll()
+        .pipe(takeUntil(this.destroy$))
+        .subscribe((res: any) => { this.schools = res.data ?? []; });
+    } else {
+      // Regular users: load all lookups immediately (no schoolId scoping)
+      this.loadLookups();
+    }
 
     if (this.invoiceId) {
       this.loadExistingInvoice(this.invoiceId);
@@ -164,10 +166,20 @@ export class InvoiceEnrollmentComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
+  // ── Called from template via (schoolIdChanged) on app-invoice-details ────
+  onSchoolSelected(schoolId: string): void {
+    if (schoolId) {
+      this.loadLookups(schoolId);
+    }
+  }
+
   // ── Load dropdown data ───────────────────────────────────────────────────
-  private loadLookups(): void {
+  private loadLookups(schoolId?: string): void {
+    // SuperAdmin must always have a schoolId — never fetch without one
+    if (this.isSuperAdmin && !schoolId) return;
+
     // Students
-    this.studentService.getAll()
+    this.studentService.getAll(schoolId)
       .pipe(catchError(() => of([])), takeUntil(this.destroy$))
       .subscribe((res: any) => {
         const list = Array.isArray(res) ? res : (res?.data ?? []);
@@ -178,7 +190,7 @@ export class InvoiceEnrollmentComponent implements OnInit, OnDestroy {
       });
 
     // Academic Years
-    this.academicYearService.getAll()
+    this.academicYearService.getAll(schoolId)
       .pipe(catchError(() => of([])), takeUntil(this.destroy$))
       .subscribe((res: any) => {
         const list = Array.isArray(res) ? res : (res?.data ?? []);
@@ -186,7 +198,7 @@ export class InvoiceEnrollmentComponent implements OnInit, OnDestroy {
       });
 
     // Terms
-    this.termService.getAll()
+    this.termService.getAll(schoolId)
       .pipe(catchError(() => of([])), takeUntil(this.destroy$))
       .subscribe((res: any) => {
         const list = Array.isArray(res) ? res : (res?.data ?? []);
@@ -194,14 +206,11 @@ export class InvoiceEnrollmentComponent implements OnInit, OnDestroy {
       });
 
     // Parents
-    this.parentService.query({})
+    this.parentService.query({}, schoolId)
       .pipe(catchError(() => of({ success: true, data: [] })), takeUntil(this.destroy$))
       .subscribe((res: any) => {
         const list = res?.data ?? [];
-        this.parents = list.map((p: any) => ({
-          id:   p.id,
-          name: p.fullName,
-        }));
+        this.parents = list.map((p: any) => ({ id: p.id, name: p.fullName }));
       });
   }
 
@@ -226,6 +235,7 @@ export class InvoiceEnrollmentComponent implements OnInit, OnDestroy {
 
   private hydrateFromInvoice(inv: any): void {
     this.formSections['details'] = {
+      tenantId:       inv.tenantId       || '',
       studentId:      inv.studentId      || '',
       academicYearId: inv.academicYearId || '',
       termId:         inv.termId         || '',
@@ -236,6 +246,11 @@ export class InvoiceEnrollmentComponent implements OnInit, OnDestroy {
     };
     this.formSections['items'] = inv.items || [];
     this.formSections['notes'] = inv.notes || '';
+
+    // Edit mode for SuperAdmin: reload all lookups scoped to this invoice's school
+    if (this.isSuperAdmin && inv.tenantId) {
+      this.loadLookups(inv.tenantId);
+    }
   }
 
   // ── Draft ────────────────────────────────────────────────────────────────
@@ -252,6 +267,12 @@ export class InvoiceEnrollmentComponent implements OnInit, OnDestroy {
       this.currentStep    = draft.currentStep ?? 0;
       this.lastSaved      = draft.savedAt ? new Date(draft.savedAt) : null;
       this.alertService.info('Draft loaded. You can continue where you left off.');
+
+      // If SuperAdmin had a school saved in the draft, reload its lookups
+      const draftTenantId = draft.formSections?.details?.tenantId;
+      if (this.isSuperAdmin && draftTenantId) {
+        this.loadLookups(draftTenantId);
+      }
     } catch { /* ignore */ }
   }
 
@@ -279,7 +300,7 @@ export class InvoiceEnrollmentComponent implements OnInit, OnDestroy {
     this.sectionValid[section] = valid;
   }
 
-  // ── Navigation ────────────────────────────────────────────────────────────
+  // ── Navigation ───────────────────────────────────────────────────────────
   navigateToStep(index: number): void {
     if (this.canNavigateTo(index)) {
       this.currentStep = index;
@@ -307,16 +328,16 @@ export class InvoiceEnrollmentComponent implements OnInit, OnDestroy {
     }, 500);
   }
 
-  // ── Submit ────────────────────────────────────────────────────────────────
+  // ── Submit ───────────────────────────────────────────────────────────────
   async submitForm(): Promise<void> {
     if (!this.allStepsCompleted()) return;
 
-     // SuperAdmin guard
     if (this.isSuperAdmin && !this.formSections['details']?.tenantId) {
       this._alertService.error('Please select a school in the Invoice Details step.');
       this.currentStep = 0;
       return;
     }
+
     this.isSubmitting = true;
     try {
       const payload = this.buildPayload();
@@ -339,44 +360,44 @@ export class InvoiceEnrollmentComponent implements OnInit, OnDestroy {
   }
 
   private buildPayload(): any {
-  const details = this.formSections['details'];
-  const items   = this.formSections['items'];
-  const notes   = this.formSections['notes'];
+    const details = this.formSections['details'];
+    const items   = this.formSections['items'];
+    const notes   = this.formSections['notes'];
 
-  const payload: any = {
-    studentId:      details.studentId,
-    academicYearId: details.academicYearId,
-    termId:         details.termId   || undefined,
-    parentId:       details.parentId || undefined,
-    invoiceDate:    details.invoiceDate
-      ? new Date(details.invoiceDate).toISOString()
-      : new Date().toISOString(),
-    dueDate:        details.dueDate
-      ? new Date(details.dueDate).toISOString()
-      : new Date().toISOString(),
-    description:    details.description || null,
-    notes:          notes               || null,
-    items: items.map((item: any) => ({
-      description: item.description,
-      itemType:    item.itemType    || null,
-      quantity:    item.quantity,
-      unitPrice:   item.unitPrice,
-      discount:    item.discount   || 0,
-      isTaxable:   item.isTaxable  || false,
-      taxRate:     item.isTaxable  ? (item.taxRate || 0) : null,
-      glCode:      item.glCode     || null,
-      notes:       item.notes      || null,
-    })),
-  };
+    const payload: any = {
+      studentId:      details.studentId,
+      academicYearId: details.academicYearId,
+      termId:         details.termId    || undefined,
+      parentId:       details.parentId  || undefined,
+      invoiceDate:    details.invoiceDate
+        ? new Date(details.invoiceDate).toISOString()
+        : new Date().toISOString(),
+      dueDate:        details.dueDate
+        ? new Date(details.dueDate).toISOString()
+        : new Date().toISOString(),
+      description:    details.description || null,
+      notes:          notes               || null,
+      items: items.map((item: any) => ({
+        description: item.description,
+        itemType:    item.itemType    || null,
+        quantity:    item.quantity,
+        unitPrice:   item.unitPrice,
+        discount:    item.discount    || 0,
+        isTaxable:   item.isTaxable   || false,
+        taxRate:     item.isTaxable   ? (item.taxRate || 0) : null,
+        glCode:      item.glCode      || null,
+        notes:       item.notes       || null,
+      })),
+    };
 
-  // ✅ SuperAdmin must send tenantId; regular users omit it
-  if (this.isSuperAdmin && details.tenantId) {
-    payload.tenantId = details.tenantId;
+    if (this.isSuperAdmin && details.tenantId) {
+      payload.tenantId = details.tenantId;
+    }
+
+    return payload;
   }
 
-  return payload;
-}
-
+  // ── Guards ───────────────────────────────────────────────────────────────
   canProceed(): boolean {
     if (this.isEditMode) return true;
     const key = this.steps[this.currentStep]?.sectionKey;
@@ -405,8 +426,7 @@ export class InvoiceEnrollmentComponent implements OnInit, OnDestroy {
 
   getRingOffset(): number {
     const circumference = 2 * Math.PI * 56;
-    const pct = this.completedSteps.size / (this.steps.length - 1);
-    return circumference * (1 - pct);
+    return circumference * (1 - this.completedSteps.size / (this.steps.length - 1));
   }
 
   goBack(): void {

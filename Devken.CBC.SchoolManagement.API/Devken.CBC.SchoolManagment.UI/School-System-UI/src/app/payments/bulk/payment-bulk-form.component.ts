@@ -48,7 +48,7 @@ import { PesaPalDialogData, PesaPalDialogResult } from '../pesaPall/pesapal.type
 export type InvoiceStrategy = 'none' | 'first' | 'highest' | 'lowest';
 
 // ── Auto-invoice strategy ──────────────────────────────────────────
-type InvoiceStrategy = 'none' | 'first' | 'highest' | 'lowest';
+//type InvoiceStrategy = 'none' | 'first' | 'highest' | 'lowest';
 
 // ── Row model ─────────────────────────────────────────────────────
 export interface BulkRow {

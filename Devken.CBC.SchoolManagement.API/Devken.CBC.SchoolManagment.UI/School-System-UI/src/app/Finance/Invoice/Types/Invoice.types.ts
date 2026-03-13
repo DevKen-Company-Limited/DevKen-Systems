@@ -1,12 +1,14 @@
 // ── Enums ──────────────────────────────────────────────────────────────────
 export enum InvoiceStatus {
-  Pending       = 0,  // ← was Draft=0 (wrong name, wrong member)
-  PartiallyPaid = 1,  // ← was Issued=1 (wrong name)
-  Paid          = 2,  // ← was PartiallyPaid=2
-  Overdue       = 3,  // ← was Paid=3
-  Cancelled     = 4,  // ← was Overdue=4
-  Refunded      = 5,  // ← was Cancelled=5, Refunded missing entirely
+  Draft         = 0,
+  Pending       = 1,
+  PartiallyPaid = 2,
+  Paid          = 3,
+  Overdue       = 4,
+  Cancelled     = 5,
+  Refunded      = 6,
 }
+
 // ── Request DTOs ───────────────────────────────────────────────────────────
 export interface CreateInvoiceItemDto {
   description: string;
@@ -116,6 +118,7 @@ export interface InvoiceQueryDto {
   parentId?: string;
   academicYearId?: string;
   termId?: string;
+  classId?: string;        // ← added: filter invoices by class/grade
   invoiceStatus?: InvoiceStatus;
   isOverdue?: boolean;
   dateFrom?: string;
