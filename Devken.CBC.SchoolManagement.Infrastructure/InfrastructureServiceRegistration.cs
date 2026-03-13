@@ -1,4 +1,5 @@
-﻿using Devken.CBC.SchoolManagement.Application.Authorization;
+﻿
+using Devken.CBC.SchoolManagement.Application.Authorization;
 using Devken.CBC.SchoolManagement.Application.DTOs.userActivities;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
@@ -33,6 +34,7 @@ using Devken.CBC.SchoolManagement.Application.Services.Interfaces.Academic;
 using Devken.CBC.SchoolManagement.Application.Services.Interfaces.Images;
 using Devken.CBC.SchoolManagement.Application.Services.UserManagement;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
+using Devken.CBC.SchoolManagement.Domain.Entities.Payments;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academic;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Academics;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Assessments;
@@ -51,7 +53,7 @@ using Devken.CBC.SchoolManagement.Infrastructure.Services.Academics;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Administration.Students;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Curriculum;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Email;
-using Devken.CBC.SchoolManagement.Infrastructure.Services.Finance;
+using Devken.CBC.SchoolManagement.Infrastructure.Services.Finance;         // ← PesaPalService lives here
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Images;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Library;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Reports;
@@ -84,7 +86,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
             services.AddSingleton(sp => sp.GetRequiredService<IOptions<JwtSettings>>().Value);
             services.AddHttpContextAccessor();
+
+            // Named HttpClients
             services.AddHttpClient();
+            services.AddHttpClient("PesaPal"); // ← named client for PesaPalService
 
             var jwtSettings = configuration.GetSection("JwtSettings").Get<JwtSettings>();
 
@@ -96,6 +101,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                 throw new InvalidOperationException("JWT Issuer is not configured in appsettings.json");
             if (string.IsNullOrWhiteSpace(jwtSettings.Audience))
                 throw new InvalidOperationException("JWT Audience is not configured in appsettings.json");
+
+            // ── PesaPal Settings ─────────────────────────────────────────────
+            services.Configure<PesaPalSettings>(
+                configuration.GetSection(PesaPalSettings.SectionName));
 
             // ── Authentication ───────────────────────────────────────────────
             services.AddAuthentication(options =>
@@ -248,7 +257,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                 RegisterPermissionPolicy(options, PermissionKeys.InvoiceWrite);
                 RegisterPermissionPolicy(options, PermissionKeys.InvoiceItemRead);
                 RegisterPermissionPolicy(options, PermissionKeys.InvoiceItemWrite);
-                //   RegisterPermissionPolicy(options, PermissionKeys.InvoiceDelete);  // ← NEW
 
                 // ── Finance — Fee Structure permissions ──────────────────────
                 RegisterPermissionPolicy(options, PermissionKeys.FeeStructureRead);
@@ -274,7 +282,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                 options.AddPolicy("Roles.AssignPermissions", policy =>
                     policy.Requirements.Add(new PermissionRequirement(PermissionKeys.RoleWrite)));
 
-                // Tenant access policy
                 options.AddPolicy("TenantAccess", policy =>
                     policy.Requirements.Add(new TenantAccessRequirement()));
 
@@ -293,7 +300,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                     "ProgressReport.Read", "ProgressReport.Write",
                     "Invoice.Read",    "Invoice.Write",
                     "Payment.Read",    "Payment.Write",
-                    "Parent.Read",     "Parent.Write",     "Parent.Delete",  // ← NEW
+                    "Parent.Read",     "Parent.Write",     "Parent.Delete",
                 };
 
                 foreach (var permission in legacyPermissions)
@@ -318,10 +325,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IRepositoryManager, RepositoryManager>();
 
             // ── Individual Repositories ──────────────────────────────────────
-            // (Kept for code that resolves them directly rather than via IRepositoryManager)
 
             // Academic Repositories
-            services.AddScoped<IParentRepository, ParentRepository>();        // ← NEW
+            services.AddScoped<IParentRepository, ParentRepository>();
             services.AddScoped<IStudentRepository, StudentRepository>();
             services.AddScoped<ITeacherRepository, TeacherRepository>();
             services.AddScoped<ISchoolRepository, SchoolRepository>();
@@ -338,9 +344,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<ISubjectRepository, SubjectRepository>();
             services.AddScoped<IGradeRepository, GradeRepository>();
             services.AddScoped<IUserActivityRepository, UserActivityRepository>();
-
+            services.AddScoped<IPesaPalTransactionQuery, PesaPalTransactionQuery>();
+            services.AddScoped<IWritablePesaPalSettings, JsonWritablePesaPalSettings>();
             // Payment Repositories
             services.AddScoped<IMpesaPaymentRepository, MpesaPaymentRepository>();
+            services.AddScoped<IPaymentRepository, PaymentRepository>();
 
             // Number Series
             services.AddScoped<IDocumentNumberSeriesRepository, DocumentNumberService>();
@@ -348,9 +356,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             // Finance Repositories
             services.AddScoped<IFeeItemRepository, FeeItemRepository>();
             services.AddScoped<IFeeStructureRepository, FeeStructureRepository>();
-            services.AddScoped<IInvoiceRepository, InvoiceRepository>();      // ← NEW
-            services.AddScoped<IInvoiceItemRepository, InvoiceItemRepository>();  // ← NEW
+            services.AddScoped<IInvoiceRepository, InvoiceRepository>();
+            services.AddScoped<IInvoiceItemRepository, InvoiceItemRepository>();
 
+            // Assessment Repositories
             services.AddScoped<IFormativeAssessmentRepository, FormativeAssessmentRepository>();
             services.AddScoped<IFormativeAssessmentScoreRepository, FormativeAssessmentScoreRepository>();
             services.AddScoped<ISummativeAssessmentRepository, SummativeAssessmentRepository>();
@@ -358,16 +367,19 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<ICompetencyAssessmentRepository, CompetencyAssessmentRepository>();
             services.AddScoped<ICompetencyAssessmentScoreRepository, CompetencyAssessmentScoreRepository>();
 
-            // Library repositories
+            // Library Repositories
             services.AddScoped<IBookAuthorRepository, BookAuthorRepository>();
             services.AddScoped<IBookCategoryRepository, BookCategoryRepository>();
             services.AddScoped<IBookPublisherRepository, BookPublisherRepository>();
+
+            // ── Application Services ─────────────────────────────────────────
 
             // Library services
             services.AddScoped<IBookAuthorService, BookAuthorService>();
             services.AddScoped<IBookCategoryService, BookCategoryService>();
             services.AddScoped<IBookPublisherService, BookPublisherService>();
 
+            // Academic services
             services.AddScoped<IStudentService, StudentService>();
             services.AddScoped<ITeacherService, TeacherService>();
             services.AddScoped<ITermService, TermService>();
@@ -380,13 +392,17 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IAssessmentService, AssessmentService>();
             services.AddScoped<IReportService, ReportService>();
             services.AddScoped<IUserManagementService, UserManagementService>();
+
+            // Finance services
             services.AddScoped<IFeeItemService, FeeItemService>();
-            //services.AddScoped<IFeeStructureService, FeeStructureService>();  // ← NEW
-            services.AddScoped<IPaymentRepository, PaymentRepository>();  // ← NEW
             services.AddScoped<IInvoiceService, InvoiceService>();
-            //services.AddScoped<IFeeStructureService, FeeStructureService>();  // ← NEW
-            services.AddScoped<IInvoiceService, InvoiceService>();            // ← NEW
-            services.AddScoped<IInvoiceItemService, InvoiceItemService>();    // ← NEW
+            services.AddScoped<IInvoiceItemService, InvoiceItemService>();
+            services.AddScoped<IPaymentService, PaymentService>();
+
+            // ── PesaPal Service ──────────────────────────────────────────────
+            services.AddScoped<IPesaPalService, PesaPalService>();
+
+            // Identity / Auth services
             services.AddScoped<IJwtService, JwtService>();
             services.AddScoped<IPermissionSeedService, PermissionSeedService>();
             services.AddScoped<ISubscriptionSeedService, SubscriptionSeedService>();
@@ -397,21 +413,14 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IUserActivityService, UserActivityService>();
             services.AddScoped<IUserActivityService1, UserActivityService1>();
             services.AddScoped<IRoleAssignmentService, RoleAssignmentService>();
-            services.AddScoped<INavigationService, NavigationService>(); 
+            services.AddScoped<INavigationService, NavigationService>();
             services.AddScoped<IParentService, ParentService>();
-            services.AddScoped<IPaymentService, PaymentService>();
-            services.AddScoped<IImageUploadService, ImageUploadService>();
-            services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>(); 
             services.AddScoped<IImageUploadService, ImageUploadService>();
             services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
             return services;
         }
 
-        /// <summary>
-        /// Registers a permission string as an ASP.NET Core authorization policy
-        /// backed by a <see cref="PermissionRequirement"/>.
-        /// </summary>
         private static void RegisterPermissionPolicy(
             AuthorizationOptions options,
             string permissionKey)

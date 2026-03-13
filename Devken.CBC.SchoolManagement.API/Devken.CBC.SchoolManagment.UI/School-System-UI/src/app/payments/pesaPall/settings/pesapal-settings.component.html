@@ -1,0 +1,319 @@
+<!-- ═══════════════════════════════════════════════════════════════════
+     pesapal-settings.component.html
+     ═══════════════════════════════════════════════════════════════════ -->
+
+<div class="pp-shell">
+
+  <!-- ── LEFT RAIL ─────────────────────────────────────────────── -->
+  <aside class="pp-rail">
+
+    <div class="pp-brand">
+      <div class="pp-brand-icon">
+        <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="32" height="32" rx="8" fill="url(#ppGrad)"/>
+          <path d="M8 10h10a6 6 0 0 1 0 12H8V10Z" fill="white" opacity="0.9"/>
+          <path d="M14 16h8a3 3 0 0 1 0 6h-8v-6Z" fill="white" opacity="0.5"/>
+          <defs>
+            <linearGradient id="ppGrad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#f97316"/>
+              <stop offset="1" stop-color="#dc2626"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <div>
+        <p class="pp-brand-name">PesaPal</p>
+        <p class="pp-brand-sub">Payment Gateway v3</p>
+      </div>
+    </div>
+
+    <!-- Environment badge — driven by component isSandbox getter -->
+    <div class="pp-env-badge"
+         [class.pp-env-sandbox]="isSandbox"
+         [class.pp-env-live]="!isSandbox">
+      <span class="pp-env-dot"></span>
+      <span>{{ isSandbox ? 'Sandbox Mode' : 'Live Mode' }}</span>
+    </div>
+
+    <!-- Status cards -->
+    <div class="pp-status-list">
+
+      <div class="pp-status-card"
+           [class.pp-status-ok]="ipnRegistered"
+           [class.pp-status-warn]="!ipnRegistered">
+        <mat-icon class="pp-status-icon">webhook</mat-icon>
+        <div>
+          <p class="pp-status-label">IPN Endpoint</p>
+          <p class="pp-status-value">{{ ipnRegistered ? 'Registered' : 'Not Registered' }}</p>
+          <p class="pp-status-meta" *ngIf="ipnId">{{ ipnId | slice:0:18 }}…</p>
+        </div>
+      </div>
+
+      <ng-container *ngIf="!loading">
+        <div class="pp-status-card pp-status-ok" *ngIf="form.get('consumerKey')?.value">
+          <mat-icon class="pp-status-icon">key</mat-icon>
+          <div>
+            <p class="pp-status-label">Consumer Key</p>
+            <p class="pp-status-value">Configured</p>
+          </div>
+        </div>
+        <div class="pp-status-card pp-status-neutral" *ngIf="!form.get('consumerKey')?.value">
+          <mat-icon class="pp-status-icon">key_off</mat-icon>
+          <div>
+            <p class="pp-status-label">Consumer Key</p>
+            <p class="pp-status-value">Not Set</p>
+          </div>
+        </div>
+      </ng-container>
+
+    </div>
+
+    <!-- Help links -->
+    <div class="pp-help">
+      <p class="pp-help-title">Quick Links</p>
+      <a class="pp-help-link" href="https://developer.pesapal.com" target="_blank" rel="noopener">
+        <mat-icon>open_in_new</mat-icon>Developer Docs
+      </a>
+      <a class="pp-help-link" href="https://www.pesapal.com/dashboard" target="_blank" rel="noopener">
+        <mat-icon>open_in_new</mat-icon>Merchant Dashboard
+      </a>
+      <a class="pp-help-link" href="https://cybqa.pesapal.com" target="_blank" rel="noopener">
+        <mat-icon>open_in_new</mat-icon>Sandbox Portal
+      </a>
+    </div>
+
+  </aside>
+
+  <!-- ── MAIN ──────────────────────────────────────────────────── -->
+  <main class="pp-main">
+
+    <!-- Loading skeleton -->
+    <div *ngIf="loading" class="pp-skeleton-wrap">
+      <div class="pp-skeleton" *ngFor="let i of [1,2,3,4,5]"
+           [style.width]="i % 2 === 0 ? '60%' : '100%'"></div>
+    </div>
+
+    <!-- ── FORM — wraps EVERYTHING including the header toggle ─── -->
+    <form *ngIf="!loading"
+          [formGroup]="form"
+          (ngSubmit)="save()"
+          class="pp-form-wrap">
+
+      <!-- Page header (inside form so toggle can use formControlName) -->
+      <header class="pp-header">
+        <div>
+          <h1 class="pp-title">PesaPal Settings</h1>
+          <p class="pp-subtitle">
+            Configure your PesaPal v3 integration. Credentials are stored server‑side
+            and never exposed to the browser after saving.
+          </p>
+        </div>
+
+        <!-- Environment toggle — INSIDE the form so formControlName works -->
+        <div class="pp-env-toggle">
+          <span class="pp-toggle-label" [class.pp-toggle-active]="isSandbox">Sandbox</span>
+          <mat-slide-toggle
+            formControlName="environment"
+            (change)="onEnvironmentChange()"
+            color="primary"
+          ></mat-slide-toggle>
+          <span class="pp-toggle-label" [class.pp-toggle-active]="!isSandbox">Production</span>
+        </div>
+      </header>
+
+      <div class="pp-form">
+
+        <!-- ── Section: Credentials ──────────────────────────── -->
+        <section class="pp-section">
+          <div class="pp-section-head">
+            <mat-icon>lock</mat-icon>
+            <div>
+              <h2>API Credentials</h2>
+              <p>Your PesaPal consumer key and secret from the merchant dashboard.</p>
+            </div>
+          </div>
+
+          <div class="pp-fields-row">
+
+            <!-- Consumer Key -->
+            <mat-form-field appearance="outline" class="pp-field">
+              <mat-label>Consumer Key</mat-label>
+              <mat-icon matPrefix class="pp-field-prefix">vpn_key</mat-icon>
+              <input
+                matInput
+                formControlName="consumerKey"
+                [type]="showKey ? 'text' : 'password'"
+                autocomplete="new-password"
+              />
+              <button mat-icon-button matSuffix type="button"
+                (click)="showKey = !showKey"
+                [matTooltip]="showKey ? 'Hide key' : 'Reveal key'">
+                <mat-icon>{{ showKey ? 'visibility_off' : 'visibility' }}</mat-icon>
+              </button>
+              <mat-hint>From the PesaPal merchant portal → API Keys</mat-hint>
+              <mat-error *ngIf="form.get('consumerKey')?.hasError('required')">
+                Consumer key is required.
+              </mat-error>
+            </mat-form-field>
+
+            <!-- Consumer Secret -->
+            <mat-form-field appearance="outline" class="pp-field">
+              <mat-label>Consumer Secret</mat-label>
+              <mat-icon matPrefix class="pp-field-prefix">shield</mat-icon>
+              <input
+                matInput
+                formControlName="consumerSecret"
+                [type]="showSecret ? 'text' : 'password'"
+                autocomplete="new-password"
+                placeholder="Leave blank to keep existing"
+              />
+              <button mat-icon-button matSuffix type="button"
+                (click)="showSecret = !showSecret"
+                [matTooltip]="showSecret ? 'Hide secret' : 'Reveal secret'">
+                <mat-icon>{{ showSecret ? 'visibility_off' : 'visibility' }}</mat-icon>
+              </button>
+              <mat-hint>Leave blank to keep the existing secret unchanged.</mat-hint>
+            </mat-form-field>
+
+          </div>
+        </section>
+
+        <div class="pp-divider"></div>
+
+        <!-- ── Section: Endpoints ────────────────────────────── -->
+        <section class="pp-section">
+          <div class="pp-section-head">
+            <mat-icon>language</mat-icon>
+            <div>
+              <h2>Endpoint URLs</h2>
+              <p>API base URL auto-fills when you switch environment above.</p>
+            </div>
+          </div>
+
+          <div class="pp-fields-col">
+
+            <mat-form-field appearance="outline" class="pp-field">
+              <mat-label>PesaPal Base URL</mat-label>
+              <mat-icon matPrefix class="pp-field-prefix">dns</mat-icon>
+              <input matInput formControlName="baseUrl" />
+              <mat-hint>
+                Sandbox: https://cybqa.pesapal.com/pesapalv3 &nbsp;·&nbsp;
+                Production: https://pay.pesapal.com/v3
+              </mat-hint>
+              <mat-error *ngIf="form.get('baseUrl')?.hasError('required')">Required.</mat-error>
+              <mat-error *ngIf="form.get('baseUrl')?.hasError('pattern')">Must be a valid HTTPS URL.</mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="pp-field">
+              <mat-label>IPN Callback URL</mat-label>
+              <mat-icon matPrefix class="pp-field-prefix">webhook</mat-icon>
+              <input matInput formControlName="ipnUrl"
+                placeholder="https://your-api.com/api/pesapal/ipn" />
+              <mat-hint>
+                Server-to-server notification URL. Must be publicly reachable — localhost will not work in production.
+              </mat-hint>
+              <mat-error *ngIf="form.get('ipnUrl')?.hasError('required')">Required.</mat-error>
+              <mat-error *ngIf="form.get('ipnUrl')?.hasError('pattern')">Must be a valid HTTPS URL.</mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="pp-field">
+              <mat-label>Browser Callback URL</mat-label>
+              <mat-icon matPrefix class="pp-field-prefix">open_in_browser</mat-icon>
+              <input matInput formControlName="callbackUrl"
+                placeholder="https://your-app.com/finance/pesapal/callback" />
+              <mat-hint>
+                The URL PesaPal redirects the payer's browser to after checkout completes.
+              </mat-hint>
+              <mat-error *ngIf="form.get('callbackUrl')?.hasError('required')">Required.</mat-error>
+              <mat-error *ngIf="form.get('callbackUrl')?.hasError('pattern')">Must be a valid URL.</mat-error>
+            </mat-form-field>
+
+          </div>
+        </section>
+
+        <div class="pp-divider"></div>
+
+        <!-- ── Section: IPN Registration ─────────────────────── -->
+        <section class="pp-section">
+          <div class="pp-section-head">
+            <mat-icon>notifications_active</mat-icon>
+            <div>
+              <h2>IPN Registration</h2>
+              <p>Register your IPN URL with PesaPal so payment status notifications are delivered.</p>
+            </div>
+          </div>
+
+          <div class="pp-ipn-banner"
+               [class.pp-ipn-ok]="ipnRegistered"
+               [class.pp-ipn-warn]="!ipnRegistered">
+
+            <div class="pp-ipn-status">
+              <div class="pp-ipn-dot"
+                   [class.pp-dot-ok]="ipnRegistered"
+                   [class.pp-dot-warn]="!ipnRegistered"></div>
+              <div>
+                <p class="pp-ipn-title">
+                  {{ ipnRegistered ? 'IPN Endpoint Registered' : 'IPN Not Yet Registered' }}
+                </p>
+                <p class="pp-ipn-meta" *ngIf="ipnId">
+                  Registration ID: <code>{{ ipnId }}</code>
+                </p>
+                <p class="pp-ipn-meta" *ngIf="!ipnRegistered">
+                  Save your settings first, then register. PesaPal will call your IPN URL for every payment event.
+                </p>
+              </div>
+            </div>
+
+            <button *ngIf="!ipnRegistered"
+              mat-stroked-button type="button"
+              class="pp-btn-register"
+              [disabled]="registeringIpn || form.invalid"
+              (click)="registerIpn()">
+              <mat-spinner *ngIf="registeringIpn" diameter="16" class="pp-btn-spinner"></mat-spinner>
+              <mat-icon *ngIf="!registeringIpn">add_link</mat-icon>
+              {{ registeringIpn ? 'Registering…' : 'Register IPN' }}
+            </button>
+
+            <button *ngIf="ipnRegistered"
+              mat-stroked-button type="button"
+              class="pp-btn-reregister"
+              [disabled]="registeringIpn"
+              (click)="registerIpn()"
+              matTooltip="Re-register if you changed the IPN URL">
+              <mat-icon>sync</mat-icon>
+              Re-register
+            </button>
+
+          </div>
+        </section>
+
+        <!-- ── Actions ────────────────────────────────────────── -->
+        <div class="pp-actions">
+          <div class="pp-actions-left">
+            <span *ngIf="form.dirty" class="pp-unsaved">
+              <mat-icon>edit</mat-icon> Unsaved changes
+            </span>
+          </div>
+          <div class="pp-actions-right">
+            <button mat-stroked-button type="button"
+              class="pp-btn-reset"
+              [disabled]="!form.dirty || saving"
+              (click)="reset()">
+              Reset
+            </button>
+            <button mat-flat-button type="submit"
+              class="pp-btn-save"
+              [disabled]="saving || form.invalid">
+              <mat-spinner *ngIf="saving" diameter="18" class="pp-btn-spinner"></mat-spinner>
+              <mat-icon *ngIf="!saving">save</mat-icon>
+              {{ saving ? 'Saving…' : 'Save Settings' }}
+            </button>
+          </div>
+        </div>
+
+      </div><!-- /.pp-form -->
+    </form>
+
+  </main>
+
+</div>

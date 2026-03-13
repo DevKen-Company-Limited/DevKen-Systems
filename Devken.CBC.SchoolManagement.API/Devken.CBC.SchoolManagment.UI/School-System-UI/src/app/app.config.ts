@@ -4,18 +4,21 @@ import {
     inject,
     isDevMode,
     provideAppInitializer,
-    InjectionToken
+    InjectionToken,
+    importProvidersFrom
 } from '@angular/core';
-import { LuxonDateAdapter } from '@angular/material-luxon-adapter';
-import { DateAdapter, MAT_DATE_FORMATS } from '@angular/material/core';
+
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideRouter, withInMemoryScrolling } from '@angular/router';
+
 import { provideFuse } from '@fuse';
 import { TranslocoService, provideTransloco } from '@jsverse/transloco';
-import { importProvidersFrom } from '@angular/core';
 
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialogModule } from '@angular/material/dialog';
+
+import { provideLuxonDateAdapter } from '@angular/material-luxon-adapter';
+import { MAT_DATE_FORMATS } from '@angular/material/core';
 
 import { appRoutes } from 'app/app.routes';
 import { provideAuth } from 'app/core/auth/auth.provider';
@@ -32,21 +35,14 @@ import { MockApiService } from './mock-api';
 import { NavigationService } from '@fuse/lib/mock-api/NavigationService';
 import { AuthService } from './core/auth/auth.service';
 
-// FIX: Import from the single environment file only — no more environment.prod
 import { environment } from 'environments/environment';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// API Base URL injection token
-// Inject this wherever you need the API URL instead of importing environment
-// directly, e.g.: constructor(@Inject(API_BASE_URL) private apiUrl: string)
-// ─────────────────────────────────────────────────────────────────────────────
 export const API_BASE_URL = new InjectionToken<string>('API_BASE_URL');
 
 export const appConfig: ApplicationConfig = {
     providers: [
         provideAnimations(),
 
-        // HttpClient with interceptors
         provideHttpClient(
             withInterceptors([
                 mockApiInterceptor,
@@ -55,20 +51,21 @@ export const appConfig: ApplicationConfig = {
             ])
         ),
 
-        // Router setup
         provideRouter(
             appRoutes,
             withInMemoryScrolling({ scrollPositionRestoration: 'enabled' })
         ),
 
-        // Material providers
-        importProvidersFrom(MatSnackBarModule, MatDialogModule),
+        importProvidersFrom(
+            MatSnackBarModule,
+            MatDialogModule
+        ),
 
-        // API Base URL — resolved at runtime from the single environment file
         { provide: API_BASE_URL, useValue: environment.apiUrl },
 
-        // Date adapter
-        { provide: DateAdapter, useClass: LuxonDateAdapter },
+        // ✅ Correct Date Adapter
+        provideLuxonDateAdapter(),
+
         {
             provide: MAT_DATE_FORMATS,
             useValue: {
@@ -77,12 +74,11 @@ export const appConfig: ApplicationConfig = {
                     dateInput: 'DDD',
                     monthYearLabel: 'LLL yyyy',
                     dateA11yLabel: 'DD',
-                    monthYearA11yLabel: 'LLLL yyyy',
+                    monthYearA11yLabel: 'LLLL yyyy'
                 }
             }
         },
 
-        // Transloco setup
         provideTransloco({
             config: {
                 availableLangs: [
@@ -97,7 +93,6 @@ export const appConfig: ApplicationConfig = {
             loader: TranslocoHttpLoader
         }),
 
-        // Initialize default language
         provideAppInitializer(() => {
             const translocoService = inject(TranslocoService);
             const defaultLang = translocoService.getDefaultLang();
@@ -126,7 +121,6 @@ export const appConfig: ApplicationConfig = {
             }
         }),
 
-        // Auth and navigation initializer
         provideAppInitializer(() => {
             const authService = inject(AuthService);
             const navigationService = inject(NavigationService);

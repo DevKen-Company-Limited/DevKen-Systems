@@ -126,7 +126,8 @@ export const appRoutes: Route[] = [
             {
                 path: 'settings',
                 children: [
-                    { path: 'document-number-series', loadChildren: () => import('./Settings/NumberSeries/document-number-series.component.routes') }
+                    { path: 'document-number-series', loadChildren: () => import('./Settings/NumberSeries/document-number-series.component.routes') },
+                      { path: 'pesapal', loadChildren: () => import('./payments/pesaPall/settings/pesapal-settings.component.routes') }
                 ]
             },
 

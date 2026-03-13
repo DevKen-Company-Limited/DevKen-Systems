@@ -11,6 +11,7 @@ using Google.Apis.Auth;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Logging.Console;
 using Microsoft.OpenApi.Models;
 using QuestPDF.Infrastructure;
 using System.Globalization;
@@ -210,6 +211,20 @@ CultureInfo.DefaultThreadCurrentUICulture = supportedCultures[0];
 // ══════════════════════════════════════════════════════════════
 // Build Application
 // ══════════════════════════════════════════════════════════════
+// ── Logging Filters (must be BEFORE builder.Build()) ──────────────
+builder.Logging.AddFilter<ConsoleLoggerProvider>((category, level) =>
+{
+    // Suppress noisy client-disconnect exceptions from IIS
+    if (category?.Contains("Microsoft.AspNetCore.Server.IIS") == true)
+        return false;
+    return level >= LogLevel.Warning;
+});
+
+// ══════════════════════════════════════════════════════════════
+// Application Services Registration
+// ══════════════════════════════════════════════════════════════
+builder.Services.AddApiServices(builder.Configuration);
+builder.Services.AddSchoolManagement(builder.Configuration);
 var app = builder.Build();
 
 // ══════════════════════════════════════════════════════════════
@@ -377,6 +392,7 @@ if (builder.Environment.IsDevelopment())
             ex, "Failed to launch Angular development server. Start it manually.");
     }
 }
+
 
 // ══════════════════════════════════════════════════════════════
 // Startup Logging
