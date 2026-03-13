@@ -416,4 +416,8 @@ export class InvoicesListComponent implements OnInit, OnDestroy {
     };
     return map[status] ?? map[InvoiceStatus.Pending];
   }
+
+  openBulkCreate(): void {
+    this._router.navigate(['/finance/invoices/bulk-create']);
+  }
 }

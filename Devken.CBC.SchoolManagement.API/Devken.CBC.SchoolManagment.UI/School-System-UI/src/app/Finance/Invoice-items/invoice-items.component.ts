@@ -20,9 +20,9 @@ import { PageHeaderComponent, Breadcrumb } from 'app/shared/Page-Header/page-hea
 import { PaginationComponent } from 'app/shared/pagination/pagination.component';
 import { StatsCardsComponent, StatCard } from 'app/shared/stats-cards/stats-cards.component';
 import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
-import { InvoiceItemService } from 'app/core/DevKenService/Finance/Invoice/InvoiceItemService';
 import { InvoiceItemDialogData, InvoiceItemResponseDto } from './Types/invoice-items.types';
 import { InvoiceItemDialogComponent } from 'app/dialog-modals/Finance/Invoice-item/invoice-item-dialog.component';
+import { InvoiceItemService } from 'app/core/DevKenService/Finance/InvoiceItem/invoice-item.service';
 
 
 @Component({

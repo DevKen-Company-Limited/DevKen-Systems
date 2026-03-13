@@ -1,0 +1,120 @@
+<div class="max-w-6xl">
+
+  <!-- Section Header -->
+  <div class="flex items-start gap-4 mb-8">
+    <div class="flex items-center justify-center w-14 h-14 rounded-xl
+                bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg">
+      <mat-icon class="text-white !w-7 !h-7">people</mat-icon>
+    </div>
+    <div class="flex-1">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Select Students</h2>
+      <p class="text-gray-600 dark:text-gray-400">
+        All students in the selected class are listed below.
+        Uncheck any students you want to exclude from this bulk invoice run.
+      </p>
+    </div>
+  </div>
+
+  <!-- Loading state -->
+  <div *ngIf="isLoading" class="flex flex-col items-center justify-center py-16 gap-4">
+    <mat-spinner diameter="48"></mat-spinner>
+    <p class="text-gray-500 dark:text-gray-400">Loading students from class…</p>
+  </div>
+
+  <!-- Empty state -->
+  <div *ngIf="!isLoading && students.length === 0"
+       class="flex flex-col items-center justify-center py-16 text-center">
+    <div class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
+      <mat-icon class="text-gray-400 !w-8 !h-8">person_off</mat-icon>
+    </div>
+    <p class="text-lg font-semibold text-gray-700 dark:text-gray-300">No students found</p>
+    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+      No active students are enrolled in this class. Go back and choose a different class.
+    </p>
+  </div>
+
+  <!-- Student list -->
+  <div *ngIf="!isLoading && students.length > 0">
+
+    <!-- Toolbar -->
+    <mat-card class="shadow-md mb-4">
+      <mat-card-content class="!py-3 !px-5">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <mat-checkbox
+              [checked]="allSelected"
+              [indeterminate]="someSelected && !allSelected"
+              (change)="toggleAll($event.checked)"
+              color="primary">
+              <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Select All</span>
+            </mat-checkbox>
+            <span class="text-xs text-gray-500 dark:text-gray-400 border-l border-gray-200 dark:border-gray-700 pl-3">
+              {{ selectedCount }} of {{ students.length }} selected
+            </span>
+          </div>
+
+          <!-- Search -->
+          <mat-form-field appearance="outline" class="!mb-0 w-64">
+            <mat-label>Search students</mat-label>
+            <input matInput [(ngModel)]="searchQuery" (ngModelChange)="onSearch()"
+                   placeholder="Name or admission #…">
+            <mat-icon matSuffix class="text-gray-400">search</mat-icon>
+          </mat-form-field>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Student grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <mat-card
+        *ngFor="let s of filteredStudents"
+        class="shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+        [ngClass]="{
+          'ring-2 ring-violet-500': s.selected,
+          'opacity-60': !s.selected
+        }"
+        (click)="toggle(s)">
+        <mat-card-content class="!p-4">
+          <div class="flex items-center gap-3">
+            <mat-checkbox
+              [checked]="s.selected"
+              (change)="toggle(s)"
+              (click)="$event.stopPropagation()"
+              color="primary">
+            </mat-checkbox>
+            <div class="flex items-center justify-center w-10 h-10 rounded-full
+                        bg-gradient-to-br from-violet-400 to-purple-600 text-white
+                        font-bold text-sm flex-shrink-0">
+              {{ getInitials(s.studentName) }}
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                {{ s.studentName }}
+              </p>
+              <p *ngIf="s.admissionNumber" class="text-xs text-gray-500 dark:text-gray-400">
+                {{ s.admissionNumber }}
+              </p>
+            </div>
+            <mat-icon *ngIf="s.selected" class="text-violet-500 flex-shrink-0">check_circle</mat-icon>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Summary bar -->
+    <div class="mt-6 p-4 rounded-xl bg-violet-50 dark:bg-violet-900/20
+                border border-violet-200 dark:border-violet-800 flex items-center justify-between">
+      <div class="flex items-center gap-2 text-violet-700 dark:text-violet-300">
+        <mat-icon>receipt_long</mat-icon>
+        <span class="text-sm font-medium">
+          {{ selectedCount }} invoice{{ selectedCount !== 1 ? 's' : '' }} will be created
+        </span>
+      </div>
+      <span *ngIf="selectedCount === 0"
+            class="text-xs font-medium text-red-600 dark:text-red-400">
+        Select at least 1 student to continue
+      </span>
+    </div>
+
+  </div>
+</div>

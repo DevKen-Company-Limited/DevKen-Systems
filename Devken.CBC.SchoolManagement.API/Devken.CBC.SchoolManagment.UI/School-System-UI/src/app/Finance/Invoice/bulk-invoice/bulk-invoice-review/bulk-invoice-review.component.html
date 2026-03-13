@@ -1,0 +1,172 @@
+<div class="max-w-6xl">
+
+  <!-- Section Header -->
+  <div class="flex items-start gap-4 mb-8">
+    <div class="flex items-center justify-center w-14 h-14 rounded-xl
+                bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg">
+      <mat-icon class="text-white !w-7 !h-7">check_circle</mat-icon>
+    </div>
+    <div class="flex-1">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Review & Submit</h2>
+      <p class="text-gray-600 dark:text-gray-400">
+        Review the bulk invoice configuration before creating invoices.
+      </p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    <!-- Scope Summary -->
+    <mat-card class="shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+              (click)="editSection.emit(0)">
+      <mat-card-header class="!pb-2">
+        <div class="flex items-center justify-between w-full">
+          <div class="flex items-center gap-3">
+            <div class="flex items-center justify-center w-10 h-10 rounded-lg
+                        bg-violet-100 dark:bg-violet-900/20">
+              <mat-icon class="text-violet-600">group</mat-icon>
+            </div>
+            <mat-card-title class="!text-base !font-semibold !mb-0">Invoice Scope</mat-card-title>
+          </div>
+          <mat-icon class="text-gray-400 icon-size-4">edit</mat-icon>
+        </div>
+      </mat-card-header>
+      <mat-card-content class="!pt-4 space-y-2">
+        <div class="flex justify-between text-sm">
+          <span class="text-gray-500">Class</span>
+          <span class="font-semibold text-gray-900 dark:text-white">{{ className || '—' }}</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="text-gray-500">Academic Year</span>
+          <span class="font-semibold text-gray-900 dark:text-white">{{ scope.academicYearId || '—' }}</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="text-gray-500">Term</span>
+          <span class="font-semibold text-gray-900 dark:text-white">{{ scope.termId || '—' }}</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="text-gray-500">Invoice Date</span>
+          <span class="font-semibold text-gray-900 dark:text-white">{{ formatDate(scope.invoiceDate) }}</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="text-gray-500">Due Date</span>
+          <span class="font-semibold text-gray-900 dark:text-white">{{ formatDate(scope.dueDate) }}</span>
+        </div>
+        <div *ngIf="scope.description" class="flex justify-between text-sm">
+          <span class="text-gray-500">Description</span>
+          <span class="font-semibold text-gray-900 dark:text-white max-w-48 truncate">{{ scope.description }}</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Students Summary -->
+    <mat-card class="shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+              (click)="editSection.emit(1)">
+      <mat-card-header class="!pb-2">
+        <div class="flex items-center justify-between w-full">
+          <div class="flex items-center gap-3">
+            <div class="flex items-center justify-center w-10 h-10 rounded-lg
+                        bg-violet-100 dark:bg-violet-900/20">
+              <mat-icon class="text-violet-600">people</mat-icon>
+            </div>
+            <mat-card-title class="!text-base !font-semibold !mb-0">
+              Students
+              <span class="ml-2 text-xs font-normal text-violet-600 bg-violet-100 dark:bg-violet-900/30
+                           px-2 py-0.5 rounded-full">
+                {{ selectedStudents.length }} selected
+              </span>
+            </mat-card-title>
+          </div>
+          <mat-icon class="text-gray-400 icon-size-4">edit</mat-icon>
+        </div>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <div class="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+          <span *ngFor="let s of selectedStudents"
+                class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium
+                       rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+            <mat-icon class="!w-3 !h-3 !text-xs">person</mat-icon>
+            {{ s.studentName }}
+          </span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Fee Items -->
+    <mat-card class="shadow-md hover:shadow-lg transition-shadow cursor-pointer lg:col-span-2"
+              (click)="editSection.emit(2)">
+      <mat-card-header class="!pb-2">
+        <div class="flex items-center justify-between w-full">
+          <div class="flex items-center gap-3">
+            <div class="flex items-center justify-center w-10 h-10 rounded-lg
+                        bg-blue-100 dark:bg-blue-900/20">
+              <mat-icon class="text-blue-600">list_alt</mat-icon>
+            </div>
+            <mat-card-title class="!text-base !font-semibold !mb-0">Fee Items</mat-card-title>
+          </div>
+          <mat-icon class="text-gray-400 icon-size-4">edit</mat-icon>
+        </div>
+      </mat-card-header>
+      <mat-card-content class="!pt-4">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-gray-200 dark:border-gray-700">
+                <th class="text-left py-2 font-medium text-gray-500">Description</th>
+                <th class="text-center py-2 font-medium text-gray-500">Qty</th>
+                <th class="text-right py-2 font-medium text-gray-500">Unit Price</th>
+                <th class="text-right py-2 font-medium text-gray-500">Discount</th>
+                <th class="text-right py-2 font-medium text-gray-500">Tax</th>
+                <th class="text-right py-2 font-medium text-gray-500">Item Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of feeItems"
+                  class="border-b border-gray-100 dark:border-gray-800">
+                <td class="py-2">{{ item.description }}</td>
+                <td class="text-center py-2">{{ item.quantity }}</td>
+                <td class="text-right py-2">{{ fmt(item.unitPrice) }}</td>
+                <td class="text-right py-2">{{ fmt(item.discount || 0) }}</td>
+                <td class="text-right py-2">
+                  <span *ngIf="item.isTaxable">{{ item.taxRate }}%</span>
+                  <span *ngIf="!item.isTaxable" class="text-gray-400">—</span>
+                </td>
+                <td class="text-right py-2 font-semibold">{{ fmt(getItemTotal(item)) }}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="border-t-2 border-gray-200 dark:border-gray-700">
+                <td colspan="5" class="text-right py-3 font-bold text-gray-700 dark:text-gray-300">
+                  Per-Student Total
+                </td>
+                <td class="text-right py-3 font-extrabold text-gray-900 dark:text-white">
+                  {{ fmt(perStudentTotal) }}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+  </div>
+
+  <!-- Grand Summary Banner -->
+  <div class="mt-6 p-5 rounded-xl bg-gradient-to-r from-violet-600 to-purple-700 text-white shadow-lg">
+    <div class="grid grid-cols-3 gap-4 text-center">
+      <div>
+        <p class="text-violet-200 text-xs font-medium uppercase tracking-wider mb-1">Students</p>
+        <p class="text-2xl font-extrabold">{{ selectedStudents.length }}</p>
+      </div>
+      <div>
+        <p class="text-violet-200 text-xs font-medium uppercase tracking-wider mb-1">Per Invoice</p>
+        <p class="text-2xl font-extrabold">{{ fmt(perStudentTotal) }}</p>
+      </div>
+      <div>
+        <p class="text-violet-200 text-xs font-medium uppercase tracking-wider mb-1">Grand Total</p>
+        <p class="text-2xl font-extrabold">{{ fmt(grandTotal) }}</p>
+      </div>
+    </div>
+  </div>
+
+</div>

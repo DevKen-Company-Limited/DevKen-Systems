@@ -1,77 +1,107 @@
 import { inject, Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { API_BASE_URL } from 'app/app.config';
 import { ApiResponse } from 'app/Tenant/types/school';
-import { CreateInvoiceItemDto, InvoiceItemResponseDto, UpdateInvoiceItemDto } from 'app/Finance/InvoiceItem/Types/invoice-item.types';
-
+import {
+  CreateInvoiceItemDto,
+  InvoiceItemResponseDto,
+  UpdateInvoiceItemDto,
+} from 'app/Finance/Invoice-items/Types/invoice-items.types';
 
 @Injectable({ providedIn: 'root' })
 export class InvoiceItemService {
   private readonly apiBase = inject(API_BASE_URL);
+  private readonly base    = `${this.apiBase}/api/finance/invoiceitems`;
 
-  private baseUrl(invoiceId: string): string {
-    return `${this.apiBase}/api/invoices/${invoiceId}/items`;
-  }
+  private readonly http    = inject(HttpClient);
 
-  constructor(private http: HttpClient) {}
 
-  // ── Query ─────────────────────────────────────────────────────────────────
+  // // Base: /api/finance/invoiceitems
+  // private get base(): string {
+  //   return `${this.apiBase}/api/finance/invoiceitems`;
+  // }
 
-  getByInvoice(
-    invoiceId: string
+  // ── Queries ───────────────────────────────────────────────────────────────
+
+  /**
+   * GET /api/finance/invoiceitems
+   * SuperAdmin: pass schoolId to scope, or omit for all schools.
+   * Regular user: schoolId is ignored (scoped server-side).
+   * Optionally filter by invoiceId.
+   */
+  getAll(
+    schoolId?: string,
+    invoiceId?: string,
   ): Observable<ApiResponse<InvoiceItemResponseDto[]>> {
+    let params = new HttpParams();
+    if (schoolId)  params = params.set('schoolId',  schoolId);
+    if (invoiceId) params = params.set('invoiceId', invoiceId);
+    return this.http.get<ApiResponse<InvoiceItemResponseDto[]>>(this.base, { params });
+  }
+
+  /**
+   * GET /api/finance/invoiceitems/{id}
+   */
+  getById(id: string): Observable<ApiResponse<InvoiceItemResponseDto>> {
+    return this.http.get<ApiResponse<InvoiceItemResponseDto>>(`${this.base}/${id}`);
+  }
+
+  /**
+   * GET /api/finance/invoiceitems/by-invoice/{invoiceId}
+   */
+  getByInvoice(invoiceId: string): Observable<ApiResponse<InvoiceItemResponseDto[]>> {
     return this.http.get<ApiResponse<InvoiceItemResponseDto[]>>(
-      this.baseUrl(invoiceId)
+      `${this.base}/by-invoice/${invoiceId}`,
     );
   }
 
-  getById(
-    invoiceId: string,
-    id: string
-  ): Observable<ApiResponse<InvoiceItemResponseDto>> {
-    return this.http.get<ApiResponse<InvoiceItemResponseDto>>(
-      `${this.baseUrl(invoiceId)}/${id}`
-    );
-  }
+  // ── Mutations ─────────────────────────────────────────────────────────────
 
-  delete(invoiceId: string, id: string): Observable<ApiResponse<any>> {
-    return this.http.delete<ApiResponse<any>>(`${this.baseUrl(invoiceId)}/${id}`);
-  }
-
-  // ── ICrudService ──────────────────────────────────────────────────────────
-
+  /**
+   * POST /api/finance/invoiceitems
+   * TenantId is set server-side for regular users.
+   * SuperAdmin must populate dto.tenantId before calling.
+   */
   create(
-    payload: CreateInvoiceItemDto
+    payload: CreateInvoiceItemDto,
   ): Observable<ApiResponse<InvoiceItemResponseDto>> {
-    return this.http.post<ApiResponse<InvoiceItemResponseDto>>(
-      this.baseUrl(payload.invoiceId),
-      payload
-    );
+    return this.http.post<ApiResponse<InvoiceItemResponseDto>>(this.base, payload);
   }
 
+  /**
+   * PUT /api/finance/invoiceitems/{id}
+   */
   update(
     id: string,
     payload: UpdateInvoiceItemDto,
-    invoiceId: string
   ): Observable<ApiResponse<InvoiceItemResponseDto>> {
     return this.http.put<ApiResponse<InvoiceItemResponseDto>>(
-      `${this.baseUrl(invoiceId)}/${id}`,
-      payload
+      `${this.base}/${id}`,
+      payload,
     );
   }
 
+  /**
+   * DELETE /api/finance/invoiceitems/{id}
+   */
+  delete(id: string): Observable<ApiResponse<void>> {
+    return this.http.delete<ApiResponse<void>>(`${this.base}/${id}`);
+  }
+
+  /**
+   * PATCH /api/finance/invoiceitems/{id}/recompute
+   */
   recompute(
-    invoiceId: string,
     id: string,
-    discountOverride?: number
+    discountOverride?: number,
   ): Observable<ApiResponse<InvoiceItemResponseDto>> {
-    const params = discountOverride != null
-      ? `?discountOverride=${discountOverride}`
-      : '';
+    let params = new HttpParams();
+    if (discountOverride != null) params = params.set('discountOverride', discountOverride);
     return this.http.patch<ApiResponse<InvoiceItemResponseDto>>(
-      `${this.baseUrl(invoiceId)}/${id}/recompute${params}`,
-      {}
+      `${this.base}/${id}/recompute`,
+      {},
+      { params },
     );
   }
 }

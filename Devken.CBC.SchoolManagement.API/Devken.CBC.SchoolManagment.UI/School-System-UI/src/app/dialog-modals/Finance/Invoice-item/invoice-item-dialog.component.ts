@@ -22,7 +22,6 @@ import { Subject } from 'rxjs';
 import { takeUntil, finalize } from 'rxjs/operators';
 
 import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
-import { InvoiceItemService } from 'app/core/DevKenService/Finance/Invoice/InvoiceItemService';
 import {
     CreateInvoiceItemDto,
     ITEM_TYPE_OPTIONS,
@@ -33,6 +32,7 @@ import {
 import { SchoolDto } from 'app/Tenant/types/school';
 import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
 import { AuthService } from 'app/core/auth/auth.service';
+import { InvoiceItemService } from 'app/core/DevKenService/Finance/InvoiceItem/invoice-item.service';
 
 
 @Component({
