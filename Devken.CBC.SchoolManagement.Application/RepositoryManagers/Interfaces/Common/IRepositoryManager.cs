@@ -62,6 +62,8 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
         IBookAuthorRepository BookAuthor { get; }
         IBookCategoryRepository BookCategory { get; }
         IBookPublisherRepository BookPublisher { get; }
+        IBookRepository Book { get; }
+        ILibraryBranchRepository LibraryBranch { get; }
 
         // ================= PAYMENTS =================
         IMpesaPaymentRepository MpesaPayment { get; }

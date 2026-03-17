@@ -51,10 +51,8 @@ export class ParentFormDialogComponent
     { label: 'Father',      value: ParentRelationship.Father },
     { label: 'Mother',      value: ParentRelationship.Mother },
     { label: 'Guardian',    value: ParentRelationship.Guardian },
-    { label: 'Sibling',     value: ParentRelationship.Sibling },
+    { label: 'Sibling',     value: ParentRelationship.Sponsor },
     { label: 'Grandparent', value: ParentRelationship.Grandparent },
-    { label: 'Uncle',       value: ParentRelationship.Uncle },
-    { label: 'Aunt',        value: ParentRelationship.Aunt },
     { label: 'Other',       value: ParentRelationship.Other },
   ];
 

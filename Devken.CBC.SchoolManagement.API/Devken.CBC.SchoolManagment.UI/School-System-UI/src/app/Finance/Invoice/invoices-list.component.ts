@@ -5,7 +5,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTableDataSource } from '@angular/material/table';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, takeUntil, finalize } from 'rxjs';
 import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
 import { DataTableComponent, TableHeader, TableColumn, TableAction, TableEmptyState } from 'app/shared/data-table/data-table.component';
 import { FilterPanelComponent, FilterField, FilterChangeEvent } from 'app/shared/Filter/filter-panel.component';
@@ -302,6 +302,10 @@ export class InvoicesListComponent implements OnInit, AfterViewInit, OnDestroy {
    * the table reflects the correct status without a full reload.
    */
   private recalculateStaleInvoices(data: InvoiceSummaryResponseDto[]): void {
+    if (this.isSuperAdmin && !this.selectedSchoolId) return; // guard
+
+    const schoolId = this.isSuperAdmin ? this.selectedSchoolId ?? undefined : undefined;
+
     const stale = data.filter(inv =>
       // Skip terminal states — they are never stale
       inv.statusInvoice !== InvoiceStatus.Cancelled &&
@@ -315,7 +319,7 @@ export class InvoicesListComponent implements OnInit, AfterViewInit, OnDestroy {
     );
 
     stale.forEach(inv => {
-      this.invoiceService.recalculate(inv.id)
+      this.invoiceService.recalculate(inv.id, schoolId)
         .pipe(takeUntil(this.destroy$))
         .subscribe({
           next: res => {
@@ -566,7 +570,9 @@ export class InvoicesListComponent implements OnInit, AfterViewInit, OnDestroy {
   // ── Recalculate status ────────────────────────────────────────────────────
 
   recalculateStatus(row: InvoiceSummaryResponseDto): void {
-    this.invoiceService.recalculate(row.id)
+    const schoolId = this.isSuperAdmin ? this.selectedSchoolId ?? undefined : undefined;
+
+    this.invoiceService.recalculate(row.id, schoolId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (res) => {
@@ -587,6 +593,8 @@ export class InvoicesListComponent implements OnInit, AfterViewInit, OnDestroy {
         error: () => this.alertService.error('Failed to refresh invoice status.'),
       });
   }
+
+  // ── Cancel / Delete ───────────────────────────────────────────────────────
 
   onCancel(row: InvoiceSummaryResponseDto): void {
     this.alertService.confirm({

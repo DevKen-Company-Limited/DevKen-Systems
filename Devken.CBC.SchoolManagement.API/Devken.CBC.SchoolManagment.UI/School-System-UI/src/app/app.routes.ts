@@ -168,6 +168,8 @@ export const appRoutes: Route[] = [
                     { path: 'authors', loadChildren: () => import('app/Library/book-author/book-author.routes') },
                     { path: 'categories', loadChildren: () => import('app/Library/book-category/book-category.routes') },
                     { path: 'publishers', loadChildren: () => import('app/Library/book-publisher/book-publisher.routes') },
+                    { path: 'books', loadChildren: () => import('app/Library/book/books.routes') },
+                    { path: 'library-branches', loadChildren: () => import('app/Library/library-branch/library-branches.routes') },
                 ]
             },
 

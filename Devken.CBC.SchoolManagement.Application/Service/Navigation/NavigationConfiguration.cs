@@ -153,12 +153,13 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             Icon = "heroicons_outline:building-library",
             Items = new[]
             {
-                new NavItem("books",           "Books",         "heroicons_outline:book-open",                "/library/books",        PermissionKeys.BookRead),
-                new NavItem("book-authors",    "Authors",       "heroicons_outline:user",                     "/library/authors",      PermissionKeys.LibraryRead),
-                new NavItem("book-categories", "Categories",    "heroicons_outline:tag",                      "/library/categories",   PermissionKeys.LibraryRead),
-                new NavItem("book-publishers", "Publishers",    "heroicons_outline:building-office",          "/library/publishers",   PermissionKeys.LibraryRead),
-                new NavItem("book-issues",     "Book Issues",   "heroicons_outline:arrow-right-on-rectangle", "/library/book-issues",  PermissionKeys.BookIssueRead),
-                new NavItem("book-returns",    "Book Returns",  "heroicons_outline:arrow-left-on-rectangle",  "/library/book-returns", PermissionKeys.BookReturnRead),
+                new NavItem("books",           "Books",           "heroicons_outline:book-open",                "/library/books",                PermissionKeys.BookRead),
+                new NavItem("library-branches","Library Branches","heroicons_outline:map-pin",                  "/library/library-branches",      PermissionKeys.LibraryRead),
+                new NavItem("book-authors",    "Authors",         "heroicons_outline:user",                     "/library/authors",      PermissionKeys.LibraryRead),
+                new NavItem("book-categories", "Categories",      "heroicons_outline:tag",                      "/library/categories",   PermissionKeys.LibraryRead),
+                new NavItem("book-publishers", "Publishers",      "heroicons_outline:building-office",          "/library/publishers",   PermissionKeys.LibraryRead),
+                new NavItem("book-issues",     "Book Issues",     "heroicons_outline:arrow-right-on-rectangle", "/library/book-issues",  PermissionKeys.BookIssueRead),
+                new NavItem("book-returns",    "Book Returns",    "heroicons_outline:arrow-left-on-rectangle",  "/library/book-returns", PermissionKeys.BookReturnRead),
             }
         };
 
