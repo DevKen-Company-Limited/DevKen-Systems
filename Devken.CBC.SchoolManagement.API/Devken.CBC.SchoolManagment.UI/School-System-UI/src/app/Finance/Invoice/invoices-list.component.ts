@@ -5,7 +5,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTableDataSource } from '@angular/material/table';
-import { Subject, takeUntil, finalize } from 'rxjs';
+import { Subject, takeUntil } from 'rxjs';
 import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
 import { DataTableComponent, TableHeader, TableColumn, TableAction, TableEmptyState } from 'app/shared/data-table/data-table.component';
 import { FilterPanelComponent, FilterField, FilterChangeEvent } from 'app/shared/Filter/filter-panel.component';
@@ -587,8 +587,6 @@ export class InvoicesListComponent implements OnInit, AfterViewInit, OnDestroy {
         error: () => this.alertService.error('Failed to refresh invoice status.'),
       });
   }
-
-  // ── Cancel / Delete ───────────────────────────────────────────────────────
 
   onCancel(row: InvoiceSummaryResponseDto): void {
     this.alertService.confirm({
