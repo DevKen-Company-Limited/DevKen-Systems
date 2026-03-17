@@ -54,5 +54,20 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Finance
             Guid id,
             Guid? userSchoolId,
             bool isSuperAdmin);
+        /// <summary>
+        /// Recomputes AmountPaid, Balance, IsOverdue and StatusInvoice
+        /// from all Completed, non-reversal payments for the invoice,
+        /// then persists the changes.
+        ///
+        /// Call this after any payment is Created, Updated or Reversed
+        /// so the invoice status is always consistent.
+        ///
+        /// Also exposed as PATCH /api/finance/invoices/{id}/recalculate
+        /// for manual refresh from the UI.
+        /// </summary>
+        Task<InvoiceResponseDto> RecalculateAsync(
+            Guid id,
+            Guid? userSchoolId,
+            bool isSuperAdmin);
     }
 }

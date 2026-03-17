@@ -2,11 +2,13 @@
 
 using Devken.CBC.SchoolManagement.Application.DTOs.Invoices;
 using Devken.CBC.SchoolManagement.Application.Exceptions;
+using Devken.CBC.SchoolManagement.Application.Helpers;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Common;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.NumberSeries;
 using Devken.CBC.SchoolManagement.Application.Service.Finance;
 using Devken.CBC.SchoolManagement.Domain.Entities.Finance;
 using Devken.CBC.SchoolManagement.Domain.Enums;
+using Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Payments;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -492,5 +494,68 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Finance
             TermName = i.Term?.Name,
             Status = i.Status.ToString()
         };
+        /// <summary>
+        /// Recomputes AmountPaid, Balance, IsOverdue and StatusInvoice
+        /// on a TRACKED invoice entity.  Does NOT call SaveAsync — the caller does.
+        ///
+        /// Status rules (in priority order):
+        ///   Cancelled / Refunded → unchanged (guard at top)
+        ///   Balance == 0         → Paid
+        ///   AmountPaid > 0       → PartiallyPaid
+        ///   IsOverdue            → Overdue
+        ///   otherwise            → Pending
+        /// </summary>
+        public async Task<InvoiceResponseDto> RecalculateAsync(
+        Guid id,
+        Guid? userSchoolId,
+        bool isSuperAdmin)
+        {
+            // ── 1. Resolve tenant ──────────────────────────────────────────────
+            Guid tenantId = isSuperAdmin
+                ? userSchoolId ?? throw new UnauthorizedException("schoolId required for SuperAdmin.")
+                : userSchoolId ?? throw new UnauthorizedException("You must belong to a school.");
+
+            // ── 2. Load the invoice WITH Payments (needed so AmountPaid computes) ─
+            //       trackChanges: true so EF can detect modifications
+            var invoice = await _repositories.Invoice
+                .GetWithDetailsAsync(id, tenantId, trackChanges: true)
+                ?? throw new NotFoundException($"Invoice '{id}' not found.");
+
+            ValidateAccess(invoice.TenantId, userSchoolId, isSuperAdmin);
+
+            // Guard — never touch terminal states
+            if (invoice.StatusInvoice is InvoiceStatus.Cancelled or InvoiceStatus.Refunded)
+                return MapToDto(invoice);   // nothing to do
+
+            // ── 3. Compute using InvoiceStatusCalculator ───────────────────────
+            //       invoice.AmountPaid and invoice.Balance are computed from
+            //       invoice.Payments (loaded above), so we pass them directly.
+            var calc = InvoiceStatusCalculator.Compute(
+                totalAmount: invoice.TotalAmount,
+                dueDate: invoice.DueDate,
+                completedPaymentsSum: invoice.AmountPaid,   // [NotMapped] — already correct
+                currentStatus: invoice.StatusInvoice);
+
+            // ── 4. Persist ONLY StatusInvoice (the one stored column) ─────────
+            //       Use EF PropertyEntry to bypass the private setter — same
+            //       pattern as UpdateHeader / SoftDelete in your InvoiceRepository.
+            var entry = _repositories.Context.Entry(invoice);
+            entry.Property(nameof(Invoice.StatusInvoice)).CurrentValue = calc.Status;
+            entry.Property(nameof(Invoice.StatusInvoice)).IsModified = true;
+
+            // Also stamp UpdatedOn so auditing is consistent
+            entry.Property(nameof(Invoice.UpdatedOn)).CurrentValue = DateTime.UtcNow;
+            entry.Property(nameof(Invoice.UpdatedOn)).IsModified = true;
+
+            await _repositories.SaveAsync();
+
+            // ── 5. Reload with full nav props for the response ─────────────────
+            var updated = await _repositories.Invoice
+                .GetWithDetailsAsync(id, tenantId, trackChanges: false)
+                ?? throw new NotFoundException($"Invoice '{id}' not found after recalculate.");
+
+            return MapToDto(updated);
+        }
+
     }
 }
