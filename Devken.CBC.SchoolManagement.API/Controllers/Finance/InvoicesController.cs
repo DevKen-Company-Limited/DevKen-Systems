@@ -257,5 +257,34 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Finance
             catch (InvalidOperationException ex) { return ValidationErrorResponse(ex.Message); }
             catch (Exception ex) { return InternalServerErrorResponse(GetFullExceptionMessage(ex)); }
         }
+
+        // PATCH /api/finance/invoices/{id}/recalculate
+        // ── Requires only InvoiceRead because this is a status-sync derived from
+        //    existing payments — it changes no business data and must be callable
+        //    by any user who can view invoices (including read-only roles).
+        // ── SuperAdmin does not supply a schoolId claim, so we skip the
+        //    validation that would throw for them — the invoice ID is enough.
+        [HttpPatch("{id:guid}/recalculate")]
+        [Authorize(Policy = PermissionKeys.InvoiceRead)]
+        public async Task<IActionResult> Recalculate(Guid id)
+        {
+            try
+            {
+                var userSchoolId = IsSuperAdmin ? null : GetUserSchoolIdOrNullWithValidation();
+
+                var result = await _invoiceService.RecalculateAsync(
+                    id: id,
+                    userSchoolId: userSchoolId,
+                    isSuperAdmin: IsSuperAdmin);
+
+                await LogUserActivityAsync("invoice.recalculate",
+                    $"Recalculated status for invoice ID: {id} → {result.StatusDisplay}");
+
+                return SuccessResponse(result, "Invoice status recalculated.");
+            }
+            catch (NotFoundException ex) { return NotFoundResponse(ex.Message); }
+            catch (UnauthorizedException ex) { return ForbiddenResponse(ex.Message); }
+            catch (Exception ex) { return InternalServerErrorResponse(GetFullExceptionMessage(ex)); }
+        }
     }
 }
