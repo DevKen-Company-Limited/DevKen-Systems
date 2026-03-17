@@ -91,8 +91,13 @@ export class InvoiceService {
    * Call this after any payment is created, updated or reversed so the
    * invoice status (Pending → PartiallyPaid → Paid) stays in sync.
    */
-  recalculate(id: string): Observable<ApiResponse<InvoiceResponseDto>> {
-    return this.http.patch<ApiResponse<InvoiceResponseDto>>(
-      `${this.baseUrl}/${id}/recalculate`, {});
-  }
+  // Invoice.service.ts
+
+recalculate(id: string, schoolId?: string): Observable<ApiResponse<InvoiceResponseDto>> {
+  let params = new HttpParams();
+  if (schoolId) params = params.set('schoolId', schoolId);
+
+  return this.http.patch<ApiResponse<InvoiceResponseDto>>(
+    `${this.baseUrl}/${id}/recalculate`, {}, { params });
+}
 }

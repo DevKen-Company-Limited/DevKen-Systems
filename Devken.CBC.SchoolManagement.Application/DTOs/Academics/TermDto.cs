@@ -36,7 +36,7 @@ namespace Devken.CBC.SchoolManagement.Application.DTOs.Academics
     public class CreateTermRequest
     {
         /// <summary>Required for SuperAdmin only; ignored for school-scoped users.</summary>
-        public Guid SchoolId { get; set; }
+        public Guid? SchoolId { get; set; }
 
         [Required, MaxLength(50)]
         public string Name { get; set; } = null!;

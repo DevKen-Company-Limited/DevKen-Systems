@@ -3,6 +3,7 @@ using Devken.CBC.SchoolManagement.Application.DTOs.Invoices;
 using Devken.CBC.SchoolManagement.Application.Exceptions;
 using Devken.CBC.SchoolManagement.Application.Service.Activities;
 using Devken.CBC.SchoolManagement.Application.Service.Finance;
+using Devken.CBC.SchoolManagement.Domain.Entities.Administration;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -265,16 +266,19 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Finance
         // ── SuperAdmin does not supply a schoolId claim, so we skip the
         //    validation that would throw for them — the invoice ID is enough.
         [HttpPatch("{id:guid}/recalculate")]
-        [Authorize(Policy = PermissionKeys.InvoiceRead)]
-        public async Task<IActionResult> Recalculate(Guid id)
+        [Authorize]
+        public async Task<IActionResult> Recalculate(Guid id, [FromQuery] Guid? schoolId = null)
         {
             try
             {
                 var userSchoolId = IsSuperAdmin ? null : GetUserSchoolIdOrNullWithValidation();
+                // For SuperAdmin, pass the schoolId query param so the service
+                // can resolve the correct tenant context
+                var resolvedSchoolId = IsSuperAdmin ? schoolId : userSchoolId;
 
                 var result = await _invoiceService.RecalculateAsync(
                     id: id,
-                    userSchoolId: userSchoolId,
+                    userSchoolId: resolvedSchoolId,
                     isSuperAdmin: IsSuperAdmin);
 
                 await LogUserActivityAsync("invoice.recalculate",
