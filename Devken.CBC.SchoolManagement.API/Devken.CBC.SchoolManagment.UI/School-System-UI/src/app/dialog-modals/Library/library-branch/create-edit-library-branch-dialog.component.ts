@@ -12,13 +12,14 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { Subject, of } from 'rxjs';
 import { catchError, takeUntil, finalize } from 'rxjs/operators';
 
 import { AuthService } from 'app/core/auth/auth.service';
 import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
+import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
 import { SchoolDto } from 'app/Tenant/types/school';
 import { LibraryBranchService } from 'app/core/DevKenService/Library/library-branch.service';
 import { LibraryBranchDto, CreateLibraryBranchRequest, UpdateLibraryBranchRequest } from 'app/Library/library-branch/Types/library-branch.types';
@@ -35,8 +36,7 @@ export interface CreateEditLibraryBranchDialogData {
   imports: [
     CommonModule, ReactiveFormsModule, MatDialogModule,
     MatFormFieldModule, MatInputModule, MatSelectModule,
-    MatButtonModule, MatIconModule, MatProgressSpinnerModule,
-    MatSnackBarModule, MatTooltipModule,
+    MatButtonModule, MatIconModule, MatProgressSpinnerModule, MatTooltipModule,
   ],
   templateUrl: './create-edit-library-branch-dialog.component.html',
   styles: [`
@@ -47,13 +47,15 @@ export class CreateEditLibraryBranchDialogComponent
   extends BaseFormDialog<CreateLibraryBranchRequest, UpdateLibraryBranchRequest, LibraryBranchDto, CreateEditLibraryBranchDialogData>
   implements OnInit, OnDestroy {
 
-  private readonly _unsubscribe = new Subject<void>();
+  private readonly _unsubscribe   = new Subject<void>();
+  private readonly _alertService:  AlertService;
+  private readonly _branchService: LibraryBranchService;
 
   schools: SchoolDto[] = [];
-  isLoading = false;
+  isLoading     = false;
   formSubmitted = false;
 
-  get isEditMode(): boolean  { return this.data.mode === 'edit'; }
+  get isEditMode():  boolean { return this.data.mode === 'edit'; }
   get isSuperAdmin(): boolean { return this._authService.authUser?.isSuperAdmin ?? false; }
   get dialogTitle(): string  { return this.isEditMode ? 'Edit Library Branch' : 'Add New Branch'; }
   get dialogSubtitle(): string {
@@ -64,20 +66,23 @@ export class CreateEditLibraryBranchDialogComponent
   get locationLength(): number { return this.form.get('location')?.value?.length || 0; }
 
   constructor(
-    fb: FormBuilder,
-    snackBar: MatSnackBar,
-    dialogRef: MatDialogRef<CreateEditLibraryBranchDialogComponent>,
+    fb:            FormBuilder,
+    snackBar:      MatSnackBar,
+    alertService:  AlertService,
+    dialogRef:     MatDialogRef<CreateEditLibraryBranchDialogComponent>,
     @Inject(MAT_DIALOG_DATA) data: CreateEditLibraryBranchDialogData,
-    private readonly _authService: AuthService,
+    private readonly _authService:   AuthService,
     private readonly _schoolService: SchoolService,
-    private readonly _cdr: ChangeDetectorRef,
+    private readonly _cdr:           ChangeDetectorRef,
     branchService: LibraryBranchService,
   ) {
     super(fb, branchService, snackBar, dialogRef, data);
+    this._alertService  = alertService;
+    this._branchService = branchService;
     dialogRef.addPanelClass(['library-branch-dialog', 'responsive-dialog']);
   }
 
-  ngOnInit(): void  { this.init(); }
+  ngOnInit():    void { this.init(); }
   ngOnDestroy(): void { this._unsubscribe.next(); this._unsubscribe.complete(); }
 
   protected override buildForm(): FormGroup {
@@ -123,19 +128,49 @@ export class CreateEditLibraryBranchDialogComponent
 
   onSubmit(): void {
     this.formSubmitted = true;
+    if (this.form.invalid) { this.form.markAllAsTouched(); return; }
 
-    const createMapper = (raw: any): CreateLibraryBranchRequest => ({
-      ...(this.isSuperAdmin ? { schoolId: raw.schoolId } : {}),
-      name:     raw.name?.trim(),
-      location: raw.location?.trim() || undefined,
-    });
+    const raw = this.form.value;
+    this.isSaving = true;
 
-    const updateMapper = (raw: any): UpdateLibraryBranchRequest => ({
-      name:     raw.name?.trim(),
-      location: raw.location?.trim() || undefined,
-    });
-
-    this.save(createMapper, updateMapper, () => this.data.branch!.id);
+    if (this.isEditMode) {
+      const payload: UpdateLibraryBranchRequest = {
+        name:     raw.name?.trim(),
+        location: raw.location?.trim() || undefined,
+      };
+      this._branchService.update(this.data.branch!.id, payload)
+        .pipe(takeUntil(this._unsubscribe), finalize(() => { this.isSaving = false; this._cdr.detectChanges(); }))
+        .subscribe({
+          next: res => {
+            if (res.success) {
+              this._alertService.success('Branch updated successfully');
+              this.dialogRef.close({ success: true, data: res.data });
+            } else {
+              this._alertService.error(res.message || 'Failed to update branch');
+            }
+          },
+          error: err => this._alertService.error(err?.error?.message || 'Failed to update branch'),
+        });
+    } else {
+      const payload: CreateLibraryBranchRequest = {
+        ...(this.isSuperAdmin ? { schoolId: raw.schoolId } : {}),
+        name:     raw.name?.trim(),
+        location: raw.location?.trim() || undefined,
+      };
+      this._branchService.create(payload)
+        .pipe(takeUntil(this._unsubscribe), finalize(() => { this.isSaving = false; this._cdr.detectChanges(); }))
+        .subscribe({
+          next: res => {
+            if (res.success) {
+              this._alertService.success('Branch created successfully');
+              this.dialogRef.close({ success: true, data: res.data });
+            } else {
+              this._alertService.error(res.message || 'Failed to create branch');
+            }
+          },
+          error: err => this._alertService.error(err?.error?.message || 'Failed to create branch'),
+        });
+    }
   }
 
   onCancel(): void { this.close({ success: false }); }

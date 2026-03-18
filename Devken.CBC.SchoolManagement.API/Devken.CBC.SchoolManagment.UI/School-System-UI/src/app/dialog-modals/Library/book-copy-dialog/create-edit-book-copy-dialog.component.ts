@@ -15,6 +15,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { Subject, forkJoin, of } from 'rxjs';
 import { catchError, takeUntil, finalize } from 'rxjs/operators';
 
@@ -29,7 +30,6 @@ import { LibraryBranchDto } from 'app/Library/library-branch/Types/library-branc
 import { LibraryBranchService } from 'app/core/DevKenService/Library/library-branch.service';
 import { BookCopyService } from 'app/core/DevKenService/Library/book-copy.service';
 import { BookService } from 'app/core/DevKenService/Library/book.service';
-import { MatSnackBar } from '@angular/material/snack-bar';
 
 export interface CreateEditBookCopyDialogData {
   mode: 'create' | 'edit';
@@ -44,8 +44,7 @@ export interface CreateEditBookCopyDialogData {
     CommonModule, ReactiveFormsModule, MatDialogModule,
     MatFormFieldModule, MatInputModule, MatSelectModule,
     MatButtonModule, MatIconModule, MatDatepickerModule,
-    MatSlideToggleModule, MatProgressSpinnerModule,
-    MatTooltipModule,                         // ← MatSnackBarModule removed
+    MatSlideToggleModule, MatProgressSpinnerModule, MatTooltipModule,
   ],
   templateUrl: './create-edit-book-copy-dialog.component.html',
   styles: [`
@@ -57,8 +56,8 @@ export class CreateEditBookCopyDialogComponent
   implements OnInit, OnDestroy {
 
   private readonly _unsubscribe = new Subject<void>();
-  private alertService!: AlertService;
-  
+  private readonly _alertService: AlertService;
+  private readonly _copyService: BookCopyService;
 
   schools:    SchoolDto[]        = [];
   books:      BookDto[]          = [];
@@ -95,7 +94,7 @@ export class CreateEditBookCopyDialogComponent
   constructor(
     fb:           FormBuilder,
     snackBar:     MatSnackBar,
-    alertService: AlertService,           // ← replaces MatSnackBar
+    alertService: AlertService,
     dialogRef:    MatDialogRef<CreateEditBookCopyDialogComponent>,
     @Inject(MAT_DIALOG_DATA) data: CreateEditBookCopyDialogData,
     private readonly _authService:   AuthService,
@@ -106,7 +105,8 @@ export class CreateEditBookCopyDialogComponent
     copyService: BookCopyService,
   ) {
     super(fb, copyService, snackBar, dialogRef, data);
-    this.alertService    = alertService;
+    this._alertService = alertService;
+    this._copyService  = copyService;
     dialogRef.addPanelClass(['book-copy-dialog', 'responsive-dialog']);
   }
 
@@ -203,6 +203,7 @@ export class CreateEditBookCopyDialogComponent
 
   onSubmit(): void {
     this.formSubmitted = true;
+    if (this.form.invalid) { this.form.markAllAsTouched(); return; }
 
     const toIso = (val: any): string | undefined => {
       if (!val) return undefined;
@@ -210,33 +211,62 @@ export class CreateEditBookCopyDialogComponent
       return isNaN(d.getTime()) ? undefined : d.toISOString();
     };
 
-    const createMapper = (raw: any): CreateBookCopyRequest => ({
-      ...(this.isSuperAdmin ? { schoolId: raw.schoolId } : {}),
-      bookId:          raw.bookId,
-      libraryBranchId: raw.libraryBranchId,
-      accessionNumber: raw.accessionNumber?.trim() || undefined,
-      barcode:         raw.barcode?.trim()         || undefined,
-      qrCode:          raw.qrCode?.trim()          || undefined,
-      condition:       raw.condition,
-      isAvailable:     raw.isAvailable,
-      isLost:          raw.isLost,
-      isDamaged:       raw.isDamaged,
-      acquiredOn:      toIso(raw.acquiredOn),
-    });
+    const raw = this.form.value;
+    this.isSaving = true;
 
-    const updateMapper = (raw: any): UpdateBookCopyRequest => ({
-      libraryBranchId: raw.libraryBranchId,
-      accessionNumber: raw.accessionNumber?.trim(),
-      barcode:         raw.barcode?.trim(),
-      qrCode:          raw.qrCode?.trim() || undefined,
-      condition:       raw.condition,
-      isAvailable:     raw.isAvailable,
-      isLost:          raw.isLost,
-      isDamaged:       raw.isDamaged,
-      acquiredOn:      toIso(raw.acquiredOn),
-    });
-
-    this.save(createMapper, updateMapper, () => this.data.copy!.id);
+    if (this.isEditMode) {
+      const payload: UpdateBookCopyRequest = {
+        libraryBranchId: raw.libraryBranchId,
+        accessionNumber: raw.accessionNumber?.trim(),
+        barcode:         raw.barcode?.trim(),
+        qrCode:          raw.qrCode?.trim() || undefined,
+        condition:       raw.condition,
+        isAvailable:     raw.isAvailable,
+        isLost:          raw.isLost,
+        isDamaged:       raw.isDamaged,
+        acquiredOn:      toIso(raw.acquiredOn),
+      };
+      this._copyService.update(this.data.copy!.id, payload)
+        .pipe(takeUntil(this._unsubscribe), finalize(() => { this.isSaving = false; this._cdr.detectChanges(); }))
+        .subscribe({
+          next: res => {
+            if (res.success) {
+              this._alertService.success('Book copy updated successfully');
+              this.dialogRef.close({ success: true, data: res.data });
+            } else {
+              this._alertService.error(res.message || 'Failed to update book copy');
+            }
+          },
+          error: err => this._alertService.error(err?.error?.message || 'Failed to update book copy'),
+        });
+    } else {
+      const payload: CreateBookCopyRequest = {
+        ...(this.isSuperAdmin ? { schoolId: raw.schoolId } : {}),
+        bookId:          raw.bookId,
+        libraryBranchId: raw.libraryBranchId,
+        accessionNumber: raw.accessionNumber?.trim() || undefined,
+        barcode:         raw.barcode?.trim()         || undefined,
+        qrCode:          raw.qrCode?.trim()          || undefined,
+        condition:       raw.condition,
+        isAvailable:     raw.isAvailable,
+        isLost:          raw.isLost,
+        isDamaged:       raw.isDamaged,
+        acquiredOn:      toIso(raw.acquiredOn),
+      };
+      this._copyService.create(payload)
+        .pipe(takeUntil(this._unsubscribe), finalize(() => { this.isSaving = false; this._cdr.detectChanges(); }))
+        .subscribe({
+          next: res => {
+            if (res.success) {
+              this._alertService.success('Book copy created successfully');
+              this.dialogRef.close({ success: true, data: res.data });
+            } else {
+              this._alertService.error(res.message || 'Failed to create book copy');
+            }
+          },
+          error: err => this._alertService.error(err?.error?.message || 'Failed to create book copy'),
+        });
+    }
   }
 
   onCancel(): void { this.close({ success: false }); }

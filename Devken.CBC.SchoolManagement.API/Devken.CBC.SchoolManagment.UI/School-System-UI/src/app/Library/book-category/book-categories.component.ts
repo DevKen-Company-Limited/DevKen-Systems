@@ -60,8 +60,8 @@ export class BookCategoriesComponent implements OnInit, OnDestroy {
   };
 
   tableColumns: TableColumn<BookCategoryResponseDto>[] = [
-    { id: 'name',        label: 'Category Name', align: 'left',  sortable: true },
-    { id: 'description', label: 'Description',   align: 'left',  hideOnMobile: true },
+    { id: 'name',        label: 'Category Name', align: 'left',   sortable: true },
+    { id: 'description', label: 'Description',   align: 'left',   hideOnMobile: true },
     { id: 'createdOn',   label: 'Created',        align: 'center', sortable: true, hideOnMobile: true },
   ];
 
@@ -90,7 +90,7 @@ export class BookCategoriesComponent implements OnInit, OnDestroy {
     private cdr:          ChangeDetectorRef,
   ) {}
 
-  ngOnInit(): void  { this.loadAll(); }
+  ngOnInit(): void    { this.loadAll(); }
   ngOnDestroy(): void { this._destroy$.next(); this._destroy$.complete(); }
 
   ngAfterViewInit(): void {
@@ -104,9 +104,12 @@ export class BookCategoriesComponent implements OnInit, OnDestroy {
       next: res => {
         this.isLoading = false;
         if (res.success) { this.allData = res.data; this.applyFilters(); this.buildStats(); }
-        else this.alertService.error('Error', res.message);
+        else this.alertService.error(res.message || 'Failed to load categories');
       },
-      error: err => { this.isLoading = false; this.alertService.error('Error', err?.error?.message ?? 'Failed to load categories.'); },
+      error: err => {
+        this.isLoading = false;
+        this.alertService.error(err?.error?.message ?? 'Failed to load categories');
+      },
     });
   }
 
@@ -139,8 +142,8 @@ export class BookCategoriesComponent implements OnInit, OnDestroy {
     const total    = this.allData.length;
     const withDesc = this.allData.filter(r => r.description).length;
     this.statsCards = [
-      { label: 'Total Categories',   value: total,    icon: 'category',    iconColor: 'violet' },
-      { label: 'With Description',   value: withDesc, icon: 'description', iconColor: 'indigo' },
+      { label: 'Total Categories', value: total,    icon: 'category',    iconColor: 'violet' },
+      { label: 'With Description', value: withDesc, icon: 'description', iconColor: 'indigo' },
     ];
   }
 
@@ -181,6 +184,8 @@ export class BookCategoriesComponent implements OnInit, OnDestroy {
               this.alertService.success('Category deleted successfully');
               if (this.paginatedData.length === 1 && this.currentPage > 1) this.currentPage--;
               this.loadAll();
+            } else {
+              this.alertService.error(res.message || 'Failed to delete category');
             }
           },
           error: err => this.alertService.error(err.error?.message || 'Failed to delete category'),

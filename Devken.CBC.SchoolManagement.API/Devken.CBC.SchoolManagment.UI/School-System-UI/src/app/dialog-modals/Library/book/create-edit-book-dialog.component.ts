@@ -27,7 +27,7 @@ import { BookService } from 'app/core/DevKenService/Library/book.service';
 import { BookAuthorResponseDto } from 'app/Library/book-author/Types/book-author.model';
 import { BookCategoryResponseDto } from 'app/Library/book-category/Types/book-category.model';
 import { BookPublisherResponseDto } from 'app/Library/book-publisher/Types/book-publisher.model';
-import { AlertService } from 'app/core/DevKenService/Alert/AlertService';   // <-- new import
+import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
 
 export interface CreateEditBookDialogData {
   mode: 'create' | 'edit';
@@ -41,23 +41,23 @@ export interface CreateEditBookDialogData {
     CommonModule, ReactiveFormsModule, MatDialogModule,
     MatFormFieldModule, MatInputModule, MatSelectModule,
     MatButtonModule, MatIconModule, MatProgressSpinnerModule,
-    MatTooltipModule,                          // MatSnackBarModule removed
+    MatTooltipModule,
   ],
   templateUrl: './create-edit-book-dialog.component.html',
   styles: [`
     :host ::ng-deep .mat-mdc-dialog-container { --mdc-dialog-container-shape: 12px; }
   `]
 })
-export class CreateEditBookDialogComponent implements OnInit, OnDestroy {   // removed extends
+export class CreateEditBookDialogComponent implements OnInit, OnDestroy {
 
   private readonly _unsubscribe = new Subject<void>();
 
   // ── Dropdown data ──────────────────────────────────────────────────────────
-  schools: SchoolDto[]       = [];
-  authors: BookAuthorResponseDto[]   = [];
-  categories: BookCategoryResponseDto[] = [];
+  schools:    SchoolDto[]                = [];
+  authors:    BookAuthorResponseDto[]    = [];
+  categories: BookCategoryResponseDto[]  = [];
   publishers: BookPublisherResponseDto[] = [];
-  isLoading = true;          // also used for save operation
+  isLoading     = true;
   formSubmitted = false;
 
   currentYear = new Date().getFullYear();
@@ -67,9 +67,11 @@ export class CreateEditBookDialogComponent implements OnInit, OnDestroy {   // r
   form!: FormGroup;
 
   // ── Getters ────────────────────────────────────────────────────────────────
-  get isEditMode(): boolean { return this.data.mode === 'edit'; }
-  get isSuperAdmin(): boolean { return this._authService.authUser?.isSuperAdmin ?? false; }
-  get dialogTitle(): string { return this.isEditMode ? 'Edit Book' : 'Add New Book'; }
+  get isEditMode(): boolean    { return this.data.mode === 'edit'; }
+  get isSuperAdmin(): boolean  { return this._authService.authUser?.isSuperAdmin ?? false; }
+  /** Alias used by the template for button/spinner state */
+  get isSaving(): boolean      { return this.isLoading; }
+  get dialogTitle(): string    { return this.isEditMode ? 'Edit Book' : 'Add New Book'; }
   get dialogSubtitle(): string {
     return this.isEditMode
       ? `Updating "${this.data.book?.title || 'book'}" details`
@@ -78,17 +80,17 @@ export class CreateEditBookDialogComponent implements OnInit, OnDestroy {   // r
   get descriptionLength(): number { return this.form.get('description')?.value?.length || 0; }
 
   constructor(
-    private readonly _fb: FormBuilder,
-    private readonly _dialogRef: MatDialogRef<CreateEditBookDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: CreateEditBookDialogData,
-    private readonly _authService: AuthService,
-    private readonly _schoolService: SchoolService,
-    private readonly _bookAuthorService: BookAuthorService,
-    private readonly _bookCategoryService: BookCategoryService,
+    private readonly _fb:                   FormBuilder,
+    private readonly _dialogRef:            MatDialogRef<CreateEditBookDialogComponent>,
+    @Inject(MAT_DIALOG_DATA) public data:   CreateEditBookDialogData,
+    private readonly _authService:          AuthService,
+    private readonly _schoolService:        SchoolService,
+    private readonly _bookAuthorService:    BookAuthorService,
+    private readonly _bookCategoryService:  BookCategoryService,
     private readonly _bookPublisherService: BookPublisherService,
-    private readonly _bookService: BookService,
-    private readonly _alertService: AlertService,        // <-- injected instead of MatSnackBar
-    private readonly _cdr: ChangeDetectorRef,
+    private readonly _bookService:          BookService,
+    private readonly _alertService:         AlertService,
+    private readonly _cdr:                  ChangeDetectorRef,
   ) {
     _dialogRef.addPanelClass(['book-dialog', 'responsive-dialog']);
   }
@@ -162,9 +164,6 @@ export class CreateEditBookDialogComponent implements OnInit, OnDestroy {   // r
         this.publishers = res.publishers?.data || [];
         if (res.schools) this.schools = res.schools?.data || [];
 
-        // If we already patched in _buildForm, no need to patch again.
-        // But if we are in edit mode and the book was not patched because
-        // the book was not yet available, we patch now.
         if (this.isEditMode && this.data.book && !this.form.get('title')?.value) {
           this._patchForm(this.data.book);
         }
@@ -176,10 +175,7 @@ export class CreateEditBookDialogComponent implements OnInit, OnDestroy {   // r
 
     // Safety timeout
     setTimeout(() => {
-      if (this.isLoading) {
-        this.isLoading = false;
-        this._cdr.detectChanges();
-      }
+      if (this.isLoading) { this.isLoading = false; this._cdr.detectChanges(); }
     }, 12000);
   }
 
@@ -188,10 +184,8 @@ export class CreateEditBookDialogComponent implements OnInit, OnDestroy {   // r
     this.formSubmitted = true;
 
     if (this.form.invalid) {
-      // Mark all fields as touched to trigger validation messages
       Object.keys(this.form.controls).forEach(key => {
-        const control = this.form.get(key);
-        control?.markAsTouched();
+        this.form.get(key)?.markAsTouched();
       });
       return;
     }
@@ -223,24 +217,21 @@ export class CreateEditBookDialogComponent implements OnInit, OnDestroy {   // r
       takeUntil(this._unsubscribe),
       finalize(() => { this.isLoading = false; this._cdr.detectChanges(); })
     ).subscribe({
-      next: (response) => {
-        if (response.success) {
-          this._alertService.success('Book created successfully', 'Success');
-          this._dialogRef.close({ success: true, data: response.data });
+      next: res => {
+        if (res.success) {
+          this._alertService.success('Book created successfully');
+          this._dialogRef.close({ success: true, data: res.data });
         } else {
-          this._alertService.error(response.message || 'Failed to create book', 'Error');
+          this._alertService.error(res.message || 'Failed to create book');
         }
       },
-      error: (err) => {
-        console.error('Create book error:', err);
-        this._alertService.error('An unexpected error occurred', 'Error');
-      }
+      error: err => this._alertService.error(err?.error?.message || 'Failed to create book'),
     });
   }
 
   private _updateBook(): void {
     if (!this.data.book?.id) {
-      this._alertService.error('Book ID is missing', 'Error');
+      this._alertService.error('Book ID is missing');
       this.isLoading = false;
       return;
     }
@@ -261,18 +252,15 @@ export class CreateEditBookDialogComponent implements OnInit, OnDestroy {   // r
       takeUntil(this._unsubscribe),
       finalize(() => { this.isLoading = false; this._cdr.detectChanges(); })
     ).subscribe({
-      next: (response) => {
-        if (response.success) {
-          this._alertService.success('Book updated successfully', 'Success');
-          this._dialogRef.close({ success: true, data: response.data });
+      next: res => {
+        if (res.success) {
+          this._alertService.success('Book updated successfully');
+          this._dialogRef.close({ success: true, data: res.data });
         } else {
-          this._alertService.error(response.message || 'Failed to update book', 'Error');
+          this._alertService.error(res.message || 'Failed to update book');
         }
       },
-      error: (err) => {
-        console.error('Update book error:', err);
-        this._alertService.error('An unexpected error occurred', 'Error');
-      }
+      error: err => this._alertService.error(err?.error?.message || 'Failed to update book'),
     });
   }
 

@@ -13,6 +13,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { Subject, forkJoin, of } from 'rxjs';
 import { catchError, takeUntil, finalize } from 'rxjs/operators';
 
@@ -25,7 +26,6 @@ import { BookService } from 'app/core/DevKenService/Library/book.service';
 import { BookInventoryDto, CreateBookInventoryRequest, UpdateBookInventoryRequest } from 'app/Library/book-inventory/Types/book-inventory.types';
 import { BookDto } from 'app/Library/book/Types/book.types';
 import { BaseFormDialog } from 'app/shared/dialogs/BaseFormDialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 
 export interface CreateEditBookInventoryDialogData {
   mode: 'create' | 'edit';
@@ -39,8 +39,7 @@ export interface CreateEditBookInventoryDialogData {
   imports: [
     CommonModule, ReactiveFormsModule, MatDialogModule,
     MatFormFieldModule, MatInputModule, MatSelectModule,
-    MatButtonModule, MatIconModule, MatProgressSpinnerModule,
-    MatTooltipModule,                         // ← MatSnackBarModule removed
+    MatButtonModule, MatIconModule, MatProgressSpinnerModule, MatTooltipModule,
   ],
   templateUrl: './create-edit-book-inventory-dialog.component.html',
   styles: [`
@@ -51,7 +50,9 @@ export class CreateEditBookInventoryDialogComponent
   extends BaseFormDialog<CreateBookInventoryRequest, UpdateBookInventoryRequest, BookInventoryDto, CreateEditBookInventoryDialogData>
   implements OnInit, OnDestroy {
 
-  private readonly _unsubscribe = new Subject<void>();
+  private readonly _unsubscribe    = new Subject<void>();
+  private readonly _alertService:   AlertService;
+  private readonly _inventoryService: BookInventoryService;
 
   schools:  SchoolDto[] = [];
   books:    BookDto[]   = [];
@@ -90,10 +91,10 @@ export class CreateEditBookInventoryDialogComponent
   }
 
   constructor(
-    fb:           FormBuilder,
-    snackBar: MatSnackBar,
-    alertService: AlertService,          
-    dialogRef:    MatDialogRef<CreateEditBookInventoryDialogComponent>,
+    fb:               FormBuilder,
+    snackBar:         MatSnackBar,
+    alertService:     AlertService,
+    dialogRef:        MatDialogRef<CreateEditBookInventoryDialogComponent>,
     @Inject(MAT_DIALOG_DATA) data: CreateEditBookInventoryDialogData,
     private readonly _authService:   AuthService,
     private readonly _schoolService: SchoolService,
@@ -101,7 +102,9 @@ export class CreateEditBookInventoryDialogComponent
     private readonly _cdr:           ChangeDetectorRef,
     inventoryService: BookInventoryService,
   ) {
-    super(fb, inventoryService,snackBar, dialogRef, data);
+    super(fb, inventoryService, snackBar, dialogRef, data);
+    this._alertService    = alertService;
+    this._inventoryService = inventoryService;
     dialogRef.addPanelClass(['book-inventory-dialog', 'responsive-dialog']);
   }
 
@@ -136,8 +139,8 @@ export class CreateEditBookInventoryDialogComponent
 
   protected override patchForEdit(item: BookInventoryDto): void {
     this.form.patchValue({
-      schoolId:        item.schoolId         || null,
-      bookId:          item.bookId           || null,
+      schoolId:        item.schoolId        || null,
+      bookId:          item.bookId          || null,
       totalCopies:     item.totalCopies,
       availableCopies: item.availableCopies,
       borrowedCopies:  item.borrowedCopies,
@@ -180,27 +183,57 @@ export class CreateEditBookInventoryDialogComponent
 
   onSubmit(): void {
     this.formSubmitted = true;
+    if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     if (this.sumExceedsTotal) return;
 
-    const createMapper = (raw: any): CreateBookInventoryRequest => ({
-      ...(this.isSuperAdmin ? { schoolId: raw.schoolId } : {}),
-      bookId:          raw.bookId,
-      totalCopies:     +raw.totalCopies,
-      availableCopies: +raw.availableCopies,
-      borrowedCopies:  +raw.borrowedCopies,
-      lostCopies:      +raw.lostCopies,
-      damagedCopies:   +raw.damagedCopies,
-    });
+    const raw = this.form.value;
+    this.isSaving = true;
 
-    const updateMapper = (raw: any): UpdateBookInventoryRequest => ({
-      totalCopies:     +raw.totalCopies,
-      availableCopies: +raw.availableCopies,
-      borrowedCopies:  +raw.borrowedCopies,
-      lostCopies:      +raw.lostCopies,
-      damagedCopies:   +raw.damagedCopies,
-    });
-
-    this.save(createMapper, updateMapper, () => this.data.inventory!.id);
+    if (this.isEditMode) {
+      const payload: UpdateBookInventoryRequest = {
+        totalCopies:     +raw.totalCopies,
+        availableCopies: +raw.availableCopies,
+        borrowedCopies:  +raw.borrowedCopies,
+        lostCopies:      +raw.lostCopies,
+        damagedCopies:   +raw.damagedCopies,
+      };
+      this._inventoryService.update(this.data.inventory!.id, payload)
+        .pipe(takeUntil(this._unsubscribe), finalize(() => { this.isSaving = false; this._cdr.detectChanges(); }))
+        .subscribe({
+          next: res => {
+            if (res.success) {
+              this._alertService.success('Inventory record updated successfully');
+              this.dialogRef.close({ success: true, data: res.data });
+            } else {
+              this._alertService.error(res.message || 'Failed to update inventory record');
+            }
+          },
+          error: err => this._alertService.error(err?.error?.message || 'Failed to update inventory record'),
+        });
+    } else {
+      const payload: CreateBookInventoryRequest = {
+        ...(this.isSuperAdmin ? { schoolId: raw.schoolId } : {}),
+        bookId:          raw.bookId,
+        totalCopies:     +raw.totalCopies,
+        availableCopies: +raw.availableCopies,
+        borrowedCopies:  +raw.borrowedCopies,
+        lostCopies:      +raw.lostCopies,
+        damagedCopies:   +raw.damagedCopies,
+      };
+      this._inventoryService.create(payload)
+        .pipe(takeUntil(this._unsubscribe), finalize(() => { this.isSaving = false; this._cdr.detectChanges(); }))
+        .subscribe({
+          next: res => {
+            if (res.success) {
+              this._alertService.success('Inventory record created successfully');
+              this.dialogRef.close({ success: true, data: res.data });
+            } else {
+              this._alertService.error(res.message || 'Failed to create inventory record');
+            }
+          },
+          error: err => this._alertService.error(err?.error?.message || 'Failed to create inventory record'),
+        });
+    }
   }
 
   onCancel(): void { this.close({ success: false }); }
