@@ -119,8 +119,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         public DbSet<TeacherCBCLevel> TeacherCBCLevels { get; set; } = null!;
         public DbSet<DocumentNumberSeries> DocumentNumberSeries => Set<DocumentNumberSeries>();
         public DbSet<SsoSetupToken> SsoSetupTokens => Set<SsoSetupToken>();
-        public DbSet<SsoOtpToken> SsoOtpTokens => Set<SsoOtpToken>();
-
+        public DbSet<SsoOtpToken> SsoOtpTokens => Set<SsoOtpToken>(); 
+                    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>(); 
         #endregion
 
         protected override void OnModelCreating(ModelBuilder mb)

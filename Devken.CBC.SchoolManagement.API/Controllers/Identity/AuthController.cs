@@ -1,8 +1,8 @@
-﻿using System;
-using System.Linq;
-using System.Threading.Tasks;
+﻿// Api/Controllers/Identity/AuthController.cs
 using Devken.CBC.SchoolManagement.Api.Controllers.Common;
 using Devken.CBC.SchoolManagement.Application.Dtos;
+using Devken.CBC.SchoolManagement.Application.DTOs.Identity;
+using Devken.CBC.SchoolManagement.Application.DTOs.Identity.Devken.CBC.SchoolManagement.Application.DTOs.Identity;
 using Devken.CBC.SchoolManagement.Application.Service;
 using Devken.CBC.SchoolManagement.Application.Service.Activities;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
@@ -10,7 +10,11 @@ using Devken.CBC.SchoolManagement.Infrastructure.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
 {
@@ -20,20 +24,24 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
     {
         private readonly IAuthService _authService;
         private readonly JwtSettings _jwtSettings;
+        private readonly IConfiguration _configuration;
 
         public AuthController(
             IAuthService authService,
             JwtSettings jwtSettings,
+            IConfiguration configuration,
             IUserActivityService activityService,
             ILogger<AuthController> logger)
             : base(activityService, logger)
         {
             _authService = authService ?? throw new ArgumentNullException(nameof(authService));
             _jwtSettings = jwtSettings ?? throw new ArgumentNullException(nameof(jwtSettings));
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         }
 
-        #region School Registration / Login
+        // ─── SCHOOL REGISTRATION / LOGIN ──────────────────────────────────────
 
+        /// <summary>Registers a new school and seeds its first admin user.</summary>
         [HttpPost("register-school")]
         [AllowAnonymous]
         public async Task<IActionResult> RegisterSchool([FromBody] RegisterSchoolRequest request)
@@ -43,7 +51,9 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
 
             var result = await _authService.RegisterSchoolAsync(request);
             if (result == null)
-                return ErrorResponse("School registration failed or slug already exists.", StatusCodes.Status400BadRequest);
+                return ErrorResponse(
+                    "School registration failed. The slug or admin email may already be in use.",
+                    StatusCodes.Status400BadRequest);
 
             SetRefreshTokenCookie(result.RefreshToken);
 
@@ -53,17 +63,16 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                 "RegisterSchool",
                 $"School: {request.SchoolName}");
 
-            var responseDto = new RegisterSchoolResponseDto
+            return SuccessResponse(new RegisterSchoolResponseDto
             {
                 AccessToken = result.AccessToken,
                 ExpiresInSeconds = _jwtSettings.AccessTokenLifetimeMinutes * 60,
                 RefreshToken = result.RefreshToken,
-                User = result.User
-            };
-
-            return SuccessResponse(responseDto, "School registration successful");
+                User = result.User,
+            }, "School registration successful");
         }
 
+        /// <summary>Authenticates a school user by email and password.</summary>
         [HttpPost("login")]
         [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
@@ -72,11 +81,12 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                 return ValidationErrorResponse(ToErrorDictionary(ModelState));
 
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-            var tenantSlug = string.IsNullOrWhiteSpace(request.TenantSlug) ? "default-school" : request.TenantSlug;
+            var tenantSlug = string.IsNullOrWhiteSpace(request.TenantSlug)
+                ? "default-school"
+                : request.TenantSlug;
 
             var result = await _authService.LoginAsync(
-                new LoginRequest(tenantSlug, request.Email, request.Password),
-                ip);
+                new LoginRequest(tenantSlug, request.Email, request.Password), ip);
 
             if (result == null)
                 return ErrorResponse("Invalid credentials.", StatusCodes.Status401Unauthorized);
@@ -89,14 +99,11 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                 "Login",
                 $"IP: {ip}");
 
-            // Ensure user DTO has permissions populated
             var userDto = result.User;
             if (userDto != null && result.Permissions?.Any() == true)
-            {
                 userDto.Permissions = result.Permissions.ToList();
-            }
 
-            var responseDto = new LoginResponseDto
+            return SuccessResponse(new LoginResponseDto
             {
                 AccessToken = result.AccessToken,
                 ExpiresInSeconds = result.AccessTokenExpiresInSeconds,
@@ -104,16 +111,13 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                 User = userDto,
                 Message = result.User?.RequirePasswordChange == true
                     ? "Password change required. Please change your password to continue."
-                    : "Login successful"
-            };
-
-            return SuccessResponse(responseDto, "Login successful");
+                    : "Login successful",
+            }, "Login successful");
         }
 
-        #endregion
+        // ─── REFRESH / LOGOUT ─────────────────────────────────────────────────
 
-        #region Refresh / Logout
-
+        /// <summary>Exchanges a valid refresh token cookie for a new token pair.</summary>
         [HttpPost("refresh")]
         [AllowAnonymous]
         public async Task<IActionResult> RefreshToken()
@@ -124,22 +128,21 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
 
             var result = await _authService.RefreshTokenAsync(new RefreshTokenRequest(token));
             if (result == null)
-                return ErrorResponse("Invalid or expired refresh token.", StatusCodes.Status401Unauthorized);
+                return ErrorResponse(
+                    "Invalid or expired refresh token.", StatusCodes.Status401Unauthorized);
 
             SetRefreshTokenCookie(result.RefreshToken);
-
             await LogUserActivitySafeAsync(null, null, "RefreshToken");
 
-            var response = new
+            return SuccessResponse(new
             {
-                AccessToken = result.AccessToken,
-                AccessTokenExpiresInSeconds = result.AccessTokenExpiresInSeconds,
-                RefreshToken = result.RefreshToken
-            };
-
-            return SuccessResponse(response, "Token refreshed successfully");
+                result.AccessToken,
+                result.AccessTokenExpiresInSeconds,
+                result.RefreshToken,
+            }, "Token refreshed successfully");
         }
 
+        /// <summary>Revokes the refresh token cookie and ends the user's session.</summary>
         [HttpPost("logout")]
         [Authorize]
         public async Task<IActionResult> Logout()
@@ -154,10 +157,9 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
             return SuccessResponse(new { }, "Logged out successfully");
         }
 
-        #endregion
+        // ─── SUPER ADMIN ──────────────────────────────────────────────────────
 
-        #region Super Admin
-
+        /// <summary>Authenticates a SuperAdmin by email and password.</summary>
         [HttpPost("super-admin/login")]
         [AllowAnonymous]
         public async Task<IActionResult> SuperAdminLogin([FromBody] SuperAdminLoginRequest request)
@@ -167,26 +169,26 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
 
             var result = await _authService.SuperAdminLoginAsync(request);
             if (result == null)
-                return ErrorResponse("Invalid super admin credentials.", StatusCodes.Status401Unauthorized);
+                return ErrorResponse(
+                    "Invalid super admin credentials.", StatusCodes.Status401Unauthorized);
 
             SetRefreshTokenCookie(result.RefreshToken);
 
             if (result.User?.Id != Guid.Empty)
-                await LogUserActivitySafeAsync(result.User.Id, null, "SuperAdminLogin");
+                await LogUserActivitySafeAsync(result.User!.Id, null, "SuperAdminLogin");
 
-            var response = new
+            return SuccessResponse(new
             {
-                AccessToken = result.AccessToken,
-                AccessTokenExpiresInSeconds = result.AccessTokenExpiresInSeconds,
-                RefreshToken = result.RefreshToken,
+                result.AccessToken,
+                result.AccessTokenExpiresInSeconds,
+                result.RefreshToken,
                 User = MapSuperAdminToUserDto(result.User, result.Permissions),
-                Roles = result.Roles,
-                Permissions = result.Permissions
-            };
-
-            return SuccessResponse(response, "Super admin login successful");
+                result.Roles,
+                result.Permissions,
+            }, "Super admin login successful");
         }
 
+        /// <summary>Exchanges a valid SuperAdmin refresh token for a new token pair.</summary>
         [HttpPost("super-admin/refresh")]
         [AllowAnonymous]
         public async Task<IActionResult> SuperAdminRefresh()
@@ -195,27 +197,41 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
             if (string.IsNullOrWhiteSpace(token))
                 return ErrorResponse("Refresh token missing.", StatusCodes.Status401Unauthorized);
 
-            var result = await _authService.SuperAdminRefreshTokenAsync(new RefreshTokenRequest(token));
+            var result = await _authService.SuperAdminRefreshTokenAsync(
+                new RefreshTokenRequest(token));
             if (result == null)
-                return ErrorResponse("Invalid or expired refresh token.", StatusCodes.Status401Unauthorized);
+                return ErrorResponse(
+                    "Invalid or expired refresh token.", StatusCodes.Status401Unauthorized);
 
             SetRefreshTokenCookie(result.RefreshToken);
             await LogUserActivitySafeAsync(null, null, "SuperAdminRefresh");
 
-            var response = new
+            return SuccessResponse(new
             {
-                AccessToken = result.AccessToken,
-                AccessTokenExpiresInSeconds = result.AccessTokenExpiresInSeconds,
-                RefreshToken = result.RefreshToken
-            };
-
-            return SuccessResponse(response, "Super admin token refreshed successfully");
+                result.AccessToken,
+                result.AccessTokenExpiresInSeconds,
+                result.RefreshToken,
+            }, "Super admin token refreshed successfully");
         }
 
-        #endregion
+        /// <summary>Revokes the SuperAdmin refresh token cookie and ends their session.</summary>
+        [HttpPost("super-admin/logout")]
+        [Authorize(Policy = "SuperAdmin")]
+        public async Task<IActionResult> SuperAdminLogout()
+        {
+            var token = Request.Cookies["refreshToken"];
+            if (!string.IsNullOrWhiteSpace(token))
+                await _authService.SuperAdminLogoutAsync(token);
 
-        #region Password & User Info
+            DeleteRefreshTokenCookie();
+            await LogUserActivitySafeAsync(CurrentUserId, null, "SuperAdminLogout");
 
+            return SuccessResponse(new { }, "Super admin logged out successfully");
+        }
+
+        // ─── PASSWORD & USER INFO ─────────────────────────────────────────────
+
+        /// <summary>Changes the authenticated user's password and revokes all sessions.</summary>
         [HttpPost("change-password")]
         [Authorize]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
@@ -225,17 +241,68 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
 
             var result = await _authService.ChangePasswordAsync(
                 CurrentUserId,
-                CurrentTenantId!.Value,
+                CurrentTenantId,
                 request);
 
             if (!result.Success)
-                return ErrorResponse(result.Error ?? "Password change failed", StatusCodes.Status400BadRequest);
+                return ErrorResponse(
+                    result.Error ?? "Password change failed.", StatusCodes.Status400BadRequest);
 
             await LogUserActivitySafeAsync(CurrentUserId, CurrentTenantId, "ChangePassword");
 
-            return SuccessResponse(new { }, "Password changed successfully. Please login again.");
+            return SuccessResponse(new { }, "Password changed successfully. Please log in again.");
         }
 
+        /// <summary>
+        /// Accepts an email address and dispatches a password-reset link.
+        /// Always returns 200 OK regardless of whether the email is registered —
+        /// this prevents user-enumeration attacks.
+        /// </summary>
+        [HttpPost("forgot-password")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+        {
+            if (!ModelState.IsValid)
+                return ValidationErrorResponse(ToErrorDictionary(ModelState));
+
+            // Read base URL from configuration.
+            // Set  AppSettings:PasswordResetBaseUrl  in appsettings.json or as an
+            // environment variable.
+            // Example:  "https://app.devkencbc.com/reset-password"
+            var resetBaseUrl = _configuration["AppSettings:PasswordResetBaseUrl"]
+                               ?? "https://app.devkencbc.com/reset-password";
+
+            await _authService.ForgotPasswordAsync(request.Email, resetBaseUrl);
+
+            // Always return the same message — never reveal whether the email exists
+            return SuccessResponse(
+                new { },
+                "If that email is registered you will receive a password-reset link shortly.");
+        }
+
+        /// <summary>
+        /// Validates the reset token and sets the user's new password.
+        /// On success all existing sessions are terminated.
+        /// </summary>
+        [HttpPost("reset-password")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+        {
+            if (!ModelState.IsValid)
+                return ValidationErrorResponse(ToErrorDictionary(ModelState));
+
+            var result = await _authService.ResetPasswordAsync(request.Token, request.NewPassword);
+
+            if (!result.Success)
+                return ErrorResponse(
+                    result.Error ?? "Password reset failed.", StatusCodes.Status400BadRequest);
+
+            await LogUserActivitySafeAsync(null, null, "ResetPassword");
+
+            return SuccessResponse(new { }, "Password reset successfully. Please sign in.");
+        }
+
+        /// <summary>Returns the current user's identity claims decoded from the JWT.</summary>
         [HttpGet("me")]
         [Authorize]
         public IActionResult Me()
@@ -248,13 +315,11 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                 Name = CurrentUserName ?? string.Empty,
                 Permissions = CurrentUserPermissions?.ToArray() ?? Array.Empty<string>(),
                 Roles = CurrentUserRoles?.ToArray() ?? Array.Empty<string>(),
-                IsSuperAdmin
+                IsSuperAdmin,
             });
         }
 
-        #endregion
-
-        #region Helpers
+        // ─── PRIVATE HELPERS ──────────────────────────────────────────────────
 
         private void SetRefreshTokenCookie(string refreshToken)
         {
@@ -266,7 +331,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                 Secure = true,
                 SameSite = SameSiteMode.Strict,
                 Path = "/",
-                Expires = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenLifetimeDays)
+                Expires = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenLifetimeDays),
             });
         }
 
@@ -277,15 +342,9 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                 Path = "/",
                 HttpOnly = true,
                 Secure = true,
-                SameSite = SameSiteMode.Strict
+                SameSite = SameSiteMode.Strict,
             });
         }
-
-        private static IDictionary<string, string[]> ToErrorDictionary(
-            Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary modelState) =>
-            modelState.ToDictionary(
-                kvp => kvp.Key,
-                kvp => kvp.Value?.Errors.Select(e => e.ErrorMessage).ToArray() ?? Array.Empty<string>());
 
         private Task LogUserActivitySafeAsync(
             Guid? userId = null,
@@ -295,43 +354,22 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
         {
             if (!userId.HasValue || string.IsNullOrWhiteSpace(activityType))
                 return Task.CompletedTask;
-            return LogUserActivityAsync(userId.Value, tenantId, activityType, details ?? string.Empty);
+
+            return LogUserActivityAsync(
+                userId.Value, tenantId, activityType, details ?? string.Empty);
         }
 
-        private static UserDto MapToUserDto(UserInfo user, string[]? permissions = null)
-        {
-            if (user == null) return null!;
+        private static IDictionary<string, string[]> ToErrorDictionary(
+            Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary modelState) =>
+            modelState.ToDictionary(
+                kvp => kvp.Key,
+                kvp => kvp.Value?.Errors
+                           .Select(e => e.ErrorMessage)
+                           .ToArray() ?? Array.Empty<string>());
 
-            // Split full name into first and last names
-            string firstName = string.Empty;
-            string lastName = string.Empty;
-
-            if (!string.IsNullOrEmpty(user.FullName))
-            {
-                var nameParts = user.FullName.Split(' ', 2);
-                firstName = nameParts[0];
-                lastName = nameParts.Length > 1 ? nameParts[1] : string.Empty;
-            }
-
-            return new UserDto
-            {
-                Id = user.Id,
-                Email = user.Email,
-                FirstName = firstName,
-                LastName = lastName,
-                SchoolId = user.TenantId,
-                SchoolName = string.Empty, // SchoolName will be filled by service if needed
-                IsActive = true, // Assuming active if we have UserInfo
-                IsEmailVerified = true, // Assuming verified if we have UserInfo
-                RequirePasswordChange = user.RequirePasswordChange,
-                RoleNames = new List<string>(user.Roles ?? Array.Empty<string>()),
-                Permissions = permissions?.ToList() ?? new List<string>(),
-                CreatedOn = DateTime.UtcNow,
-                UpdatedOn = DateTime.UtcNow
-            };
-        }
-
-        private static UserDto MapSuperAdminToUserDto(SuperAdminDto admin, string[]? permissions = null)
+        private static UserDto MapSuperAdminToUserDto(
+            SuperAdminDto? admin,
+            string[]? permissions = null)
         {
             if (admin == null) return null!;
 
@@ -341,7 +379,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                 Email = admin.Email,
                 FirstName = admin.FirstName,
                 LastName = admin.LastName,
-                SchoolId = Guid.Empty, // SuperAdmin has no tenant
+                SchoolId = Guid.Empty,
                 SchoolName = "SuperAdmin",
                 IsActive = true,
                 IsEmailVerified = true,
@@ -349,11 +387,10 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                 RoleNames = new List<string> { "SuperAdmin" },
                 Permissions = permissions?.ToList() ?? new List<string>(),
                 CreatedOn = DateTime.UtcNow,
-                UpdatedOn = DateTime.UtcNow
+                UpdatedOn = DateTime.UtcNow,
             };
         }
 
-        // Additional mapping method for UserManagementDto to UserDto if needed
         private static UserDto MapUserManagementToUserDto(UserManagementDto userManagement)
         {
             if (userManagement == null) return null!;
@@ -371,12 +408,12 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                 IsActive = userManagement.IsActive,
                 IsEmailVerified = userManagement.IsEmailVerified,
                 RequirePasswordChange = userManagement.RequirePasswordChange,
-                RoleNames = userManagement.Roles?.Select(r => r.Name).ToList() ?? new List<string>(),
-                Permissions = new List<string>(), // Add permissions if available in userManagement
+                RoleNames = userManagement.Roles?.Select(r => r.Name).ToList()
+                                            ?? new List<string>(),
+                Permissions = new List<string>(),
                 CreatedOn = userManagement.CreatedOn,
-                UpdatedOn = userManagement.UpdatedOn
+                UpdatedOn = userManagement.UpdatedOn,
             };
         }
-        #endregion
     }
 }

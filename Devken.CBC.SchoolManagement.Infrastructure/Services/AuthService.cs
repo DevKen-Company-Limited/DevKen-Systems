@@ -8,7 +8,6 @@ using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
 using Devken.CBC.SchoolManagement.Domain.Enums;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF;
 using Devken.CBC.SchoolManagement.Infrastructure.Security;
-using Devken.CBC.SchoolManagement.Infrastructure.Services.Email;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
@@ -66,7 +65,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
                 if (await _context.Schools.AnyAsync(s => s.SlugName == request.SchoolSlug) ||
                     await _context.Users.AnyAsync(u => u.Email == request.AdminEmail))
                 {
-                    _logger.LogWarning("School registration failed: Slug or Email exists.");
+                    _logger.LogWarning("School registration failed: Slug or Email already exists.");
                     return null;
                 }
 
@@ -101,7 +100,12 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
                 _context.Users.Add(user);
                 await _context.SaveChangesAsync();
 
-                _context.UserRoles.Add(new UserRole { Id = Guid.NewGuid(), UserId = user.Id, RoleId = roleId });
+                _context.UserRoles.Add(new UserRole
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = user.Id,
+                    RoleId = roleId,
+                });
                 await _context.SaveChangesAsync();
 
                 await _subscriptionSeedService.SeedTrialSubscriptionAsync(school.Id);
@@ -110,11 +114,21 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
                 var roles = new List<string> { "SchoolAdmin" };
                 var accessToken = _jwtService.GenerateToken(user, roles, permissions, school.Id);
                 var refreshToken = await GenerateAndStoreRefreshTokenAsync(user.Id);
+
                 await tx.CommitAsync();
 
-                return new RegisterSchoolResponse(school.Id, accessToken, refreshToken,
-                    new UserDto(user.Id, user.Email, $"{user.FirstName} {user.LastName}".Trim(),
-                        school.Id, school.Name, [.. roles], [.. permissions], user.RequirePasswordChange));
+                // Send welcome email after successful registration (fire-and-forget — don't fail
+                // the registration if the email bounces; just log the error)
+                _ = SendWelcomeEmailSafeAsync(user.Email, user.FirstName);
+
+                return new RegisterSchoolResponse(
+                    school.Id, accessToken, refreshToken,
+                    new UserDto(
+                        user.Id, user.Email,
+                        $"{user.FirstName} {user.LastName}".Trim(),
+                        school.Id, school.Name,
+                        [.. roles], [.. permissions],
+                        user.RequirePasswordChange));
             }
             catch (Exception ex)
             {
@@ -160,14 +174,15 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
                 _logger.LogInformation("[Login] Password rehashed for '{Email}'.", user.Email);
             }
 
-            return await BuildLoginResponseAsync(user, user.TenantId, user.Tenant?.Name ?? string.Empty, ipAddress);
+            return await BuildLoginResponseAsync(
+                user, user.TenantId, user.Tenant?.Name ?? string.Empty, ipAddress);
         }
 
         // ─── SSO LOGIN ────────────────────────────────────────────────────────
 
         /// <summary>
         /// Issues an access + refresh token pair for a user who was authenticated
-        /// by an external SSO provider.  The caller (SsoController) is responsible
+        /// by an external SSO provider. The caller (SsoController) is responsible
         /// for validating the provider's id_token before invoking this method.
         /// </summary>
         public async Task<LoginResponse?> LoginSsoAsync(Guid userId, Guid tenantId)
@@ -176,7 +191,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
 
             var user = await _context.Users
                 .Include(u => u.Tenant)
-                .FirstOrDefaultAsync(u => u.Id == userId && u.TenantId == tenantId && u.IsActive);
+                .FirstOrDefaultAsync(u =>
+                    u.Id == userId && u.TenantId == tenantId && u.IsActive);
 
             if (user == null)
             {
@@ -184,15 +200,12 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
                 return null;
             }
 
-            return await BuildLoginResponseAsync(user, tenantId, user.Tenant?.Name ?? string.Empty);
+            return await BuildLoginResponseAsync(
+                user, tenantId, user.Tenant?.Name ?? string.Empty);
         }
 
         // ─── SHARED RESPONSE BUILDER ──────────────────────────────────────────
 
-        /// <summary>
-        /// Loads roles + permissions, mints tokens, and assembles a LoginResponse.
-        /// Used by both LoginAsync and LoginSsoAsync so the token shape is identical.
-        /// </summary>
         private async Task<LoginResponse> BuildLoginResponseAsync(
             User user,
             Guid schoolId,
@@ -206,7 +219,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
                 .ToListAsync();
 
             if (roles.Count == 0)
-                _logger.LogWarning("[Login] WARNING — User '{Email}' has no roles assigned.", user.Email);
+                _logger.LogWarning(
+                    "[Login] WARNING — User '{Email}' has no roles assigned.", user.Email);
 
             var accessToken = _jwtService.GenerateToken(user, roles, permissions, schoolId);
             var refreshToken = await GenerateAndStoreRefreshTokenAsync(user.Id, ipAddress);
@@ -227,36 +241,34 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
                     schoolName,
                     [.. roles],
                     [.. permissions],
-                    user.RequirePasswordChange
-                )
-            );
+                    user.RequirePasswordChange));
         }
 
-        // ─── REFRESH TOKEN ────────────────────────────────────────────────────
+        // ─── SSO SETUP TOKEN ──────────────────────────────────────────────────
+
         public async Task<string> GenerateSsoSetupTokenAsync(Guid userId)
         {
-            // Invalidate any previous unused setup tokens for this user.
+            // Invalidate any previous unused setup tokens for this user
             var existing = await _context.SsoSetupTokens
                 .Where(t => t.UserId == userId && t.ConsumedAt == null)
                 .ToListAsync();
             _context.SsoSetupTokens.RemoveRange(existing);
 
-            // Generate 32 random bytes → URL-safe base64 string.
-            var rawToken = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator
-                .GetBytes(32))
+            // Generate 32 random bytes → URL-safe base64 string
+            var rawToken = Convert.ToBase64String(
+                    RandomNumberGenerator.GetBytes(32))
                 .Replace('+', '-').Replace('/', '_').TrimEnd('=');
 
-            // Store the SHA-256 hash — raw token is never persisted.
+            // Store the SHA-256 hash — raw token is never persisted
             var hash = Convert.ToBase64String(
-                System.Security.Cryptography.SHA256.HashData(
-                    System.Text.Encoding.UTF8.GetBytes(rawToken)));
+                SHA256.HashData(Encoding.UTF8.GetBytes(rawToken)));
 
             _context.SsoSetupTokens.Add(new SsoSetupToken
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
                 TokenHash = hash,
-                ExpiresAt = DateTime.UtcNow.AddMinutes(15),   // short-lived
+                ExpiresAt = DateTime.UtcNow.AddMinutes(15),
                 CreatedAt = DateTime.UtcNow,
             });
 
@@ -268,23 +280,31 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
             return rawToken;
         }
 
+        // ─── SSO OTP — GENERATE ───────────────────────────────────────────────
+
         public async Task<(string RawOtp, string OtpToken)> GenerateSsoOtpAsync(Guid userId)
         {
             // Invalidate any existing unused OTPs for this user
             var existing = await _context.SsoOtpTokens
-                .Where(t => t.UserId == userId && t.ConsumedAt == null && t.ExpiresAt > DateTime.UtcNow)
+                .Where(t => t.UserId == userId
+                         && t.ConsumedAt == null
+                         && t.ExpiresAt > DateTime.UtcNow)
                 .ToListAsync();
 
             foreach (var old in existing)
-                old.ConsumedAt = DateTime.UtcNow;   // mark old ones void
+                old.ConsumedAt = DateTime.UtcNow;
 
-            // Generate 6-digit OTP
+            // Fetch the user so we can address the email correctly
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Id == userId && u.IsActive)
+                ?? throw new InvalidOperationException(
+                    $"User {userId} not found or inactive.");
+
+            // Generate 6-digit OTP + binding token
             var rawOtp = Random.Shared.Next(100_000, 999_999).ToString();
             var otpToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
-                                  .Replace("+", "-").Replace("/", "_").TrimEnd('=');
-
-            var hash = Convert.ToHexString(
-                SHA256.HashData(Encoding.UTF8.GetBytes(rawOtp)));
+                               .Replace("+", "-").Replace("/", "_").TrimEnd('=');
+            var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawOtp)));
 
             _context.SsoOtpTokens.Add(new SsoOtpToken
             {
@@ -298,10 +318,28 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
             });
 
             await _context.SaveChangesAsync();
+
+            // Send via the typed interface method — guaranteed to fire every time
+            try
+            {
+                await _emailService.SendOtpAsync(user.Email, user.FirstName, rawOtp);
+                _logger.LogInformation(
+                    "[SsoOtp] OTP email sent to '{Email}'.", user.Email);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "[SsoOtp] Failed to send OTP email to '{Email}'.", user.Email);
+                throw;
+            }
+
             return (rawOtp, otpToken);
         }
 
-        public async Task<SsoOtpValidationResult> ValidateSsoOtpAsync(string otpToken, string rawOtp)
+        // ─── SSO OTP — VALIDATE ───────────────────────────────────────────────
+
+        public async Task<SsoOtpValidationResult> ValidateSsoOtpAsync(
+            string otpToken, string rawOtp)
         {
             var hash = Convert.ToHexString(
                 SHA256.HashData(Encoding.UTF8.GetBytes(rawOtp)));
@@ -332,9 +370,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
             };
         }
 
+        // ─── SSO OTP — RESEND ─────────────────────────────────────────────────
+
         public async Task<SsoResendOtpResult> ResendSsoOtpAsync(string otpToken)
         {
-            // Find the original record by binding token
             var original = await _context.SsoOtpTokens
                 .Include(t => t.User)
                 .FirstOrDefaultAsync(t => t.BindingToken == otpToken);
@@ -356,24 +395,38 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
             // Consume the old record
             original.ConsumedAt = DateTime.UtcNow;
 
-            // Generate a fresh OTP — reuse the same binding token so Angular
+            // Generate a fresh OTP — reuse the same binding token so the client
             // doesn't need to update sessionStorage
             var rawOtp = Random.Shared.Next(100_000, 999_999).ToString();
-            var hash = Convert.ToHexString(
-                SHA256.HashData(Encoding.UTF8.GetBytes(rawOtp)));
+            var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawOtp)));
 
             _context.SsoOtpTokens.Add(new SsoOtpToken
             {
                 Id = Guid.NewGuid(),
                 UserId = original.UserId,
                 OtpHash = hash,
-                BindingToken = otpToken,          // same token — Angular keeps the same key
+                BindingToken = otpToken,          // same token — client keeps the same key
                 ExpiresAt = DateTime.UtcNow.AddMinutes(5),
                 CreatedAt = DateTime.UtcNow,
                 ConsumedAt = null,
             });
 
             await _context.SaveChangesAsync();
+
+            // Send the fresh OTP via the typed interface method
+            try
+            {
+                await _emailService.SendOtpAsync(
+                    original.User.Email, original.User.FirstName, rawOtp);
+                _logger.LogInformation(
+                    "[SsoOtp] Resend OTP email sent to '{Email}'.", original.User.Email);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "[SsoOtp] Failed to resend OTP email to '{Email}'.", original.User.Email);
+                throw;
+            }
 
             return new SsoResendOtpResult
             {
@@ -384,31 +437,18 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
             };
         }
 
-        public async Task SendSsoOtpEmailAsync(string toEmail, string firstName, string rawOtp)
-        {
-            var subject = "Your Devken CBC verification code";
-            var body = $@"
-        <p>Hi {firstName},</p>
-        <p>Your verification code is:</p>
-        <h1 style='letter-spacing:8px;font-size:36px;font-weight:bold;color:#1e3a8a'>
-            {rawOtp}
-        </h1>
-        <p>This code expires in <strong>5 minutes</strong> and can only be used once.</p>
-        <p>If you did not attempt to sign in, please ignore this email.</p>
-        <p>— Devken CBC Team</p>";
+        // ─── SSO SETUP TOKEN — CONSUME ────────────────────────────────────────
 
-            await _emailService.SendAsync(toEmail, subject, body);
-        }
         /// <summary>
-        /// Validates the raw setup token, sets the user's password, marks the token consumed.
-        /// Returns the UserId + TenantId so the controller can issue a session immediately.
+        /// Validates the raw setup token, sets the user's password, marks the token
+        /// consumed, then sends a welcome email. Returns UserId + TenantId so the
+        /// controller can issue a session immediately.
         /// </summary>
-        public async Task<SsoSetupResult> ConsumeSsoSetupTokenAsync(string rawToken, string newPassword)
+        public async Task<SsoSetupResult> ConsumeSsoSetupTokenAsync(
+            string rawToken, string newPassword)
         {
-            // Hash the incoming raw token and look it up.
             var hash = Convert.ToBase64String(
-                System.Security.Cryptography.SHA256.HashData(
-                    System.Text.Encoding.UTF8.GetBytes(rawToken)));
+                SHA256.HashData(Encoding.UTF8.GetBytes(rawToken)));
 
             var setupToken = await _context.SsoSetupTokens
                 .Include(t => t.User)
@@ -421,20 +461,20 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
             {
                 _logger.LogWarning(
                     "[AuthService] SSO setup token not found, already used, or expired.");
-                return new SsoSetupResult(false, "Invalid or expired setup link. Please sign in with Google again.");
+                return new SsoSetupResult(
+                    false,
+                    "Invalid or expired setup link. Please sign in with Google again.");
             }
 
             var user = setupToken.User;
             if (user == null || !user.IsActive)
-            {
                 return new SsoSetupResult(false, "User not found or deactivated.");
-            }
 
-            // Set the password and clear the "must set password" flag.
+            // Set the password and clear the "must set password" flag
             user.PasswordHash = _passwordHashingService.HashPassword(newPassword);
             user.RequirePasswordChange = false;
 
-            // Consume the token — one-time use only.
+            // Consume the token — one-time use only
             setupToken.ConsumedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -442,12 +482,17 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
             _logger.LogInformation(
                 "[AuthService] SSO password set for UserId: {UserId}", user.Id);
 
+            // Send welcome email (fire-and-forget — don't fail the setup if email bounces)
+            _ = SendWelcomeEmailSafeAsync(user.Email, user.FirstName);
+
             return new SsoSetupResult(true, "Password set successfully.")
             {
                 UserId = user.Id,
                 TenantId = user.TenantId,
             };
         }
+
+        // ─── REFRESH TOKEN ────────────────────────────────────────────────────
 
         public async Task<RefreshTokenResponse?> RefreshTokenAsync(RefreshTokenRequest request)
         {
@@ -477,7 +522,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
             var accessToken = _jwtService.GenerateToken(user, roles, permissions, user.TenantId);
             await _context.SaveChangesAsync();
 
-            return new RefreshTokenResponse(accessToken, newToken, _jwtSettings.AccessTokenLifetimeMinutes * 60);
+            return new RefreshTokenResponse(
+                accessToken, newToken,
+                _jwtSettings.AccessTokenLifetimeMinutes * 60);
         }
 
         // ─── LOGOUT ───────────────────────────────────────────────────────────
@@ -486,7 +533,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
         {
             var token = await _context.RefreshTokens
                 .FirstOrDefaultAsync(t => t.Token == refreshToken && t.RevokedAt == null);
+
             if (token == null) return false;
+
             token.Revoke();
             await _context.SaveChangesAsync();
             return true;
@@ -494,14 +543,18 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
 
         // ─── CHANGE PASSWORD ──────────────────────────────────────────────────
 
-        public async Task<AuthResult> ChangePasswordAsync(Guid userId, Guid? tenantId, ChangePasswordRequest request)
+        public async Task<AuthResult> ChangePasswordAsync(
+            Guid userId, Guid? tenantId, ChangePasswordRequest request)
         {
-            if (tenantId == null) return new AuthResult(false, "Tenant ID is required");
+            if (tenantId == null)
+                return new AuthResult(false, "Tenant ID is required");
 
             var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.Id == userId && u.TenantId == tenantId.Value);
+                .FirstOrDefaultAsync(u =>
+                    u.Id == userId && u.TenantId == tenantId.Value);
 
-            if (user == null) return new AuthResult(false, "User not found");
+            if (user == null)
+                return new AuthResult(false, "User not found");
 
             if (!_passwordHashingService.VerifyPassword(request.CurrentPassword, user.PasswordHash))
                 return new AuthResult(false, "Invalid current password");
@@ -509,7 +562,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
             user.PasswordHash = _passwordHashingService.HashPassword(request.NewPassword);
             user.RequirePasswordChange = false;
 
-            var tokens = await _context.RefreshTokens.Where(t => t.UserId == userId).ToListAsync();
+            // Revoke all existing refresh tokens to force re-login on other devices
+            var tokens = await _context.RefreshTokens
+                .Where(t => t.UserId == userId)
+                .ToListAsync();
             tokens.ForEach(t => t.Revoke());
 
             await _context.SaveChangesAsync();
@@ -518,15 +574,18 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
 
         // ─── SUPER ADMIN LOGIN ────────────────────────────────────────────────
 
-        public async Task<SuperAdminLoginResponse?> SuperAdminLoginAsync(SuperAdminLoginRequest request)
+        public async Task<SuperAdminLoginResponse?> SuperAdminLoginAsync(
+            SuperAdminLoginRequest request)
         {
             var admin = await _context.SuperAdmins
                 .FirstOrDefaultAsync(a => a.Email == request.Email && a.IsActive);
+
             if (admin == null) return null;
 
             if (!_passwordHashingService.VerifyPassword(request.Password, admin.PasswordHash))
                 return null;
 
+            // Opportunistic rehash
             if (_passwordHashingService is BCryptPasswordHashingService bcryptSvc &&
                 bcryptSvc.NeedsRehash(admin.PasswordHash))
             {
@@ -555,16 +614,20 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
                 refreshToken);
         }
 
-        public async Task<RefreshTokenResponse?> SuperAdminRefreshTokenAsync(RefreshTokenRequest request)
+        public async Task<RefreshTokenResponse?> SuperAdminRefreshTokenAsync(
+            RefreshTokenRequest request)
         {
             var old = await _context.SuperAdminRefreshTokens
-                .FirstOrDefaultAsync(t => t.Token == request.RefreshToken && t.RevokedAt == null);
+                .FirstOrDefaultAsync(t =>
+                    t.Token == request.RefreshToken && t.RevokedAt == null);
+
             if (old == null) return null;
 
             old.Revoke();
 
             var admin = await _context.SuperAdmins
                 .FirstOrDefaultAsync(a => a.Id == old.SuperAdminId && a.IsActive);
+
             if (admin == null) return null;
 
             var user = new User
@@ -576,18 +639,25 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
                 TenantId = Guid.Empty,
             };
 
-            var newRefreshToken = await GenerateAndStoreSuperAdminRefreshTokenAsync(admin.Id, old.IpAddress);
-            var accessToken = _jwtService.GenerateToken(user, SuperAdminRoles, SuperAdminPermissions);
+            var newRefreshToken = await GenerateAndStoreSuperAdminRefreshTokenAsync(
+                admin.Id, old.IpAddress);
+            var accessToken = _jwtService.GenerateToken(
+                user, SuperAdminRoles, SuperAdminPermissions);
+
             await _context.SaveChangesAsync();
 
-            return new RefreshTokenResponse(accessToken, newRefreshToken, _jwtSettings.AccessTokenLifetimeMinutes * 60);
+            return new RefreshTokenResponse(
+                accessToken, newRefreshToken,
+                _jwtSettings.AccessTokenLifetimeMinutes * 60);
         }
 
         public async Task<bool> SuperAdminLogoutAsync(string refreshToken)
         {
             var token = await _context.SuperAdminRefreshTokens
                 .FirstOrDefaultAsync(t => t.Token == refreshToken && t.RevokedAt == null);
+
             if (token == null) return false;
+
             token.Revoke();
             await _context.SaveChangesAsync();
             return true;
@@ -607,7 +677,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
                 .ToListAsync();
         }
 
-        private async Task<string> GenerateAndStoreRefreshTokenAsync(Guid userId, string? ipAddress = null)
+        private async Task<string> GenerateAndStoreRefreshTokenAsync(
+            Guid userId, string? ipAddress = null)
         {
             var token = _jwtService.GenerateRefreshToken();
             _context.RefreshTokens.Add(new RefreshToken(
@@ -632,6 +703,125 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services
             });
             await _context.SaveChangesAsync();
             return token;
+        }
+        public async Task<bool> ForgotPasswordAsync(string email, string resetBaseUrl)
+        {
+            // Always return true — never leak whether an email exists
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Email == email && u.IsActive);
+
+            if (user == null)
+            {
+                _logger.LogWarning(
+                    "[ForgotPassword] Request for unknown / inactive email '{Email}'.", email);
+                return true; // silent no-op
+            }
+
+            // Invalidate any previous unused tokens for this user
+            var existing = await _context.PasswordResetTokens
+                .Where(t => t.UserId == user.Id && t.ConsumedAt == null)
+                .ToListAsync();
+            _context.PasswordResetTokens.RemoveRange(existing);
+
+            // Generate a 32-byte cryptographically secure raw token
+            var rawToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
+                               .Replace('+', '-').Replace('/', '_').TrimEnd('=');
+
+            // Persist only the SHA-256 hash — raw token never touches the DB
+            var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawToken)));
+
+            _context.PasswordResetTokens.Add(new PasswordResetToken
+            {
+                UserId = user.Id,
+                TokenHash = hash,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(30),
+                CreatedAt = DateTime.UtcNow,
+            });
+
+            await _context.SaveChangesAsync();
+
+            // Build the full reset link and send it
+            var resetLink = $"{resetBaseUrl.TrimEnd('/')}?token={Uri.EscapeDataString(rawToken)}";
+
+            try
+            {
+                await _emailService.SendPasswordResetAsync(user.Email, user.FirstName, resetLink);
+                _logger.LogInformation(
+                    "[ForgotPassword] Reset email dispatched to '{Email}'.", user.Email);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "[ForgotPassword] Failed to send reset email to '{Email}'.", user.Email);
+                // Re-throw so the controller can return a 500 — a lost reset link is not silent
+                throw;
+            }
+
+            return true;
+        }
+
+        // ─── RESET PASSWORD ───────────────────────────────────────────────────────────
+
+        public async Task<AuthResult> ResetPasswordAsync(string rawToken, string newPassword)
+        {
+            var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawToken)));
+
+            var record = await _context.PasswordResetTokens
+                .Include(t => t.User)
+                .FirstOrDefaultAsync(t =>
+                    t.TokenHash == hash &&
+                    t.ConsumedAt == null &&
+                    t.ExpiresAt > DateTime.UtcNow);
+
+            if (record == null)
+            {
+                _logger.LogWarning("[ResetPassword] Invalid, expired, or already-used token.");
+                return new AuthResult(false, "Invalid or expired reset link. Please request a new one.");
+            }
+
+            var user = record.User;
+            if (user == null || !user.IsActive)
+                return new AuthResult(false, "User not found or deactivated.");
+
+            // Set the new password
+            user.PasswordHash = _passwordHashingService.HashPassword(newPassword);
+            user.RequirePasswordChange = false;
+
+            // Consume the reset token — one-time use
+            record.ConsumedAt = DateTime.UtcNow;
+
+            // Revoke all existing refresh tokens so all other sessions are terminated
+            var tokens = await _context.RefreshTokens
+                .Where(t => t.UserId == user.Id)
+                .ToListAsync();
+            tokens.ForEach(t => t.Revoke());
+
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation(
+                "[ResetPassword] Password reset successfully for '{Email}'.", user.Email);
+
+            return new AuthResult(true);
+        }
+        /// <summary>
+        /// Sends a welcome email without throwing — used as fire-and-forget after
+        /// registration and SSO password setup so a broken SMTP config never blocks
+        /// the user from getting their session.
+        /// </summary>
+        private async Task SendWelcomeEmailSafeAsync(string email, string firstName)
+        {
+            try
+            {
+                await _emailService.SendWelcomeAsync(email, firstName);
+                _logger.LogInformation(
+                    "[AuthService] Welcome email sent to '{Email}'.", email);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "[AuthService] Failed to send welcome email to '{Email}'.", email);
+                // Intentionally not re-thrown — welcome email failure is non-fatal
+            }
         }
     }
 }

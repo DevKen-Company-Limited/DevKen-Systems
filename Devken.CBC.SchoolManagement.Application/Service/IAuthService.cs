@@ -1,4 +1,5 @@
-﻿using Devken.CBC.SchoolManagement.Application.Dtos;
+﻿// Application/Service/IAuthService.cs
+using Devken.CBC.SchoolManagement.Application.Dtos;
 using Devken.CBC.SchoolManagement.Application.DTOs.Identity;
 using System;
 using System.Threading.Tasks;
@@ -7,6 +8,8 @@ namespace Devken.CBC.SchoolManagement.Application.Service
 {
     public interface IAuthService
     {
+        // ─── NESTED RESULT TYPES ──────────────────────────────────────────────
+
         public class SsoOtpValidationResult
         {
             public bool Success { get; set; }
@@ -23,85 +26,127 @@ namespace Devken.CBC.SchoolManagement.Application.Service
             public string Email { get; set; } = string.Empty;
             public string FirstName { get; set; } = string.Empty;
         }
-        // =========================================================
-        // SCHOOL REGISTRATION & AUTH
-        // =========================================================
-        // ── SSO OTP ───────────────────────────────────────────────────────────────────
+
+        // ─── SCHOOL REGISTRATION ──────────────────────────────────────────────
 
         /// <summary>
-        /// Generates a 6-digit OTP, stores its SHA-256 hash in the DB with a 5-minute
-        /// expiry, and returns the raw OTP (for emailing) plus an opaque otpToken
-        /// (for binding the verify-otp call to this user/attempt).
+        /// Registers a new school and its first admin user.
+        /// Seeds permissions, roles, and a trial subscription.
+        /// Sends a welcome email to the admin on success.
         /// </summary>
-        Task<(string RawOtp, string OtpToken)> GenerateSsoOtpAsync(Guid userId);
-
-        /// <summary>
-        /// Validates the otpToken + raw OTP pair.
-        /// Checks: hash match, not expired, not already used.
-        /// Marks the record consumed on success (one-time use).
-        /// </summary>
-        Task<SsoOtpValidationResult> ValidateSsoOtpAsync(string otpToken, string rawOtp);
-
-        /// <summary>
-        /// Invalidates the existing OTP bound to otpToken and generates a fresh one.
-        /// Returns the new raw OTP + the same otpToken reference for the resend email.
-        /// </summary>
-        Task<SsoResendOtpResult> ResendSsoOtpAsync(string otpToken);
-
-        /// <summary>Sends the OTP email using your existing email service.</summary>
-        Task SendSsoOtpEmailAsync(string toEmail, string firstName, string rawOtp);
-        Task<string> GenerateSsoSetupTokenAsync(Guid userId);
-        Task<SsoSetupResult> ConsumeSsoSetupTokenAsync(string rawToken, string newPassword);
         Task<RegisterSchoolResponse?> RegisterSchoolAsync(RegisterSchoolRequest request);
 
-        Task<LoginResponse?> LoginAsync(
-            LoginRequest request,
-            string? ipAddress = null);
+        // ─── EMAIL / PASSWORD LOGIN ───────────────────────────────────────────
 
         /// <summary>
-        /// Refresh access token using refresh token.
-        /// MUST rebuild roles, permissions and tenant (school) context from DB.
+        /// Authenticates a user by email and password.
+        /// Returns an access + refresh token pair on success, null on failure.
         /// </summary>
-        Task<RefreshTokenResponse?> RefreshTokenAsync(RefreshTokenRequest request);
+        Task<LoginResponse?> LoginAsync(LoginRequest request, string? ipAddress = null);
 
-        Task<bool> LogoutAsync(string refreshToken);
-
-        // =========================================================
-        // SSO
-        // =========================================================
+        // ─── SSO LOGIN ────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Issue an access + refresh token pair for a user who was
-        /// already authenticated by an external SSO provider (e.g. Google).
+        /// Issues an access + refresh token pair for a user who was already
+        /// authenticated by an external SSO provider (e.g. Google).
         /// No password check is performed — the caller is responsible for
         /// validating the provider's id_token before calling this method.
         /// </summary>
         Task<LoginResponse?> LoginSsoAsync(Guid userId, Guid tenantId);
 
-        // =========================================================
-        // PASSWORD MANAGEMENT
-        // =========================================================
+        // ─── SSO SETUP TOKEN ──────────────────────────────────────────────────
 
         /// <summary>
-        /// Change password for a user.
-        /// tenantId == schoolId (nullable for SuperAdmin).
+        /// Generates a short-lived (15-minute), one-time setup token for a new
+        /// SSO user who needs to set their initial password.
+        /// Any previously unused setup tokens for this user are invalidated.
+        /// </summary>
+        Task<string> GenerateSsoSetupTokenAsync(Guid userId);
+
+        /// <summary>
+        /// Validates the raw setup token, sets the user's password, marks the
+        /// token consumed (one-time use), and sends a welcome email.
+        /// Returns UserId + TenantId so the controller can issue a session.
+        /// </summary>
+        Task<SsoSetupResult> ConsumeSsoSetupTokenAsync(string rawToken, string newPassword);
+
+        // ─── SSO OTP ──────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Generates a 6-digit OTP, stores its SHA-256 hash in the DB with a
+        /// 5-minute expiry, and sends it to the user's email automatically.
+        /// Returns the raw OTP (for testing/logging only) and an opaque otpToken
+        /// that binds the verify-otp call to this specific user/attempt.
+        /// </summary>
+        Task<(string RawOtp, string OtpToken)> GenerateSsoOtpAsync(Guid userId);
+
+        /// <summary>
+        /// Validates the otpToken + raw OTP pair.
+        /// Checks: hash match, not expired, not already consumed.
+        /// Marks the record consumed on success (one-time use only).
+        /// </summary>
+        Task<SsoOtpValidationResult> ValidateSsoOtpAsync(string otpToken, string rawOtp);
+
+        /// <summary>
+        /// Invalidates the OTP bound to otpToken, generates a fresh one, and
+        /// sends it to the user's email automatically.
+        /// Returns the same otpToken reference so the client session is unchanged.
+        /// </summary>
+        Task<SsoResendOtpResult> ResendSsoOtpAsync(string otpToken);
+
+        // ─── TOKEN MANAGEMENT ─────────────────────────────────────────────────
+
+        /// <summary>
+        /// Exchanges a valid refresh token for a new access + refresh token pair.
+        /// Rebuilds roles, permissions, and tenant (school) context from the DB.
+        /// </summary>
+        Task<RefreshTokenResponse?> RefreshTokenAsync(RefreshTokenRequest request);
+
+        /// <summary>Revokes the given refresh token, ending the user's session.</summary>
+        Task<bool> LogoutAsync(string refreshToken);
+
+        // ─── PASSWORD MANAGEMENT ──────────────────────────────────────────────
+
+        /// <summary>
+        /// Changes the password for an authenticated school user.
+        /// tenantId == schoolId (pass null only for SuperAdmin callers).
+        /// Revokes all existing refresh tokens on success to force re-login
+        /// on other devices.
         /// </summary>
         Task<AuthResult> ChangePasswordAsync(
             Guid userId,
             Guid? tenantId,
             ChangePasswordRequest request);
 
-        // =========================================================
-        // SUPER ADMIN AUTH
-        // =========================================================
+        /// <summary>
+        /// Looks up the user by <paramref name="email"/>, generates a secure
+        /// one-time reset token, persists its SHA-256 hash, and dispatches a
+        /// password-reset email containing a link built from
+        /// <paramref name="resetBaseUrl"/>.
+        /// Always returns <c>true</c> even when the email is not found — callers
+        /// must never reveal whether an address is registered (enumeration guard).
+        /// </summary>
+        Task<bool> ForgotPasswordAsync(string email, string resetBaseUrl);
+
+        /// <summary>
+        /// Validates the raw <paramref name="token"/>, sets the user's new password,
+        /// marks the token consumed (one-time use), and revokes all existing refresh
+        /// tokens so every other active session is terminated.
+        /// </summary>
+        Task<AuthResult> ResetPasswordAsync(string token, string newPassword);
+
+        // ─── SUPER ADMIN AUTH ─────────────────────────────────────────────────
+
+        /// <summary>Authenticates a SuperAdmin by email and password.</summary>
         Task<SuperAdminLoginResponse?> SuperAdminLoginAsync(SuperAdminLoginRequest request);
 
         /// <summary>
-        /// Refresh token for SuperAdmin.
-        /// MUST NOT inject tenant_id into JWT.
+        /// Refreshes a SuperAdmin session.
+        /// Must NOT inject tenant_id into the JWT.
         /// </summary>
         Task<RefreshTokenResponse?> SuperAdminRefreshTokenAsync(RefreshTokenRequest request);
 
+        /// <summary>Revokes the given SuperAdmin refresh token.</summary>
         Task<bool> SuperAdminLogoutAsync(string refreshToken);
     }
 }

@@ -2,6 +2,7 @@ using Devken.CBC.SchoolManagement.API.Diagnostics;
 using Devken.CBC.SchoolManagement.API.Registration;
 using Devken.CBC.SchoolManagement.API.Services;
 using Devken.CBC.SchoolManagement.Application.Service;
+using Devken.CBC.SchoolManagement.Application.Service.Email;
 using Devken.CBC.SchoolManagement.Application.Service.ISubscription;
 using Devken.CBC.SchoolManagement.Infrastructure;
 using Devken.CBC.SchoolManagement.Infrastructure.Data.EF;
@@ -16,7 +17,6 @@ using Microsoft.OpenApi.Models;
 using QuestPDF.Infrastructure;
 using System.Globalization;
 using System.Reflection;
-using System.Text;
 
 StartupErrorHandler.Initialize();
 
@@ -34,9 +34,6 @@ QuestPDF.Settings.License = LicenseType.Community;
 // ══════════════════════════════════════════════════════════════
 // CORS Configuration
 // ══════════════════════════════════════════════════════════════
-// FIX: AllowAnyOrigin() cannot be used with AllowCredentials().
-// If your frontend sends cookies or Authorization headers, you must
-// specify exact origins. Add more origins to the array as needed.
 var angularCorsPolicy = "AngularCors";
 
 var allowedOrigins = builder.Configuration
@@ -45,7 +42,7 @@ var allowedOrigins = builder.Configuration
     ?? new[]
     {
         "https://dev-ken-systems.vercel.app",
-        "http://localhost:4200"
+        "http://localhost:4200",
     };
 
 builder.Services.AddCors(options =>
@@ -53,10 +50,10 @@ builder.Services.AddCors(options =>
     options.AddPolicy(angularCorsPolicy, policy =>
     {
         policy
-            .WithOrigins(allowedOrigins)   // explicit origins only
+            .WithOrigins(allowedOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials()            // required for cookie-based refresh tokens
+            .AllowCredentials()                            // required for cookie-based refresh tokens
             .SetPreflightMaxAge(TimeSpan.FromMinutes(10)); // cache preflight responses
     });
 });
@@ -102,20 +99,18 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "DevKen School Management API",
         Version = "v1",
-        Description = "CBC School Management System API"
+        Description = "CBC School Management System API",
     });
 
-    var securityScheme = new OpenApiSecurityScheme
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
         Type = SecuritySchemeType.Http,
         Scheme = "bearer",
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Enter your JWT token. Do NOT include 'Bearer ' prefix — it will be added automatically."
-    };
-
-    c.AddSecurityDefinition("Bearer", securityScheme);
+        Description = "Enter your JWT token. Do NOT include 'Bearer ' prefix — it will be added automatically.",
+    });
 
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
@@ -125,7 +120,7 @@ builder.Services.AddSwaggerGen(c =>
                 Reference = new OpenApiReference
                 {
                     Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
+                    Id   = "Bearer",
                 }
             },
             Array.Empty<string>()
@@ -139,15 +134,22 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // ══════════════════════════════════════════════════════════════
-// Application Services Registration
+// Application Services Registration  (registered ONCE)
 // ══════════════════════════════════════════════════════════════
 builder.Services.AddApiServices(builder.Configuration);
 builder.Services.AddSchoolManagement(builder.Configuration);
 
 // ══════════════════════════════════════════════════════════════
 // Infrastructure Services
+//
+// ✅ builder.Environment is passed so AddInfrastructure() can use
+//    environment.IsDevelopment() to choose between the dev email
+//    stub (EmailService) and the real SMTP sender (SmtpEmailService).
+//    This is the ONLY reliable way to detect the environment inside
+//    a static extension method — configuration["ASPNETCORE_ENVIRONMENT"]
+//    is not guaranteed to be populated via IConfiguration.
 // ══════════════════════════════════════════════════════════════
-builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 
 // ══════════════════════════════════════════════════════════════
 // Google SSO — Register ValidationSettings with correct audience
@@ -155,15 +157,6 @@ builder.Services.AddInfrastructure(builder.Configuration);
 //  Google id_tokens carry an 'aud' claim equal to your OAuth ClientId.
 //  This is completely separate from JwtSettings.Audience ("devken-cbc-clients")
 //  which is only used for the app's own JWT tokens.
-//
-//  Registering GoogleJsonWebSignature.ValidationSettings as a Singleton:
-//    ✅ Ensures every call to ValidateAsync uses the right ClientId audience
-//    ✅ Fails fast at startup if GOOGLE_CLIENT_ID env-var is missing
-//    ✅ Avoids hard-coding ClientId in service classes
-//
-//  Usage in any service:
-//    Inject GoogleJsonWebSignature.ValidationSettings via constructor,
-//    then: await GoogleJsonWebSignature.ValidateAsync(idToken, _settings);
 // ══════════════════════════════════════════════════════════════
 builder.Services.AddSingleton(_ =>
 {
@@ -180,7 +173,7 @@ builder.Services.AddSingleton(_ =>
 
     return new GoogleJsonWebSignature.ValidationSettings
     {
-        Audience = new[] { googleClientId }
+        Audience = new[] { googleClientId },
     };
 });
 
@@ -192,26 +185,21 @@ builder.Services.AddSingleton(_ =>
 //     throws "Scheme already exists: Bearer" if the same scheme is
 //     registered twice.
 //
-//     Google SSO also does NOT use AddGoogle() OAuth redirect middleware.
+//     Google SSO does NOT use AddGoogle() OAuth redirect middleware.
 //     The SsoController validates Google id_tokens directly via
 //     GoogleJsonWebSignature.ValidateAsync() (Google.Apis.Auth).
-//     Angular gets the id_token from Google's JS SDK and POSTs it to
-//     POST /api/auth/sso/google — no browser redirect or state cookie
-//     involved, so the old AddGoogle() call was causing the
-//     "oauth state was missing or invalid" crash.
 // ══════════════════════════════════════════════════════════════
 
 // ══════════════════════════════════════════════════════════════
 // Culture Configuration
 // ══════════════════════════════════════════════════════════════
 var supportedCultures = new[] { new CultureInfo("en-US") };
-CultureInfo.DefaultThreadCurrentCulture   = supportedCultures[0];
+CultureInfo.DefaultThreadCurrentCulture = supportedCultures[0];
 CultureInfo.DefaultThreadCurrentUICulture = supportedCultures[0];
 
 // ══════════════════════════════════════════════════════════════
-// Build Application
+// Logging Filters  (must be BEFORE builder.Build())
 // ══════════════════════════════════════════════════════════════
-// ── Logging Filters (must be BEFORE builder.Build()) ──────────────
 builder.Logging.AddFilter<ConsoleLoggerProvider>((category, level) =>
 {
     // Suppress noisy client-disconnect exceptions from IIS
@@ -221,11 +209,26 @@ builder.Logging.AddFilter<ConsoleLoggerProvider>((category, level) =>
 });
 
 // ══════════════════════════════════════════════════════════════
-// Application Services Registration
+// Build Application
 // ══════════════════════════════════════════════════════════════
-builder.Services.AddApiServices(builder.Configuration);
-builder.Services.AddSchoolManagement(builder.Configuration);
 var app = builder.Build();
+
+// ══════════════════════════════════════════════════════════════
+// Email Service Diagnostic  — confirms which implementation is active
+// Remove this block once you've confirmed real emails are flowing.
+// ══════════════════════════════════════════════════════════════
+using (var diagScope = app.Services.CreateScope())
+{
+    var emailServiceType = diagScope.ServiceProvider
+        .GetRequiredService<IEmailService>()
+        .GetType()
+        .Name;
+
+    app.Logger.LogInformation(
+        "📧 Email service in use: {Type} (Environment: {Env})",
+        emailServiceType,
+        app.Environment.EnvironmentName);
+}
 
 // ══════════════════════════════════════════════════════════════
 // Database Initialization
@@ -233,7 +236,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    var logger    = app.Logger;
+    var logger = app.Logger;
 
     try
     {
@@ -253,7 +256,8 @@ using (var scope = app.Services.CreateScope())
             }
             else if (!appliedMigrations.Any())
             {
-                logger.LogInformation("No migrations found. Creating database schema from model...");
+                logger.LogInformation(
+                    "No migrations found. Creating database schema from model...");
                 await dbContext.Database.EnsureCreatedAsync();
                 logger.LogInformation("Database schema created successfully.");
             }
@@ -264,7 +268,8 @@ using (var scope = app.Services.CreateScope())
         }
         catch (Exception migEx)
         {
-            logger.LogWarning(migEx, "Migration failed. Attempting EnsureCreated as fallback...");
+            logger.LogWarning(migEx,
+                "Migration failed. Attempting EnsureCreated as fallback...");
             await dbContext.Database.EnsureCreatedAsync();
             logger.LogInformation("Database schema created via EnsureCreated fallback.");
         }
@@ -309,31 +314,30 @@ using (var scope = app.Services.CreateScope())
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "A critical error occurred during database initialization.");
+        logger.LogError(ex,
+            "A critical error occurred during database initialization.");
         throw;
     }
 }
 
 // ══════════════════════════════════════════════════════════════
 // Middleware Pipeline
+//
+// ORDER MATTERS — CORS must be first so every response (including
+// 401/403 from auth middleware) carries CORS headers. Without this
+// the browser reports a misleading "CORS error" instead of the
+// actual status code.
 // ══════════════════════════════════════════════════════════════
-// IMPORTANT: Order matters. CORS must come first — before any
-// middleware that can produce a response (auth, pipeline, etc.).
-// If auth middleware runs first, a 401 is returned without CORS
-// headers, causing the browser to report a "CORS error" instead
-// of the actual 401.
-// ──────────────────────────────────────────────────────────────
 
-// 1. CORS — must be first so ALL responses include CORS headers,
-//    including 401/403 errors returned by downstream middleware.
+// 1. CORS
 app.UseCors(angularCorsPolicy);
 
-// 2. Static files (single registration — FIX: was registered 3×)
+// 2. Static files
 app.UseStaticFiles();
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(uploadsPath),
-    RequestPath  = "/uploads"
+    RequestPath = "/uploads",
 });
 
 // 3. Request localization
@@ -341,7 +345,7 @@ app.UseRequestLocalization(new RequestLocalizationOptions
 {
     DefaultRequestCulture = new RequestCulture("en-US"),
     SupportedCultures = new List<CultureInfo> { new CultureInfo("en-US") },
-    SupportedUICultures = new List<CultureInfo> { new CultureInfo("en-US") }
+    SupportedUICultures = new List<CultureInfo> { new CultureInfo("en-US") },
 });
 
 // 4. Swagger (available in all environments for deployed API testing)
@@ -349,18 +353,15 @@ app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "DevKen School Management API v1");
-    // Dev: serve at root (/), Production: serve at /swagger
     c.RoutePrefix = app.Environment.IsDevelopment() ? string.Empty : "swagger";
     c.DocumentTitle = "DevKen School Management API";
     c.DisplayRequestDuration();
 });
 
 // 5. Custom API pipeline (exception handling, logging, etc.)
-//    NOTE: If UseApiPipeline() internally calls UseAuthentication() or
-//    UseAuthorization(), remove those calls below to avoid double registration.
 app.UseApiPipeline();
 
-// 6. Authentication & Authorization
+// 6. Authentication → Tenant resolution → Authorization
 app.UseAuthentication();
 app.UseMiddleware<TenantMiddleware>();
 app.UseAuthorization();
@@ -392,7 +393,6 @@ if (builder.Environment.IsDevelopment())
             ex, "Failed to launch Angular development server. Start it manually.");
     }
 }
-
 
 // ══════════════════════════════════════════════════════════════
 // Startup Logging
