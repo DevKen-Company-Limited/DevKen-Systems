@@ -154,6 +154,8 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             Items = new[]
             {
                 new NavItem("books",           "Books",           "heroicons_outline:book-open",                "/library/books",                PermissionKeys.BookRead),
+                new NavItem("book-copies",      "Book Copies",      "heroicons_outline:document-duplicate",       "/library/book-copies",       PermissionKeys.BookRead),
+                new NavItem("book-inventory",   "Book Inventory",   "heroicons_outline:clipboard-document-list",  "/library/book-inventory",    PermissionKeys.LibraryRead),
                 new NavItem("library-branches","Library Branches","heroicons_outline:map-pin",                  "/library/library-branches",      PermissionKeys.LibraryRead),
                 new NavItem("book-authors",    "Authors",         "heroicons_outline:user",                     "/library/authors",      PermissionKeys.LibraryRead),
                 new NavItem("book-categories", "Categories",      "heroicons_outline:tag",                      "/library/categories",   PermissionKeys.LibraryRead),

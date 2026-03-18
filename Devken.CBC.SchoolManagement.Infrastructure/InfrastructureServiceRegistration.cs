@@ -371,8 +371,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IBookAuthorRepository, BookAuthorRepository>();
             services.AddScoped<IBookCategoryRepository, BookCategoryRepository>();
             services.AddScoped<IBookPublisherRepository, BookPublisherRepository>();
-            services.AddScoped<IBookService, BookService>();
-            services.AddScoped<ILibraryBranchService, LibraryBranchService>();
+            services.AddScoped<IBookRepository, BookRepository>();
+            services.AddScoped<ILibraryBranchRepository, LibraryBranchRepository>();
+            services.AddScoped<IBookCopyRepository, BookCopyRepository>();
+            services.AddScoped<IBookInventoryRepository, BookInventoryRepository>();
 
             // ── Application Services ─────────────────────────────────────────
 
@@ -380,6 +382,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IBookAuthorService, BookAuthorService>();
             services.AddScoped<IBookCategoryService, BookCategoryService>();
             services.AddScoped<IBookPublisherService, BookPublisherService>();
+            services.AddScoped<IBookService, BookService>();
+            services.AddScoped<ILibraryBranchService, LibraryBranchService>();
+            services.AddScoped<IBookCopyService, BookCopyService>();
+            services.AddScoped<IBookInventoryService, BookInventoryService>();
 
             // Academic services
             services.AddScoped<IStudentService, StudentService>();

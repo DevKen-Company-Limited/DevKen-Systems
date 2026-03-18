@@ -1,0 +1,123 @@
+<div class="absolute inset-0 flex min-w-0 flex-col overflow-y-auto" cdkScrollable>
+
+  <!-- Page Header -->
+  <app-page-header
+    title="Book Inventory"
+    description="Track copy counts, availability and losses across all books"
+    icon="inventory"
+    [breadcrumbs]="breadcrumbs"
+    [actionTemplate]="headerActions">
+  </app-page-header>
+
+  <ng-template #headerActions>
+    <button mat-flat-button
+      class="bg-white text-violet-700 hover:bg-yellow-200 hover:text-violet-900 shadow-lg transition-all font-bold"
+      (click)="openCreate()">
+      <mat-icon class="icon-size-5">add</mat-icon>
+      <span class="ml-2">Create Record</span>
+    </button>
+  </ng-template>
+
+  <!-- Main Content -->
+  <div class="bg-card -mt-10 flex-auto rounded-t-2xl p-6 shadow sm:p-10">
+
+    <app-stats-cards [cards]="statsCards" [columns]="4"></app-stats-cards>
+
+    <div class="mb-6">
+      <app-filter-panel
+        [fields]="filterFields"
+        [showPanel]="showFilterPanel"
+        [columns]="3"
+        (filterChange)="onFilterChange($event)"
+        (clearAll)="onClearFilters()"
+        (togglePanel)="toggleFilterPanel()">
+      </app-filter-panel>
+    </div>
+
+    <app-data-table
+      [columns]="tableColumns"
+      [data]="paginatedData"
+      [actions]="tableActions"
+      [loading]="isLoading"
+      [header]="tableHeader"
+      [emptyState]="tableEmptyState"
+      [cellTemplates]="cellTemplates">
+    </app-data-table>
+
+    <app-pagination
+      *ngIf="!isLoading"
+      [currentPage]="currentPage"
+      [totalItems]="filteredData.length"
+      [itemsPerPage]="itemsPerPage"
+      [itemLabel]="'records'"
+      [showItemsPerPageSelector]="true"
+      [showPageNumbers]="true"
+      (pageChange)="onPageChange($event)"
+      (itemsPerPageChange)="onItemsPerPageChange($event)">
+    </app-pagination>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- Cell Templates                                                        -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+
+<!-- Book Cell -->
+<ng-template #bookCell let-row>
+  <div class="min-w-0">
+    <p class="text-sm font-semibold text-gray-900 dark:text-white truncate max-w-[200px]">
+      {{ row.bookTitle }}
+    </p>
+    <p class="text-xs text-gray-400 font-mono">{{ row.bookISBN }}</p>
+    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+      {{ row.authorName }}
+      <span *ngIf="row.categoryName" class="ml-1 text-violet-500">· {{ row.categoryName }}</span>
+    </p>
+  </div>
+</ng-template>
+
+<!-- Counts Cell -->
+<ng-template #countsCell let-row>
+  <div class="flex flex-col items-center gap-1 text-xs">
+    <div class="grid grid-cols-2 gap-x-4 gap-y-0.5 text-center">
+      <span class="text-gray-500">Total</span>
+      <span class="font-bold text-gray-900 dark:text-white">{{ row.totalCopies }}</span>
+
+      <span class="text-green-600">Avail.</span>
+      <span class="font-semibold text-green-700 dark:text-green-400">{{ row.availableCopies }}</span>
+
+      <span class="text-blue-600">Borrowed</span>
+      <span class="font-semibold text-blue-700 dark:text-blue-400">{{ row.borrowedCopies }}</span>
+
+      <span class="text-red-500">Lost</span>
+      <span class="font-semibold text-red-700 dark:text-red-400">{{ row.lostCopies }}</span>
+
+      <span class="text-amber-500">Damaged</span>
+      <span class="font-semibold text-amber-700 dark:text-amber-400">{{ row.damagedCopies }}</span>
+    </div>
+  </div>
+</ng-template>
+
+<!-- Availability Cell -->
+<ng-template #availabilityCell let-row>
+  <div class="flex flex-col items-center gap-1.5 min-w-[80px]">
+    <span class="text-sm font-bold" [ngClass]="getAvailabilityTextColor(row.availabilityPercentage)">
+      {{ row.availabilityPercentage }}%
+    </span>
+    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+      <div class="h-1.5 rounded-full transition-all duration-500"
+        [ngClass]="getAvailabilityColor(row.availabilityPercentage)"
+        [style.width.%]="row.availabilityPercentage">
+      </div>
+    </div>
+    <span class="text-xs text-gray-500">available</span>
+  </div>
+</ng-template>
+
+<!-- School Cell (SuperAdmin only) -->
+<ng-template #schoolCell let-row>
+  <div class="flex items-center gap-2">
+    <mat-icon class="icon-size-4 text-violet-600 dark:text-violet-400">school</mat-icon>
+    <span class="text-sm text-gray-700 dark:text-gray-300">{{ row.schoolName || '—' }}</span>
+  </div>
+</ng-template>

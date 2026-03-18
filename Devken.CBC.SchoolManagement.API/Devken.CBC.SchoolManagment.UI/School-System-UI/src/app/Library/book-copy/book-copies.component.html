@@ -1,0 +1,121 @@
+<div class="absolute inset-0 flex min-w-0 flex-col overflow-y-auto" cdkScrollable>
+
+  <!-- Page Header -->
+  <app-page-header
+    title="Book Copies"
+    description="Manage physical copies of library books"
+    icon="library_add"
+    [breadcrumbs]="breadcrumbs"
+    [actionTemplate]="headerActions">
+  </app-page-header>
+
+  <ng-template #headerActions>
+    <button mat-flat-button
+      class="bg-white text-teal-700 hover:bg-yellow-200 hover:text-teal-900 shadow-lg transition-all font-bold"
+      (click)="openCreate()">
+      <mat-icon class="icon-size-5">add</mat-icon>
+      <span class="ml-2">Add Copy</span>
+    </button>
+  </ng-template>
+
+  <!-- Main Content -->
+  <div class="bg-card -mt-10 flex-auto rounded-t-2xl p-6 shadow sm:p-10">
+
+    <app-stats-cards [cards]="statsCards" [columns]="4"></app-stats-cards>
+
+    <div class="mb-6">
+      <app-filter-panel
+        [fields]="filterFields"
+        [showPanel]="showFilterPanel"
+        [columns]="4"
+        (filterChange)="onFilterChange($event)"
+        (clearAll)="onClearFilters()"
+        (togglePanel)="toggleFilterPanel()">
+      </app-filter-panel>
+    </div>
+
+    <app-data-table
+      [columns]="tableColumns"
+      [data]="paginatedData"
+      [actions]="tableActions"
+      [loading]="isLoading"
+      [header]="tableHeader"
+      [emptyState]="tableEmptyState"
+      [cellTemplates]="cellTemplates">
+    </app-data-table>
+
+    <app-pagination
+      *ngIf="!isLoading"
+      [currentPage]="currentPage"
+      [totalItems]="filteredData.length"
+      [itemsPerPage]="itemsPerPage"
+      [itemLabel]="'copies'"
+      [showItemsPerPageSelector]="true"
+      [showPageNumbers]="true"
+      (pageChange)="onPageChange($event)"
+      (itemsPerPageChange)="onItemsPerPageChange($event)">
+    </app-pagination>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- Cell Templates                                                        -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+
+<!-- Copy Cell -->
+<ng-template #copyCell let-row>
+  <div class="flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl flex items-center justify-center
+                bg-gradient-to-br from-cyan-100 to-teal-100
+                border border-cyan-200 dark:border-cyan-800 flex-shrink-0">
+      <mat-icon class="text-cyan-600 dark:text-cyan-400 icon-size-5">library_add</mat-icon>
+    </div>
+    <div class="min-w-0">
+      <p class="text-sm font-semibold text-gray-900 dark:text-white font-mono">
+        {{ row.accessionNumber }}
+      </p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">{{ row.barcode }}</p>
+    </div>
+  </div>
+</ng-template>
+
+<!-- Book Cell -->
+<ng-template #bookCell let-row>
+  <div class="min-w-0">
+    <p class="text-sm font-semibold text-gray-900 dark:text-white truncate max-w-[180px]">
+      {{ row.bookTitle || '—' }}
+    </p>
+    <p class="text-xs text-gray-400 font-mono">{{ row.bookISBN }}</p>
+  </div>
+</ng-template>
+
+<!-- Branch Cell -->
+<ng-template #branchCell let-row>
+  <div class="flex items-center gap-2">
+    <mat-icon class="icon-size-4 text-teal-600 dark:text-teal-400">store</mat-icon>
+    <span class="text-sm text-gray-700 dark:text-gray-300">{{ row.libraryBranchName || '—' }}</span>
+  </div>
+</ng-template>
+
+<!-- School Cell (SuperAdmin only) -->
+<ng-template #schoolCell let-row>
+  <div class="flex items-center gap-2">
+    <mat-icon class="icon-size-4 text-violet-600 dark:text-violet-400">school</mat-icon>
+    <span class="text-sm text-gray-700 dark:text-gray-300">{{ row.schoolName || '—' }}</span>
+  </div>
+</ng-template>
+
+<!-- Status Cell -->
+<ng-template #statusCell let-row>
+  <div class="flex flex-col items-center gap-1.5">
+    <span class="px-2.5 py-1 rounded-full text-xs font-semibold inline-flex items-center gap-1"
+      [ngClass]="getStatusColor(row.status)">
+      <mat-icon class="icon-size-3">{{ getStatusIcon(row.status) }}</mat-icon>
+      {{ row.status }}
+    </span>
+    <span class="px-2 py-0.5 rounded-full text-xs font-medium"
+      [ngClass]="getConditionColor(row.condition)">
+      {{ row.condition }}
+    </span>
+  </div>
+</ng-template>

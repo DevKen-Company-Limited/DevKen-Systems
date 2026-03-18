@@ -70,6 +70,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         private readonly Lazy<IBookPublisherRepository> _bookPublisherRepository;
         private readonly Lazy<IBookRepository> _bookRepository;
         private readonly Lazy<ILibraryBranchRepository> _libraryBranchRepository;
+        private readonly Lazy<IBookCopyRepository> _bookCopyRepository;
+        private readonly Lazy<IBookInventoryRepository> _bookInventoryRepository;
 
         // ── Identity ─────────────────────────────────────────────────────────
         private readonly Lazy<IUserRepository> _userRepository;
@@ -159,6 +161,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
                 () => new BookRepository(_context, _tenantContext));
             _libraryBranchRepository = new Lazy<ILibraryBranchRepository>(
                 () => new LibraryBranchRepository(_context, _tenantContext));
+            _bookCopyRepository = new Lazy<IBookCopyRepository>(
+                () => new BookCopyRepository(_context, _tenantContext));
+            _bookInventoryRepository = new Lazy<IBookInventoryRepository>(
+                () => new BookInventoryRepository(_context, _tenantContext));
 
             // Identity
             _userRepository = new Lazy<IUserRepository>(
@@ -226,6 +232,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         public IBookPublisherRepository BookPublisher => _bookPublisherRepository.Value;
         public IBookRepository Book => _bookRepository.Value;
         public ILibraryBranchRepository LibraryBranch => _libraryBranchRepository.Value;
+        public IBookCopyRepository BookCopy => _bookCopyRepository.Value;
+        public IBookInventoryRepository BookInventory => _bookInventoryRepository.Value;
+
 
         // ── Identity Properties ──────────────────────────────────────────────
         public IUserRepository User => _userRepository.Value;

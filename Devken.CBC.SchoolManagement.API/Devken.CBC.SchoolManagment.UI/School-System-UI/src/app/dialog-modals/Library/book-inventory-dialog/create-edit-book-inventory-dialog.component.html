@@ -1,0 +1,168 @@
+<!-- Dialog Header -->
+<div class="bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 relative overflow-hidden rounded-t-xl px-6 py-5">
+  <div class="absolute inset-0 opacity-10 pointer-events-none">
+    <div class="absolute top-0 right-0 w-32 h-32 bg-yellow-200 rounded-full blur-2xl"></div>
+    <div class="absolute bottom-0 left-0 w-40 h-40 bg-cyan-300 rounded-full blur-2xl"></div>
+  </div>
+
+  <div class="relative z-10 flex items-center gap-3 pr-10">
+    <div class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center shrink-0">
+      <mat-icon class="text-white icon-size-6">{{ isEditMode ? 'edit' : 'inventory' }}</mat-icon>
+    </div>
+    <div>
+      <h2 class="text-xl font-bold text-white m-0 leading-tight">{{ dialogTitle }}</h2>
+      <p class="text-white/80 text-sm mt-0.5 mb-0">{{ dialogSubtitle }}</p>
+    </div>
+  </div>
+
+  <button mat-icon-button
+    class="close-btn absolute top-3 right-3 text-white z-20"
+    (click)="onCancel()"
+    matTooltip="Close">
+    <mat-icon>close</mat-icon>
+  </button>
+</div>
+
+<!-- Loading Overlay -->
+<div *ngIf="isLoading"
+  class="absolute inset-0 bg-white/98 dark:bg-gray-900/98 z-50 flex items-center justify-center backdrop-blur-sm">
+  <div class="text-center p-8">
+    <mat-spinner diameter="48"></mat-spinner>
+    <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mt-3">Loading...</p>
+  </div>
+</div>
+
+<!-- Form -->
+<form [formGroup]="form" (ngSubmit)="onSubmit()" mat-dialog-content class="p-4">
+
+  <!-- Validation Summary -->
+  <div *ngIf="formSubmitted && (form.invalid || sumExceedsTotal)"
+    class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg">
+    <div class="flex items-center gap-2 text-red-800 dark:text-red-200">
+      <mat-icon class="icon-size-5">error_outline</mat-icon>
+      <span class="font-medium">Please fix the following errors:</span>
+    </div>
+    <ul class="mt-1 ml-6 text-sm text-red-700 dark:text-red-300 list-disc">
+      <li *ngIf="form.get('schoolId')?.hasError('required')">School is required</li>
+      <li *ngIf="form.get('bookId')?.hasError('required')">Book is required</li>
+      <li *ngIf="sumExceedsTotal">
+        Sum of available + borrowed + lost + damaged ({{ copiesSum }})
+        cannot exceed total copies ({{ form.get('totalCopies')?.value || 0 }})
+      </li>
+    </ul>
+  </div>
+
+  <!-- School (SuperAdmin Only) -->
+  <div *ngIf="isSuperAdmin" class="mb-4">
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>School <span class="text-red-500">*</span></mat-label>
+      <mat-select formControlName="schoolId" placeholder="Select school">
+        <mat-option [value]="null">— Select School —</mat-option>
+        <mat-option *ngFor="let school of schools" [value]="school.id">
+          {{ school.name }}{{ school.code ? ' (' + school.code + ')' : '' }}
+        </mat-option>
+      </mat-select>
+      <mat-icon matPrefix>business</mat-icon>
+      <mat-error>{{ getFieldError('schoolId') }}</mat-error>
+    </mat-form-field>
+  </div>
+
+  <!-- Book -->
+  <mat-form-field appearance="outline" class="w-full mb-4">
+    <mat-label>Book <span class="text-red-500">*</span></mat-label>
+    <mat-select formControlName="bookId" placeholder="Select book"
+      [disabled]="isEditMode">
+      <mat-option [value]="null">— Select Book —</mat-option>
+      <mat-option *ngFor="let book of filteredBooks" [value]="book.id">
+        {{ book.title }} ({{ book.isbn }})
+      </mat-option>
+    </mat-select>
+    <mat-icon matPrefix>menu_book</mat-icon>
+    <mat-hint *ngIf="isSuperAdmin && !form.get('schoolId')?.value" class="text-amber-600">
+      Select a school first
+    </mat-hint>
+    <mat-hint *ngIf="isEditMode">Book cannot be changed after creation</mat-hint>
+    <mat-error>{{ getFieldError('bookId') }}</mat-error>
+  </mat-form-field>
+
+  <!-- Counts info banner -->
+  <div class="mb-4 p-3 rounded-lg flex items-start gap-2 text-sm"
+    [ngClass]="{
+      'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300': !sumExceedsTotal,
+      'bg-red-50  dark:bg-red-900/20  border border-red-200  dark:border-red-800  text-red-800  dark:text-red-300':  sumExceedsTotal
+    }">
+    <mat-icon class="icon-size-5 shrink-0 mt-0.5">
+      {{ sumExceedsTotal ? 'error_outline' : 'info' }}
+    </mat-icon>
+    <span>
+      Sum of sub-counts:
+      <strong>{{ copiesSum }}</strong> /
+      Total: <strong>{{ form.get('totalCopies')?.value || 0 }}</strong>
+      <span *ngIf="sumExceedsTotal" class="font-semibold"> — exceeds total!</span>
+    </span>
+  </div>
+
+  <!-- Counts Grid -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+    <!-- Total Copies -->
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>Total Copies <span class="text-red-500">*</span></mat-label>
+      <input matInput type="number" formControlName="totalCopies" min="0" />
+      <mat-icon matPrefix>library_books</mat-icon>
+      <mat-hint>Total physical copies registered</mat-hint>
+      <mat-error>{{ getFieldError('totalCopies') }}</mat-error>
+    </mat-form-field>
+
+    <!-- Available Copies -->
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>Available Copies <span class="text-red-500">*</span></mat-label>
+      <input matInput type="number" formControlName="availableCopies" min="0" />
+      <mat-icon matPrefix class="text-green-600">check_circle</mat-icon>
+      <mat-hint>Copies ready for borrowing</mat-hint>
+      <mat-error>{{ getFieldError('availableCopies') }}</mat-error>
+    </mat-form-field>
+
+    <!-- Borrowed Copies -->
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>Borrowed Copies <span class="text-red-500">*</span></mat-label>
+      <input matInput type="number" formControlName="borrowedCopies" min="0" />
+      <mat-icon matPrefix class="text-blue-600">assignment_return</mat-icon>
+      <mat-hint>Copies currently borrowed</mat-hint>
+      <mat-error>{{ getFieldError('borrowedCopies') }}</mat-error>
+    </mat-form-field>
+
+    <!-- Lost Copies -->
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>Lost Copies <span class="text-red-500">*</span></mat-label>
+      <input matInput type="number" formControlName="lostCopies" min="0" />
+      <mat-icon matPrefix class="text-red-600">help_outline</mat-icon>
+      <mat-hint>Copies reported as lost</mat-hint>
+      <mat-error>{{ getFieldError('lostCopies') }}</mat-error>
+    </mat-form-field>
+
+    <!-- Damaged Copies -->
+    <mat-form-field appearance="outline" class="w-full md:col-span-2">
+      <mat-label>Damaged Copies <span class="text-red-500">*</span></mat-label>
+      <input matInput type="number" formControlName="damagedCopies" min="0" />
+      <mat-icon matPrefix class="text-amber-600">warning</mat-icon>
+      <mat-hint>Copies too damaged to use</mat-hint>
+      <mat-error>{{ getFieldError('damagedCopies') }}</mat-error>
+    </mat-form-field>
+
+  </div>
+</form>
+
+<!-- Dialog Actions -->
+<div mat-dialog-actions class="flex justify-end gap-3 px-4 pb-4">
+  <button mat-button type="button" (click)="onCancel()" [disabled]="isSaving">Cancel</button>
+  <button mat-flat-button color="primary" type="button" (click)="onSubmit()"
+    [disabled]="isSaving || sumExceedsTotal"
+    class="bg-gradient-to-r from-violet-600 to-purple-600 text-white min-w-28">
+    <mat-spinner *ngIf="isSaving" diameter="18" class="mr-2 inline-block"></mat-spinner>
+    <mat-icon *ngIf="!isSaving" class="icon-size-5 mr-1">
+      {{ isEditMode ? 'save' : 'check_circle' }}
+    </mat-icon>
+    {{ isSaving ? 'Saving...' : (isEditMode ? 'Update' : 'Create Record') }}
+  </button>
+</div>
