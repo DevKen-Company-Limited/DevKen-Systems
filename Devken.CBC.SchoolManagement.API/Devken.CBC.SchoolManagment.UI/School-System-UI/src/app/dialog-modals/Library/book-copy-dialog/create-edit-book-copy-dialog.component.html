@@ -1,0 +1,228 @@
+<!-- Dialog Header -->
+<div class="bg-gradient-to-r from-cyan-600 via-teal-600 to-emerald-600 relative overflow-hidden rounded-t-xl px-6 py-5">
+  <div class="absolute inset-0 opacity-10 pointer-events-none">
+    <div class="absolute top-0 right-0 w-32 h-32 bg-yellow-200 rounded-full blur-2xl"></div>
+    <div class="absolute bottom-0 left-0 w-40 h-40 bg-blue-300 rounded-full blur-2xl"></div>
+  </div>
+
+  <div class="relative z-10 flex items-center gap-3 pr-10">
+    <div class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center shrink-0">
+      <mat-icon class="text-white icon-size-6">{{ isEditMode ? 'edit' : 'library_add' }}</mat-icon>
+    </div>
+    <div>
+      <h2 class="text-xl font-bold text-white m-0 leading-tight">{{ dialogTitle }}</h2>
+      <p class="text-white/80 text-sm mt-0.5 mb-0">{{ dialogSubtitle }}</p>
+    </div>
+  </div>
+
+  <button mat-icon-button
+    class="close-btn absolute top-3 right-3 text-white z-20"
+    (click)="onCancel()"
+    matTooltip="Close">
+    <mat-icon>close</mat-icon>
+  </button>
+</div>
+
+<!-- Loading Overlay -->
+<div *ngIf="isLoading"
+  class="absolute inset-0 bg-white/98 dark:bg-gray-900/98 z-50 flex items-center justify-center backdrop-blur-sm">
+  <div class="text-center p-8">
+    <div class="relative w-16 h-16 mx-auto mb-4">
+      <mat-spinner diameter="60"></mat-spinner>
+      <mat-icon class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-teal-600">
+        library_add
+      </mat-icon>
+    </div>
+    <p class="text-lg font-semibold text-gray-800 dark:text-gray-200">Preparing Form...</p>
+    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Loading books and branch data</p>
+  </div>
+</div>
+
+<!-- Form -->
+<form [formGroup]="form" (ngSubmit)="onSubmit()" mat-dialog-content class="p-4">
+
+  <!-- Validation Summary -->
+  <div *ngIf="formSubmitted && form.invalid"
+    class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg">
+    <div class="flex items-center gap-2 text-red-800 dark:text-red-200">
+      <mat-icon class="icon-size-5">error_outline</mat-icon>
+      <span class="font-medium">Please fix the following errors:</span>
+    </div>
+    <ul class="mt-1 ml-6 text-sm text-red-700 dark:text-red-300 list-disc">
+      <li *ngIf="form.get('schoolId')?.hasError('required')">School is required</li>
+      <li *ngIf="form.get('bookId')?.hasError('required')">Book is required</li>
+      <li *ngIf="form.get('libraryBranchId')?.hasError('required')">Library branch is required</li>
+      <li *ngIf="form.get('accessionNumber')?.hasError('required')">Accession number is required</li>
+      <li *ngIf="form.get('barcode')?.hasError('required')">Barcode is required</li>
+      <li *ngIf="form.get('condition')?.hasError('required')">Condition is required</li>
+    </ul>
+  </div>
+
+  <!-- School (SuperAdmin Only) -->
+  <div *ngIf="isSuperAdmin" class="mb-4">
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>School <span class="text-red-500">*</span></mat-label>
+      <mat-select formControlName="schoolId" placeholder="Select school">
+        <mat-option [value]="null">— Select School —</mat-option>
+        <mat-option *ngFor="let school of schools" [value]="school.id">
+          {{ school.name }}{{ school.code ? ' (' + school.code + ')' : '' }}
+        </mat-option>
+      </mat-select>
+      <mat-icon matPrefix>business</mat-icon>
+      <mat-hint>Select a school to filter books and branches</mat-hint>
+      <mat-error>{{ getFieldError('schoolId') }}</mat-error>
+    </mat-form-field>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+    <!-- LEFT COLUMN -->
+    <div class="space-y-4">
+
+      <!-- Book -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Book <span class="text-red-500">*</span></mat-label>
+        <mat-select formControlName="bookId" placeholder="Select book">
+          <mat-option [value]="null">— Select Book —</mat-option>
+          <mat-option *ngFor="let book of filteredBooks" [value]="book.id">
+            {{ book.title }} ({{ book.isbn }})
+          </mat-option>
+        </mat-select>
+        <mat-icon matPrefix>menu_book</mat-icon>
+        <mat-hint *ngIf="isSuperAdmin && !form.get('schoolId')?.value" class="text-amber-600">
+          Select a school first
+        </mat-hint>
+        <mat-error>{{ getFieldError('bookId') }}</mat-error>
+      </mat-form-field>
+
+      <!-- Library Branch -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Library Branch <span class="text-red-500">*</span></mat-label>
+        <mat-select formControlName="libraryBranchId" placeholder="Select branch">
+          <mat-option [value]="null">— Select Branch —</mat-option>
+          <mat-option *ngFor="let branch of filteredBranches" [value]="branch.id">
+            {{ branch.name }}{{ branch.location ? ' — ' + branch.location : '' }}
+          </mat-option>
+        </mat-select>
+        <mat-icon matPrefix>store</mat-icon>
+        <mat-hint *ngIf="isSuperAdmin && !form.get('schoolId')?.value" class="text-amber-600">
+          Select a school first
+        </mat-hint>
+        <mat-error>{{ getFieldError('libraryBranchId') }}</mat-error>
+      </mat-form-field>
+
+      <!-- Accession Number -->
+    <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Accession Number</mat-label>
+        <input matInput formControlName="accessionNumber"
+            placeholder="Leave blank to auto-generate" autocomplete="off" />
+        <mat-icon matPrefix>tag</mat-icon>
+        <mat-hint>Auto-generated if left blank</mat-hint>
+        <mat-error>{{ getFieldError('accessionNumber') }}</mat-error>
+    </mat-form-field>
+
+    <!-- Barcode -->
+    <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Barcode</mat-label>
+        <input matInput formControlName="barcode"
+            placeholder="Leave blank to auto-generate" autocomplete="off" />
+        <mat-icon matPrefix>qr_code_scanner</mat-icon>
+        <mat-hint>Auto-generated if left blank</mat-hint>
+        <mat-error>{{ getFieldError('barcode') }}</mat-error>
+    </mat-form-field>
+
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="space-y-4">
+
+      <!-- QR Code -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>QR Code (Optional)</mat-label>
+        <input matInput formControlName="qrCode" placeholder="QR code value" autocomplete="off" />
+        <mat-icon matPrefix>qr_code_2</mat-icon>
+        <mat-error>{{ getFieldError('qrCode') }}</mat-error>
+      </mat-form-field>
+
+      <!-- Condition -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Condition <span class="text-red-500">*</span></mat-label>
+        <mat-select formControlName="condition">
+          <mat-option *ngFor="let c of conditions" [value]="c.value">
+            {{ c.label }}
+          </mat-option>
+        </mat-select>
+        <mat-icon matPrefix>star_rate</mat-icon>
+        <mat-error>{{ getFieldError('condition') }}</mat-error>
+      </mat-form-field>
+
+      <!-- Acquired On -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Acquired On (Optional)</mat-label>
+        <input matInput [matDatepicker]="acquiredPicker" formControlName="acquiredOn" />
+        <mat-datepicker-toggle matIconSuffix [for]="acquiredPicker"></mat-datepicker-toggle>
+        <mat-datepicker #acquiredPicker></mat-datepicker>
+        <mat-icon matPrefix>event</mat-icon>
+        <mat-hint>Date this copy was acquired</mat-hint>
+      </mat-form-field>
+
+      <!-- Status Toggles -->
+      <div class="space-y-3">
+
+        <!-- Is Available -->
+        <div class="flex items-center justify-between p-3 rounded-lg border-2
+                    border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+          <div class="flex items-center gap-2">
+            <mat-icon class="text-green-600 icon-size-5">check_circle</mat-icon>
+            <div>
+              <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">Available</p>
+              <p class="text-xs text-gray-500">Copy is available for borrowing</p>
+            </div>
+          </div>
+          <mat-slide-toggle formControlName="isAvailable" color="primary"></mat-slide-toggle>
+        </div>
+
+        <!-- Is Lost -->
+        <div class="flex items-center justify-between p-3 rounded-lg border-2
+                    border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+          <div class="flex items-center gap-2">
+            <mat-icon class="text-red-600 icon-size-5">help_outline</mat-icon>
+            <div>
+              <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">Lost</p>
+              <p class="text-xs text-gray-500">Mark copy as lost</p>
+            </div>
+          </div>
+          <mat-slide-toggle formControlName="isLost" color="warn"></mat-slide-toggle>
+        </div>
+
+        <!-- Is Damaged -->
+        <div class="flex items-center justify-between p-3 rounded-lg border-2
+                    border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+          <div class="flex items-center gap-2">
+            <mat-icon class="text-amber-600 icon-size-5">warning</mat-icon>
+            <div>
+              <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">Damaged</p>
+              <p class="text-xs text-gray-500">Mark copy as damaged</p>
+            </div>
+          </div>
+          <mat-slide-toggle formControlName="isDamaged" color="accent"></mat-slide-toggle>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</form>
+
+<!-- Dialog Actions -->
+<div mat-dialog-actions class="flex justify-end gap-3 px-4 pb-4">
+  <button mat-button type="button" (click)="onCancel()" [disabled]="isSaving">Cancel</button>
+  <button mat-flat-button color="primary" type="button" (click)="onSubmit()"
+    [disabled]="isSaving"
+    class="bg-gradient-to-r from-cyan-600 to-teal-600 text-white min-w-28">
+    <mat-spinner *ngIf="isSaving" diameter="18" class="mr-2 inline-block"></mat-spinner>
+    <mat-icon *ngIf="!isSaving" class="icon-size-5 mr-1">
+      {{ isEditMode ? 'save' : 'check_circle' }}
+    </mat-icon>
+    {{ isSaving ? 'Saving...' : (isEditMode ? 'Update' : 'Add Copy') }}
+  </button>
+</div>

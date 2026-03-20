@@ -5,7 +5,7 @@ import { CommonModule } from '@angular/common';
 import { MatDialog }    from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule }   from '@angular/material/icon';
-import { Subject }      from 'rxjs';
+import { Subject } from 'rxjs';
 import { take, takeUntil } from 'rxjs/operators';
 import { AlertService }  from 'app/core/DevKenService/Alert/AlertService';
 import { BookAuthorService } from 'app/core/DevKenService/Library/book-author.service';
@@ -104,9 +104,12 @@ export class BookAuthorsComponent implements OnInit, OnDestroy {
       next: res => {
         this.isLoading = false;
         if (res.success) { this.allData = res.data; this.applyFilters(); this.buildStats(); }
-        else this.alertService.error('Error', res.message);
+        else this.alertService.error(res.message || 'Failed to load authors');
       },
-      error: err => { this.isLoading = false; this.alertService.error('Error', err?.error?.message ?? 'Failed to load authors.'); },
+      error: err => {
+        this.isLoading = false;
+        this.alertService.error(err?.error?.message ?? 'Failed to load authors');
+      },
     });
   }
 
@@ -139,8 +142,8 @@ export class BookAuthorsComponent implements OnInit, OnDestroy {
     const total     = this.allData.length;
     const withBio   = this.allData.filter(r => r.biography).length;
     this.statsCards = [
-      { label: 'Total Authors',    value: total,   icon: 'people',  iconColor: 'indigo' },
-      { label: 'With Biography',   value: withBio, icon: 'notes',   iconColor: 'blue' },
+      { label: 'Total Authors',  value: total,   icon: 'people', iconColor: 'indigo' },
+      { label: 'With Biography', value: withBio, icon: 'notes',  iconColor: 'blue'   },
     ];
   }
 
@@ -183,6 +186,8 @@ export class BookAuthorsComponent implements OnInit, OnDestroy {
               this.alertService.success('Author deleted successfully');
               if (this.paginatedData.length === 1 && this.currentPage > 1) this.currentPage--;
               this.loadAll();
+            } else {
+              this.alertService.error(res.message || 'Failed to delete author');
             }
           },
           error: err => this.alertService.error(err.error?.message || 'Failed to delete author'),

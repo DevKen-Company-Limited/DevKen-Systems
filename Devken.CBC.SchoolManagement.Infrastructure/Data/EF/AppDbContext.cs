@@ -7,6 +7,7 @@ using Devken.CBC.SchoolManagement.Domain.Entities.Assessments.Academic;
 using Devken.CBC.SchoolManagement.Domain.Entities.Finance;
 using Devken.CBC.SchoolManagement.Domain.Entities.Helpers;
 using Devken.CBC.SchoolManagement.Domain.Entities.Identity;
+using Devken.CBC.SchoolManagement.Domain.Entities.Library;
 using Devken.CBC.SchoolManagement.Domain.Entities.NumberSeries;
 using Devken.CBC.SchoolManagement.Domain.Entities.Payments;
 using Devken.CBC.SchoolManagement.Domain.Entities.Reports;
@@ -119,8 +120,18 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         public DbSet<TeacherCBCLevel> TeacherCBCLevels { get; set; } = null!;
         public DbSet<DocumentNumberSeries> DocumentNumberSeries => Set<DocumentNumberSeries>();
         public DbSet<SsoSetupToken> SsoSetupTokens => Set<SsoSetupToken>();
-        public DbSet<SsoOtpToken> SsoOtpTokens => Set<SsoOtpToken>(); 
-                    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>(); 
+        public DbSet<SsoOtpToken> SsoOtpTokens => Set<SsoOtpToken>();
+
+        // ── Library ───────────────────────────────────────────────────────────
+        public DbSet<BookAuthor> BookAuthors => Set<BookAuthor>();
+        public DbSet<BookCategory> BookCategories => Set<BookCategory>();
+        public DbSet<BookPublisher> BookPublishers => Set<BookPublisher>();
+        public DbSet<Book> Books => Set<Book>();           // ← add
+        public DbSet<LibraryBranch> LibraryBranches => Set<LibraryBranch>(); // ← add
+        public DbSet<BookCopy> BookCopies => Set<BookCopy>();       // ← add
+        public DbSet<BookInventory> BookInventories => Set<BookInventory>();  // ← add
+
+
         #endregion
 
         protected override void OnModelCreating(ModelBuilder mb)
@@ -321,10 +332,18 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
 
             // ── APPLY ENTITY CONFIGURATIONS ───────────────────────────────────
 
-            // Library
+            // Library — lookups
             mb.ApplyConfiguration(new BookAuthorConfiguration(_tenantContext));
             mb.ApplyConfiguration(new BookCategoryConfiguration(_tenantContext));
             mb.ApplyConfiguration(new BookPublisherConfiguration(_tenantContext));
+
+            // Library — core entities (order matters: Book before BookCopy/Inventory)
+            mb.ApplyConfiguration(new BookConfiguration(_tenantContext));           // ← add
+            mb.ApplyConfiguration(new LibraryBranchConfiguration(_tenantContext));  // ← add
+            mb.ApplyConfiguration(new BookCopyConfiguration(_tenantContext));        // ← add
+            mb.ApplyConfiguration(new BookInventoryConfiguration(_tenantContext));   // ← add
+
+
 
             // Identity & School
             mb.ApplyConfiguration(new SchoolConfiguration());

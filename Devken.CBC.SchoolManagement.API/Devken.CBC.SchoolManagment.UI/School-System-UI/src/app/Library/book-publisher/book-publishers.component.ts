@@ -90,7 +90,7 @@ export class BookPublishersComponent implements OnInit, OnDestroy {
     private cdr:          ChangeDetectorRef,
   ) {}
 
-  ngOnInit(): void  { this.loadAll(); }
+  ngOnInit(): void    { this.loadAll(); }
   ngOnDestroy(): void { this._destroy$.next(); this._destroy$.complete(); }
 
   ngAfterViewInit(): void {
@@ -104,9 +104,12 @@ export class BookPublishersComponent implements OnInit, OnDestroy {
       next: res => {
         this.isLoading = false;
         if (res.success) { this.allData = res.data; this.applyFilters(); this.buildStats(); }
-        else this.alertService.error('Error', res.message);
+        else this.alertService.error(res.message || 'Failed to load publishers');
       },
-      error: err => { this.isLoading = false; this.alertService.error('Error', err?.error?.message ?? 'Failed to load publishers.'); },
+      error: err => {
+        this.isLoading = false;
+        this.alertService.error(err?.error?.message ?? 'Failed to load publishers');
+      },
     });
   }
 
@@ -139,8 +142,8 @@ export class BookPublishersComponent implements OnInit, OnDestroy {
     const total       = this.allData.length;
     const withAddress = this.allData.filter(r => r.address).length;
     this.statsCards = [
-      { label: 'Total Publishers', value: total,       icon: 'business',     iconColor: 'amber' },
-      { label: 'With Address',     value: withAddress, icon: 'location_on',  iconColor: 'orange' },
+      { label: 'Total Publishers', value: total,       icon: 'business',    iconColor: 'amber'  },
+      { label: 'With Address',     value: withAddress, icon: 'location_on', iconColor: 'orange' },
     ];
   }
 
@@ -181,6 +184,8 @@ export class BookPublishersComponent implements OnInit, OnDestroy {
               this.alertService.success('Publisher deleted successfully');
               if (this.paginatedData.length === 1 && this.currentPage > 1) this.currentPage--;
               this.loadAll();
+            } else {
+              this.alertService.error(res.message || 'Failed to delete publisher');
             }
           },
           error: err => this.alertService.error(err.error?.message || 'Failed to delete publisher'),

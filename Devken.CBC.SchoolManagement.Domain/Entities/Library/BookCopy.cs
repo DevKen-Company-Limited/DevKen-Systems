@@ -11,7 +11,7 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Library
     public class BookCopy : TenantBaseEntity<Guid>
     {
         public Guid BookId { get; set; }
-        public Book Book { get; set; }
+        public Book Book { get; set; } 
 
         public Guid LibraryBranchId { get; set; }
         public LibraryBranch LibraryBranch { get; set; }

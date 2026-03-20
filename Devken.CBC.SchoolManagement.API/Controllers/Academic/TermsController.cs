@@ -57,8 +57,8 @@ namespace Devken.CBC.SchoolManagement.API.Controllers.Academic
                     userSchoolId,
                     IsSuperAdmin);
 
-                //Response.Headers.Add("X-Access-Level", IsSuperAdmin ? "SuperAdmin" : "SchoolAdmin");
-                //Response.Headers.Add("X-School-Filter", targetSchoolId?.ToString() ?? "All Schools");
+                Response.Headers.Append("X-Access-Level", IsSuperAdmin ? "SuperAdmin" : "SchoolAdmin");
+                Response.Headers.Append("X-School-Filter", targetSchoolId?.ToString() ?? "All Schools");
 
                 return SuccessResponse(terms);
             }

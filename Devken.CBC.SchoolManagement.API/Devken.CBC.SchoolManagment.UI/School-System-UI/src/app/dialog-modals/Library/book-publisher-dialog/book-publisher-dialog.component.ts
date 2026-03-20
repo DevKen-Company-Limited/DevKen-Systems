@@ -82,9 +82,9 @@ export class BookPublisherDialogComponent implements OnInit, OnDestroy {
 
   private _patchForm(item: BookPublisherResponseDto): void {
     this.form.patchValue({
-      schoolId: item.tenantId  ?? '',
-      name:     item.name      ?? '',
-      address:  item.address   ?? '',
+      schoolId: item.tenantId ?? '',
+      name:     item.name     ?? '',
+      address:  item.address  ?? '',
     });
     this._cdr.detectChanges();
   }
@@ -100,26 +100,45 @@ export class BookPublisherDialogComponent implements OnInit, OnDestroy {
     this.formSubmitted = true;
     if (this.form.invalid) return;
     const raw = this.form.getRawValue();
+    this.isSaving = true;
 
     if (this.isEditMode) {
       const payload: UpdateBookPublisherDto = {
         name:    raw.name?.trim(),
         address: raw.address?.trim() || undefined,
       };
-      this.isSaving = true;
       this._service.update(this.data.item!.id, payload)
         .pipe(takeUntil(this._unsubscribe), finalize(() => { this.isSaving = false; this._cdr.detectChanges(); }))
-        .subscribe({ next: res => { if (res.success) this._dialogRef.close({ success: true, data: res.data }); }, error: () => {} });
+        .subscribe({
+          next: res => {
+            if (res.success) {
+              this._alert.success('Publisher updated successfully');
+              this._dialogRef.close({ success: true, data: res.data });
+            } else {
+              this._alert.error(res.message || 'Failed to update publisher');
+            }
+          },
+          error: err => this._alert.error(err?.error?.message || 'Failed to update publisher'),
+        });
     } else {
       const payload: CreateBookPublisherDto = {
         tenantId: this.isSuperAdmin ? raw.schoolId?.trim() : undefined,
         name:     raw.name?.trim(),
         address:  raw.address?.trim() || undefined,
       };
-      this.isSaving = true;
       this._service.create(payload)
         .pipe(takeUntil(this._unsubscribe), finalize(() => { this.isSaving = false; this._cdr.detectChanges(); }))
-        .subscribe({ next: res => { if (res.success) this._dialogRef.close({ success: true, data: res.data }); }, error: () => {} });
+        .subscribe({
+          next: res => {
+            if (res.success) {
+              this._alert.success('Publisher created successfully');
+              this._dialogRef.close({ success: true, data: res.data });
+            } else {
+              this._alert.error(res.message || 'Failed to create publisher');
+            }
+          },
+          error: err => this._alert.error(err?.error?.message || 'Failed to create publisher'),
+        });
     }
   }
 

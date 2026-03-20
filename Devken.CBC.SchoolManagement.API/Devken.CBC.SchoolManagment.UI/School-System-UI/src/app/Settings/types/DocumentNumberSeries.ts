@@ -1,5 +1,5 @@
 // ------------------------ DTOs ------------------------
-export type NumberSeriesEntityValue = 'Student' | 'Teacher' | 'Invoice' | 'Payment' | 'Assessment' | 'Class';
+export type NumberSeriesEntityValue = 'Student' | 'Teacher' | 'Invoice' | 'Payment' | 'Assessment' | 'Class'| 'BookAccessionNumber'| 'BookBarcode';
 
 export interface DocumentNumberSeriesDto {
   id: string;
@@ -34,6 +34,10 @@ export const ENTITY_TYPES: { value: NumberSeriesEntityValue; label: string }[] =
   { value: 'Payment', label: 'Payment Number' },
   { value: 'Assessment', label: 'Assessment Number' },
   { value: 'Class', label: 'Class Code' },
+  { value: 'BookAccessionNumber', label: 'Book Accession Number' }, 
+  { value: 'BookBarcode',         label: 'Book Barcode'          },
+
+
 ] as const;
 
 export const ENTITY_TYPES_MAP: Record<NumberSeriesEntityValue, string> = {
@@ -43,4 +47,6 @@ export const ENTITY_TYPES_MAP: Record<NumberSeriesEntityValue, string> = {
   Payment: 'Payment Number',
   Assessment: 'Assessment Number',
   Class: 'Class Code',
+  BookAccessionNumber: 'Book Accession Number',  
+  BookBarcode:         'Book Barcode',   
 };

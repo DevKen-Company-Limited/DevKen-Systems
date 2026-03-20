@@ -12,7 +12,6 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Subject, forkJoin, of } from 'rxjs';
 import { catchError, takeUntil, finalize } from 'rxjs/operators';
@@ -25,10 +24,10 @@ import { BookAuthorService } from 'app/core/DevKenService/Library/book-author.se
 import { BookCategoryService } from 'app/core/DevKenService/Library/book-category.service';
 import { BookPublisherService } from 'app/core/DevKenService/Library/book-publisher.service';
 import { BookService } from 'app/core/DevKenService/Library/book.service';
-import { BaseFormDialog } from 'app/shared/dialogs/BaseFormDialog';
 import { BookAuthorResponseDto } from 'app/Library/book-author/Types/book-author.model';
 import { BookCategoryResponseDto } from 'app/Library/book-category/Types/book-category.model';
 import { BookPublisherResponseDto } from 'app/Library/book-publisher/Types/book-publisher.model';
+import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
 
 export interface CreateEditBookDialogData {
   mode: 'create' | 'edit';
@@ -42,34 +41,37 @@ export interface CreateEditBookDialogData {
     CommonModule, ReactiveFormsModule, MatDialogModule,
     MatFormFieldModule, MatInputModule, MatSelectModule,
     MatButtonModule, MatIconModule, MatProgressSpinnerModule,
-    MatSnackBarModule, MatTooltipModule,
+    MatTooltipModule,
   ],
   templateUrl: './create-edit-book-dialog.component.html',
   styles: [`
     :host ::ng-deep .mat-mdc-dialog-container { --mdc-dialog-container-shape: 12px; }
   `]
 })
-export class CreateEditBookDialogComponent
-  extends BaseFormDialog<CreateBookRequest, UpdateBookRequest, BookDto, CreateEditBookDialogData>
-  implements OnInit, OnDestroy {
+export class CreateEditBookDialogComponent implements OnInit, OnDestroy {
 
   private readonly _unsubscribe = new Subject<void>();
 
   // ── Dropdown data ──────────────────────────────────────────────────────────
-  schools: SchoolDto[]       = [];
-  authors: BookAuthorResponseDto[]   = [];
-  categories: BookCategoryResponseDto[] = [];
+  schools:    SchoolDto[]                = [];
+  authors:    BookAuthorResponseDto[]    = [];
+  categories: BookCategoryResponseDto[]  = [];
   publishers: BookPublisherResponseDto[] = [];
-  isLoading = true;
+  isLoading     = true;
   formSubmitted = false;
 
   currentYear = new Date().getFullYear();
   yearRange   = Array.from({ length: 75 }, (_, i) => this.currentYear - i);
 
+  // ── Form ───────────────────────────────────────────────────────────────────
+  form!: FormGroup;
+
   // ── Getters ────────────────────────────────────────────────────────────────
-  get isEditMode(): boolean { return this.data.mode === 'edit'; }
-  get isSuperAdmin(): boolean { return this._authService.authUser?.isSuperAdmin ?? false; }
-  get dialogTitle(): string { return this.isEditMode ? 'Edit Book' : 'Add New Book'; }
+  get isEditMode(): boolean    { return this.data.mode === 'edit'; }
+  get isSuperAdmin(): boolean  { return this._authService.authUser?.isSuperAdmin ?? false; }
+  /** Alias used by the template for button/spinner state */
+  get isSaving(): boolean      { return this.isLoading; }
+  get dialogTitle(): string    { return this.isEditMode ? 'Edit Book' : 'Add New Book'; }
   get dialogSubtitle(): string {
     return this.isEditMode
       ? `Updating "${this.data.book?.title || 'book'}" details`
@@ -78,29 +80,35 @@ export class CreateEditBookDialogComponent
   get descriptionLength(): number { return this.form.get('description')?.value?.length || 0; }
 
   constructor(
-    fb: FormBuilder,
-    snackBar: MatSnackBar,
-    dialogRef: MatDialogRef<CreateEditBookDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) data: CreateEditBookDialogData,
-    private readonly _authService: AuthService,
-    private readonly _schoolService: SchoolService,
-    private readonly _bookAuthorService: BookAuthorService,
-    private readonly _bookCategoryService: BookCategoryService,
+    private readonly _fb:                   FormBuilder,
+    private readonly _dialogRef:            MatDialogRef<CreateEditBookDialogComponent>,
+    @Inject(MAT_DIALOG_DATA) public data:   CreateEditBookDialogData,
+    private readonly _authService:          AuthService,
+    private readonly _schoolService:        SchoolService,
+    private readonly _bookAuthorService:    BookAuthorService,
+    private readonly _bookCategoryService:  BookCategoryService,
     private readonly _bookPublisherService: BookPublisherService,
-    private readonly _cdr: ChangeDetectorRef,
-    bookService: BookService,
+    private readonly _bookService:          BookService,
+    private readonly _alertService:         AlertService,
+    private readonly _cdr:                  ChangeDetectorRef,
   ) {
-    super(fb, bookService, snackBar, dialogRef, data);
-    dialogRef.addPanelClass(['book-dialog', 'responsive-dialog']);
+    _dialogRef.addPanelClass(['book-dialog', 'responsive-dialog']);
   }
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
-  ngOnInit(): void { this.init(); }
-  ngOnDestroy(): void { this._unsubscribe.next(); this._unsubscribe.complete(); }
+  ngOnInit(): void {
+    this._buildForm();
+    this._loadDropdowns();
+  }
 
-  // ── BaseFormDialog overrides ───────────────────────────────────────────────
-  protected override buildForm(): FormGroup {
-    return this.fb.group({
+  ngOnDestroy(): void {
+    this._unsubscribe.next();
+    this._unsubscribe.complete();
+  }
+
+  // ── Form building ──────────────────────────────────────────────────────────
+  private _buildForm(): void {
+    this.form = this._fb.group({
       schoolId:        [null, this.isSuperAdmin ? [Validators.required] : []],
       title:           ['',   [Validators.required, Validators.maxLength(255)]],
       isbn:            ['',   [Validators.required, Validators.maxLength(20)]],
@@ -111,25 +119,23 @@ export class CreateEditBookDialogComponent
       language:        [''],
       description:     ['', [Validators.maxLength(2000)]],
     });
+
+    if (this.isEditMode && this.data.book) {
+      this._patchForm(this.data.book);
+    }
   }
 
-  /** Override init() so we patch using data.book, not data.school */
-  protected override init(): void {
-    this.form = this.buildForm();
-    this._loadDropdowns();
-  }
-
-  protected override patchForEdit(item: BookDto): void {
+  private _patchForm(book: BookDto): void {
     this.form.patchValue({
-      schoolId:        item.schoolId        || null,
-      title:           item.title           || '',
-      isbn:            item.isbn            || '',
-      categoryId:      item.categoryId      || null,
-      authorId:        item.authorId        || null,
-      publisherId:     item.publisherId     || null,
-      publicationYear: item.publicationYear || this.currentYear,
-      language:        item.language        || '',
-      description:     item.description     || '',
+      schoolId:        book.schoolId        || null,
+      title:           book.title           || '',
+      isbn:            book.isbn            || '',
+      categoryId:      book.categoryId      || null,
+      authorId:        book.authorId        || null,
+      publisherId:     book.publisherId     || null,
+      publicationYear: book.publicationYear || this.currentYear,
+      language:        book.language        || '',
+      description:     book.description     || '',
     });
     this._cdr.detectChanges();
   }
@@ -158,35 +164,45 @@ export class CreateEditBookDialogComponent
         this.publishers = res.publishers?.data || [];
         if (res.schools) this.schools = res.schools?.data || [];
 
-        if (this.isEditMode && this.data.book) {
-          this.patchForEdit(this.data.book);
+        if (this.isEditMode && this.data.book && !this.form.get('title')?.value) {
+          this._patchForm(this.data.book);
         }
       },
       error: () => {
-        if (this.isEditMode && this.data.book) this.patchForEdit(this.data.book);
+        if (this.isEditMode && this.data.book) this._patchForm(this.data.book);
       }
     });
 
-    setTimeout(() => { if (this.isLoading) { this.isLoading = false; this._cdr.detectChanges(); } }, 12000);
+    // Safety timeout
+    setTimeout(() => {
+      if (this.isLoading) { this.isLoading = false; this._cdr.detectChanges(); }
+    }, 12000);
   }
 
   // ── Submit & Cancel ────────────────────────────────────────────────────────
   onSubmit(): void {
     this.formSubmitted = true;
 
-    const createMapper = (raw: any): CreateBookRequest => ({
-      ...(this.isSuperAdmin ? { schoolId: raw.schoolId } : {}),
-      title:           raw.title?.trim(),
-      isbn:            raw.isbn?.trim(),
-      categoryId:      raw.categoryId,
-      authorId:        raw.authorId,
-      publisherId:     raw.publisherId,
-      publicationYear: +raw.publicationYear,
-      language:        raw.language?.trim()     || undefined,
-      description:     raw.description?.trim()  || undefined,
-    });
+    if (this.form.invalid) {
+      Object.keys(this.form.controls).forEach(key => {
+        this.form.get(key)?.markAsTouched();
+      });
+      return;
+    }
 
-    const updateMapper = (raw: any): UpdateBookRequest => ({
+    this.isLoading = true;
+
+    if (this.isEditMode) {
+      this._updateBook();
+    } else {
+      this._createBook();
+    }
+  }
+
+  private _createBook(): void {
+    const raw = this.form.value;
+    const request: CreateBookRequest = {
+      ...(this.isSuperAdmin ? { schoolId: raw.schoolId } : {}),
       title:           raw.title?.trim(),
       isbn:            raw.isbn?.trim(),
       categoryId:      raw.categoryId,
@@ -195,12 +211,62 @@ export class CreateEditBookDialogComponent
       publicationYear: +raw.publicationYear,
       language:        raw.language?.trim()    || undefined,
       description:     raw.description?.trim() || undefined,
-    });
+    };
 
-    this.save(createMapper, updateMapper, () => this.data.book!.id);
+    this._bookService.create(request).pipe(
+      takeUntil(this._unsubscribe),
+      finalize(() => { this.isLoading = false; this._cdr.detectChanges(); })
+    ).subscribe({
+      next: res => {
+        if (res.success) {
+          this._alertService.success('Book created successfully');
+          this._dialogRef.close({ success: true, data: res.data });
+        } else {
+          this._alertService.error(res.message || 'Failed to create book');
+        }
+      },
+      error: err => this._alertService.error(err?.error?.message || 'Failed to create book'),
+    });
   }
 
-  onCancel(): void { this.close({ success: false }); }
+  private _updateBook(): void {
+    if (!this.data.book?.id) {
+      this._alertService.error('Book ID is missing');
+      this.isLoading = false;
+      return;
+    }
+
+    const raw = this.form.value;
+    const request: UpdateBookRequest = {
+      title:           raw.title?.trim(),
+      isbn:            raw.isbn?.trim(),
+      categoryId:      raw.categoryId,
+      authorId:        raw.authorId,
+      publisherId:     raw.publisherId,
+      publicationYear: +raw.publicationYear,
+      language:        raw.language?.trim()    || undefined,
+      description:     raw.description?.trim() || undefined,
+    };
+
+    this._bookService.update(this.data.book.id, request).pipe(
+      takeUntil(this._unsubscribe),
+      finalize(() => { this.isLoading = false; this._cdr.detectChanges(); })
+    ).subscribe({
+      next: res => {
+        if (res.success) {
+          this._alertService.success('Book updated successfully');
+          this._dialogRef.close({ success: true, data: res.data });
+        } else {
+          this._alertService.error(res.message || 'Failed to update book');
+        }
+      },
+      error: err => this._alertService.error(err?.error?.message || 'Failed to update book'),
+    });
+  }
+
+  onCancel(): void {
+    this._dialogRef.close({ success: false });
+  }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   getFieldError(field: string): string {
@@ -213,7 +279,7 @@ export class CreateEditBookDialogComponent
     return 'Invalid value';
   }
 
-  /** Filter authors/categories/publishers by selected school for SuperAdmin */
+  // ── Filtered dropdowns for SuperAdmin ──────────────────────────────────────
   get filteredAuthors(): BookAuthorResponseDto[] {
     if (!this.isSuperAdmin) return this.authors;
     const schoolId = this.form.get('schoolId')?.value;

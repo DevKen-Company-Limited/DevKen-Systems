@@ -37,7 +37,7 @@ export interface BookAuthorDialogData {
     MatFormFieldModule, MatInputModule, MatButtonModule,
     MatIconModule, MatProgressSpinnerModule, MatSelectModule, MatTooltipModule,
   ],
-  templateUrl:  './book-author-dialog.component.html',
+  templateUrl: './book-author-dialog.component.html',
 })
 export class BookAuthorDialogComponent implements OnInit, OnDestroy {
   private readonly _unsubscribe = new Subject<void>();
@@ -54,11 +54,11 @@ export class BookAuthorDialogComponent implements OnInit, OnDestroy {
   get biographyLength(): number { return this.form?.get('biography')?.value?.length ?? 0; }
 
   constructor(
-    private readonly _fb:          FormBuilder,
-    private readonly _service:     BookAuthorService,
-    private readonly _dialogRef:   MatDialogRef<BookAuthorDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: BookAuthorDialogData,
-    private readonly _cdr:         ChangeDetectorRef,
+    private readonly _fb:            FormBuilder,
+    private readonly _service:       BookAuthorService,
+    private readonly _dialogRef:     MatDialogRef<BookAuthorDialogComponent>,
+    @Inject(MAT_DIALOG_DATA) public  data: BookAuthorDialogData,
+    private readonly _cdr:           ChangeDetectorRef,
     private readonly _schoolService: SchoolService,
   ) {
     _dialogRef.addPanelClass('no-padding-dialog');
@@ -70,10 +70,7 @@ export class BookAuthorDialogComponent implements OnInit, OnDestroy {
     if (this.isEditMode && this.data.item) this._patchForm(this.data.item);
   }
 
-  ngOnDestroy(): void {
-    this._unsubscribe.next();
-    this._unsubscribe.complete();
-  }
+  ngOnDestroy(): void { this._unsubscribe.next(); this._unsubscribe.complete(); }
 
   private _buildForm(): void {
     this.form = this._fb.group({
@@ -103,18 +100,25 @@ export class BookAuthorDialogComponent implements OnInit, OnDestroy {
     this.formSubmitted = true;
     if (this.form.invalid) return;
     const raw = this.form.getRawValue();
+    this.isSaving = true;
 
     if (this.isEditMode) {
       const payload: UpdateBookAuthorDto = {
         name:      raw.name?.trim(),
         biography: raw.biography?.trim() || undefined,
       };
-      this.isSaving = true;
       this._service.update(this.data.item!.id, payload)
         .pipe(takeUntil(this._unsubscribe), finalize(() => { this.isSaving = false; this._cdr.detectChanges(); }))
         .subscribe({
-          next: res => { if (res.success) this._dialogRef.close({ success: true, data: res.data }); },
-          error: () => {},
+          next: res => {
+            if (res.success) {
+              this._alert.success('Author updated successfully');
+              this._dialogRef.close({ success: true, data: res.data });
+            } else {
+              this._alert.error(res.message || 'Failed to update author');
+            }
+          },
+          error: err => this._alert.error(err?.error?.message || 'Failed to update author'),
         });
     } else {
       const payload: CreateBookAuthorDto = {
@@ -122,12 +126,18 @@ export class BookAuthorDialogComponent implements OnInit, OnDestroy {
         name:      raw.name?.trim(),
         biography: raw.biography?.trim() || undefined,
       };
-      this.isSaving = true;
       this._service.create(payload)
         .pipe(takeUntil(this._unsubscribe), finalize(() => { this.isSaving = false; this._cdr.detectChanges(); }))
         .subscribe({
-          next: res => { if (res.success) this._dialogRef.close({ success: true, data: res.data }); },
-          error: () => {},
+          next: res => {
+            if (res.success) {
+              this._alert.success('Author created successfully');
+              this._dialogRef.close({ success: true, data: res.data });
+            } else {
+              this._alert.error(res.message || 'Failed to create author');
+            }
+          },
+          error: err => this._alert.error(err?.error?.message || 'Failed to create author'),
         });
     }
   }
@@ -137,8 +147,8 @@ export class BookAuthorDialogComponent implements OnInit, OnDestroy {
   getFieldError(field: string): string {
     const c = this.form.get(field);
     if (!c || !(this.formSubmitted || c.touched)) return '';
-    if (c.hasError('required'))   return 'This field is required';
-    if (c.hasError('maxlength'))  return `Maximum ${c.getError('maxlength').requiredLength} characters`;
+    if (c.hasError('required'))  return 'This field is required';
+    if (c.hasError('maxlength')) return `Maximum ${c.getError('maxlength').requiredLength} characters`;
     return 'Invalid value';
   }
 }

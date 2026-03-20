@@ -175,12 +175,12 @@ export class LibraryBranchesComponent
             this.dataSource.data = res.data;
             this.tableHeader.subtitle = `${this.filteredData.length} branches found`;
           } else {
-            this.snackBar.open(res.message || 'Failed to load branches', 'Close', { duration: 3000 });
+            this._alertService.error(res.message || 'Failed to load branches');
           }
           this.isLoading = false;
         },
         error: err => {
-          this.snackBar.open(err.error?.message || 'Failed to load branches', 'Close', { duration: 4000 });
+          this._alertService.error(err.error?.message || 'Failed to load branches');
           this.isLoading = false;
         }
       });
@@ -276,16 +276,16 @@ export class LibraryBranchesComponent
     this._branchService.delete(branch.id).pipe(takeUntil(this._destroy$)).subscribe({
       next: res => {
         if (res.success) {
-          this.snackBar.open(res.message || 'Branch deleted successfully', 'Close', { duration: 2500 });
+          this._alertService.success('Branch deleted successfully');
           if (this.paginatedData.length === 1 && this.currentPage > 1) this.currentPage--;
           this.loadAll();
         } else {
-          this.snackBar.open(res.message || 'Failed to delete', 'Close', { duration: 3000 });
+          this._alertService.error(res.message || 'Failed to delete');
         }
         this.isLoading = false;
       },
       error: err => {
-        this.snackBar.open(err.error?.message || 'Failed to delete branch', 'Close', { duration: 4000 });
+        this._alertService.error(err.error?.message || 'Failed to delete branch');
         this.isLoading = false;
       }
     });

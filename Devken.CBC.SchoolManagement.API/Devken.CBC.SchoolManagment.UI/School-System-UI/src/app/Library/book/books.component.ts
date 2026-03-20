@@ -47,8 +47,6 @@ export class BooksComponent
 
   private _destroy$ = new Subject<void>();
 
-  // extra injections beyond base class
-  private _authService     = (() => { const s = this._injectedAuth; return s; })();
   private _alertService!: AlertService;
   private _bookService!: BookService;
   private _categoryService!: BookCategoryService;
@@ -171,7 +169,6 @@ export class BooksComponent
     return this.filteredData.slice(start, start + this.itemsPerPage);
   }
 
-  // ── Constructor — note: AuthService kept as private field; others via property injection ──
   constructor(
     dialog: MatDialog,
     snackBar: MatSnackBar,
@@ -195,8 +192,6 @@ export class BooksComponent
   ngOnDestroy(): void { this._destroy$.next(); this._destroy$.complete(); }
 
   // ── Data loading ───────────────────────────────────────────────────────────
-
-  /** Override base loadAll to support schoolId param and takeUntil */
   protected override loadAll(): void {
     this.isLoading = true;
     const schoolId = this.filterValues.schoolId !== 'all' ? this.filterValues.schoolId : undefined;
@@ -208,12 +203,12 @@ export class BooksComponent
             this.dataSource.data = res.data;
             this.tableHeader.subtitle = `${this.filteredData.length} books found`;
           } else {
-            this.snackBar.open(res.message || 'Failed to load books', 'Close', { duration: 3000 });
+            this._alertService.error(res.message || 'Failed to load books');
           }
           this.isLoading = false;
         },
         error: err => {
-          this.snackBar.open(err.error?.message || 'Failed to load books', 'Close', { duration: 4000 });
+          this._alertService.error(err.error?.message || 'Failed to load books');
           this.isLoading = false;
         }
       });
@@ -335,16 +330,16 @@ export class BooksComponent
     this._bookService.delete(book.id).pipe(takeUntil(this._destroy$)).subscribe({
       next: res => {
         if (res.success) {
-          this.snackBar.open(res.message || 'Book deleted successfully', 'Close', { duration: 2500 });
+          this._alertService.success('Book deleted successfully');
           if (this.paginatedData.length === 1 && this.currentPage > 1) this.currentPage--;
           this.loadAll();
         } else {
-          this.snackBar.open(res.message || 'Failed to delete', 'Close', { duration: 3000 });
+          this._alertService.error(res.message || 'Failed to delete');
         }
         this.isLoading = false;
       },
       error: err => {
-        this.snackBar.open(err.error?.message || 'Failed to delete book', 'Close', { duration: 4000 });
+        this._alertService.error(err.error?.message || 'Failed to delete book');
         this.isLoading = false;
       }
     });

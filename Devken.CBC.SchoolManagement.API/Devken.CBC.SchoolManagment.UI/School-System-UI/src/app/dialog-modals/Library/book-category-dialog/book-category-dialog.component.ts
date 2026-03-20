@@ -82,9 +82,9 @@ export class BookCategoryDialogComponent implements OnInit, OnDestroy {
 
   private _patchForm(item: BookCategoryResponseDto): void {
     this.form.patchValue({
-      schoolId:    item.tenantId     ?? '',
-      name:        item.name         ?? '',
-      description: item.description  ?? '',
+      schoolId:    item.tenantId    ?? '',
+      name:        item.name        ?? '',
+      description: item.description ?? '',
     });
     this._cdr.detectChanges();
   }
@@ -100,26 +100,45 @@ export class BookCategoryDialogComponent implements OnInit, OnDestroy {
     this.formSubmitted = true;
     if (this.form.invalid) return;
     const raw = this.form.getRawValue();
+    this.isSaving = true;
 
     if (this.isEditMode) {
       const payload: UpdateBookCategoryDto = {
         name:        raw.name?.trim(),
         description: raw.description?.trim() || undefined,
       };
-      this.isSaving = true;
       this._service.update(this.data.item!.id, payload)
         .pipe(takeUntil(this._unsubscribe), finalize(() => { this.isSaving = false; this._cdr.detectChanges(); }))
-        .subscribe({ next: res => { if (res.success) this._dialogRef.close({ success: true, data: res.data }); }, error: () => {} });
+        .subscribe({
+          next: res => {
+            if (res.success) {
+              this._alert.success('Category updated successfully');
+              this._dialogRef.close({ success: true, data: res.data });
+            } else {
+              this._alert.error(res.message || 'Failed to update category');
+            }
+          },
+          error: err => this._alert.error(err?.error?.message || 'Failed to update category'),
+        });
     } else {
       const payload: CreateBookCategoryDto = {
         tenantId:    this.isSuperAdmin ? raw.schoolId?.trim() : undefined,
         name:        raw.name?.trim(),
         description: raw.description?.trim() || undefined,
       };
-      this.isSaving = true;
       this._service.create(payload)
         .pipe(takeUntil(this._unsubscribe), finalize(() => { this.isSaving = false; this._cdr.detectChanges(); }))
-        .subscribe({ next: res => { if (res.success) this._dialogRef.close({ success: true, data: res.data }); }, error: () => {} });
+        .subscribe({
+          next: res => {
+            if (res.success) {
+              this._alert.success('Category created successfully');
+              this._dialogRef.close({ success: true, data: res.data });
+            } else {
+              this._alert.error(res.message || 'Failed to create category');
+            }
+          },
+          error: err => this._alert.error(err?.error?.message || 'Failed to create category'),
+        });
     }
   }
 

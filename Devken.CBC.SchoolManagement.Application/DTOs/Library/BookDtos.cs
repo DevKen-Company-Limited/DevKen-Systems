@@ -5,22 +5,7 @@ using System.ComponentModel.DataAnnotations;
 namespace Devken.CBC.SchoolManagement.Application.DTOs.Library
 {
     // ── Read DTOs ─────────────────────────────────────────────────────────────
-
-    public class BookCopyDto
-    {
-        public Guid Id { get; set; }
-        public Guid BookId { get; set; }
-        public Guid LibraryBranchId { get; set; }
-        public string LibraryBranchName { get; set; } = string.Empty;
-        public string AccessionNumber { get; set; } = string.Empty;
-        public string Barcode { get; set; } = string.Empty;
-        public string? QRCode { get; set; }
-        public string Condition { get; set; } = string.Empty;
-        public bool IsAvailable { get; set; }
-        public bool IsLost { get; set; }
-        public bool IsDamaged { get; set; }
-        public DateTime? AcquiredOn { get; set; }
-    }
+    // NOTE: BookCopyDto is defined in BookCopyDtos.cs — do NOT redefine here.
 
     public class BookDto
     {
