@@ -26,7 +26,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
     ///   1. Angular calls Google Sign-In JS SDK  →  receives an id_token
     ///   2. Angular POSTs id_token to POST /api/auth/sso/google
     ///   3. This controller validates the token, finds/provisions the user,
-    ///      and issues a short-lived OTP to the user's email
+    ///      and issues a short-lived OTP to the user's email automatically
     ///   4. Angular POSTs the OTP to POST /api/auth/sso/verify-otp
     ///   5. On success: either a full session OR a password-setup token
     ///      (new users who have never set a password)
@@ -66,9 +66,11 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
             string ConfirmPassword);
 
         // ── POST /api/auth/sso/google ─────────────────────────────────────────
+
         /// <summary>
         /// Validates a Google id_token, finds or provisions the user,
-        /// then ALWAYS issues an OTP — never a session directly.
+        /// then ALWAYS issues an OTP email — never a session directly.
+        /// The email is sent automatically inside GenerateSsoOtpAsync.
         /// </summary>
         [HttpPost("google")]
         public async Task<IActionResult> GoogleAsync([FromBody] GoogleSsoRequest request)
@@ -215,12 +217,10 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                     StatusCodes.Status403Forbidden);
             }
 
-            // 4. ALWAYS issue an OTP — never return a session directly from this endpoint.
+            // 4. Generate OTP — email is sent automatically inside GenerateSsoOtpAsync.
             //    The otpToken is a short-lived server-side binding token that ties
             //    this sign-in attempt to the resolved user row.
-            var (rawOtp, otpToken) = await authService.GenerateSsoOtpAsync(user.Id);
-
-            await authService.SendSsoOtpEmailAsync(user.Email, user.FirstName, rawOtp);
+            var (_, otpToken) = await authService.GenerateSsoOtpAsync(user.Id);
 
             logger.LogInformation(
                 "[SsoController] OTP issued for {Email}. Token prefix: {Prefix}",
@@ -245,6 +245,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
         }
 
         // ── POST /api/auth/sso/verify-otp ─────────────────────────────────────
+
         /// <summary>
         /// Validates the OTP. On success either:
         ///   a) issues a full session  (existing user with a password hash), or
@@ -267,14 +268,12 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
             }
 
             // Validate OTP — checks hash match, expiry, and one-time-use flag
-            var otpResult = await authService.ValidateSsoOtpAsync(
-                request.OtpToken, request.Otp);
+            var otpResult = await authService.ValidateSsoOtpAsync(request.OtpToken, request.Otp);
 
             if (!otpResult.Success)
             {
                 logger.LogWarning(
-                    "[SsoController] OTP validation failed. Reason: {Reason}",
-                    otpResult.Message);
+                    "[SsoController] OTP validation failed. Reason: {Reason}", otpResult.Message);
 
                 return ErrorResponse(
                     otpResult.Message ?? "Invalid or expired verification code.",
@@ -345,8 +344,10 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
         }
 
         // ── POST /api/auth/sso/resend-otp ─────────────────────────────────────
+
         /// <summary>
-        /// Invalidates the existing OTP and issues a fresh one to the user's email.
+        /// Invalidates the existing OTP and issues a fresh one.
+        /// The new OTP email is sent automatically inside ResendSsoOtpAsync.
         /// </summary>
         [HttpPost("resend-otp")]
         public async Task<IActionResult> ResendOtpAsync([FromBody] ResendOtpRequest request)
@@ -354,6 +355,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
             if (string.IsNullOrWhiteSpace(request?.OtpToken))
                 return ErrorResponse("OTP token is required.", StatusCodes.Status400BadRequest);
 
+            // Email is sent automatically inside ResendSsoOtpAsync — no manual call needed
             var result = await authService.ResendSsoOtpAsync(request.OtpToken);
 
             if (!result.Success)
@@ -365,8 +367,6 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                     result.Message ?? "Could not resend code. Please try again.",
                     StatusCodes.Status400BadRequest);
             }
-
-            await authService.SendSsoOtpEmailAsync(result.Email, result.FirstName, result.RawOtp);
 
             logger.LogInformation(
                 "[SsoController] OTP resent for {Email}.", MaskEmail(result.Email));
@@ -380,9 +380,11 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
         }
 
         // ── POST /api/auth/sso/set-password ───────────────────────────────────
+
         /// <summary>
         /// Called after OTP verification for new SSO users who have not yet set a password.
-        /// Consumes the one-time setup token and issues a full session on success.
+        /// Consumes the one-time setup token, sets the password, sends a welcome email,
+        /// and issues a full session on success.
         /// </summary>
         [HttpPost("set-password")]
         public async Task<IActionResult> SetPasswordAsync([FromBody] SetSsoPasswordRequest request)
@@ -402,6 +404,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
                     "a lowercase letter, a digit, and a special character.",
                     StatusCodes.Status400BadRequest);
 
+            // ConsumeSsoSetupTokenAsync also sends a welcome email internally
             var result = await authService.ConsumeSsoSetupTokenAsync(
                 request.SetupToken, request.NewPassword);
 
@@ -451,32 +454,17 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
 
         /// <summary>
         /// Writes the refresh token as an HttpOnly cookie.
-        ///
-        /// SameSite=None + Secure=true is required because the Angular SPA
-        /// (localhost:4200 or vercel.app) is on a different origin than the API.
-        /// Without this the browser will silently drop the cookie on cross-origin
-        /// requests, breaking token refresh.
-        ///
-        /// In development the API is on HTTPS (localhost:44383) so Secure=true works.
-        /// If you ever run the API on plain HTTP in dev, set Secure=false locally.
+        /// SameSite=None + Secure=true is required for cross-origin cookie delivery
+        /// (Angular SPA on a different origin than the API).
         /// </summary>
         private void AppendRefreshTokenCookie(string refreshToken)
         {
-            var isProduction = !string.Equals(
-                Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
-                "Development",
-                StringComparison.OrdinalIgnoreCase);
-
             Response.Cookies.Append("refreshToken", refreshToken, new CookieOptions
             {
                 HttpOnly = true,
-
-                // SameSite=None is mandatory for cross-origin cookie delivery.
-                // Requires Secure=true in all browsers that enforce SameSite=None.
-                SameSite = SameSiteMode.None,
-                Secure = true,            // must be true when SameSite=None
-
-                Path = "/api/auth",     // scope cookie to auth routes only
+                SameSite = SameSiteMode.None,   // mandatory for cross-origin
+                Secure = true,                 // required when SameSite=None
+                Path = "/api/auth",
                 Expires = DateTime.UtcNow.AddDays(jwtSettings.RefreshTokenLifetimeDays),
             });
         }
@@ -485,18 +473,15 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Identity
         /// Returns true only if the password meets the minimum complexity policy:
         /// ≥ 8 chars, at least one uppercase, one lowercase, one digit, one symbol.
         /// </summary>
-        private static bool IsStrongPassword(string password)
-        {
-            if (password.Length < 8) return false;
-            if (!password.Any(char.IsUpper)) return false;
-            if (!password.Any(char.IsLower)) return false;
-            if (!password.Any(char.IsDigit)) return false;
-            if (!password.Any(c => !char.IsLetterOrDigit(c))) return false;
-            return true;
-        }
+        private static bool IsStrongPassword(string password) =>
+            password.Length >= 8 &&
+            password.Any(char.IsUpper) &&
+            password.Any(char.IsLower) &&
+            password.Any(char.IsDigit) &&
+            password.Any(c => !char.IsLetterOrDigit(c));
 
         /// <summary>
-        /// Masks an email address for safe display in responses.
+        /// Masks an email for safe display in responses.
         /// Example: john.doe@gmail.com → j*******@gmail.com
         /// </summary>
         private static string MaskEmail(string email)

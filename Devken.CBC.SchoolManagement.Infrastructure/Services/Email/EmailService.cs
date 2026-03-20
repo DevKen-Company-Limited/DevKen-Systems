@@ -1,134 +1,90 @@
-﻿using Devken.CBC.SchoolManagement.Application.Service.Email;
-using Devken.CBC.SchoolManagement.Infrastructure.Settings;
+﻿// Infrastructure/Services/Email/EmailService.cs
+using Devken.CBC.SchoolManagement.Application.Service.Email;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Mail;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Email
 {
-    public sealed class EmailService(
-            IOptions<EmailSettings> options,
-            ILogger<EmailService> logger)
-            : IEmailService
+    /// <summary>
+    /// Development-only stub — prints emails to the console instead of sending.
+    /// Registered only when ASPNETCORE_ENVIRONMENT=Development.
+    /// </summary>
+    public class EmailService : IEmailService
     {
-        private readonly EmailSettings _cfg = options.Value;
+        private readonly ILogger<EmailService> _logger;
 
-        // ── IEmailService ─────────────────────────────────────────────────────
-
-        public Task SendAsync(string toEmail, string subject, string htmlBody)
-            => SendAsync(new[] { toEmail }, subject, htmlBody);
-
-        public async Task SendAsync(
-            IEnumerable<string> toEmails,
-            string subject,
-            string htmlBody)
+        public EmailService(ILogger<EmailService> logger)
         {
-            var recipients = toEmails.ToList();
-
-            if (_cfg.UseConsoleInDevelopment)
-            {
-                _LogToConsole(recipients, subject, htmlBody);
-                return;
-            }
-
-            using var message = _BuildMessage(recipients, subject, htmlBody);
-
-            try
-            {
-                using var client = _BuildClient();
-                await client.SendMailAsync(message);
-
-                logger.LogInformation(
-                    "[EmailService] Sent '{Subject}' to {Recipients}",
-                    subject, string.Join(", ", recipients));
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(
-                    ex,
-                    "[EmailService] Failed to send '{Subject}' to {Recipients}. Error: {Error}",
-                    subject, string.Join(", ", recipients), ex.Message);
-
-                throw;
-            }
+            _logger = logger;
         }
 
+        // ── Single recipient ──────────────────────────────────────────────────
+        public Task SendAsync(string toEmail, string subject, string htmlBody)
+        {
+            Log(toEmail, subject, htmlBody);
+            return Task.CompletedTask;
+        }
+
+        // ── Multiple recipients ───────────────────────────────────────────────
+        public Task SendAsync(IEnumerable<string> toEmails, string subject, string htmlBody)
+        {
+            foreach (var email in toEmails)
+                Log(email, subject, htmlBody);
+
+            return Task.CompletedTask;
+        }
+
+        // ── Template-based email ──────────────────────────────────────────────
         public Task SendTemplateAsync<TModel>(
             string toEmail,
             string subject,
             string templateName,
             TModel model)
         {
-            var html = EmailTemplateEngine.Render(templateName, model);
-            return SendAsync(toEmail, subject, html);
+            var body = $"[TEMPLATE: {templateName}]\n{System.Text.Json.JsonSerializer.Serialize(model)}";
+            Log(toEmail, subject, body);
+            return Task.CompletedTask;
         }
 
+        // ── OTP email ─────────────────────────────────────────────────────────
         public Task SendOtpAsync(string toEmail, string firstName, string otp)
         {
-            var subject = "Your Devken CBC verification code";
-            var html = EmailTemplates.Otp(firstName, otp);
-            return SendAsync(toEmail, subject, html);
+            var body = $"Hi {firstName}, your verification code is: {otp} (expires in 5 minutes)";
+            Log(toEmail, "Your Devken CBC Verification Code", body);
+            return Task.CompletedTask;
         }
 
+        // ── Welcome email ─────────────────────────────────────────────────────
         public Task SendWelcomeAsync(string toEmail, string firstName)
         {
-            var subject = "Welcome to Devken CBC School Management System";
-            var html = EmailTemplates.Welcome(firstName);
-            return SendAsync(toEmail, subject, html);
+            var body = $"Hi {firstName}, welcome to Devken CBC School Management System! Your account is ready.";
+            Log(toEmail, "Welcome to Devken CBC", body);
+            return Task.CompletedTask;
         }
 
-        // ── Private helpers ───────────────────────────────────────────────────
-
-        private MailMessage _BuildMessage(
-            IEnumerable<string> toEmails,
-            string subject,
-            string htmlBody)
+        // ── Password Reset email ──────────────────────────────────────────────
+        public Task SendPasswordResetAsync(string toEmail, string firstName, string resetLink)
         {
-            var msg = new MailMessage
-            {
-                From = new MailAddress(_cfg.FromAddress, _cfg.FromName, Encoding.UTF8),
-                Subject = subject,
-                Body = htmlBody,
-                IsBodyHtml = true,
-                BodyEncoding = Encoding.UTF8,
-                SubjectEncoding = Encoding.UTF8,
-            };
+            var body = $@"
+Hi {firstName},
 
-            foreach (var addr in toEmails)
-                msg.To.Add(addr);
+A password reset was requested for your account.
 
-            if (!string.IsNullOrWhiteSpace(_cfg.ReplyTo))
-                msg.ReplyToList.Add(new MailAddress(_cfg.ReplyTo));
+Reset link (valid 30 minutes, single use):
+{resetLink}
 
-            return msg;
+If you did not request this, ignore this email — no changes have been made.
+";
+            Log(toEmail, "Reset Your Devken CBC Password", body);
+            return Task.CompletedTask;
         }
 
-        private SmtpClient _BuildClient() => new(_cfg.Host, _cfg.Port)
-        {
-            Credentials = new System.Net.NetworkCredential(_cfg.Username, _cfg.Password),
-            EnableSsl = _cfg.UseSsl,
-            DeliveryMethod = SmtpDeliveryMethod.Network,
-            Timeout = 15_000,
-        };
-
-        private void _LogToConsole(
-            IEnumerable<string> recipients,
-            string subject,
-            string body)
+        // ── Private helper ────────────────────────────────────────────────────
+        private void Log(string to, string subject, string body)
         {
             var separator = new string('─', 60);
-            logger.LogInformation(
-                "\n{Sep}\n[EmailService DEV] TO: {To}\nSUBJECT: {Subject}\n\n{Body}\n{Sep}",
-                separator,
-                string.Join(", ", recipients),
-                subject,
-                body,
-                separator);
+            _logger.LogInformation(
+                "\n{Sep}\n[EmailService DEV] TO: {To}\nSUBJECT: {Subject}\n{Body}\n{Sep}",
+                separator, to, subject, body, separator);
         }
     }
 }

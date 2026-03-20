@@ -1,5 +1,4 @@
-﻿
-using Devken.CBC.SchoolManagement.Application.Authorization;
+﻿using Devken.CBC.SchoolManagement.Application.Authorization;
 using Devken.CBC.SchoolManagement.Application.DTOs.userActivities;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces;
 using Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.Academic;
@@ -53,18 +52,21 @@ using Devken.CBC.SchoolManagement.Infrastructure.Services.Academics;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Administration.Students;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Curriculum;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Email;
-using Devken.CBC.SchoolManagement.Infrastructure.Services.Finance;         // ← PesaPalService lives here
+using Devken.CBC.SchoolManagement.Infrastructure.Services.Finance;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Images;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Library;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Reports;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.RoleAssignment;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.UserManagement;
+using Devken.CBC.SchoolManagement.Infrastructure.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -78,35 +80,65 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
 {
     public static class InfrastructureServiceRegistration
     {
+        /// <summary>
+        /// Registers all infrastructure services.
+        /// IWebHostEnvironment is required to correctly detect Development vs Production
+        /// for environment-aware registrations such as the email service.
+        /// </summary>
         public static IServiceCollection AddInfrastructure(
             this IServiceCollection services,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            IWebHostEnvironment environment)       // ← added parameter
         {
-            // ── JWT Settings ─────────────────────────────────────────────────
+            // ── JWT Settings ──────────────────────────────────────────────────
             services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
             services.AddSingleton(sp => sp.GetRequiredService<IOptions<JwtSettings>>().Value);
             services.AddHttpContextAccessor();
 
-            // Named HttpClients
+            // ── Named HttpClients ─────────────────────────────────────────────
             services.AddHttpClient();
-            services.AddHttpClient("PesaPal"); // ← named client for PesaPalService
+            services.AddHttpClient("PesaPal");
 
             var jwtSettings = configuration.GetSection("JwtSettings").Get<JwtSettings>();
 
             if (jwtSettings == null)
-                throw new InvalidOperationException("JwtSettings configuration is missing in appsettings.json");
+                throw new InvalidOperationException(
+                    "JwtSettings configuration is missing in appsettings.json");
             if (string.IsNullOrWhiteSpace(jwtSettings.SecretKey))
-                throw new InvalidOperationException("JWT SecretKey is not configured in appsettings.json");
+                throw new InvalidOperationException(
+                    "JWT SecretKey is not configured in appsettings.json");
             if (string.IsNullOrWhiteSpace(jwtSettings.Issuer))
-                throw new InvalidOperationException("JWT Issuer is not configured in appsettings.json");
+                throw new InvalidOperationException(
+                    "JWT Issuer is not configured in appsettings.json");
             if (string.IsNullOrWhiteSpace(jwtSettings.Audience))
-                throw new InvalidOperationException("JWT Audience is not configured in appsettings.json");
+                throw new InvalidOperationException(
+                    "JWT Audience is not configured in appsettings.json");
 
-            // ── PesaPal Settings ─────────────────────────────────────────────
+            // ── PesaPal Settings ──────────────────────────────────────────────
             services.Configure<PesaPalSettings>(
                 configuration.GetSection(PesaPalSettings.SectionName));
 
-            // ── Authentication ───────────────────────────────────────────────
+            // ── SMTP Settings ─────────────────────────────────────────────────
+            services.Configure<SmtpSettings>(configuration.GetSection("Email"));
+            services.AddSingleton(sp => sp.GetRequiredService<IOptions<SmtpSettings>>().Value);
+            services.AddScoped<IEmailService, SmtpEmailService>();
+
+            // ── Email Service — environment-aware ─────────────────────────────
+            // IWebHostEnvironment.IsDevelopment() is the correct, reliable way to
+            // detect the environment. configuration["ASPNETCORE_ENVIRONMENT"] is
+            // NOT reliable because env-vars are not always surfaced via IConfiguration.
+            //if (environment.IsDevelopment())
+            //{
+            //    // Dev stub: prints emails to the console instead of sending
+            //    services.AddScoped<IEmailService, EmailService>();
+            //}
+            //else
+            //{
+            //    // Production / Staging: sends real emails via SMTP (MailKit)
+            //    services.AddScoped<IEmailService, SmtpEmailService>();
+            //}
+
+            // ── Authentication ────────────────────────────────────────────────
             services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -129,7 +161,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                     ValidateLifetime = true,
                     ClockSkew = TimeSpan.Zero,
                     NameClaimType = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name",
-                    RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
+                    RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role",
                 };
                 options.Events = new JwtBearerEvents
                 {
@@ -140,7 +172,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                         if (logger != null)
                         {
                             logger.LogError(context.Exception,
-                                "JWT Authentication failed: {Message}", context.Exception.Message);
+                                "JWT Authentication failed: {Message}",
+                                context.Exception.Message);
+
                             if (context.Exception is SecurityTokenExpiredException)
                                 context.Response.Headers.Append("Token-Expired", "true");
                         }
@@ -161,11 +195,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                                 "JWT token validated for user: {UserId} ({Email})", userId, email);
                         }
                         return Task.CompletedTask;
-                    }
+                    },
                 };
             });
 
-            // ── Authorization ────────────────────────────────────────────────
+            // ── Authorization ─────────────────────────────────────────────────
             services.AddAuthorization(options =>
             {
                 options.FallbackPolicy = new AuthorizationPolicyBuilder()
@@ -190,7 +224,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                 options.AddPolicy("Teacher", policy => policy.RequireRole("Teacher"));
                 options.AddPolicy("Parent", policy => policy.RequireRole("Parent"));
 
-                // ── Settings / Configuration permissions ─────────────────────
+                // ── Settings permissions ─────────────────────────────────────
                 RegisterPermissionPolicy(options, PermissionKeys.DocumentNumberSeriesRead);
                 RegisterPermissionPolicy(options, PermissionKeys.DocumentNumberSeriesWrite);
                 RegisterPermissionPolicy(options, PermissionKeys.DocumentNumberSeriesDelete);
@@ -288,19 +322,19 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                 // ── Legacy / backward-compat permissions ─────────────────────
                 var legacyPermissions = new List<string>
                 {
-                    "Student.Read",    "Student.Write",    "Student.Delete",
-                    "Assessment.Read", "Assessment.Write",
-                    "Finance.Read",    "Finance.Write",
-                    "Report.Read",     "Report.Write",
-                    "Settings.Read",   "Settings.Write",
-                    "Class.Read",      "Class.Write",
-                    "AcademicYear.Read", "AcademicYear.Write",
-                    "Subject.Read",    "Subject.Write",    "Subject.Delete",
-                    "Grade.Read",      "Grade.Write",
-                    "ProgressReport.Read", "ProgressReport.Write",
-                    "Invoice.Read",    "Invoice.Write",
-                    "Payment.Read",    "Payment.Write",
-                    "Parent.Read",     "Parent.Write",     "Parent.Delete",
+                    "Student.Read",       "Student.Write",    "Student.Delete",
+                    "Assessment.Read",    "Assessment.Write",
+                    "Finance.Read",       "Finance.Write",
+                    "Report.Read",        "Report.Write",
+                    "Settings.Read",      "Settings.Write",
+                    "Class.Read",         "Class.Write",
+                    "AcademicYear.Read",  "AcademicYear.Write",
+                    "Subject.Read",       "Subject.Write",    "Subject.Delete",
+                    "Grade.Read",         "Grade.Write",
+                    "ProgressReport.Read","ProgressReport.Write",
+                    "Invoice.Read",       "Invoice.Write",
+                    "Payment.Read",       "Payment.Write",
+                    "Parent.Read",        "Parent.Write",     "Parent.Delete",
                 };
 
                 foreach (var permission in legacyPermissions)
@@ -310,29 +344,26 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                 }
             });
 
-            // ── Authorization Handlers ───────────────────────────────────────
+            // ── Authorization Handlers ────────────────────────────────────────
             services.AddScoped<IAuthorizationHandler, PermissionHandler>();
-            services.AddScoped<IEmailService, EmailService>();
             services.AddScoped<IAuthorizationHandler, RoleHandler>();
             services.AddScoped<IAuthorizationHandler, TenantAccessHandler>();
 
-            // ── Infrastructure Services ──────────────────────────────────────
+            // ── Infrastructure Services ───────────────────────────────────────
             services.AddScoped<IPasswordHashingService, BCryptPasswordHashingService>();
             services.AddMemoryCache();
             services.AddScoped(typeof(Lazy<>), typeof(LazyServiceProvider<>));
 
-            // ── Repository Manager (unit of work) ────────────────────────────
+            // ── Repository Manager (unit of work) ─────────────────────────────
             services.AddScoped<IRepositoryManager, RepositoryManager>();
 
-            // ── Individual Repositories ──────────────────────────────────────
-
-            // Academic Repositories
+            // ── Academic Repositories ─────────────────────────────────────────
             services.AddScoped<IParentRepository, ParentRepository>();
             services.AddScoped<IStudentRepository, StudentRepository>();
             services.AddScoped<ITeacherRepository, TeacherRepository>();
             services.AddScoped<ISchoolRepository, SchoolRepository>();
 
-            // Identity Repositories
+            // ── Identity Repositories ─────────────────────────────────────────
             services.AddScoped<IRoleRepository, RoleRepository>();
             services.AddScoped<IPermissionRepository, PermissionRepository>();
             services.AddScoped<IRolePermissionRepository, RolePermissionRepository>();
@@ -340,34 +371,36 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
             services.AddScoped<ISuperAdminRepository, SuperAdminRepository>();
 
-            // Other Academic Repositories
+            // ── Other Academic Repositories ───────────────────────────────────
             services.AddScoped<ISubjectRepository, SubjectRepository>();
             services.AddScoped<IGradeRepository, GradeRepository>();
             services.AddScoped<IUserActivityRepository, UserActivityRepository>();
             services.AddScoped<IPesaPalTransactionQuery, PesaPalTransactionQuery>();
             services.AddScoped<IWritablePesaPalSettings, JsonWritablePesaPalSettings>();
-            // Payment Repositories
+
+            // ── Payment Repositories ──────────────────────────────────────────
             services.AddScoped<IMpesaPaymentRepository, MpesaPaymentRepository>();
             services.AddScoped<IPaymentRepository, PaymentRepository>();
 
-            // Number Series
+            // ── Number Series ─────────────────────────────────────────────────
             services.AddScoped<IDocumentNumberSeriesRepository, DocumentNumberService>();
 
-            // Finance Repositories
+            // ── Finance Repositories ──────────────────────────────────────────
             services.AddScoped<IFeeItemRepository, FeeItemRepository>();
             services.AddScoped<IFeeStructureRepository, FeeStructureRepository>();
             services.AddScoped<IInvoiceRepository, InvoiceRepository>();
             services.AddScoped<IInvoiceItemRepository, InvoiceItemRepository>();
 
-            // Assessment Repositories
+            // ── Assessment Repositories ───────────────────────────────────────
             services.AddScoped<IFormativeAssessmentRepository, FormativeAssessmentRepository>();
             services.AddScoped<IFormativeAssessmentScoreRepository, FormativeAssessmentScoreRepository>();
             services.AddScoped<ISummativeAssessmentRepository, SummativeAssessmentRepository>();
             services.AddScoped<ISummativeAssessmentScoreRepository, SummativeAssessmentScoreRepository>();
             services.AddScoped<ICompetencyAssessmentRepository, CompetencyAssessmentRepository>();
             services.AddScoped<ICompetencyAssessmentScoreRepository, CompetencyAssessmentScoreRepository>();
+            services.AddScoped<IEmailService, SmtpEmailService>();
 
-            // Library Repositories
+            // ── Library Repositories ──────────────────────────────────────────
             services.AddScoped<IBookAuthorRepository, BookAuthorRepository>();
             services.AddScoped<IBookCategoryRepository, BookCategoryRepository>();
             services.AddScoped<IBookPublisherRepository, BookPublisherRepository>();
@@ -376,9 +409,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IBookCopyRepository, BookCopyRepository>();
             services.AddScoped<IBookInventoryRepository, BookInventoryRepository>();
 
-            // ── Application Services ─────────────────────────────────────────
-
-            // Library services
+            // ── Library Application Services ──────────────────────────────────
             services.AddScoped<IBookAuthorService, BookAuthorService>();
             services.AddScoped<IBookCategoryService, BookCategoryService>();
             services.AddScoped<IBookPublisherService, BookPublisherService>();
@@ -387,7 +418,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IBookCopyService, BookCopyService>();
             services.AddScoped<IBookInventoryService, BookInventoryService>();
 
-            // Academic services
+            // ── Academic Application Services ─────────────────────────────────
             services.AddScoped<IStudentService, StudentService>();
             services.AddScoped<ITeacherService, TeacherService>();
             services.AddScoped<ITermService, TermService>();
@@ -401,16 +432,16 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IReportService, ReportService>();
             services.AddScoped<IUserManagementService, UserManagementService>();
 
-            // Finance services
+            // ── Finance Application Services ──────────────────────────────────
             services.AddScoped<IFeeItemService, FeeItemService>();
             services.AddScoped<IInvoiceService, InvoiceService>();
             services.AddScoped<IInvoiceItemService, InvoiceItemService>();
             services.AddScoped<IPaymentService, PaymentService>();
 
-            // ── PesaPal Service ──────────────────────────────────────────────
+            // ── PesaPal Service ───────────────────────────────────────────────
             services.AddScoped<IPesaPalService, PesaPalService>();
 
-            // Identity / Auth services
+            // ── Identity / Auth Services ──────────────────────────────────────
             services.AddScoped<IJwtService, JwtService>();
             services.AddScoped<IPermissionSeedService, PermissionSeedService>();
             services.AddScoped<ISubscriptionSeedService, SubscriptionSeedService>();

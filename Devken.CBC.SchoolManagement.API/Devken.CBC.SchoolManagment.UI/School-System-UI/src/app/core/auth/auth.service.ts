@@ -1,3 +1,4 @@
+// app/core/auth/auth.service.ts
 import { inject, Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, from, of } from 'rxjs';
 import { catchError, map, shareReplay, tap } from 'rxjs/operators';
@@ -11,21 +12,33 @@ import { API_BASE_URL } from 'app/app.config';
 interface ApiResponse<T> {
     success: boolean;
     message: string;
-    data: T;
+    data   : T;
 }
 
 /* =======================
    AUTH USER
 ======================= */
 export interface AuthUser {
-    id                  : string;
-    name                : string;
-    email               : string;
-    fullName            : string;
-    roles               : string[];
-    permissions         : string[];
-    isSuperAdmin        : boolean;
+    id                   : string;
+    name                 : string;
+    email                : string;
+    fullName             : string;
+    roles                : string[];
+    permissions          : string[];
+    isSuperAdmin         : boolean;
     requirePasswordChange?: boolean;
+}
+
+/* =======================
+   PASSWORD RESET DTOs
+======================= */
+export interface ForgotPasswordRequest {
+    email: string;
+}
+
+export interface ResetPasswordRequest {
+    token      : string;
+    newPassword: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -34,14 +47,14 @@ export class AuthService {
     private _apiBaseUrl  = inject(API_BASE_URL);
     private _userService = inject(UserService);
 
-    private _authenticated$          = new BehaviorSubject<boolean>(false);
-    readonly authenticated$          = this._authenticated$.asObservable();
+    private _authenticated$         = new BehaviorSubject<boolean>(false);
+    readonly authenticated$         = this._authenticated$.asObservable();
 
-    private _permissions$            = new BehaviorSubject<string[]>([]);
-    readonly permissions$            = this._permissions$.asObservable();
+    private _permissions$           = new BehaviorSubject<string[]>([]);
+    readonly permissions$           = this._permissions$.asObservable();
 
-    private _requirePasswordChange$  = new BehaviorSubject<boolean>(false);
-    readonly requirePasswordChange$  = this._requirePasswordChange$.asObservable();
+    private _requirePasswordChange$ = new BehaviorSubject<boolean>(false);
+    readonly requirePasswordChange$ = this._requirePasswordChange$.asObservable();
 
     // Prevent multiple simultaneous refresh calls
     private _refreshInProgress$: Observable<boolean> | null = null;
@@ -79,6 +92,10 @@ export class AuthService {
             ? localStorage.setItem(this.USER, JSON.stringify(user))
             : localStorage.removeItem(this.USER);
     }
+        adminResetPassword(userEmail: string): Observable<ApiResponse<any>> {
+        return this.post<any>('/api/auth/forgot-password', { email: userEmail });
+    }
+ 
 
     get requiresPasswordChange(): boolean {
         return this.authUser?.requirePasswordChange ?? false;
@@ -102,31 +119,17 @@ export class AuthService {
 
     /**
      * Called by sign-in.component after SsoService.exchangeGoogleToken() succeeds.
-     *
-     * The backend (SsoController) returns the same LoginResponseDto shape used
-     * by the normal login endpoint, so we reuse _handleLoginResponse.
-     *
-     * @param data  The `response.data` object from POST /api/auth/sso/google
+     * The backend returns the same LoginResponseDto shape used by the normal login
+     * endpoint, so we reuse _handleLoginResponse.
      */
     handleSsoLoginResponse(data: any): void {
-        // isSuperAdmin is always false for SSO school users.
-        // The role check inside _handleLoginResponse will catch it if they somehow
-        // have a SuperAdmin role assigned.
         this._handleLoginResponse(data, false);
     }
 
     /**
      * Convenience method: store tokens + set session from an SSO response.
-     *
-     * Use this when you already have the full `data` object and want a
-     * one-liner in sign-in.component:
-     *
-     *   this._authService.storeTokens(response.data.accessToken,
-     *                                 response.data.refreshToken);
-     *   this._authService.handleSsoLoginResponse(response.data);
-     *
-     * OR just call handleSsoLoginResponse(response.data) alone — it sets
-     * both tokens and the session in one step (preferred).
+     * Prefer handleSsoLoginResponse(response.data) alone — it sets both tokens
+     * and the session in one step.
      */
     storeTokens(accessToken: string, refreshToken: string): void {
         this.accessToken  = accessToken;
@@ -185,7 +188,8 @@ export class AuthService {
                 if (res.data.user) {
                     const userData   = res.data.user;
                     const fullName   = this._buildFullName(userData);
-                    const isSuperAdm = this._detectSuperAdmin(userData, res.data, this.authUser?.isSuperAdmin);
+                    const isSuperAdm = this._detectSuperAdmin(
+                        userData, res.data, this.authUser?.isSuperAdmin);
 
                     const user: AuthUser = {
                         id                   : userData.id,
@@ -220,8 +224,8 @@ export class AuthService {
         this._authenticated$.next(false);
         this._permissions$.next([]);
         this._requirePasswordChange$.next(false);
-        this._userService.user    = null;
-        this._refreshInProgress$  = null;
+        this._userService.user   = null;
+        this._refreshInProgress$ = null;
     }
 
     // ── Permission helpers ─────────────────────────────────────────────────────
@@ -263,17 +267,52 @@ export class AuthService {
         );
     }
 
+    // ── Password reset (unauthenticated) ───────────────────────────────────────
+
+    /**
+     * Sends a password-reset email to the given address.
+     *
+     * POST /api/auth/forgot-password
+     *
+     * The backend always returns 200 OK regardless of whether the email is
+     * registered (enumeration guard), so the UI should show a generic
+     * "check your inbox" message in every case.
+     *
+     * Usage:
+     *   this._authService.forgotPassword({ email })
+     *     .subscribe({ error: err => showError(err) });
+     */
+    forgotPassword(request: ForgotPasswordRequest): Observable<ApiResponse<any>> {
+        return this.post<any>('/api/auth/forgot-password', request);
+    }
+
+    /**
+     * Validates the reset token (from the email link) and sets the new password.
+     *
+     * POST /api/auth/reset-password
+     *
+     * On success the backend revokes all existing sessions — the user must
+     * sign in again after resetting.
+     *
+     * Usage (extract token from URL query params):
+     *   const token = this._route.snapshot.queryParamMap.get('token') ?? '';
+     *   this._authService.resetPassword({ token, newPassword })
+     *     .subscribe({
+     *       next: () => this._router.navigate(['/sign-in']),
+     *       error: err => showError(err),
+     *     });
+     */
+    resetPassword(request: ResetPasswordRequest): Observable<ApiResponse<any>> {
+        return this.post<any>('/api/auth/reset-password', request);
+    }
+
     // ── Private helpers ────────────────────────────────────────────────────────
 
     /**
      * Single entry point for ALL successful login responses
      * (email/password, super-admin, AND Google SSO).
-     *
-     * The backend always returns the same LoginResponseDto shape, so
-     * this method works for every auth path.
      */
     private _handleLoginResponse(data: any, isSuperAdmin: boolean): void {
-        // Persist tokens
         this.accessToken  = data.accessToken;
         this.refreshToken = data.refreshToken;
 
@@ -310,15 +349,15 @@ export class AuthService {
      *  - the boolean passed in by the caller (e.g. superAdminSignIn path)
      */
     private _detectSuperAdmin(
-        userObj    : any,
+        userObj     : any,
         responseData: any,
-        fallback   : boolean | undefined,
+        fallback    : boolean | undefined,
     ): boolean {
         return (
-            userObj?.roleNames?.includes('SuperAdmin')    ||
-            responseData?.roles?.includes('SuperAdmin')   ||
-            responseData?.user?.isSuperAdmin              ||
-            fallback                                       ||
+            userObj?.roleNames?.includes('SuperAdmin')  ||
+            responseData?.roles?.includes('SuperAdmin') ||
+            responseData?.user?.isSuperAdmin            ||
+            fallback                                     ||
             false
         );
     }
@@ -328,8 +367,8 @@ export class AuthService {
     private _fetchCurrentUser(): Observable<AuthUser> {
         return this.get<any>('/api/auth/me').pipe(
             map(res => {
-                const data     = res.data;
-                const fullName = this._buildFullName(data);
+                const data       = res.data;
+                const fullName   = this._buildFullName(data);
                 const isSuperAdm = this._detectSuperAdmin(data, data, false);
 
                 return {
