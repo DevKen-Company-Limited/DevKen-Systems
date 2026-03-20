@@ -129,7 +129,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         public DbSet<Book> Books => Set<Book>();           // ← add
         public DbSet<LibraryBranch> LibraryBranches => Set<LibraryBranch>(); // ← add
         public DbSet<BookCopy> BookCopies => Set<BookCopy>();       // ← add
-        public DbSet<BookInventory> BookInventories => Set<BookInventory>();  // ← add
+        public DbSet<BookInventory> BookInventories => Set<BookInventory>();
+        public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();// ← addPasswordResetTokens
 
 
         #endregion
