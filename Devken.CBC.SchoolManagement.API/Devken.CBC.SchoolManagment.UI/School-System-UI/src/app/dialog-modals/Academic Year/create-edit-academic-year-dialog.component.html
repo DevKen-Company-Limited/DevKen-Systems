@@ -58,15 +58,11 @@
   <!-- Code -->
   <mat-form-field class="w-full">
     <mat-label>Code</mat-label>
-    <input matInput formControlName="code" placeholder="e.g., 2024-2025" maxlength="9" />
-    <mat-error *ngIf="form.get('code')?.hasError('required')">
-      Code is required
-    </mat-error>
-    <mat-error *ngIf="form.get('code')?.hasError('maxlength')">
-      Code cannot exceed 9 characters
-    </mat-error>
+    <input matInput formControlName="code" placeholder="e.g., 2024-2025" maxlength="20" />
+    <mat-hint *ngIf="!isEditMode">Leave blank to auto-generate from number series</mat-hint>
+    <mat-error *ngIf="form.get('code')?.hasError('required')">Code is required</mat-error>
+    <mat-error *ngIf="form.get('code')?.hasError('maxlength')">Code cannot exceed 20 characters</mat-error>
   </mat-form-field>
-
   <!-- Date Range -->
   <div class="flex gap-4 w-full">
     <mat-form-field class="flex-1">

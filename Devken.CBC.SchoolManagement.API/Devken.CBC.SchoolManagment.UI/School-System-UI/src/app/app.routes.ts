@@ -172,7 +172,8 @@ export const appRoutes: Route[] = [
                     { path: 'library-branches', loadChildren: () => import('app/Library/library-branch/library-branches.routes') },
                     { path: 'book-copies',      loadChildren: () => import('app/Library/book-copy/book-copies.routes')             },
                     { path: 'book-inventory',   loadChildren: () => import('app/Library/book-inventory/book-inventory.routes')     },
-    
+                    { path: 'members',          loadChildren: () => import('app/Library/library-member/library-members.routes') },
+                    { path: 'reservations',     loadChildren: () => import('app/Library/book-reservation/book-reservations.routes') }
                 ]
             },
 

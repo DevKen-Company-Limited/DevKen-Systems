@@ -71,12 +71,15 @@ export class DocumentNumberSeriesComponent implements OnInit, AfterViewInit, OnD
       type: 'select',
       options: [
         { label: 'All', value: 'all' },
+        {label: 'Academic Year', value:'AcademicYear'},
         { label: 'Student', value: 'Student' },
         { label: 'Teacher', value: 'Teacher' },
         { label: 'Invoice', value: 'Invoice' },
         { label: 'Payment', value: 'Payment' },
         { label: 'Assessment', value: 'Assessment' },
         { label: 'Class', value: 'Class' },
+        { label: 'Library Member Number', value: 'LibraryMember'      }, // ← add
+    
       ],
       value: 'all'
     },

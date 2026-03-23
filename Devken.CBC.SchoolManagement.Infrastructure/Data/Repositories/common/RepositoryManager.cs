@@ -72,6 +72,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         private readonly Lazy<ILibraryBranchRepository> _libraryBranchRepository;
         private readonly Lazy<IBookCopyRepository> _bookCopyRepository;
         private readonly Lazy<IBookInventoryRepository> _bookInventoryRepository;
+        private readonly Lazy<IBookReservationRepository> _bookReservationRepository;   
+        private readonly Lazy<ILibraryMemberRepository> _libraryMemberRepository;
 
         // ── Identity ─────────────────────────────────────────────────────────
         private readonly Lazy<IUserRepository> _userRepository;
@@ -165,6 +167,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
                 () => new BookCopyRepository(_context, _tenantContext));
             _bookInventoryRepository = new Lazy<IBookInventoryRepository>(
                 () => new BookInventoryRepository(_context, _tenantContext));
+            _bookReservationRepository = new Lazy<IBookReservationRepository>(
+                () => new BookReservationRepository(_context, _tenantContext));
+            _libraryMemberRepository = new Lazy<ILibraryMemberRepository>(
+                () => new LibraryMemberRepository(_context, _tenantContext));
 
             // Identity
             _userRepository = new Lazy<IUserRepository>(
@@ -234,6 +240,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         public ILibraryBranchRepository LibraryBranch => _libraryBranchRepository.Value;
         public IBookCopyRepository BookCopy => _bookCopyRepository.Value;
         public IBookInventoryRepository BookInventory => _bookInventoryRepository.Value;
+        public IBookReservationRepository BookReservation => _bookReservationRepository.Value;
+        public ILibraryMemberRepository LibraryMember => _libraryMemberRepository.Value;
 
 
         // ── Identity Properties ──────────────────────────────────────────────
