@@ -21,6 +21,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Dashboard
             _repo = repo ?? throw new ArgumentNullException(nameof(repo));
         }
 
+        // ─────────────────────────────────────────────────────────────────────
+        // GetDashboardAsync
+        // ─────────────────────────────────────────────────────────────────────
         public async Task<DashboardResponse> GetDashboardAsync(
             DashboardQueryParams query,
             DashboardPermissions permissions,
@@ -28,8 +31,6 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Dashboard
             Guid? userSchoolId,
             bool isSuperAdmin)
         {
-            // null  →  SuperAdmin with no school filter (system-wide aggregate)
-            // Guid  →  scoped to that specific school
             var schoolId = ResolveSchoolId(query.SchoolId, userSchoolId, isSuperAdmin);
 
             var response = new DashboardResponse
@@ -69,6 +70,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Dashboard
             return response;
         }
 
+        // ─────────────────────────────────────────────────────────────────────
+        // GetStatsAsync
+        // ─────────────────────────────────────────────────────────────────────
         public async Task<StatsSection> GetStatsAsync(
             DashboardQueryParams query,
             DashboardPermissions permissions,
@@ -80,8 +84,14 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Dashboard
 
             if (permissions.CanViewStats)
             {
+                // All TenantBaseEntity subclasses carry TenantId which equals School.Id.
+                // School itself extends BaseEntity (not TenantBaseEntity) so it has no TenantId —
+                // it IS the tenant root; its own Id is used directly in GetSchoolNameAsync.
+
                 var studentCount = await _repo.Student
-                    .FindByCondition(s => (!schoolId.HasValue || s.Id == schoolId.Value) && s.IsActive, false)
+                    .FindByCondition(
+                        s => (!schoolId.HasValue || s.TenantId == schoolId.Value) && s.IsActive,
+                        trackChanges: false)
                     .CountAsync();
 
                 section.EnrolledStudents = new StatCard
@@ -91,12 +101,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Dashboard
                     Label = "Enrolled Students",
                     Trend = "Current enrolment",
                 };
-            }
 
-            if (permissions.CanViewStats)
-            {
                 var staffCount = await _repo.Teacher
-                    .FindByCondition(t => (!schoolId.HasValue || t.Id == schoolId.Value) && t.IsActive, false)
+                    .FindByCondition(
+                        t => (!schoolId.HasValue || t.TenantId == schoolId.Value) && t.IsActive,
+                        trackChanges: false)
                     .CountAsync();
 
                 section.TeachingStaff = new StatCard
@@ -106,12 +115,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Dashboard
                     Label = "Teaching Staff",
                     Trend = "Active teachers",
                 };
-            }
 
-            if (permissions.CanViewStats)
-            {
                 var pendingCount = await _repo.FormativeAssessment
-                    .FindByCondition(a => (!schoolId.HasValue || a.         Id   == schoolId.Value) && !a.IsPublished, false)
+                    .FindByCondition(
+                        a => (!schoolId.HasValue || a.TenantId == schoolId.Value) && !a.IsPublished,
+                        trackChanges: false)
                     .CountAsync();
 
                 section.AssessmentsPending = new StatCard
@@ -121,16 +129,19 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Dashboard
                     Label = "Assessments Pending",
                     Trend = pendingCount > 0 ? $"{pendingCount} awaiting publish" : "All up to date",
                 };
-            }
 
-            if (permissions.CanViewStats)
-            {
+                // Net expected = TotalAmount - DiscountAmount, matching Invoice.Balance definition.
+                // AmountPaid and Balance are [NotMapped], so we must expand them here.
                 var totalInvoiced = await _repo.Invoice
-                    .FindByCondition(i => !schoolId.HasValue || i.                          Id == schoolId.Value, false)
-                    .SumAsync(i => (decimal?)i.TotalAmount) ?? 0;
+                    .FindByCondition(
+                        i => !schoolId.HasValue || i.TenantId == schoolId.Value,
+                        trackChanges: false)
+                    .SumAsync(i => (decimal?)(i.TotalAmount - i.DiscountAmount)) ?? 0;
 
                 var totalPaid = await _repo.Payment
-                    .FindByCondition(p => !schoolId.HasValue || p.Id == schoolId.Value, false)
+                    .FindByCondition(
+                        p => !schoolId.HasValue || p.TenantId == schoolId.Value,
+                        trackChanges: false)
                     .SumAsync(p => (decimal?)p.Amount) ?? 0;
 
                 var rate = totalInvoiced > 0
@@ -149,6 +160,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Dashboard
             return section;
         }
 
+        // ─────────────────────────────────────────────────────────────────────
+        // GetClassPerformanceAsync
+        // ─────────────────────────────────────────────────────────────────────
         public async Task<ClassPerformanceSection> GetClassPerformanceAsync(
             DashboardQueryParams query,
             Guid? userSchoolId,
@@ -160,32 +174,28 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Dashboard
 
             var classesQuery = _repo.Class
                 .FindByCondition(
-                    c => (!schoolId.HasValue || c.Id == schoolId.Value) && c.IsActive, false);
+                    c => (!schoolId.HasValue || c.TenantId == schoolId.Value) && c.IsActive,
+                    trackChanges: false);
 
+            // Class teachers are scoped to only the class(es) they own.
+            // Class.TeacherId is the FK backing the ClassTeacher navigation property.
             if (isClassTeacher)
                 classesQuery = classesQuery.Where(c => c.TeacherId == userId);
 
-            //if (!string.IsNullOrWhiteSpace(query.Level) && query.Level != "All Levels")
-            //    classesQuery = classesQuery.Where(c => c.Level == query.Level);
-
             var classes = await classesQuery
-                .Select(c => new
-                {
-                    c.Id,
-                    c.Name,
-                    //c.Badge,
-                    //TeacherName = c.Teacher != null ? c.Teacher.FullName : string.Empty,
-                    //StudentCount = c.Students.Count(s => !s.IsDeleted),
-                    //c.Color,
-                })
+                .Select(c => new { c.Id, c.Name })
                 .ToListAsync();
 
             var items = new List<ClassPerformanceItem>();
 
             foreach (var cls in classes)
             {
+                // FormativeAssessmentScore has no direct ClassId column.
+                // Navigate through the parent FormativeAssessment to reach ClassId.
                 var totalScores = await _repo.FormativeAssessmentScore
-                    .FindByCondition(s => s.Id == cls.Id, false)
+                    .FindByCondition(
+                        s => s.FormativeAssessment.ClassId == cls.Id,
+                        trackChanges: false)
                     .Select(s => (double?)s.Score)
                     .ToListAsync();
 
@@ -196,11 +206,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Dashboard
                 items.Add(new ClassPerformanceItem
                 {
                     ClassId = cls.Id,
-                    //Badge = cls.Badge ?? cls.Name[..Math.Min(4, cls.Name.Length)],
                     ClassName = cls.Name,
-                    //Meta = $"{cls.StudentCount} students · {cls.TeacherName}",
                     Pct = pct,
-                    //Color = cls.Color ?? "#2563EB",
                 });
             }
 
@@ -211,6 +218,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Dashboard
             };
         }
 
+        // ─────────────────────────────────────────────────────────────────────
+        // GetCompetencyAsync
+        // ─────────────────────────────────────────────────────────────────────
         public async Task<CompetencySection> GetCompetencyAsync(
             DashboardQueryParams query,
             Guid? userSchoolId,
@@ -218,12 +228,18 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Dashboard
         {
             var schoolId = ResolveSchoolId(query.SchoolId, userSchoolId, isSuperAdmin);
 
-            var scores = await _repo.CompetencyAssessmentScore
-                .FindByCondition(s => !schoolId.HasValue || s.Id == schoolId.Value, false)
-                .Select(s => s.CompetencyLevel)
+            // Project the persisted Rating column ("Exceeds" | "Meets" | "Approaching" | "Below").
+            // CompetencyLevel is a computed property decorated with Ignore() in Fluent API
+            // and therefore cannot be translated to SQL.
+            var ratings = await _repo.CompetencyAssessmentScore
+                .FindByCondition(
+                    s => !schoolId.HasValue || s.TenantId == schoolId.Value,
+                    trackChanges: false)
+                .Select(s => s.Rating)
                 .ToListAsync();
 
-            var total = scores.Count;
+            var total = ratings.Count;
+
             if (total == 0)
             {
                 return new CompetencySection
@@ -238,21 +254,25 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Dashboard
                 };
             }
 
-            int Pct(string level) =>
-                (int)Math.Round(scores.Count(s => s == level) / (double)total * 100);
+            // Match against the actual Rating strings stored in CompetencyAssessmentScore.
+            int Pct(string ratingValue) =>
+                (int)Math.Round(ratings.Count(r => r == ratingValue) / (double)total * 100);
 
             return new CompetencySection
             {
                 Items = new List<CompetencyItem>
                 {
-                    new() { Label = "Exceeding Expectations",   Code = "EE", Pct = Pct("EE"), Color = "#2563EB" },
-                    new() { Label = "Meeting Expectations",     Code = "ME", Pct = Pct("ME"), Color = "#16a34a" },
-                    new() { Label = "Approaching Expectations", Code = "AE", Pct = Pct("AE"), Color = "#d97706" },
-                    new() { Label = "Below Expectations",       Code = "BE", Pct = Pct("BE"), Color = "#dc2626" },
+                    new() { Label = "Exceeding Expectations",   Code = "EE", Pct = Pct("Exceeds"),    Color = "#2563EB" },
+                    new() { Label = "Meeting Expectations",     Code = "ME", Pct = Pct("Meets"),       Color = "#16a34a" },
+                    new() { Label = "Approaching Expectations", Code = "AE", Pct = Pct("Approaching"), Color = "#d97706" },
+                    new() { Label = "Below Expectations",       Code = "BE", Pct = Pct("Below"),       Color = "#dc2626" },
                 }
             };
         }
 
+        // ─────────────────────────────────────────────────────────────────────
+        // GetRecentAssessmentsAsync
+        // ─────────────────────────────────────────────────────────────────────
         public async Task<RecentAssessmentsSection> GetRecentAssessmentsAsync(
             DashboardQueryParams query,
             Guid? userSchoolId,
@@ -263,7 +283,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Dashboard
             var schoolId = ResolveSchoolId(query.SchoolId, userSchoolId, isSuperAdmin);
 
             var formativeQuery = _repo.FormativeAssessment
-                .FindByCondition(a => !schoolId.HasValue || a.Id == schoolId.Value, false);
+                .FindByCondition(
+                    a => !schoolId.HasValue || a.TenantId == schoolId.Value,
+                    trackChanges: false);
 
             if (isClassTeacher)
                 formativeQuery = formativeQuery.Where(a => a.TeacherId == userId);
@@ -274,18 +296,18 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Dashboard
                 .Select(a => new AssessmentRow
                 {
                     AssessmentId = a.Id,
-                    //StudentName = a.Student != null ? a.Student.FullName : string.Empty,
                     ClassName = a.Class != null ? a.Class.Name : string.Empty,
                     LearningArea = a.Subject != null ? a.Subject.Name : string.Empty,
                     AssessmentType = "Formative",
-                    //CompetencyLevel = a.CompetencyLevel ?? string.Empty,
                     AssessmentDate = a.AssessmentDate,
                     TeacherName = a.Teacher != null ? a.Teacher.FullName : string.Empty,
                 })
                 .ToListAsync();
 
             var summativeQuery = _repo.SummativeAssessment
-                .FindByCondition(a => !schoolId.HasValue || a.Id == schoolId.Value, false);
+                .FindByCondition(
+                    a => !schoolId.HasValue || a.TenantId == schoolId.Value,
+                    trackChanges: false);
 
             if (isClassTeacher)
                 summativeQuery = summativeQuery.Where(a => a.TeacherId == userId);
@@ -296,11 +318,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Dashboard
                 .Select(a => new AssessmentRow
                 {
                     AssessmentId = a.Id,
-                    //StudentName = a.Student != null ? a.Student.FullName : string.Empty,
                     ClassName = a.Class != null ? a.Class.Name : string.Empty,
                     LearningArea = a.Subject != null ? a.Subject.Name : string.Empty,
                     AssessmentType = "Summative",
-                    //CompetencyLevel = a.CompetencyLevel ?? string.Empty,
                     AssessmentDate = a.AssessmentDate,
                     TeacherName = a.Teacher != null ? a.Teacher.FullName : string.Empty,
                 })
@@ -315,32 +335,18 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Dashboard
             return new RecentAssessmentsSection { Items = combined };
         }
 
-        public async Task<EventsSection> GetEventsAsync(
+        // ─────────────────────────────────────────────────────────────────────
+        // GetEventsAsync  (scaffold — events repo not yet wired)
+        // ─────────────────────────────────────────────────────────────────────
+        public Task<EventsSection> GetEventsAsync(
             DashboardQueryParams query,
             Guid? userSchoolId,
             bool isSuperAdmin)
-        {
-            var schoolId = ResolveSchoolId(query.SchoolId, userSchoolId, isSuperAdmin);
+            => Task.FromResult(new EventsSection());
 
-            //var events = await _repo.SchoolEvent
-            //    .FindByCondition(
-            //        e => (!schoolId.HasValue || e.Id == schoolId.Value)
-            //             && e.Date >= DateTime.UtcNow.Date, false)
-            //    .OrderBy(e => e.Date)
-            //    .Take(5)
-            //    .Select(e => new EventItem
-            //    {
-            //        EventId = e.Id,
-            //        Title = e.Title,
-            //        SubTitle = e.SubTitle ?? string.Empty,
-            //        Date = e.Date,
-            //        Tag = e.Tag ?? string.Empty,
-            //    })
-            //    .ToListAsync();
-
-            return new EventsSection { };
-        }
-
+        // ─────────────────────────────────────────────────────────────────────
+        // GetFeeCollectionAsync
+        // ─────────────────────────────────────────────────────────────────────
         public async Task<FeeCollectionSection> GetFeeCollectionAsync(
             DashboardQueryParams query,
             Guid? userSchoolId,
@@ -350,19 +356,21 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Dashboard
             var termId = query.TermId;
 
             var invoicesQuery = _repo.Invoice
-                .FindByCondition(i => !schoolId.HasValue || i.Id == schoolId.Value, false);
+                .FindByCondition(
+                    i => !schoolId.HasValue || i.TenantId == schoolId.Value,
+                    trackChanges: false);
 
             if (termId.HasValue)
                 invoicesQuery = invoicesQuery.Where(i => i.TermId == termId.Value);
 
+            // Net expected = TotalAmount - DiscountAmount, matching Invoice.Balance definition.
             var totalExpected = await invoicesQuery
-                .SumAsync(i => (decimal?)i.TotalAmount) ?? 0;
+                .SumAsync(i => (decimal?)(i.TotalAmount - i.DiscountAmount)) ?? 0;
 
             var paymentsQuery = _repo.Payment
-                .FindByCondition(p => !schoolId.HasValue || p.Id         == schoolId.Value, false);
-
-            //if (termId.HasValue)
-            //    paymentsQuery = paymentsQuery.Where(p => p.TermId == termId.Value);
+                .FindByCondition(
+                    p => !schoolId.HasValue || p.TenantId == schoolId.Value,
+                    trackChanges: false);
 
             var totalCollected = await paymentsQuery
                 .SumAsync(p => (decimal?)p.Amount) ?? 0;
@@ -372,8 +380,13 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Dashboard
                 ? (int)Math.Round(totalCollected / totalExpected * 100)
                 : 0;
 
+            // Invoice.Balance and Invoice.AmountPaid are both [NotMapped] so EF Core
+            // cannot reference them in a query.  Expand Balance to its definition:
+            //   Balance = TotalAmount - DiscountAmount - Payments.Sum(p => p.Amount)
+            // EF Core translates the navigation .Sum() as a correlated subquery,
+            // so this remains fully server-side with no client evaluation needed.
             var defaulterCount = await invoicesQuery
-                .Where(i => i.Balance > 0)
+                .Where(i => i.TotalAmount - i.DiscountAmount - i.Payments.Sum(p => p.Amount) > 0)
                 .Select(i => i.StudentId)
                 .Distinct()
                 .CountAsync();
@@ -388,6 +401,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Dashboard
             };
         }
 
+        // ─────────────────────────────────────────────────────────────────────
+        // GetQuickActionsAsync
+        // ─────────────────────────────────────────────────────────────────────
         public Task<QuickActionsSection> GetQuickActionsAsync(
             Guid? userSchoolId,
             bool isSuperAdmin,
@@ -407,53 +423,75 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Dashboard
             return Task.FromResult(new QuickActionsSection { Items = items });
         }
 
-        // ── Private helpers ──────────────────────────────────────────────────────
+        // ─────────────────────────────────────────────────────────────────────
+        // Private helpers
+        // ─────────────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Returns null  → SuperAdmin with no schoolId supplied; all queries skip the school filter (system-wide).
-        /// Returns Guid  → queries are scoped to that school.
+        /// Returns null  → SuperAdmin with no schoolId supplied; all queries skip the school filter.
+        /// Returns Guid  → queries are scoped to that school (matched against TenantId).
         /// </summary>
         private static Guid? ResolveSchoolId(Guid? querySchoolId, Guid? userSchoolId, bool isSuperAdmin)
             => isSuperAdmin
                 ? (querySchoolId == Guid.Empty ? null : querySchoolId)
                 : userSchoolId;
 
+        /// <summary>
+        /// Heuristic: a class teacher can see class performance and recent assessments
+        /// but not fee collection or competency — both of which require broader privileges.
+        /// </summary>
         private static bool IsClassTeacherFromPermissions(DashboardPermissions permissions)
             => permissions.CanViewClassPerformance
-               && !permissions.CanViewFeeCollection
-               && !permissions.CanViewCompetency;
+            && !permissions.CanViewFeeCollection
+            && !permissions.CanViewCompetency;
 
         private async Task<string> GetSchoolNameAsync(Guid schoolId)
         {
-            var school = await _repo.School
-                .FindByCondition(s => s.Id == schoolId, false)
+            // School extends BaseEntity (not TenantBaseEntity) — it IS the tenant root.
+            // Filter by its own primary key, not by TenantId.
+            var name = await _repo.School
+                .FindByCondition(s => s.Id == schoolId, trackChanges: false)
                 .Select(s => s.Name)
                 .FirstOrDefaultAsync();
-            return school ?? string.Empty;
+            return name ?? string.Empty;
         }
 
         private async Task<string> GetCurrentAcademicYearLabelAsync(Guid schoolId)
         {
-            var year = await _repo.AcademicYear
-                .FindByCondition(y => y.Id == schoolId && y.IsActive, false)
+            // AcademicYear.IsActive is a computed property (not persisted) so EF Core
+            // cannot translate it to SQL.  Expand it to its three backing columns:
+            //   IsActive => !IsClosed && today >= StartDate && today <= EndDate
+            var today = DateTime.Today;
+            var name = await _repo.AcademicYear
+                .FindByCondition(
+                    y => y.TenantId == schoolId
+                         && !y.IsClosed
+                         && today >= y.StartDate
+                         && today <= y.EndDate,
+                    trackChanges: false)
                 .Select(y => y.Name)
                 .FirstOrDefaultAsync();
-            return year ?? string.Empty;
+            return name ?? string.Empty;
         }
 
-        // Accepts Guid? so callers with a null schoolId (system-wide) compile without casting
+        /// <summary>
+        /// Term extends TenantBaseEntity so TenantId is available directly —
+        /// no join through AcademicYear is needed.
+        /// When schoolId is null (system-wide SA view) the school filter is skipped entirely.
+        /// </summary>
         private async Task<string> GetCurrentTermLabelAsync(Guid? schoolId, Guid? termId)
         {
             var query = _repo.Term
-                .FindByCondition(t => !schoolId.HasValue || t.Id == schoolId.Value, false);
+                .FindByCondition(
+                    t => !schoolId.HasValue || t.TenantId == schoolId.Value,
+                    trackChanges: false);
 
-            if (termId.HasValue)
-                query = query.Where(t => t.Id == termId.Value);
-            else
-                query = query.Where(t => t.IsCurrent);
+            query = termId.HasValue
+                ? query.Where(t => t.Id == termId.Value)
+                : query.Where(t => t.IsCurrent);
 
-            var term = await query.Select(t => t.Name).FirstOrDefaultAsync();
-            return term ?? string.Empty;
+            var name = await query.Select(t => t.Name).FirstOrDefaultAsync();
+            return name ?? string.Empty;
         }
 
         private static string FormatKsh(decimal amount)

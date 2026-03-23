@@ -21,13 +21,11 @@ export class NavigationMockApi {
             .reply(() => {
                 return forkJoin([
                     this._navigationService.loadNavigation().pipe(catchError(() => of(null))),
-                    this._dashboardService.getDashboard({ level: 'All Levels' }).pipe(catchError(() => of(null))),
                 ]).pipe(
-                    map(([navResponse, dashboardResponse]) => {
+                    map(([navResponse]) => {
                         if (navResponse?.success) {
                             return [200, {
-                                ...navResponse.data,
-                                dashboard: dashboardResponse,
+                                ...navResponse.data
                             }];
                         }
                         return [500, {

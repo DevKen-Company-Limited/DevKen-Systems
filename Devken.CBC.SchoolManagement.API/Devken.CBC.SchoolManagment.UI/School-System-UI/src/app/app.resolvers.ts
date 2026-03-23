@@ -4,7 +4,6 @@ import { MessagesService } from 'app/layout/common/messages/messages.service';
 import { NotificationsService } from 'app/layout/common/notifications/notifications.service';
 import { QuickChatService } from 'app/layout/common/quick-chat/quick-chat.service';
 import { ShortcutsService } from 'app/layout/common/shortcuts/shortcuts.service';
-import { DashboardService } from 'app/core/DevKenService/dashboard/dashboard.service';
 import { forkJoin, catchError, of } from 'rxjs';
 
 export const initialDataResolver = () => {
@@ -13,7 +12,7 @@ export const initialDataResolver = () => {
     const notificationsService = inject(NotificationsService);
     const quickChatService     = inject(QuickChatService);
     const shortcutsService     = inject(ShortcutsService);
-    const dashboardService     = inject(DashboardService);
+
 
     return forkJoin([
         navigationService.get(),
@@ -21,6 +20,5 @@ export const initialDataResolver = () => {
         notificationsService.getAll(),
         quickChatService.getChats(),
         shortcutsService.getAll(),
-        dashboardService.getDashboard({ level: 'All Levels' }).pipe(catchError(() => of(null))),
-    ]);
+      ]);
 };
