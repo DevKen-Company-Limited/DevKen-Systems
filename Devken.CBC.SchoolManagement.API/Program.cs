@@ -43,6 +43,7 @@ var allowedOrigins = builder.Configuration
     {
         "https://dev-ken-systems.vercel.app",
         "http://localhost:4200",
+        "https://dev-ken-systems-wt5v.vercel.app"
     };
 
 builder.Services.AddCors(options =>
