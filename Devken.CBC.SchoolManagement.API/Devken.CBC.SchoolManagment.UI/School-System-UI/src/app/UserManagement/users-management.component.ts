@@ -422,7 +422,7 @@ export class UsersManagementComponent implements OnInit, OnDestroy, AfterViewIni
             confirmText: 'Send Reset Email',
             cancelText : 'Cancel',
             onConfirm  : () => {
-                // ✅ Calls POST /api/auth/forgot-password with the user's email
+                //Calls POST /api/auth/forgot-password with the user's email
                 this._auth.adminResetPassword(user.email)
                     .pipe(takeUntil(this._unsubscribe))
                     .subscribe({

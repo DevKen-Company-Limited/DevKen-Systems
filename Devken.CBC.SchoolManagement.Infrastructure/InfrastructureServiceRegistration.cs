@@ -240,6 +240,18 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                 RegisterPermissionPolicy(options, PermissionKeys.RoleWrite);
                 RegisterPermissionPolicy(options, PermissionKeys.RoleDelete);
 
+                RegisterPermissionPolicy(options, PermissionKeys.DashboardView);
+                RegisterPermissionPolicy(options, PermissionKeys.DashboardStatsEnrollment);
+                RegisterPermissionPolicy(options, PermissionKeys.DashboardStatsStaff);
+                RegisterPermissionPolicy(options, PermissionKeys.DashboardStatsAssessmentsPending);
+                RegisterPermissionPolicy(options, PermissionKeys.DashboardStatsFeeRate);
+                RegisterPermissionPolicy(options, PermissionKeys.DashboardClassPerformance);
+                RegisterPermissionPolicy(options, PermissionKeys.DashboardCompetency);
+                RegisterPermissionPolicy(options, PermissionKeys.DashboardRecentAssessments);
+                RegisterPermissionPolicy(options, PermissionKeys.DashboardEvents);
+                RegisterPermissionPolicy(options, PermissionKeys.DashboardFeeCollection);
+                RegisterPermissionPolicy(options, PermissionKeys.DashboardQuickActions);
+
                 // ── Academic Year permissions ────────────────────────────────
                 RegisterPermissionPolicy(options, PermissionKeys.AcademicYearRead);
                 RegisterPermissionPolicy(options, PermissionKeys.AcademicYearWrite);
