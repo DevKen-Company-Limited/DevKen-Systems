@@ -20,6 +20,7 @@ using Devken.CBC.SchoolManagement.Application.Service.Activities;
 using Devken.CBC.SchoolManagement.Application.Service.Administration.Student;
 using Devken.CBC.SchoolManagement.Application.Service.Assessments;
 using Devken.CBC.SchoolManagement.Application.Service.Curriculum;
+using Devken.CBC.SchoolManagement.Application.Service.Dashboard;
 using Devken.CBC.SchoolManagement.Application.Service.Email;
 using Devken.CBC.SchoolManagement.Application.Service.Finance;
 using Devken.CBC.SchoolManagement.Application.Service.IRolesAssignment;
@@ -51,6 +52,7 @@ using Devken.CBC.SchoolManagement.Infrastructure.Services;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Academics;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Administration.Students;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Curriculum;
+using Devken.CBC.SchoolManagement.Infrastructure.Services.Dashboard;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Email;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Finance;
 using Devken.CBC.SchoolManagement.Infrastructure.Services.Images;
@@ -240,6 +242,18 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
                 RegisterPermissionPolicy(options, PermissionKeys.RoleWrite);
                 RegisterPermissionPolicy(options, PermissionKeys.RoleDelete);
 
+                RegisterPermissionPolicy(options, PermissionKeys.DashboardView);
+                RegisterPermissionPolicy(options, PermissionKeys.DashboardStatsEnrollment);
+                RegisterPermissionPolicy(options, PermissionKeys.DashboardStatsStaff);
+                RegisterPermissionPolicy(options, PermissionKeys.DashboardStatsAssessmentsPending);
+                RegisterPermissionPolicy(options, PermissionKeys.DashboardStatsFeeRate);
+                RegisterPermissionPolicy(options, PermissionKeys.DashboardClassPerformance);
+                RegisterPermissionPolicy(options, PermissionKeys.DashboardCompetency);
+                RegisterPermissionPolicy(options, PermissionKeys.DashboardRecentAssessments);
+                RegisterPermissionPolicy(options, PermissionKeys.DashboardEvents);
+                RegisterPermissionPolicy(options, PermissionKeys.DashboardFeeCollection);
+                RegisterPermissionPolicy(options, PermissionKeys.DashboardQuickActions);
+
                 // ── Academic Year permissions ────────────────────────────────
                 RegisterPermissionPolicy(options, PermissionKeys.AcademicYearRead);
                 RegisterPermissionPolicy(options, PermissionKeys.AcademicYearWrite);
@@ -381,6 +395,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             // ── Payment Repositories ──────────────────────────────────────────
             services.AddScoped<IMpesaPaymentRepository, MpesaPaymentRepository>();
             services.AddScoped<IPaymentRepository, PaymentRepository>();
+            services.AddScoped<IDashboardService, DashboardService>();
 
             // ── Number Series ─────────────────────────────────────────────────
             services.AddScoped<IDocumentNumberSeriesRepository, DocumentNumberService>();
