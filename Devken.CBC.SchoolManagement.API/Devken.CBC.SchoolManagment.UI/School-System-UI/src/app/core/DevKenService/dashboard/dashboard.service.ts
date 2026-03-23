@@ -1,5 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Inject, Injectable } from '@angular/core';
+import { API_BASE_URL } from 'app/app.config';
 import { DashboardQueryParams, DashboardResponse, DashboardPermissions, StatsSection, ClassPerformanceSection, CompetencySection, RecentAssessmentsSection, EventsSection, FeeCollectionSection, QuickActionsSection } from 'app/modules/models/dashboard-models';
 import { Observable } from 'rxjs';
 
@@ -10,7 +11,7 @@ import { Observable } from 'rxjs';
 export class DashboardService {
     constructor(
         private http: HttpClient,
-        @Inject('BASE_URL') private baseUrl: string
+        @Inject(API_BASE_URL) private baseUrl: string
     ) {}
 
     getDashboard(params: DashboardQueryParams): Observable<DashboardResponse> {

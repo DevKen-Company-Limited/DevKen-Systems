@@ -12,7 +12,7 @@ import { DashboardResponse, DashboardPermissions, ClassPerformanceItem, Competen
     styleUrls    : ['./example.component.scss'],
     encapsulation: ViewEncapsulation.None,
 })
-export class DashboardComponent implements OnInit {
+export class ExampleComponent implements OnInit {
 
     loading        = true;
     accessDenied   = false;

@@ -13,6 +13,18 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                 true,
                 new[]
                 {
+                    PermissionKeys.DashboardView,
+                    PermissionKeys.DashboardStatsEnrollment,
+                    PermissionKeys.DashboardStatsStaff,
+                    PermissionKeys.DashboardStatsAssessmentsPending,
+                    PermissionKeys.DashboardStatsFeeRate,
+                    PermissionKeys.DashboardClassPerformance,
+                    PermissionKeys.DashboardCompetency,
+                    PermissionKeys.DashboardRecentAssessments,
+                    PermissionKeys.DashboardEvents,
+                    PermissionKeys.DashboardFeeCollection,
+                    PermissionKeys.DashboardQuickActions,
+
                     PermissionKeys.SchoolRead, PermissionKeys.SchoolWrite, PermissionKeys.SchoolDelete,
                     PermissionKeys.UserRead, PermissionKeys.UserWrite, PermissionKeys.UserDelete,
                     PermissionKeys.RoleRead, PermissionKeys.RoleWrite, PermissionKeys.RoleDelete,
@@ -53,6 +65,14 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                 true,
                 new[]
                 {
+                    PermissionKeys.DashboardView,
+                    PermissionKeys.DashboardStatsEnrollment,
+                    PermissionKeys.DashboardStatsAssessmentsPending,
+                    PermissionKeys.DashboardClassPerformance,
+                    PermissionKeys.DashboardRecentAssessments,
+                    PermissionKeys.DashboardEvents,
+                    PermissionKeys.DashboardQuickActions,
+
                     PermissionKeys.StudentRead, PermissionKeys.SubjectRead,
                     PermissionKeys.ClassRead, PermissionKeys.AcademicYearRead,
                     PermissionKeys.TermRead, PermissionKeys.ParentRead,
@@ -89,6 +109,12 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                 true,
                 new[]
                 {
+                    PermissionKeys.DashboardView,
+                    PermissionKeys.DashboardStatsEnrollment,
+                    PermissionKeys.DashboardStatsFeeRate,
+                    PermissionKeys.DashboardFeeCollection,
+                    PermissionKeys.DashboardEvents,
+
                     PermissionKeys.FinanceRead, PermissionKeys.FinanceWrite,
                     PermissionKeys.FeeRead, PermissionKeys.FeeWrite,
                     PermissionKeys.PaymentRead, PermissionKeys.PaymentWrite,
@@ -108,6 +134,11 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                 true,
                 new[]
                 {
+                    PermissionKeys.DashboardView,
+                    PermissionKeys.DashboardStatsEnrollment,
+                    PermissionKeys.DashboardStatsStaff,
+                    PermissionKeys.DashboardEvents,
+
                     PermissionKeys.StudentRead, PermissionKeys.StudentWrite, PermissionKeys.StudentDelete,
                     PermissionKeys.TeacherRead, PermissionKeys.TeacherWrite,
                     PermissionKeys.ClassRead, PermissionKeys.ClassWrite,
@@ -124,6 +155,18 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                 true,
                 new[]
                 {
+                    PermissionKeys.DashboardView,
+                    PermissionKeys.DashboardStatsEnrollment,
+                    PermissionKeys.DashboardStatsStaff,
+                    PermissionKeys.DashboardStatsAssessmentsPending,
+                    PermissionKeys.DashboardStatsFeeRate,
+                    PermissionKeys.DashboardClassPerformance,
+                    PermissionKeys.DashboardCompetency,
+                    PermissionKeys.DashboardRecentAssessments,
+                    PermissionKeys.DashboardEvents,
+                    PermissionKeys.DashboardFeeCollection,
+                    PermissionKeys.DashboardQuickActions,
+
                     PermissionKeys.StudentRead,
                     PermissionKeys.TeacherRead,
                     PermissionKeys.SubjectRead, PermissionKeys.SubjectWrite,
@@ -148,6 +191,12 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                 true,
                 new[]
                 {
+                    PermissionKeys.DashboardView,
+                    PermissionKeys.DashboardStatsEnrollment,
+                    PermissionKeys.DashboardStatsFeeRate,
+                    PermissionKeys.DashboardFeeCollection,
+                    PermissionKeys.DashboardEvents,
+
                     PermissionKeys.FinanceRead,
                     PermissionKeys.FeeRead, PermissionKeys.PaymentRead,
                     PermissionKeys.InvoiceRead, PermissionKeys.FeeStructureRead,
@@ -166,6 +215,11 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                 true,
                 new[]
                 {
+                    PermissionKeys.DashboardView,
+                    PermissionKeys.DashboardStatsEnrollment,
+                    PermissionKeys.DashboardStatsFeeRate,
+                    PermissionKeys.DashboardEvents,
+
                     PermissionKeys.FinanceRead,
                     PermissionKeys.PaymentRead, PermissionKeys.PaymentWrite,
                     PermissionKeys.InvoiceRead,
@@ -181,6 +235,10 @@ namespace Devken.CBC.SchoolManagement.Domain.Entities.Identity
                 true,
                 new[]
                 {
+                    PermissionKeys.DashboardView,
+                    PermissionKeys.DashboardStatsEnrollment,
+                    PermissionKeys.DashboardEvents,
+
                     PermissionKeys.LibraryRead, PermissionKeys.LibraryWrite, PermissionKeys.LibraryDelete,
                     PermissionKeys.BookRead, PermissionKeys.BookWrite, PermissionKeys.BookDelete,
                     PermissionKeys.BookIssueRead, PermissionKeys.BookIssueWrite,

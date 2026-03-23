@@ -1,256 +1,287 @@
-<div class="flex flex-col flex-auto min-w-0">
+<div class="flex flex-col flex-auto min-w-0 bg-gray-50 min-h-screen">
 
     <ng-container *ngIf="loading">
-        <div class="dk-loading">
-            <div class="dk-spinner"></div>
-            <span>Loading dashboard…</span>
+        <div class="flex flex-col items-center justify-center flex-1 min-h-screen gap-4">
+            <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <span class="text-sm text-gray-500 font-medium">Loading dashboard…</span>
         </div>
     </ng-container>
 
     <ng-container *ngIf="!loading && accessDenied">
-        <div class="dk-access-denied">
-            <div class="dk-denied-icon">🔒</div>
-            <div class="dk-denied-title">Access Restricted</div>
-            <div class="dk-denied-sub">
+        <div class="flex flex-col items-center justify-center flex-1 min-h-screen gap-3 px-6">
+            <div class="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center text-4xl shadow-inner">
+                🔒
+            </div>
+            <h2 class="text-xl font-bold text-gray-800 mt-2">Access Restricted</h2>
+            <p class="text-sm text-gray-500 text-center max-w-xs">
                 You don't have permission to view this dashboard.
-            </div>
-            <div class="dk-denied-hint">
+            </p>
+            <p class="text-xs text-gray-400 text-center max-w-xs">
                 Please contact your administrator to request access.
-            </div>
+            </p>
         </div>
     </ng-container>
 
     <ng-container *ngIf="!loading && !accessDenied">
 
-        <div class="dk-header">
+        <!-- Header -->
+        <div class="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-100 shadow-sm sticky top-0 z-10">
             <div>
-                <div class="dk-breadcrumb">
+                <div class="flex items-center gap-1 text-xs text-gray-400 mb-1">
                     <span>Home</span>
-                    <span class="sep">›</span>
-                    <span>Dashboard</span>
+                    <span class="text-gray-300">›</span>
+                    <span class="text-gray-500 font-medium">Dashboard</span>
                 </div>
-                <div class="dk-page-title">School Overview</div>
-                <div class="dk-page-sub">
-                    Competency-Based Curriculum — {{ academicYear }}
-                </div>
+                <h1 class="text-lg font-bold text-gray-900 leading-tight">School Overview</h1>
+                <p class="text-xs text-gray-400">Competency-Based Curriculum — {{ academicYear }}</p>
             </div>
-            <div class="dk-header-right">
-                <div class="dk-term-badge">
-                    <span class="dot"></span>
+            <div class="flex items-center gap-2">
+                <div class="flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-semibold px-3 py-1.5 rounded-full border border-green-200">
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
                     {{ currentTerm }}
                 </div>
-                <button class="dk-icon-btn">🔍</button>
-                <button class="dk-icon-btn">
+                <button class="w-8 h-8 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm flex items-center justify-center shadow-sm transition">🔍</button>
+                <button class="relative w-8 h-8 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm flex items-center justify-center shadow-sm transition">
                     🔔
-                    <span class="notif"></span>
+                    <span class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-red-500"></span>
                 </button>
-                <button class="dk-icon-btn">⚙️</button>
+                <button class="w-8 h-8 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm flex items-center justify-center shadow-sm transition">⚙️</button>
             </div>
         </div>
 
-        <div class="dk-content">
+        <!-- Scrollable Content -->
+        <div class="flex flex-col gap-5 p-6">
 
-            <div class="dk-level-strip">
+            <!-- Level Pills -->
+            <div class="flex flex-wrap gap-2">
                 <button
                     *ngFor="let level of levels"
-                    class="dk-level-pill"
-                    [class.active]="activeLevel === level"
-                    (click)="setActiveLevel(level)">
+                    (click)="setActiveLevel(level)"
+                    [ngClass]="activeLevel === level
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600'"
+                    class="px-3 py-1.5 text-xs font-medium rounded-full border transition-all">
                     {{ level }}
                 </button>
             </div>
 
-            <div class="dk-stats" *ngIf="permissions?.canViewStats && stats.length">
-                <div *ngFor="let stat of stats; let i = index"
-                     class="dk-stat"
-                     [ngClass]="['blue','green','amber','red'][i]">
-                    <div class="dk-stat-icon"
-                         [ngStyle]="{'background': stat.iconBg, 'color': stat.color}">
-                        {{ stat.icon }}
+            <!-- Stats -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4" *ngIf="permissions?.canViewStats && stats.length">
+                <div
+                    *ngFor="let stat of stats"
+                    class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-2 hover:shadow-md transition-shadow">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="w-9 h-9 rounded-lg flex items-center justify-center text-lg shrink-0"
+                             [ngStyle]="{'background': stat.iconBg, 'color': stat.color}">
+                            {{ stat.icon }}
+                        </div>
+                        <span class="text-[10px] font-semibold px-2 py-1 rounded-full text-right leading-tight"
+                              [ngStyle]="{'background': stat.trendBg, 'color': stat.trendColor}">
+                            {{ stat.trend }}
+                        </span>
                     </div>
-                    <div class="dk-stat-value">{{ stat.value }}</div>
-                    <div class="dk-stat-label">{{ stat.label }}</div>
-                    <div class="dk-stat-trend"
-                         [ngStyle]="{'background': stat.trendBg, 'color': stat.trendColor}">
-                        {{ stat.trend }}
-                    </div>
+                    <div class="text-2xl font-extrabold text-gray-900 leading-none">{{ stat.value }}</div>
+                    <div class="text-xs text-gray-500 font-medium">{{ stat.label }}</div>
                 </div>
             </div>
 
-            <div class="dk-main-row">
+            <!-- Main Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
-                <div class="dk-card" *ngIf="permissions?.canViewClassPerformance">
-                    <div class="dk-card-head">
-                        <span class="dk-card-title">Class Performance — {{ termLabel }}</span>
-                        <button class="dk-card-action">View all classes →</button>
+                <!-- Class Performance -->
+                <div class="bg-white rounded-xl border border-gray-100 shadow-sm" *ngIf="permissions?.canViewClassPerformance">
+                    <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-50">
+                        <span class="text-sm font-bold text-gray-800">Class Performance — {{ termLabel }}</span>
+                        <button class="text-xs font-medium text-blue-600 hover:text-blue-700 transition">View all classes →</button>
                     </div>
-                    <div class="dk-class-body">
-                        <div *ngFor="let cls of classes" class="dk-class-row">
-                            <div class="dk-class-badge" [ngStyle]="{'background': cls.color}">
+                    <div class="flex flex-col gap-3.5 p-5">
+                        <div *ngFor="let cls of classes" class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-lg text-white text-xs font-bold flex items-center justify-center shrink-0"
+                                 [ngStyle]="{'background': cls.color}">
                                 {{ cls.badge }}
                             </div>
-                            <div class="dk-class-info">
-                                <div class="dk-class-name">{{ cls.name }}</div>
-                                <div class="dk-class-meta">{{ cls.meta }}</div>
-                            </div>
-                            <div class="dk-bar-wrap">
-                                <div class="dk-bar-track">
-                                    <div class="dk-bar-fill"
+                            <div class="flex flex-col flex-1 min-w-0 gap-1">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-semibold text-gray-800 truncate">{{ cls.name }}</span>
+                                    <span class="text-xs font-bold ml-2 shrink-0" [ngStyle]="{'color': cls.color}">{{ cls.pct }}%</span>
+                                </div>
+                                <div class="text-[10px] text-gray-400 truncate leading-none">{{ cls.meta }}</div>
+                                <div class="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                                    <div class="h-full rounded-full transition-all duration-500"
                                          [ngStyle]="{'width': cls.pct + '%', 'background': cls.color}">
                                     </div>
                                 </div>
-                                <div class="dk-bar-pct">{{ cls.pct }}%</div>
                             </div>
                         </div>
-                        <div class="dk-no-access" *ngIf="!classes.length">
+                        <div class="text-xs text-gray-400 text-center py-4" *ngIf="!classes.length">
                             No class data available.
                         </div>
                     </div>
                 </div>
 
-                <div class="dk-card"
+                <!-- Competency + Quick Actions -->
+                <div class="bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col"
                      *ngIf="permissions?.canViewCompetency || permissions?.canViewQuickActions">
+
                     <ng-container *ngIf="permissions?.canViewCompetency">
-                        <div class="dk-card-head">
-                            <span class="dk-card-title">Competency Distribution</span>
-                            <button class="dk-card-action">Details</button>
+                        <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-50">
+                            <span class="text-sm font-bold text-gray-800">Competency Distribution</span>
+                            <button class="text-xs font-medium text-blue-600 hover:text-blue-700 transition">Details</button>
                         </div>
-                        <div class="dk-comp-body">
-                            <div *ngFor="let comp of competencies" class="dk-comp-row">
-                                <div class="dk-comp-dot"
+                        <div class="flex flex-col gap-3 p-5">
+                            <div *ngFor="let comp of competencies" class="flex items-center gap-3">
+                                <div class="w-2.5 h-2.5 rounded-full shrink-0"
                                      [ngStyle]="{'background': comp.color}"></div>
-                                <div class="dk-comp-info">
-                                    <div class="dk-comp-label">{{ comp.label }}</div>
-                                    <div class="dk-comp-track">
-                                        <div class="dk-comp-fill"
+                                <div class="flex flex-col flex-1 gap-1">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs text-gray-600 font-medium">{{ comp.label }}</span>
+                                        <span class="text-xs font-bold ml-2 shrink-0" [ngStyle]="{'color': comp.color}">{{ comp.pct }}%</span>
+                                    </div>
+                                    <div class="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                                        <div class="h-full rounded-full transition-all duration-500"
                                              [ngStyle]="{'width': comp.pct + '%', 'background': comp.color}">
                                         </div>
                                     </div>
                                 </div>
-                                <div class="dk-comp-pct"
-                                     [ngStyle]="{'color': comp.color}">{{ comp.pct }}%</div>
                             </div>
                         </div>
                     </ng-container>
 
-                    <div class="dk-qa-block" *ngIf="permissions?.canViewQuickActions">
-                        <div class="dk-qa-title">Quick Actions</div>
-                        <div class="dk-qa-grid">
-                            <button *ngFor="let action of quickActions"
-                                    class="dk-qa-btn"
+                    <div class="px-5 pb-5 mt-auto" *ngIf="permissions?.canViewQuickActions">
+                        <div class="border-t border-gray-50 pt-4">
+                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Quick Actions</p>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button
+                                    *ngFor="let action of quickActions"
                                     [disabled]="!action.enabled"
-                                    [class.disabled]="!action.enabled">
-                                <div class="qa-icon">{{ action.icon }}</div>
-                                <div class="qa-label">{{ action.label }}</div>
-                            </button>
+                                    [ngClass]="action.enabled
+                                        ? 'hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 cursor-pointer'
+                                        : 'opacity-40 cursor-not-allowed'"
+                                    class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-gray-700 text-xs font-semibold transition-all">
+                                    <span class="text-base leading-none">{{ action.icon }}</span>
+                                    {{ action.label }}
+                                </button>
+                            </div>
                         </div>
                     </div>
+
                 </div>
 
             </div>
 
-            <div class="dk-bottom-row">
+            <!-- Bottom Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-                <div class="dk-card" *ngIf="permissions?.canViewRecentAssessments">
-                    <div class="dk-card-head">
-                        <span class="dk-card-title">Recent Assessments</span>
-                        <button class="dk-card-action">All assessments →</button>
+                <!-- Recent Assessments -->
+                <div class="bg-white rounded-xl border border-gray-100 shadow-sm lg:col-span-2"
+                     *ngIf="permissions?.canViewRecentAssessments">
+                    <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-50">
+                        <span class="text-sm font-bold text-gray-800">Recent Assessments</span>
+                        <button class="text-xs font-medium text-blue-600 hover:text-blue-700 transition">All assessments →</button>
                     </div>
-                    <div class="dk-table-wrap">
-                        <table class="dk-table">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs">
                             <thead>
-                                <tr>
-                                    <th>Student</th>
-                                    <th>Learning Area</th>
-                                    <th>Type</th>
-                                    <th>Level</th>
-                                    <th>Date</th>
-                                    <th>Teacher</th>
+                                <tr class="bg-gray-50 border-b border-gray-100">
+                                    <th class="text-left px-5 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Student</th>
+                                    <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Learning Area</th>
+                                    <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Type</th>
+                                    <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Level</th>
+                                    <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Date</th>
+                                    <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Teacher</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <tr *ngFor="let a of assessments">
-                                    <td>
-                                        <strong>{{ a.student }}</strong>
-                                        <span style="color:#6b7280;font-size:11px;margin-left:4px;">{{ a.class }}</span>
+                            <tbody class="divide-y divide-gray-50">
+                                <tr *ngFor="let a of assessments" class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-5 py-3">
+                                        <span class="font-semibold text-gray-800">{{ a.student }}</span>
+                                        <span class="ml-1.5 text-gray-400 text-[10px]">{{ a.class }}</span>
                                     </td>
-                                    <td style="color:#6b7280;">{{ a.area }}</td>
-                                    <td>
-                                        <span class="dk-badge"
+                                    <td class="px-4 py-3 text-gray-500">{{ a.area }}</td>
+                                    <td class="px-4 py-3">
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold"
                                               [ngStyle]="{'background': a.typeBg, 'color': a.typeColor}">
                                             {{ a.type }}
                                         </span>
                                     </td>
-                                    <td>
-                                        <span class="dk-badge"
+                                    <td class="px-4 py-3">
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
                                               [ngStyle]="{'background': a.levelBg, 'color': a.levelColor}">
                                             {{ a.level }}
                                         </span>
                                     </td>
-                                    <td style="color:#6b7280;font-size:12px;white-space:nowrap;">{{ a.date }}</td>
-                                    <td style="color:#6b7280;font-size:12px;">{{ a.teacher }}</td>
+                                    <td class="px-4 py-3 text-gray-400 whitespace-nowrap">{{ a.date }}</td>
+                                    <td class="px-4 py-3 text-gray-500">{{ a.teacher }}</td>
                                 </tr>
                                 <tr *ngIf="!assessments.length">
-                                    <td colspan="6" class="dk-empty-row">No assessments found.</td>
+                                    <td colspan="6" class="px-5 py-8 text-center text-gray-400">No assessments found.</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <div class="dk-right-col">
+                <!-- Right Column -->
+                <div class="flex flex-col gap-4">
 
-                    <div class="dk-card" *ngIf="permissions?.canViewEvents">
-                        <div class="dk-card-head">
-                            <span class="dk-card-title">Upcoming Events</span>
-                            <button class="dk-card-action">View calendar</button>
+                    <!-- Upcoming Events -->
+                    <div class="bg-white rounded-xl border border-gray-100 shadow-sm" *ngIf="permissions?.canViewEvents">
+                        <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-50">
+                            <span class="text-sm font-bold text-gray-800">Upcoming Events</span>
+                            <button class="text-xs font-medium text-blue-600 hover:text-blue-700 transition">View calendar</button>
                         </div>
-                        <div class="dk-event-body">
-                            <div *ngFor="let event of events" class="dk-event-item">
-                                <div class="dk-event-date">
-                                    <div class="day">{{ event.day }}</div>
-                                    <div class="mon">{{ event.month }}</div>
+                        <div class="flex flex-col divide-y divide-gray-50 px-4 py-1">
+                            <div *ngFor="let event of events" class="flex items-center gap-3 py-3">
+                                <div class="flex flex-col items-center justify-center w-10 h-10 rounded-lg bg-blue-50 shrink-0">
+                                    <span class="text-sm font-extrabold text-blue-700 leading-none">{{ event.day }}</span>
+                                    <span class="text-[10px] font-semibold text-blue-400 uppercase leading-none mt-0.5">{{ event.month }}</span>
                                 </div>
-                                <div class="dk-event-info">
-                                    <div class="dk-event-title">{{ event.title }}</div>
-                                    <div class="dk-event-sub">{{ event.sub }}</div>
+                                <div class="flex flex-col flex-1 min-w-0">
+                                    <span class="text-xs font-semibold text-gray-800 truncate">{{ event.title }}</span>
+                                    <span class="text-[10px] text-gray-400 truncate">{{ event.sub }}</span>
                                 </div>
-                                <span class="dk-event-tag"
+                                <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold"
                                       [ngStyle]="{'background': event.tagBg, 'color': event.tagColor}">
                                     {{ event.tag }}
                                 </span>
                             </div>
-                            <div class="dk-no-access" *ngIf="!events.length">
+                            <div class="py-6 text-center text-xs text-gray-400" *ngIf="!events.length">
                                 No upcoming events.
                             </div>
                         </div>
                     </div>
 
-                    <div class="dk-card" *ngIf="permissions?.canViewFeeCollection">
-                        <div class="dk-card-head">
-                            <span class="dk-card-title">Fee Collection</span>
-                            <button class="dk-card-action">Payments →</button>
+                    <!-- Fee Collection -->
+                    <div class="bg-white rounded-xl border border-gray-100 shadow-sm" *ngIf="permissions?.canViewFeeCollection">
+                        <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-50">
+                            <span class="text-sm font-bold text-gray-800">Fee Collection</span>
+                            <button class="text-xs font-medium text-blue-600 hover:text-blue-700 transition">Payments →</button>
                         </div>
-                        <div class="dk-donut-wrap">
-                            <div class="dk-donut">
-                                <svg viewBox="0 0 36 36" width="90" height="90">
+                        <div class="flex flex-col items-center py-5 px-5 gap-4">
+                            <div class="relative flex items-center justify-center">
+                                <svg viewBox="0 0 36 36" width="110" height="110" class="-rotate-90">
                                     <circle cx="18" cy="18" r="15.9"
-                                            fill="none" stroke="#e8e6de" stroke-width="3"/>
+                                            fill="none" stroke="#f3f4f6" stroke-width="3.2"/>
                                     <circle cx="18" cy="18" r="15.9"
-                                            fill="none" stroke="#2563EB" stroke-width="3"
+                                            fill="none" stroke="#2563EB" stroke-width="3.2"
                                             [attr.stroke-dasharray]="feeCollectedPct + ' 100'"
-                                            stroke-linecap="round"/>
+                                            stroke-linecap="round"
+                                            class="transition-all duration-700"/>
                                 </svg>
-                                <div class="dk-donut-label">
-                                    <span class="pct">{{ feeCollectedPct }}%</span>
-                                    <span class="lbl">Collected</span>
+                                <div class="absolute flex flex-col items-center">
+                                    <span class="text-xl font-extrabold text-gray-900 leading-none">{{ feeCollectedPct }}%</span>
+                                    <span class="text-[10px] text-gray-400 font-medium mt-0.5">Collected</span>
                                 </div>
                             </div>
-                        </div>
-                        <div class="dk-finance-body">
-                            <div *ngFor="let fin of finance" class="dk-fin-row">
-                                <span class="lbl">{{ fin.label }}</span>
-                                <span class="val" [ngClass]="fin.cls">{{ fin.value }}</span>
+                            <div class="w-full flex flex-col gap-2.5">
+                                <div *ngFor="let fin of finance" class="flex items-center justify-between text-xs">
+                                    <span class="text-gray-500">{{ fin.label }}</span>
+                                    <span [ngClass]="{
+                                        'text-green-600 font-bold': fin.cls === 'pos',
+                                        'text-red-500 font-bold':   fin.cls === 'neg',
+                                        'text-gray-800 font-semibold': fin.cls === ''
+                                    }">{{ fin.value }}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
