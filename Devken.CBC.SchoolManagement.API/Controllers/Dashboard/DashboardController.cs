@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System;
-using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace Devken.CBC.SchoolManagement.Api.Controllers.Dashboard
@@ -37,21 +36,17 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Dashboard
             try
             {
                 var userSchoolId = GetUserSchoolIdOrNullWithValidation();
-                var userId = GetCurrentUserId();
                 var permissions = BuildPermissions();
 
+                // Non-SuperAdmin users are always scoped to their own school.
+                // SuperAdmin may optionally supply a schoolId to scope to one school,
+                // or omit it to get a system-wide aggregate view.
                 if (!IsSuperAdmin)
-                {
                     query.SchoolId = userSchoolId;
-                }
-                else
-                {
-                    if (query.SchoolId == null || query.SchoolId == Guid.Empty)
-                        return ValidationErrorResponse("SuperAdmin must supply a schoolId query parameter.");
-                }
 
+                // FIX: use CurrentUserId from BaseApiController instead of a duplicate private method
                 var dashboard = await _dashboardService.GetDashboardAsync(
-                    query, permissions, userId, userSchoolId, IsSuperAdmin);
+                    query, permissions, CurrentUserId, userSchoolId, IsSuperAdmin);
 
                 await LogUserActivityAsync(
                     "dashboard.view",
@@ -97,7 +92,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Dashboard
                 if (!IsSuperAdmin) query.SchoolId = userSchoolId;
 
                 var section = await _dashboardService.GetClassPerformanceAsync(
-                    query, userSchoolId, IsSuperAdmin, IsClassTeacher, GetCurrentUserId());
+                    query, userSchoolId, IsSuperAdmin, IsClassTeacher, CurrentUserId);
 
                 return SuccessResponse(section);
             }
@@ -133,7 +128,7 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Dashboard
                 if (!IsSuperAdmin) query.SchoolId = userSchoolId;
 
                 var section = await _dashboardService.GetRecentAssessmentsAsync(
-                    query, userSchoolId, IsSuperAdmin, IsClassTeacher, GetCurrentUserId());
+                    query, userSchoolId, IsSuperAdmin, IsClassTeacher, CurrentUserId);
 
                 return SuccessResponse(section);
             }
@@ -203,8 +198,12 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Dashboard
             catch (Exception ex) { return InternalServerErrorResponse(GetFullExceptionMessage(ex)); }
         }
 
+        // ── Private helpers ──────────────────────────────────────────────────────
+
         private DashboardPermissions BuildPermissions() => new()
         {
+            // FIX: delegate to base class HasAnyPermission / HasPermission so SuperAdmin
+            //      is handled correctly (the original private overloads did NOT check IsSuperAdmin)
             CanViewStats = HasAnyPermission(
                 PermissionKeys.DashboardStatsEnrollment,
                 PermissionKeys.DashboardStatsStaff,
@@ -219,25 +218,8 @@ namespace Devken.CBC.SchoolManagement.Api.Controllers.Dashboard
             CanViewQuickActions = HasPermission(PermissionKeys.DashboardQuickActions),
         };
 
-        private bool HasPermission(string policy)
-            => User.HasClaim("permission", policy);
-
-        private bool HasAnyPermission(params string[] policies)
-        {
-            foreach (var p in policies)
-                if (HasPermission(p)) return true;
-            return false;
-        }
-
-        private bool IsClassTeacher
-            => User.IsInRole("ClassTeacher");
-
-        private Guid GetCurrentUserId()
-        {
-            var raw = User.FindFirstValue(ClaimTypes.NameIdentifier)
-                   ?? User.FindFirstValue("sub");
-            return Guid.TryParse(raw, out var id) ? id : Guid.Empty;
-        }
+        // FIX: use base class HasRole so the check is case-insensitive and consistent
+        private bool IsClassTeacher => HasRole("ClassTeacher");
 
         private static string GetFullExceptionMessage(Exception ex)
         {
