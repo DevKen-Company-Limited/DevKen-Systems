@@ -6,6 +6,7 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
     {
         public static IEnumerable<NavigationSection> GetAll()
         {
+            yield return Dashboard;
             yield return Design;
             yield return SuperAdmin;
             yield return Administration;
@@ -18,6 +19,24 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             yield return Reports;
             yield return Settings;
         }
+
+        public static NavigationSection Dashboard => new()
+        {
+            Id = "dashboard",
+            Title = "Dashboard",
+            Icon = "heroicons_outline:home",
+            RequiredPermission = PermissionKeys.DashboardView,
+            Items = new[]
+            {
+                new NavItem(
+                    "school-overview",
+                    "School Overview",
+                    "heroicons_outline:squares-2x2",
+                    "/example",
+                    PermissionKeys.DashboardView
+                ),
+            }
+        };
 
         public static NavigationSection Design => new()
         {
@@ -44,8 +63,8 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             RequiredRole = "SuperAdmin",
             Items = new[]
             {
-                new NavItem("schools", "Schools", "heroicons_outline:building-office-2", "/administration/schools", PermissionKeys.SchoolRead),
-                new NavItem("logs", "Activity Logs", "heroicons_outline:document-text", "/administration/logs")
+                new NavItem("schools", "Schools",       "heroicons_outline:building-office-2", "/administration/schools", PermissionKeys.SchoolRead),
+                new NavItem("logs",    "Activity Logs", "heroicons_outline:document-text",     "/administration/logs")
             }
         };
 
@@ -56,9 +75,9 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             Icon = "heroicons_outline:cog-6-tooth",
             Items = new[]
             {
-                new NavItem("users",       "Users",       "heroicons_outline:users",        "/administration/users",       PermissionKeys.UserRead),
-                new NavItem("roles",       "Roles",       "heroicons_outline:shield-check",  "/administration/roles",       PermissionKeys.RoleRead),
-                new NavItem("permissions", "Permissions", "heroicons_outline:lock-closed",   "/administration/permissions", PermissionKeys.RoleRead)
+                new NavItem("users",       "Users",       "heroicons_outline:users",       "/administration/users",       PermissionKeys.UserRead),
+                new NavItem("roles",       "Roles",       "heroicons_outline:shield-check", "/administration/roles",       PermissionKeys.RoleRead),
+                new NavItem("permissions", "Permissions", "heroicons_outline:lock-closed",  "/administration/permissions", PermissionKeys.RoleRead)
             }
         };
 
@@ -98,20 +117,12 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             Icon = "heroicons_outline:banknotes",
             Items = new[]
             {
-                new NavItem("fee-structure",  "Fee Structure",  "heroicons_outline:chart-bar",           "/finance/fee-structure",  PermissionKeys.FeeStructureRead),
-                new NavItem("fees",           "Fees",           "heroicons_outline:currency-dollar",     "/finance/fees",           PermissionKeys.FeeRead),
-                new NavItem("invoices",       "Invoices",       "heroicons_outline:document-text",       "/finance/invoices",       PermissionKeys.InvoiceRead),
-                new NavItem("invoice-items",  "Invoice Items",  "heroicons_outline:document-duplicate",  "/finance/invoice-items",  PermissionKeys.InvoiceItemRead),
-                new NavItem("payments",       "Payments",       "heroicons_outline:credit-card",         "/finance/payments",       PermissionKeys.PaymentRead),
-
-                // ── PesaPal ───────────────────────────────────────────────────
-                new NavItem(
-                    "pesapal-transactions",
-                    "PesaPal Transactions",
-                    "heroicons_outline:queue-list",
-                    "/finance/pesapal/transactions",
-                    PermissionKeys.PaymentRead
-                ),
+                new NavItem("fee-structure",          "Fee Structure",        "heroicons_outline:chart-bar",          "/finance/fee-structure",          PermissionKeys.FeeStructureRead),
+                new NavItem("fees",                   "Fees",                 "heroicons_outline:currency-dollar",    "/finance/fees",                   PermissionKeys.FeeRead),
+                new NavItem("invoices",               "Invoices",             "heroicons_outline:document-text",      "/finance/invoices",               PermissionKeys.InvoiceRead),
+                new NavItem("invoice-items",          "Invoice Items",        "heroicons_outline:document-duplicate", "/finance/invoice-items",          PermissionKeys.InvoiceItemRead),
+                new NavItem("payments",               "Payments",             "heroicons_outline:credit-card",        "/finance/payments",               PermissionKeys.PaymentRead),
+                new NavItem("pesapal-transactions",   "PesaPal Transactions", "heroicons_outline:queue-list",         "/finance/pesapal/transactions",   PermissionKeys.PaymentRead),
             }
         };
 
@@ -122,12 +133,12 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             Icon = "heroicons_outline:calculator",
             Items = new[]
             {
-                new NavItem("journal-entries", "Journal Entries", "heroicons_outline:book-open",          "/accounting/journal-entries", PermissionKeys.AccountingRead),
-                new NavItem("budgets",         "Budgets",         "heroicons_outline:chart-pie",           "/accounting/budgets",         PermissionKeys.AccountingRead),
-                new NavItem("expenses",        "Expenses",        "heroicons_outline:receipt-percent",     "/accounting/expenses",        PermissionKeys.AccountingRead),
-                new NavItem("invoices",        "Invoices",        "heroicons_outline:document-text",       "/finance/invoices",           PermissionKeys.InvoiceRead),
-                new NavItem("invoice-items",   "Invoice Items",   "heroicons_outline:document-duplicate",  "/finance/invoice-items",      PermissionKeys.InvoiceItemRead),
-                new NavItem("payments",        "Payments",        "heroicons_outline:credit-card",         "/finance/payments",           PermissionKeys.PaymentRead),
+                new NavItem("journal-entries", "Journal Entries", "heroicons_outline:book-open",         "/accounting/journal-entries", PermissionKeys.AccountingRead),
+                new NavItem("budgets",         "Budgets",         "heroicons_outline:chart-pie",          "/accounting/budgets",         PermissionKeys.AccountingRead),
+                new NavItem("expenses",        "Expenses",        "heroicons_outline:receipt-percent",    "/accounting/expenses",        PermissionKeys.AccountingRead),
+                new NavItem("invoices",        "Invoices",        "heroicons_outline:document-text",      "/finance/invoices",           PermissionKeys.InvoiceRead),
+                new NavItem("invoice-items",   "Invoice Items",   "heroicons_outline:document-duplicate", "/finance/invoice-items",      PermissionKeys.InvoiceItemRead),
+                new NavItem("payments",        "Payments",        "heroicons_outline:credit-card",        "/finance/payments",           PermissionKeys.PaymentRead),
             }
         };
 
@@ -138,11 +149,11 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             Icon = "heroicons_outline:book-open",
             Items = new[]
             {
-                new NavItem("learning-areas",    "Learning Areas",   "heroicons_outline:rectangle-stack",    "/curriculum/learning-areas",  PermissionKeys.CurriculumRead),
-                new NavItem("strands",           "Strands",          "heroicons_outline:squares-2x2",        "/curriculum/strands",         PermissionKeys.CurriculumRead),
-                new NavItem("substrands",        "Sub-Strands",      "heroicons_outline:view-columns",       "/curriculum/sub-strands",     PermissionKeys.CurriculumRead),
-                new NavItem("learning-outcomes", "Learning Outcomes","heroicons_outline:clipboard-document", "/curriculum/learning-outcomes",PermissionKeys.CurriculumRead),
-                new NavItem("lessonplans",       "Lesson Plans",     "heroicons_outline:document-duplicate", "/curriculum/lesson-plans",    PermissionKeys.LessonPlanRead),
+                new NavItem("learning-areas",    "Learning Areas",    "heroicons_outline:rectangle-stack",    "/curriculum/learning-areas",   PermissionKeys.CurriculumRead),
+                new NavItem("strands",           "Strands",           "heroicons_outline:squares-2x2",        "/curriculum/strands",          PermissionKeys.CurriculumRead),
+                new NavItem("substrands",        "Sub-Strands",       "heroicons_outline:view-columns",       "/curriculum/sub-strands",      PermissionKeys.CurriculumRead),
+                new NavItem("learning-outcomes", "Learning Outcomes", "heroicons_outline:clipboard-document", "/curriculum/learning-outcomes", PermissionKeys.CurriculumRead),
+                new NavItem("lessonplans",       "Lesson Plans",      "heroicons_outline:document-duplicate", "/curriculum/lesson-plans",     PermissionKeys.LessonPlanRead),
             }
         };
 
@@ -153,15 +164,15 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             Icon = "heroicons_outline:building-library",
             Items = new[]
             {
-                new NavItem("books",           "Books",           "heroicons_outline:book-open",                "/library/books",                PermissionKeys.BookRead),
-                new NavItem("book-copies",      "Book Copies",      "heroicons_outline:document-duplicate",       "/library/book-copies",       PermissionKeys.BookRead),
-                new NavItem("book-inventory",   "Book Inventory",   "heroicons_outline:clipboard-document-list",  "/library/book-inventory",    PermissionKeys.LibraryRead),
-                new NavItem("library-branches","Library Branches","heroicons_outline:map-pin",                  "/library/library-branches",      PermissionKeys.LibraryRead),
-                new NavItem("book-authors",    "Authors",         "heroicons_outline:user",                     "/library/authors",      PermissionKeys.LibraryRead),
-                new NavItem("book-categories", "Categories",      "heroicons_outline:tag",                      "/library/categories",   PermissionKeys.LibraryRead),
-                new NavItem("book-publishers", "Publishers",      "heroicons_outline:building-office",          "/library/publishers",   PermissionKeys.LibraryRead),
-                new NavItem("book-issues",     "Book Issues",     "heroicons_outline:arrow-right-on-rectangle", "/library/book-issues",  PermissionKeys.BookIssueRead),
-                new NavItem("book-returns",    "Book Returns",    "heroicons_outline:arrow-left-on-rectangle",  "/library/book-returns", PermissionKeys.BookReturnRead),
+                new NavItem("books",            "Books",            "heroicons_outline:book-open",                "/library/books",            PermissionKeys.BookRead),
+                new NavItem("book-copies",      "Book Copies",      "heroicons_outline:document-duplicate",       "/library/book-copies",      PermissionKeys.BookRead),
+                new NavItem("book-inventory",   "Book Inventory",   "heroicons_outline:clipboard-document-list",  "/library/book-inventory",   PermissionKeys.LibraryRead),
+                new NavItem("library-branches", "Library Branches", "heroicons_outline:map-pin",                  "/library/library-branches", PermissionKeys.LibraryRead),
+                new NavItem("book-authors",     "Authors",          "heroicons_outline:user",                     "/library/authors",          PermissionKeys.LibraryRead),
+                new NavItem("book-categories",  "Categories",       "heroicons_outline:tag",                      "/library/categories",       PermissionKeys.LibraryRead),
+                new NavItem("book-publishers",  "Publishers",       "heroicons_outline:building-office",          "/library/publishers",       PermissionKeys.LibraryRead),
+                new NavItem("book-issues",      "Book Issues",      "heroicons_outline:arrow-right-on-rectangle", "/library/book-issues",      PermissionKeys.BookIssueRead),
+                new NavItem("book-returns",     "Book Returns",     "heroicons_outline:arrow-left-on-rectangle",  "/library/book-returns",     PermissionKeys.BookReturnRead),
             }
         };
 
@@ -172,9 +183,9 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             Icon = "heroicons_outline:chart-bar-square",
             Items = new[]
             {
-                new NavItem("academic-reports",   "Academic Reports",   "heroicons_outline:academic-cap",               "/reports/academic",   PermissionKeys.ReportRead),
-                new NavItem("finance-reports",    "Finance Reports",    "heroicons_outline:banknotes",                  "/reports/finance",    PermissionKeys.ReportRead),
-                new NavItem("assessment-reports", "Assessment Reports", "heroicons_outline:clipboard-document-check",   "/reports/assessment", PermissionKeys.ReportRead),
+                new NavItem("academic-reports",   "Academic Reports",   "heroicons_outline:academic-cap",             "/reports/academic",   PermissionKeys.ReportRead),
+                new NavItem("finance-reports",    "Finance Reports",    "heroicons_outline:banknotes",                "/reports/finance",    PermissionKeys.ReportRead),
+                new NavItem("assessment-reports", "Assessment Reports", "heroicons_outline:clipboard-document-check", "/reports/assessment", PermissionKeys.ReportRead),
             }
         };
 
@@ -185,31 +196,10 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
             Icon = "heroicons_outline:cog-8-tooth",
             Items = new[]
             {
-                new NavItem(
-                    "document-number-series",
-                    "Number Series",
-                    "heroicons_outline:hashtag",
-                    "/settings/document-number-series",
-                    PermissionKeys.DocumentNumberSeriesRead
-                ),
-
-                // ── PesaPal Settings ──────────────────────────────────────────
-                // Requires MpesaReconcile permission — only finance admins and
-                // super-admins should be able to view/edit API credentials and
-                // IPN configuration.
-                new NavItem(
-                    "pesapal-settings",
-                    "PesaPal Settings",
-                    "heroicons_outline:credit-card",
-                    "/settings/pesapal",
-                    PermissionKeys.MpesaReconcile
-                ),
+                new NavItem("document-number-series", "Number Series",    "heroicons_outline:hashtag",     "/settings/document-number-series", PermissionKeys.DocumentNumberSeriesRead),
+                new NavItem("pesapal-settings",       "PesaPal Settings", "heroicons_outline:credit-card", "/settings/pesapal",                PermissionKeys.MpesaReconcile),
             }
         };
-
-        // ─────────────────────────────────────────────────────────────────────
-        // Models
-        // ─────────────────────────────────────────────────────────────────────
 
         public class NavigationSection
         {

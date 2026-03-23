@@ -1,5 +1,6 @@
 <div class="flex flex-col flex-auto min-w-0 bg-gray-50 min-h-screen">
 
+    <!-- Full-page spinner — first load only -->
     <ng-container *ngIf="loading">
         <div class="flex flex-col items-center justify-center flex-1 min-h-screen gap-4">
             <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
@@ -7,6 +8,7 @@
         </div>
     </ng-container>
 
+    <!-- Access denied -->
     <ng-container *ngIf="!loading && accessDenied">
         <div class="flex flex-col items-center justify-center flex-1 min-h-screen gap-3 px-6">
             <div class="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center text-4xl shadow-inner">
@@ -22,10 +24,12 @@
         </div>
     </ng-container>
 
+    <!-- Dashboard -->
     <ng-container *ngIf="!loading && !accessDenied">
 
         <!-- Header -->
-        <div class="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-100 shadow-sm sticky top-0 z-10">
+        <div
+            class="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-100 shadow-sm sticky top-0 z-10">
             <div>
                 <div class="flex items-center gap-1 text-xs text-gray-400 mb-1">
                     <span>Home</span>
@@ -36,16 +40,47 @@
                 <p class="text-xs text-gray-400">Competency-Based Curriculum — {{ academicYear }}</p>
             </div>
             <div class="flex items-center gap-2">
-                <div class="flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-semibold px-3 py-1.5 rounded-full border border-green-200">
+                <div
+                    class="flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-semibold px-3 py-1.5 rounded-full border border-green-200">
                     <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
                     {{ currentTerm }}
                 </div>
-                <button class="w-8 h-8 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm flex items-center justify-center shadow-sm transition">🔍</button>
-                <button class="relative w-8 h-8 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm flex items-center justify-center shadow-sm transition">
+                <button
+                    class="w-8 h-8 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm flex items-center justify-center shadow-sm transition">🔍</button>
+                <button
+                    class="relative w-8 h-8 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm flex items-center justify-center shadow-sm transition">
                     🔔
                     <span class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-red-500"></span>
                 </button>
-                <button class="w-8 h-8 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm flex items-center justify-center shadow-sm transition">⚙️</button>
+                <button
+                    class="w-8 h-8 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm flex items-center justify-center shadow-sm transition">⚙️</button>
+                <button (click)="refresh()" [disabled]="refreshing" [ngClass]="refreshing
+                        ? 'opacity-60 cursor-not-allowed bg-white'
+                        : 'hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 bg-white'"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 shadow-sm transition">
+                    <svg [ngClass]="refreshing ? 'animate-spin' : ''" class="w-3.5 h-3.5 shrink-0" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span>{{ refreshing ? 'Refreshing…' : 'Refresh' }}</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Last updated -->
+        <div class="flex justify-end px-6 pt-2" *ngIf="lastRefreshed">
+            <span class="text-[10px] text-gray-400">
+                Last updated: {{ lastRefreshed | date:'d MMM y, HH:mm:ss' }}
+            </span>
+        </div>
+
+        <!-- Refresh overlay on subsequent reloads -->
+        <div *ngIf="refreshing"
+            class="fixed inset-0 bg-white/40 backdrop-blur-[1px] z-20 flex items-start justify-center pt-24 pointer-events-none">
+            <div class="flex items-center gap-2 bg-white border border-gray-200 shadow-lg rounded-full px-4 py-2">
+                <div class="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                <span class="text-xs font-semibold text-gray-600">Refreshing data…</span>
             </div>
         </div>
 
@@ -54,10 +89,7 @@
 
             <!-- Level Pills -->
             <div class="flex flex-wrap gap-2">
-                <button
-                    *ngFor="let level of levels"
-                    (click)="setActiveLevel(level)"
-                    [ngClass]="activeLevel === level
+                <button *ngFor="let level of levels" (click)="setActiveLevel(level)" [ngClass]="activeLevel === level
                         ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                         : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600'"
                     class="px-3 py-1.5 text-xs font-medium rounded-full border transition-all">
@@ -67,16 +99,15 @@
 
             <!-- Stats -->
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4" *ngIf="permissions?.canViewStats && stats.length">
-                <div
-                    *ngFor="let stat of stats"
+                <div *ngFor="let stat of stats"
                     class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-2 hover:shadow-md transition-shadow">
                     <div class="flex items-start justify-between gap-2">
                         <div class="w-9 h-9 rounded-lg flex items-center justify-center text-lg shrink-0"
-                             [ngStyle]="{'background': stat.iconBg, 'color': stat.color}">
+                            [ngStyle]="{'background': stat.iconBg, 'color': stat.color}">
                             {{ stat.icon }}
                         </div>
                         <span class="text-[10px] font-semibold px-2 py-1 rounded-full text-right leading-tight"
-                              [ngStyle]="{'background': stat.trendBg, 'color': stat.trendColor}">
+                            [ngStyle]="{'background': stat.trendBg, 'color': stat.trendColor}">
                             {{ stat.trend }}
                         </span>
                     </div>
@@ -89,26 +120,29 @@
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
                 <!-- Class Performance -->
-                <div class="bg-white rounded-xl border border-gray-100 shadow-sm" *ngIf="permissions?.canViewClassPerformance">
+                <div class="bg-white rounded-xl border border-gray-100 shadow-sm"
+                    *ngIf="permissions?.canViewClassPerformance">
                     <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-50">
                         <span class="text-sm font-bold text-gray-800">Class Performance — {{ termLabel }}</span>
-                        <button class="text-xs font-medium text-blue-600 hover:text-blue-700 transition">View all classes →</button>
+                        <button class="text-xs font-medium text-blue-600 hover:text-blue-700 transition">View all
+                            classes →</button>
                     </div>
                     <div class="flex flex-col gap-3.5 p-5">
                         <div *ngFor="let cls of classes" class="flex items-center gap-3">
                             <div class="w-9 h-9 rounded-lg text-white text-xs font-bold flex items-center justify-center shrink-0"
-                                 [ngStyle]="{'background': cls.color}">
+                                [ngStyle]="{'background': cls.color}">
                                 {{ cls.badge }}
                             </div>
                             <div class="flex flex-col flex-1 min-w-0 gap-1">
                                 <div class="flex items-center justify-between">
                                     <span class="text-xs font-semibold text-gray-800 truncate">{{ cls.name }}</span>
-                                    <span class="text-xs font-bold ml-2 shrink-0" [ngStyle]="{'color': cls.color}">{{ cls.pct }}%</span>
+                                    <span class="text-xs font-bold ml-2 shrink-0" [ngStyle]="{'color': cls.color}">{{
+                                        cls.pct }}%</span>
                                 </div>
                                 <div class="text-[10px] text-gray-400 truncate leading-none">{{ cls.meta }}</div>
                                 <div class="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
                                     <div class="h-full rounded-full transition-all duration-500"
-                                         [ngStyle]="{'width': cls.pct + '%', 'background': cls.color}">
+                                        [ngStyle]="{'width': cls.pct + '%', 'background': cls.color}">
                                     </div>
                                 </div>
                             </div>
@@ -121,25 +155,27 @@
 
                 <!-- Competency + Quick Actions -->
                 <div class="bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col"
-                     *ngIf="permissions?.canViewCompetency || permissions?.canViewQuickActions">
+                    *ngIf="permissions?.canViewCompetency || permissions?.canViewQuickActions">
 
                     <ng-container *ngIf="permissions?.canViewCompetency">
                         <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-50">
                             <span class="text-sm font-bold text-gray-800">Competency Distribution</span>
-                            <button class="text-xs font-medium text-blue-600 hover:text-blue-700 transition">Details</button>
+                            <button
+                                class="text-xs font-medium text-blue-600 hover:text-blue-700 transition">Details</button>
                         </div>
                         <div class="flex flex-col gap-3 p-5">
                             <div *ngFor="let comp of competencies" class="flex items-center gap-3">
-                                <div class="w-2.5 h-2.5 rounded-full shrink-0"
-                                     [ngStyle]="{'background': comp.color}"></div>
+                                <div class="w-2.5 h-2.5 rounded-full shrink-0" [ngStyle]="{'background': comp.color}">
+                                </div>
                                 <div class="flex flex-col flex-1 gap-1">
                                     <div class="flex items-center justify-between">
                                         <span class="text-xs text-gray-600 font-medium">{{ comp.label }}</span>
-                                        <span class="text-xs font-bold ml-2 shrink-0" [ngStyle]="{'color': comp.color}">{{ comp.pct }}%</span>
+                                        <span class="text-xs font-bold ml-2 shrink-0"
+                                            [ngStyle]="{'color': comp.color}">{{ comp.pct }}%</span>
                                     </div>
                                     <div class="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
                                         <div class="h-full rounded-full transition-all duration-500"
-                                             [ngStyle]="{'width': comp.pct + '%', 'background': comp.color}">
+                                            [ngStyle]="{'width': comp.pct + '%', 'background': comp.color}">
                                         </div>
                                     </div>
                                 </div>
@@ -149,12 +185,10 @@
 
                     <div class="px-5 pb-5 mt-auto" *ngIf="permissions?.canViewQuickActions">
                         <div class="border-t border-gray-50 pt-4">
-                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Quick Actions</p>
+                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Quick Actions
+                            </p>
                             <div class="grid grid-cols-2 gap-2">
-                                <button
-                                    *ngFor="let action of quickActions"
-                                    [disabled]="!action.enabled"
-                                    [ngClass]="action.enabled
+                                <button *ngFor="let action of quickActions" [disabled]="!action.enabled" [ngClass]="action.enabled
                                         ? 'hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 cursor-pointer'
                                         : 'opacity-40 cursor-not-allowed'"
                                     class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-gray-700 text-xs font-semibold transition-all">
@@ -174,21 +208,34 @@
 
                 <!-- Recent Assessments -->
                 <div class="bg-white rounded-xl border border-gray-100 shadow-sm lg:col-span-2"
-                     *ngIf="permissions?.canViewRecentAssessments">
+                    *ngIf="permissions?.canViewRecentAssessments">
                     <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-50">
                         <span class="text-sm font-bold text-gray-800">Recent Assessments</span>
-                        <button class="text-xs font-medium text-blue-600 hover:text-blue-700 transition">All assessments →</button>
+                        <button class="text-xs font-medium text-blue-600 hover:text-blue-700 transition">All assessments
+                            →</button>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-xs">
                             <thead>
                                 <tr class="bg-gray-50 border-b border-gray-100">
-                                    <th class="text-left px-5 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Student</th>
-                                    <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Learning Area</th>
-                                    <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Type</th>
-                                    <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Level</th>
-                                    <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Date</th>
-                                    <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Teacher</th>
+                                    <th
+                                        class="text-left px-5 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                                        Student</th>
+                                    <th
+                                        class="text-left px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                                        Learning Area</th>
+                                    <th
+                                        class="text-left px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                                        Type</th>
+                                    <th
+                                        class="text-left px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                                        Level</th>
+                                    <th
+                                        class="text-left px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                                        Date</th>
+                                    <th
+                                        class="text-left px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                                        Teacher</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-50">
@@ -200,13 +247,13 @@
                                     <td class="px-4 py-3 text-gray-500">{{ a.area }}</td>
                                     <td class="px-4 py-3">
                                         <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold"
-                                              [ngStyle]="{'background': a.typeBg, 'color': a.typeColor}">
+                                            [ngStyle]="{'background': a.typeBg, 'color': a.typeColor}">
                                             {{ a.type }}
                                         </span>
                                     </td>
                                     <td class="px-4 py-3">
                                         <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
-                                              [ngStyle]="{'background': a.levelBg, 'color': a.levelColor}">
+                                            [ngStyle]="{'background': a.levelBg, 'color': a.levelColor}">
                                             {{ a.level }}
                                         </span>
                                     </td>
@@ -214,7 +261,8 @@
                                     <td class="px-4 py-3 text-gray-500">{{ a.teacher }}</td>
                                 </tr>
                                 <tr *ngIf="!assessments.length">
-                                    <td colspan="6" class="px-5 py-8 text-center text-gray-400">No assessments found.</td>
+                                    <td colspan="6" class="px-5 py-8 text-center text-gray-400">No assessments found.
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
@@ -225,23 +273,29 @@
                 <div class="flex flex-col gap-4">
 
                     <!-- Upcoming Events -->
-                    <div class="bg-white rounded-xl border border-gray-100 shadow-sm" *ngIf="permissions?.canViewEvents">
+                    <div class="bg-white rounded-xl border border-gray-100 shadow-sm"
+                        *ngIf="permissions?.canViewEvents">
                         <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-50">
                             <span class="text-sm font-bold text-gray-800">Upcoming Events</span>
-                            <button class="text-xs font-medium text-blue-600 hover:text-blue-700 transition">View calendar</button>
+                            <button class="text-xs font-medium text-blue-600 hover:text-blue-700 transition">View
+                                calendar</button>
                         </div>
                         <div class="flex flex-col divide-y divide-gray-50 px-4 py-1">
                             <div *ngFor="let event of events" class="flex items-center gap-3 py-3">
-                                <div class="flex flex-col items-center justify-center w-10 h-10 rounded-lg bg-blue-50 shrink-0">
-                                    <span class="text-sm font-extrabold text-blue-700 leading-none">{{ event.day }}</span>
-                                    <span class="text-[10px] font-semibold text-blue-400 uppercase leading-none mt-0.5">{{ event.month }}</span>
+                                <div
+                                    class="flex flex-col items-center justify-center w-10 h-10 rounded-lg bg-blue-50 shrink-0">
+                                    <span class="text-sm font-extrabold text-blue-700 leading-none">{{ event.day
+                                        }}</span>
+                                    <span
+                                        class="text-[10px] font-semibold text-blue-400 uppercase leading-none mt-0.5">{{
+                                        event.month }}</span>
                                 </div>
                                 <div class="flex flex-col flex-1 min-w-0">
                                     <span class="text-xs font-semibold text-gray-800 truncate">{{ event.title }}</span>
                                     <span class="text-[10px] text-gray-400 truncate">{{ event.sub }}</span>
                                 </div>
                                 <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold"
-                                      [ngStyle]="{'background': event.tagBg, 'color': event.tagColor}">
+                                    [ngStyle]="{'background': event.tagBg, 'color': event.tagColor}">
                                     {{ event.tag }}
                                 </span>
                             </div>
@@ -252,24 +306,24 @@
                     </div>
 
                     <!-- Fee Collection -->
-                    <div class="bg-white rounded-xl border border-gray-100 shadow-sm" *ngIf="permissions?.canViewFeeCollection">
+                    <div class="bg-white rounded-xl border border-gray-100 shadow-sm"
+                        *ngIf="permissions?.canViewFeeCollection">
                         <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-50">
                             <span class="text-sm font-bold text-gray-800">Fee Collection</span>
-                            <button class="text-xs font-medium text-blue-600 hover:text-blue-700 transition">Payments →</button>
+                            <button class="text-xs font-medium text-blue-600 hover:text-blue-700 transition">Payments
+                                →</button>
                         </div>
                         <div class="flex flex-col items-center py-5 px-5 gap-4">
                             <div class="relative flex items-center justify-center">
                                 <svg viewBox="0 0 36 36" width="110" height="110" class="-rotate-90">
-                                    <circle cx="18" cy="18" r="15.9"
-                                            fill="none" stroke="#f3f4f6" stroke-width="3.2"/>
-                                    <circle cx="18" cy="18" r="15.9"
-                                            fill="none" stroke="#2563EB" stroke-width="3.2"
-                                            [attr.stroke-dasharray]="feeCollectedPct + ' 100'"
-                                            stroke-linecap="round"
-                                            class="transition-all duration-700"/>
+                                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="#f3f4f6" stroke-width="3.2" />
+                                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="#2563EB" stroke-width="3.2"
+                                        [attr.stroke-dasharray]="feeCollectedPct + ' 100'" stroke-linecap="round"
+                                        class="transition-all duration-700" />
                                 </svg>
                                 <div class="absolute flex flex-col items-center">
-                                    <span class="text-xl font-extrabold text-gray-900 leading-none">{{ feeCollectedPct }}%</span>
+                                    <span class="text-xl font-extrabold text-gray-900 leading-none">{{ feeCollectedPct
+                                        }}%</span>
                                     <span class="text-[10px] text-gray-400 font-medium mt-0.5">Collected</span>
                                 </div>
                             </div>
