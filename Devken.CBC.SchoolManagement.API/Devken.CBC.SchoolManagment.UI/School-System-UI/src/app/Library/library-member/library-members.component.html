@@ -1,0 +1,133 @@
+<div class="absolute inset-0 flex min-w-0 flex-col overflow-y-auto" cdkScrollable>
+
+  <!-- Page Header -->
+  <app-page-header
+    title="Library Members"
+    description="Manage all registered library members"
+    icon="people"
+    [breadcrumbs]="breadcrumbs"
+    [actionTemplate]="headerActions">
+  </app-page-header>
+
+  <ng-template #headerActions>
+    <button mat-flat-button
+      class="bg-white text-violet-700 hover:bg-violet-50 hover:text-violet-900 shadow-lg transition-all hover:shadow-xl font-bold"
+      (click)="openCreate()">
+      <mat-icon class="icon-size-5">person_add</mat-icon>
+      <span class="ml-2">Add Member</span>
+    </button>
+  </ng-template>
+
+  <!-- Main Content -->
+  <div class="bg-card -mt-10 flex-auto rounded-t-2xl p-6 shadow sm:p-10">
+
+    <app-stats-cards [cards]="statsCards" [columns]="4"></app-stats-cards>
+
+    <div class="mb-6">
+      <app-filter-panel
+        [fields]="filterFields"
+        [showPanel]="showFilterPanel"
+        [columns]="4"
+        (filterChange)="onFilterChange($event)"
+        (clearAll)="onClearFilters()"
+        (togglePanel)="toggleFilterPanel()">
+      </app-filter-panel>
+    </div>
+
+    <app-data-table
+      [columns]="tableColumns"
+      [data]="paginatedData"
+      [actions]="tableActions"
+      [loading]="isLoading"
+      [header]="tableHeader"
+      [emptyState]="tableEmptyState"
+      [cellTemplates]="cellTemplates">
+    </app-data-table>
+
+    <app-pagination
+      *ngIf="!isLoading"
+      [currentPage]="currentPage"
+      [totalItems]="filteredData.length"
+      [itemsPerPage]="itemsPerPage"
+      [itemLabel]="'members'"
+      [showItemsPerPageSelector]="true"
+      [showPageNumbers]="true"
+      (pageChange)="onPageChange($event)"
+      (itemsPerPageChange)="onItemsPerPageChange($event)">
+    </app-pagination>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- Cell Templates                                                        -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+
+<!-- Member Cell -->
+<ng-template #memberCell let-row>
+  <div class="flex items-center gap-3">
+    <!-- Avatar initial -->
+    <div class="w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br from-violet-100 to-indigo-100 border border-violet-200 dark:border-violet-800 flex-shrink-0">
+      <span class="text-sm font-bold text-violet-600 dark:text-violet-300">
+        {{ (row.userFullName || row.memberNumber || '?').charAt(0).toUpperCase() }}
+      </span>
+    </div>
+    <div class="min-w-0">
+      <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">
+        {{ row.userFullName || '—' }}
+      </p>
+      <p class="text-xs text-gray-500 dark:text-gray-400 font-mono">{{ row.memberNumber }}</p>
+    </div>
+  </div>
+</ng-template>
+
+<!-- Type Cell -->
+<ng-template #typeCell let-row>
+  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+    [ngClass]="getMemberTypeColor(row.memberType)">
+    <mat-icon class="icon-size-3">{{ getMemberTypeIcon(row.memberType) }}</mat-icon>
+    {{ row.memberType }}
+  </span>
+</ng-template>
+
+<!-- Joined Cell -->
+<ng-template #joinedCell let-row>
+  <div class="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
+    <mat-icon class="icon-size-4 text-gray-400">calendar_today</mat-icon>
+    {{ row.joinedOn | date:'mediumDate' }}
+  </div>
+</ng-template>
+
+<!-- Borrows Cell -->
+<ng-template #borrowsCell let-row>
+  <div class="flex justify-center">
+    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold"
+      [ngClass]="row.totalBorrows > 0
+        ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
+        : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'">
+      <mat-icon class="icon-size-3">library_books</mat-icon>
+      {{ row.totalBorrows }}
+    </span>
+  </div>
+</ng-template>
+
+<!-- Status Cell -->
+<ng-template #statusCell let-row>
+  <span
+    class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold"
+    [ngClass]="{
+      'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400':  row.isActive,
+      'bg-red-100   dark:bg-red-900/30   text-red-700   dark:text-red-400':   !row.isActive
+    }">
+    <mat-icon class="icon-size-3">{{ row.isActive ? 'check_circle' : 'cancel' }}</mat-icon>
+    {{ row.isActive ? 'Active' : 'Inactive' }}
+  </span>
+</ng-template>
+
+<!-- School Cell (SuperAdmin only) -->
+<ng-template #schoolCell let-row>
+  <div class="flex items-center gap-2">
+    <mat-icon class="icon-size-4 text-violet-500 dark:text-violet-400">school</mat-icon>
+    <span class="text-sm text-gray-700 dark:text-gray-300">{{ row.schoolName || '—' }}</span>
+  </div>
+</ng-template>

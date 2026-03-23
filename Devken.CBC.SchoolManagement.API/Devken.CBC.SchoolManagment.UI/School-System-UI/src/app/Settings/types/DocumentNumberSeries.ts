@@ -1,5 +1,5 @@
 // ------------------------ DTOs ------------------------
-export type NumberSeriesEntityValue = 'Student' | 'Teacher' | 'Invoice' | 'Payment' | 'Assessment' | 'Class'| 'BookAccessionNumber'| 'BookBarcode';
+export type NumberSeriesEntityValue = 'AcademicYear'|'Student' | 'Teacher' | 'Invoice' | 'Payment' | 'Assessment' | 'Class'| 'BookAccessionNumber'| 'BookBarcode'  | 'LibraryMember';
 
 export interface DocumentNumberSeriesDto {
   id: string;
@@ -28,6 +28,7 @@ export interface UpdateDocumentNumberSeriesRequest {
 
 // ------------------------ ENTITY TYPES ------------------------
 export const ENTITY_TYPES: { value: NumberSeriesEntityValue; label: string }[] = [
+  { value: 'AcademicYear', label: 'Academic Year Code'},
   { value: 'Student', label: 'Student Number' },
   { value: 'Teacher', label: 'Teacher Number' },
   { value: 'Invoice', label: 'Invoice Number' },
@@ -36,11 +37,14 @@ export const ENTITY_TYPES: { value: NumberSeriesEntityValue; label: string }[] =
   { value: 'Class', label: 'Class Code' },
   { value: 'BookAccessionNumber', label: 'Book Accession Number' }, 
   { value: 'BookBarcode',         label: 'Book Barcode'          },
+  { value: 'LibraryMember',       label: 'Library Member Number'  }, // ← add
+
 
 
 ] as const;
 
 export const ENTITY_TYPES_MAP: Record<NumberSeriesEntityValue, string> = {
+  AcademicYear: 'Academic Year Code',
   Student: 'Student Number',
   Teacher: 'Teacher Number',
   Invoice: 'Invoice Number',
@@ -48,5 +52,6 @@ export const ENTITY_TYPES_MAP: Record<NumberSeriesEntityValue, string> = {
   Assessment: 'Assessment Number',
   Class: 'Class Code',
   BookAccessionNumber: 'Book Accession Number',  
-  BookBarcode:         'Book Barcode',   
+  BookBarcode:         'Book Barcode',  
+  LibraryMember:       'Library Member Number', 
 };

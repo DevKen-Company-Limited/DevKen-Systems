@@ -25,7 +25,7 @@ export interface AcademicYearDto {
 export interface CreateAcademicYearRequest {
   schoolId: string;
   name: string;
-  code: string;
+  code?: string;        // ← optional, auto-generated when omitted
   startDate: string;
   endDate: string;
   isCurrent?: boolean;
