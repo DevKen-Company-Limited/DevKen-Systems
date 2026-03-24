@@ -166,6 +166,22 @@
       </ul>
     </div>
 
+    <!-- School (SuperAdmin Only) -->
+  <div *ngIf="isSuperAdmin" class="mb-5">
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>School <span class="text-red-500">*</span></mat-label>
+      <mat-select formControlName="schoolId" placeholder="Select school">
+        <mat-option [value]="null">— Select School —</mat-option>
+        <mat-option *ngFor="let school of schools" [value]="school.id">
+          {{ school.name }}{{ school.code ? ' (' + school.code + ')' : '' }}
+        </mat-option>
+      </mat-select>
+      <mat-icon matPrefix>business</mat-icon>
+      <mat-hint>Assign this reservation to a school</mat-hint>
+      <mat-error>{{ getFieldError('schoolId') }}</mat-error>
+    </mat-form-field>
+  </div>
+  
     <!-- Edit Mode: only due date -->
     <ng-container *ngIf="isEditMode">
       <mat-form-field appearance="outline" class="w-full">
@@ -182,14 +198,30 @@
     <ng-container *ngIf="isCreateMode">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
 
+        <!-- Member -->
+        <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Library Member <span class="text-red-500">*</span></mat-label>
+        <mat-select formControlName="memberId" placeholder="Select member">
+            <mat-option [value]="null">— Select Member —</mat-option>
+            <mat-option *ngFor="let member of filteredMembers" [value]="member.id">
+            {{ member.memberNumber }}
+            <span *ngIf="member.userFullName" class="text-xs text-gray-400 ml-1">– {{ member.userFullName }}</span>
+            </mat-option>
+        </mat-select>
+        <mat-icon matPrefix>badge</mat-icon>
+        <mat-hint *ngIf="isSuperAdmin && !form.get('schoolId')?.value" class="text-amber-600">
+            Select a school first
+        </mat-hint>
+        <mat-error>{{ getFieldError('memberId') }}</mat-error>
+        </mat-form-field>
         <!-- Member ID -->
-        <mat-form-field appearance="outline" class="w-full md:col-span-2">
+        <!-- <mat-form-field appearance="outline" class="w-full md:col-span-2">
           <mat-label>Member ID <span class="text-red-500">*</span></mat-label>
           <input matInput formControlName="memberId" placeholder="Enter member ID" autocomplete="off" />
           <mat-icon matPrefix>person</mat-icon>
           <mat-hint>Enter the library member's ID</mat-hint>
           <mat-error>{{ getFieldError('memberId') }}</mat-error>
-        </mat-form-field>
+        </mat-form-field> -->
 
         <!-- Borrow Date -->
         <mat-form-field appearance="outline" class="w-full">

@@ -1,7 +1,10 @@
+// book-borrow/Types/book-borrow.types.ts
+
 import { LibraryFineDto } from "app/Library/library-fines/Types/library-fine.types";
 
 
 // ── Enums / Constants ────────────────────────────────────────────────────────
+
 export type BorrowStatus = 'Borrowed' | 'Returned' | 'Overdue';
 
 export const BORROW_STATUSES: { label: string; value: BorrowStatus }[] = [
@@ -11,6 +14,7 @@ export const BORROW_STATUSES: { label: string; value: BorrowStatus }[] = [
 ];
 
 // ── DTOs ─────────────────────────────────────────────────────────────────────
+
 export interface BookBorrowItemDto {
   id:              string;
   borrowId:        string;
@@ -31,8 +35,6 @@ export interface BookBorrowDto {
   memberId:         string;
   memberName:       string;
   memberNumber:     string;
-  schoolId?:        string;
-  schoolName?:      string;
   borrowDate:       string;
   dueDate:          string;
   borrowStatus:     BorrowStatus;
@@ -42,15 +44,21 @@ export interface BookBorrowDto {
   unreturnedItems:  number;
   totalFines:       number;
   items:            BookBorrowItemDto[];
+  
+  // Multi-tenant fields
+  schoolId?:        string;
+  schoolName?:      string;
+  tenantId?:        string;
 }
 
 // ── Request Payloads ─────────────────────────────────────────────────────────
+
 export interface CreateBookBorrowRequest {
   memberId:     string;
   borrowDate:   string;
   dueDate:      string;
   bookCopyIds:  string[];
-  schoolId?:    string;
+  schoolId?:    string; // SuperAdmin only
 }
 
 export interface UpdateBookBorrowRequest {

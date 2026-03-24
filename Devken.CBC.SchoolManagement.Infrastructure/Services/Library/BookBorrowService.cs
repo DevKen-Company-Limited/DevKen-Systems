@@ -99,7 +99,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Library
             if (userSchoolId.HasValue && borrow.TenantId != userSchoolId.Value)
                 throw new UnauthorizedAccessException("Access denied to this borrow transaction");
 
-            return MapToDto(borrow);
+            return await MapToDtoAsync(borrow);
         }
 
         public async Task<IEnumerable<BookBorrowDto>> GetAllBorrowsAsync(Guid? userSchoolId)
@@ -119,7 +119,12 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Library
                 .OrderByDescending(b => b.BorrowDate)
                 .ToListAsync();
 
-            return borrows.Select(MapToDto);
+            var result = new List<BookBorrowDto>();
+            foreach (var borrow in borrows)
+            {
+                result.Add(await MapToDtoAsync(borrow));
+            }
+            return result;
         }
 
         public async Task<IEnumerable<BookBorrowDto>> GetBorrowsByMemberIdAsync(Guid memberId, Guid? userSchoolId)
@@ -129,7 +134,12 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Library
             if (userSchoolId.HasValue)
                 borrows = borrows.Where(b => b.TenantId == userSchoolId.Value);
 
-            return borrows.Select(MapToDto);
+            var result = new List<BookBorrowDto>();
+            foreach (var borrow in borrows)
+            {
+                result.Add(await MapToDtoAsync(borrow));
+            }
+            return result;
         }
 
         public async Task<IEnumerable<BookBorrowDto>> GetActiveBorrowsAsync(Guid? userSchoolId)
@@ -139,7 +149,12 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Library
             if (userSchoolId.HasValue)
                 borrows = borrows.Where(b => b.TenantId == userSchoolId.Value);
 
-            return borrows.Select(MapToDto);
+            var result = new List<BookBorrowDto>();
+            foreach (var borrow in borrows)
+            {
+                result.Add(await MapToDtoAsync(borrow));
+            }
+            return result;
         }
 
         public async Task<IEnumerable<BookBorrowDto>> GetOverdueBorrowsAsync(Guid? userSchoolId)
@@ -149,7 +164,12 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Library
             if (userSchoolId.HasValue)
                 borrows = borrows.Where(b => b.TenantId == userSchoolId.Value);
 
-            return borrows.Select(MapToDto);
+            var result = new List<BookBorrowDto>();
+            foreach (var borrow in borrows)
+            {
+                result.Add(await MapToDtoAsync(borrow));
+            }
+            return result;
         }
 
         public async Task<BookBorrowDto> UpdateBorrowAsync(Guid id, UpdateBookBorrowDto dto, Guid? userSchoolId)
@@ -329,10 +349,18 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Library
             await _repository.SaveAsync();
         }
 
-        private BookBorrowDto MapToDto(BookBorrow borrow)
+        private async Task<BookBorrowDto> MapToDtoAsync(BookBorrow borrow)
         {
             var totalFines = borrow.Items.SelectMany(i => i.Fines).Sum(f => f.Amount);
             var today = DateTime.UtcNow.Date;
+
+            // Get school name if needed
+            string? schoolName = null;
+            if (borrow.TenantId != Guid.Empty)
+            {
+                var school = await _repository.School.GetByIdAsync(borrow.TenantId);
+                schoolName = school?.Name;
+            }
 
             return new BookBorrowDto
             {
@@ -348,7 +376,12 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Library
                 ReturnedItems = borrow.Items.Count(i => i.IsReturned),
                 UnreturnedItems = borrow.Items.Count(i => !i.IsReturned),
                 TotalFines = totalFines,
-                Items = borrow.Items.Select(MapItemToDto).ToList()
+                Items = borrow.Items.Select(MapItemToDto).ToList(),
+
+                // Multi-tenant fields
+                SchoolId = borrow.TenantId,
+                SchoolName = schoolName,
+                TenantId = borrow.TenantId,
             };
         }
 
@@ -380,7 +413,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Library
                     IsPaid = f.IsPaid,
                     IssuedOn = f.IssuedOn,
                     PaidOn = f.PaidOn,
-                    Reason = f.Reason
+                    Reason = f.Reason,
+                    TenantId = f.TenantId,
+                    SchoolId = f.TenantId,
                 }).ToList()
             };
         }

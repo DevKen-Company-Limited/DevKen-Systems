@@ -56,7 +56,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Library
             if (userSchoolId.HasValue && fine.TenantId != userSchoolId.Value)
                 throw new UnauthorizedAccessException("Access denied to this fine");
 
-            return MapToDto(fine);
+            return await MapToDtoAsync(fine);
         }
 
         public async Task<IEnumerable<LibraryFineDto>> GetAllFinesAsync(Guid? userSchoolId)
@@ -76,7 +76,12 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Library
                 .OrderByDescending(f => f.IssuedOn)
                 .ToListAsync();
 
-            return fines.Select(MapToDto);
+            var result = new List<LibraryFineDto>();
+            foreach (var fine in fines)
+            {
+                result.Add(await MapToDtoAsync(fine));
+            }
+            return result;
         }
 
         public async Task<IEnumerable<LibraryFineDto>> GetUnpaidFinesAsync(Guid? userSchoolId)
@@ -86,7 +91,12 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Library
             if (userSchoolId.HasValue)
                 fines = fines.Where(f => f.TenantId == userSchoolId.Value);
 
-            return fines.Select(MapToDto);
+            var result = new List<LibraryFineDto>();
+            foreach (var fine in fines)
+            {
+                result.Add(await MapToDtoAsync(fine));
+            }
+            return result;
         }
 
         public async Task<IEnumerable<LibraryFineDto>> GetFinesByMemberIdAsync(Guid memberId, Guid? userSchoolId)
@@ -96,7 +106,12 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Library
             if (userSchoolId.HasValue)
                 fines = fines.Where(f => f.TenantId == userSchoolId.Value);
 
-            return fines.Select(MapToDto);
+            var result = new List<LibraryFineDto>();
+            foreach (var fine in fines)
+            {
+                result.Add(await MapToDtoAsync(fine));
+            }
+            return result;
         }
 
         public async Task<LibraryFineDto> PayFineAsync(PayFineDto dto, Guid? userSchoolId)
@@ -200,8 +215,16 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Library
             return await _repository.LibraryFine.GetTotalPaidFinesForMemberAsync(memberId);
         }
 
-        private LibraryFineDto MapToDto(LibraryFine fine)
+        private async Task<LibraryFineDto> MapToDtoAsync(LibraryFine fine)
         {
+            // Get school name if needed
+            string? schoolName = null;
+            if (fine.TenantId != Guid.Empty)
+            {
+                var school = await _repository.School.GetByIdAsync(fine.TenantId);
+                schoolName = school?.Name;
+            }
+
             return new LibraryFineDto
             {
                 Id = fine.Id,
@@ -210,7 +233,18 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Library
                 IsPaid = fine.IsPaid,
                 IssuedOn = fine.IssuedOn,
                 PaidOn = fine.PaidOn,
-                Reason = fine.Reason
+                Reason = fine.Reason,
+                
+                // Multi-tenant fields
+                SchoolId = fine.TenantId,
+                SchoolName = schoolName,
+                TenantId = fine.TenantId,
+                
+                // Denormalized fields
+                MemberName = fine.BorrowItem?.Borrow?.Member?.MemberNumber,
+                MemberNumber = fine.BorrowItem?.Borrow?.Member?.MemberNumber,
+                BookTitle = fine.BorrowItem?.BookCopy?.Book?.Title,
+                ISBN = fine.BorrowItem?.BookCopy?.Book?.ISBN,
             };
         }
     }

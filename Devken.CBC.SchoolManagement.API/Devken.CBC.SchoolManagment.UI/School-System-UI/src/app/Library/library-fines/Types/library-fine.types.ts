@@ -1,27 +1,37 @@
+// library-fine/Types/library-fine.types.ts
+
 // ── DTOs ─────────────────────────────────────────────────────────────────────
+
 export interface LibraryFineDto {
-  id:           string;
-  borrowItemId: string;
-  bookTitle?:   string;
-  memberName?:  string;
-  memberId?:    string;
-  schoolId?:    string;
-  schoolName?:  string;
-  amount:       number;
-  isPaid:       boolean;
-  isWaived?:    boolean;
-  issuedOn:     string;
-  paidOn?:      string;
-  reason?:      string;
+  id:              string;
+  borrowItemId:    string;
+  amount:          number;
+  isPaid:          boolean;
+  isWaived:        boolean;
+  issuedOn:        string;
+  paidOn?:         string;
+  reason?:         string;
+  
+  // Multi-tenant fields
+  schoolId?:       string;
+  schoolName?:     string;
+  tenantId?:       string;
+  
+  // Denormalized fields from related entities
+  memberName?:     string;
+  memberNumber?:   string;
+  bookTitle?:      string;
+  isbn?:           string;
 }
 
 // ── Request Payloads ─────────────────────────────────────────────────────────
+
 export interface CreateLibraryFineRequest {
   borrowItemId: string;
   amount:       number;
   reason:       string;
   issuedOn?:    string;
-  schoolId?:    string;
+  schoolId?:    string; // SuperAdmin only
 }
 
 export interface PayFineRequest {
@@ -35,6 +45,6 @@ export interface PayMultipleFinesRequest {
 }
 
 export interface WaiveFineRequest {
-  fineId:  string;
-  reason:  string;
+  fineId: string;
+  reason: string;
 }

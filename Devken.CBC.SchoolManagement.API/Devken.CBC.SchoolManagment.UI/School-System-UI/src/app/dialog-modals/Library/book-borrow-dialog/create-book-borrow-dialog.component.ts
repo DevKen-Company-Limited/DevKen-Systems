@@ -32,6 +32,10 @@ import {
   UpdateBookBorrowRequest,
 } from 'app/Library/book-borrow/Types/book-borrow.types';
 import { BookBorrowService } from 'app/core/DevKenService/Library/book-borrow.service';
+import { SchoolDto } from 'app/Tenant/types/school';
+import { LibraryMemberDto } from 'app/Library/library-member/Types/library-member.types';
+import { LibraryMemberService } from 'app/core/DevKenService/Library/library-member.service';
+import { SchoolService } from 'app/core/DevKenService/Tenant/SchoolService';
 
 
 export interface CreateBookBorrowDialogData {
@@ -62,6 +66,8 @@ export class CreateBookBorrowDialogComponent
 
   availableCopies:  BookCopyDto[] = [];
   selectedCopyIds:  Set<string>   = new Set();
+  schools: SchoolDto[]         = [];
+  members: LibraryMemberDto[]  = [];
   isLoading         = false;
   formSubmitted     = false;
   isSaving          = false;
@@ -93,6 +99,11 @@ export class CreateBookBorrowDialogComponent
 
   get borrow(): BookBorrowDto | undefined { return this.data.borrow; }
 
+  get filteredMembers(): LibraryMemberDto[] {
+    if (!this.isSuperAdmin) return this.members;
+    const schoolId = this.form.get('schoolId')?.value;
+    return schoolId ? this.members.filter(m => m.schoolId === schoolId) : [];
+  }
   constructor(
     fb:            FormBuilder,
     snackBar:      MatSnackBar,
@@ -100,7 +111,9 @@ export class CreateBookBorrowDialogComponent
     dialogRef:     MatDialogRef<CreateBookBorrowDialogComponent>,
     @Inject(MAT_DIALOG_DATA) data: CreateBookBorrowDialogData,
     private readonly _authService:   AuthService,
+    private readonly _schoolService:      SchoolService,
     private readonly _copyService:   BookCopyService,
+    private readonly _memberService:      LibraryMemberService,
     borrowService: BookBorrowService,
     private readonly _cdr: ChangeDetectorRef,
   ) {
@@ -120,6 +133,7 @@ export class CreateBookBorrowDialogComponent
       });
     }
     return this.fb.group({
+      schoolId:  [null, this.isSuperAdmin ? [Validators.required] : []], 
       memberId:   ['', [Validators.required]],
       borrowDate: [new Date(), [Validators.required]],
       dueDate:    [null, [Validators.required]],
@@ -139,19 +153,41 @@ export class CreateBookBorrowDialogComponent
     this._cdr.detectChanges();
   }
 
-  private _loadDropdowns(): void {
-    if (this.isEditMode) return;
-    this.isLoading = true;
-    this._copyService.getAll().pipe(
-      takeUntil(this._unsubscribe),
-      finalize(() => { this.isLoading = false; this._cdr.detectChanges(); })
-    ).subscribe({
-      next: res => {
-        this.availableCopies = (res.data || []).filter(c => c.isAvailable);
-      },
-      error: () => {}
-    });
-  }
+ private _loadDropdowns(): void {
+  if (this.isEditMode) return;
+
+  this.isLoading = true;
+
+  const requests: any = {
+    copies: this._copyService.getAll().pipe(
+      catchError(() => of({ success: false, data: [] }))
+    ),
+    members: this._memberService.getAll().pipe(
+      catchError(() => of({ success: false, data: [] }))
+    )
+  };
+
+  if (this.isSuperAdmin) {
+      requests.schools = this._schoolService.getAll().pipe(
+      catchError(() => of({ success: false, data: [] }))
+      );
+    }
+
+  forkJoin(requests).pipe(
+    takeUntil(this._unsubscribe),
+    finalize(() => {
+      this.isLoading = false;
+      this._cdr.detectChanges();
+    })
+  ).subscribe({
+    next: (res: any) => {
+      this.availableCopies = (res.copies?.data || []).filter(c => c.isAvailable);
+      this.members = res.members?.data || [];
+      if (res.schools) this.schools = res.schools?.data || [];
+    },
+    error: () => {}
+  });
+}
 
   toggleCopySelection(copyId: string): void {
     if (this.selectedCopyIds.has(copyId)) {

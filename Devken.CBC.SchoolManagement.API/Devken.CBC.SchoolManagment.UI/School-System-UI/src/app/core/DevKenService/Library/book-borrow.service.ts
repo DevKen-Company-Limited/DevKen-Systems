@@ -1,14 +1,17 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { ApiResponse } from 'app/Tenant/types/school';
 import { BookBorrowDto, BookBorrowItemDto, CreateBookBorrowRequest, ReturnBookRequest, ReturnMultipleBooksRequest, UpdateBookBorrowRequest } from 'app/Library/book-borrow/Types/book-borrow.types';
+import { API_BASE_URL } from 'app/app.config';
 
 
 
 @Injectable({ providedIn: 'root' })
 export class BookBorrowService {
-  private readonly _base = 'api/library/borrows';
+  
+  private readonly apiBase = inject(API_BASE_URL);
+    private readonly _base = `${this.apiBase}/api/library/borrows`;
 
   constructor(private _http: HttpClient) {}
 

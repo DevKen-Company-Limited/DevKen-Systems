@@ -1,14 +1,16 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { ApiResponse } from 'app/Tenant/types/school';
 import { CreateLibraryFineRequest, LibraryFineDto, PayFineRequest, PayMultipleFinesRequest, WaiveFineRequest } from 'app/Library/library-fines/Types/library-fine.types';
+import { API_BASE_URL } from 'app/app.config';
 
 
 
 @Injectable({ providedIn: 'root' })
 export class LibraryFineService {
-  private readonly _base = 'api/library/fines';
+  private readonly apiBase = inject(API_BASE_URL);
+      private readonly _base = `${this.apiBase}/api/library/fines`;
 
   constructor(private _http: HttpClient) {}
 
