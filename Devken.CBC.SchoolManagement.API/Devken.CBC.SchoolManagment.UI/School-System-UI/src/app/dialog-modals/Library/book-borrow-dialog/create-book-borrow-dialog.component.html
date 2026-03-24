@@ -1,0 +1,281 @@
+<!-- Dialog Header -->
+<div class="relative overflow-hidden rounded-t-xl px-6 py-5" [ngClass]="headerGradient">
+  <div class="absolute inset-0 opacity-10 pointer-events-none">
+    <div class="absolute top-0 right-0 w-32 h-32 bg-yellow-200 rounded-full blur-2xl"></div>
+    <div class="absolute bottom-0 left-0 w-40 h-40 bg-blue-300 rounded-full blur-2xl"></div>
+  </div>
+
+  <div class="relative z-10 flex items-center gap-3 pr-10">
+    <div class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center shrink-0">
+      <mat-icon class="text-white icon-size-6">
+        {{ isViewMode ? 'visibility' : isEditMode ? 'edit' : 'assignment_return' }}
+      </mat-icon>
+    </div>
+    <div>
+      <h2 class="text-xl font-bold text-white m-0 leading-tight">{{ dialogTitle }}</h2>
+      <p class="text-white/80 text-sm mt-0.5 mb-0">{{ dialogSubtitle }}</p>
+    </div>
+  </div>
+
+  <button mat-icon-button class="close-btn absolute top-3 right-3 text-white z-20" (click)="onCancel()" matTooltip="Close">
+    <mat-icon>close</mat-icon>
+  </button>
+</div>
+
+<!-- Loading Overlay -->
+<div *ngIf="isLoading"
+  class="absolute inset-0 bg-white/98 dark:bg-gray-900/98 z-50 flex items-center justify-center backdrop-blur-sm">
+  <div class="text-center p-8">
+    <div class="relative w-16 h-16 mx-auto mb-4">
+      <mat-spinner diameter="60"></mat-spinner>
+      <mat-icon class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-violet-600">
+        assignment_return
+      </mat-icon>
+    </div>
+    <p class="text-lg font-semibold text-gray-800 dark:text-gray-200">Preparing Form...</p>
+    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Loading available book copies</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- VIEW MODE                                                     -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<ng-container *ngIf="isViewMode && borrow">
+  <div mat-dialog-content class="p-5 space-y-5">
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div class="rounded-xl p-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800">
+        <p class="text-xs text-indigo-500 dark:text-indigo-400 font-medium">Total Items</p>
+        <p class="text-2xl font-bold text-indigo-700 dark:text-indigo-300">{{ borrow.totalItems }}</p>
+      </div>
+      <div class="rounded-xl p-3 bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800">
+        <p class="text-xs text-green-500 dark:text-green-400 font-medium">Returned</p>
+        <p class="text-2xl font-bold text-green-700 dark:text-green-300">{{ borrow.returnedItems }}</p>
+      </div>
+      <div class="rounded-xl p-3" [ngClass]="borrow.unreturnedItems > 0 ? 'bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800' : 'bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700'">
+        <p class="text-xs font-medium" [ngClass]="borrow.unreturnedItems > 0 ? 'text-amber-500 dark:text-amber-400' : 'text-gray-500 dark:text-gray-400'">Pending</p>
+        <p class="text-2xl font-bold" [ngClass]="borrow.unreturnedItems > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-gray-500 dark:text-gray-400'">{{ borrow.unreturnedItems }}</p>
+      </div>
+      <div class="rounded-xl p-3" [ngClass]="borrow.totalFines > 0 ? 'bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800' : 'bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700'">
+        <p class="text-xs font-medium" [ngClass]="borrow.totalFines > 0 ? 'text-red-500 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'">Fines</p>
+        <p class="text-lg font-bold" [ngClass]="borrow.totalFines > 0 ? 'text-red-700 dark:text-red-300' : 'text-gray-500 dark:text-gray-400'">
+          {{ borrow.totalFines > 0 ? formatCurrency(borrow.totalFines) : '—' }}
+        </p>
+      </div>
+    </div>
+
+    <!-- Member & Dates Info -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+      <div>
+        <p class="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">Member</p>
+        <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ borrow.memberName }}</p>
+        <p class="text-xs text-gray-500 font-mono">{{ borrow.memberNumber }}</p>
+      </div>
+      <div>
+        <p class="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">Status</p>
+        <span class="px-2.5 py-1 rounded-full text-xs font-semibold inline-flex items-center gap-1"
+              [ngClass]="borrow.isOverdue ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' : borrow.borrowStatus === 'Returned' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'">
+          {{ borrow.isOverdue ? 'Overdue' : borrow.borrowStatus }}
+        </span>
+      </div>
+      <div>
+        <p class="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">Borrow Date</p>
+        <p class="text-sm text-gray-700 dark:text-gray-300">{{ formatDate(borrow.borrowDate) }}</p>
+      </div>
+      <div>
+        <p class="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">Due Date</p>
+        <p class="text-sm font-medium" [ngClass]="borrow.isOverdue ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'">
+          {{ formatDate(borrow.dueDate) }}
+        </p>
+      </div>
+    </div>
+
+    <!-- Borrow Items -->
+    <div>
+      <h4 class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+        <mat-icon class="icon-size-4 text-indigo-500">library_books</mat-icon>
+        Borrowed Books ({{ borrow.items.length }})
+      </h4>
+      <div class="space-y-2">
+        <div *ngFor="let item of borrow.items"
+             class="flex items-center justify-between gap-3 p-3 rounded-xl border"
+             [ngClass]="item.isReturned
+               ? 'bg-green-50/50 dark:bg-green-900/10 border-green-200 dark:border-green-800'
+               : item.isOverdue
+               ? 'bg-red-50/50 dark:bg-red-900/10 border-red-200 dark:border-red-800'
+               : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'">
+
+          <!-- Book info -->
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                 [ngClass]="item.isReturned ? 'bg-green-100 dark:bg-green-900/30' : item.isOverdue ? 'bg-red-100 dark:bg-red-900/30' : 'bg-indigo-100 dark:bg-indigo-900/30'">
+              <mat-icon class="icon-size-4"
+                        [ngClass]="item.isReturned ? 'text-green-600 dark:text-green-400' : item.isOverdue ? 'text-red-600 dark:text-red-400' : 'text-indigo-600 dark:text-indigo-400'">
+                {{ item.isReturned ? 'check_circle' : item.isOverdue ? 'schedule' : 'menu_book' }}
+              </mat-icon>
+            </div>
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ item.bookTitle }}</p>
+              <p class="text-xs text-gray-400 font-mono">{{ item.accessionNumber }}</p>
+              <p *ngIf="item.isOverdue && !item.isReturned"
+                 class="text-xs font-medium text-red-600 dark:text-red-400">
+                {{ item.daysOverdue }} day(s) overdue
+              </p>
+              <p *ngIf="item.isReturned" class="text-xs text-green-600 dark:text-green-400">
+                Returned {{ formatDate(item.returnedOn) }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Return button -->
+          <button *ngIf="!item.isReturned"
+                  mat-stroked-button
+                  class="shrink-0 text-xs border-indigo-300 text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:border-indigo-700 dark:hover:bg-indigo-900/30"
+                  (click)="returnItem(item)">
+            <mat-icon class="icon-size-4 mr-1">assignment_return</mat-icon>
+            Return
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div mat-dialog-actions class="flex justify-end px-5 pb-5">
+    <button mat-flat-button color="primary" (click)="onCancel()">Close</button>
+  </div>
+</ng-container>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- CREATE / EDIT MODE                                            -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<ng-container *ngIf="!isViewMode">
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" mat-dialog-content class="p-5">
+
+    <!-- Validation Summary -->
+    <div *ngIf="formSubmitted && form.invalid"
+         class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg">
+      <div class="flex items-center gap-2 text-red-800 dark:text-red-200">
+        <mat-icon class="icon-size-5">error_outline</mat-icon>
+        <span class="font-medium">Please fix the following errors:</span>
+      </div>
+      <ul class="mt-1 ml-6 text-sm text-red-700 dark:text-red-300 list-disc">
+        <li *ngIf="form.get('memberId')?.hasError('required')">Member ID is required</li>
+        <li *ngIf="form.get('borrowDate')?.hasError('required')">Borrow date is required</li>
+        <li *ngIf="form.get('dueDate')?.hasError('required')">Due date is required</li>
+      </ul>
+    </div>
+
+    <!-- Edit Mode: only due date -->
+    <ng-container *ngIf="isEditMode">
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>New Due Date <span class="text-red-500">*</span></mat-label>
+        <input matInput [matDatepicker]="duePicker" formControlName="dueDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="duePicker"></mat-datepicker-toggle>
+        <mat-datepicker #duePicker></mat-datepicker>
+        <mat-icon matPrefix>event</mat-icon>
+        <mat-error>{{ getFieldError('dueDate') }}</mat-error>
+      </mat-form-field>
+    </ng-container>
+
+    <!-- Create Mode -->
+    <ng-container *ngIf="isCreateMode">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+
+        <!-- Member ID -->
+        <mat-form-field appearance="outline" class="w-full md:col-span-2">
+          <mat-label>Member ID <span class="text-red-500">*</span></mat-label>
+          <input matInput formControlName="memberId" placeholder="Enter member ID" autocomplete="off" />
+          <mat-icon matPrefix>person</mat-icon>
+          <mat-hint>Enter the library member's ID</mat-hint>
+          <mat-error>{{ getFieldError('memberId') }}</mat-error>
+        </mat-form-field>
+
+        <!-- Borrow Date -->
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>Borrow Date <span class="text-red-500">*</span></mat-label>
+          <input matInput [matDatepicker]="borrowPicker" formControlName="borrowDate" />
+          <mat-datepicker-toggle matIconSuffix [for]="borrowPicker"></mat-datepicker-toggle>
+          <mat-datepicker #borrowPicker></mat-datepicker>
+          <mat-icon matPrefix>calendar_today</mat-icon>
+          <mat-error>{{ getFieldError('borrowDate') }}</mat-error>
+        </mat-form-field>
+
+        <!-- Due Date -->
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>Due Date <span class="text-red-500">*</span></mat-label>
+          <input matInput [matDatepicker]="duePicker2" formControlName="dueDate" />
+          <mat-datepicker-toggle matIconSuffix [for]="duePicker2"></mat-datepicker-toggle>
+          <mat-datepicker #duePicker2></mat-datepicker>
+          <mat-icon matPrefix>event</mat-icon>
+          <mat-error>{{ getFieldError('dueDate') }}</mat-error>
+        </mat-form-field>
+      </div>
+
+      <!-- Book Copy Selection -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+            <mat-icon class="icon-size-4 text-indigo-500">library_books</mat-icon>
+            Select Book Copies
+            <span class="text-xs font-normal text-gray-500">({{ selectedCopyIds.size }} selected)</span>
+          </p>
+          <span *ngIf="formSubmitted && selectedCopyIds.size === 0"
+                class="text-xs text-red-500">At least one copy required</span>
+        </div>
+
+        <div *ngIf="availableCopies.length === 0 && !isLoading"
+             class="flex flex-col items-center justify-center p-8 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700">
+          <mat-icon class="text-gray-400 icon-size-10 mb-2">library_add</mat-icon>
+          <p class="text-sm text-gray-500">No available book copies found</p>
+        </div>
+
+        <div class="max-h-64 overflow-y-auto space-y-2 pr-1">
+          <div *ngFor="let copy of availableCopies"
+               class="flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all"
+               [ngClass]="isCopySelected(copy.id)
+                 ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 dark:border-indigo-600'
+                 : 'border-gray-200 dark:border-gray-700 hover:border-indigo-200 dark:hover:border-indigo-800 bg-white dark:bg-gray-800'"
+               (click)="toggleCopySelection(copy.id)">
+
+            <div class="w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-all"
+                 [ngClass]="isCopySelected(copy.id)
+                   ? 'border-indigo-500 bg-indigo-500'
+                   : 'border-gray-300 dark:border-gray-600'">
+              <mat-icon *ngIf="isCopySelected(copy.id)" class="text-white icon-size-3.5">check</mat-icon>
+            </div>
+
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0
+                        bg-gradient-to-br from-cyan-100 to-teal-100
+                        border border-cyan-200 dark:border-cyan-800">
+              <mat-icon class="text-cyan-600 dark:text-cyan-400 icon-size-4">menu_book</mat-icon>
+            </div>
+
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ copy.bookTitle }}</p>
+              <p class="text-xs text-gray-400 font-mono">{{ copy.accessionNumber }} · {{ copy.barcode }}</p>
+            </div>
+
+            <span class="text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 shrink-0">
+              Available
+            </span>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+  </form>
+
+  <!-- Dialog Actions -->
+  <div mat-dialog-actions class="flex justify-end gap-3 px-5 pb-5">
+    <button mat-button type="button" (click)="onCancel()" [disabled]="isSaving">Cancel</button>
+    <button mat-flat-button color="primary" type="button" (click)="onSubmit()"
+      [disabled]="isSaving"
+      class="bg-gradient-to-r from-violet-600 to-indigo-600 text-white min-w-28">
+      <mat-spinner *ngIf="isSaving" diameter="18" class="mr-2 inline-block"></mat-spinner>
+      <mat-icon *ngIf="!isSaving" class="icon-size-5 mr-1">
+        {{ isEditMode ? 'save' : 'check_circle' }}
+      </mat-icon>
+      {{ isSaving ? 'Saving...' : (isEditMode ? 'Update' : 'Issue Books') }}
+    </button>
+  </div>
+</ng-container>

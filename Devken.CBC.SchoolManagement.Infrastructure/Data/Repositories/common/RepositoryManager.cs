@@ -74,6 +74,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         private readonly Lazy<IBookInventoryRepository> _bookInventoryRepository;
         private readonly Lazy<IBookReservationRepository> _bookReservationRepository;   
         private readonly Lazy<ILibraryMemberRepository> _libraryMemberRepository;
+        private readonly Lazy<IBookBorrowRepository> _bookBorrowRepository;
+        private readonly Lazy<IBookBorrowItemRepository> _bookBorrowItemRepository;
+        private readonly Lazy<ILibraryFineRepository> _libraryFineRepository;
 
         // ── Identity ─────────────────────────────────────────────────────────
         private readonly Lazy<IUserRepository> _userRepository;
@@ -171,6 +174,12 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
                 () => new BookReservationRepository(_context, _tenantContext));
             _libraryMemberRepository = new Lazy<ILibraryMemberRepository>(
                 () => new LibraryMemberRepository(_context, _tenantContext));
+            _bookBorrowRepository = new Lazy<IBookBorrowRepository>(
+                () => new BookBorrowRepository(_context, _tenantContext));
+            _bookBorrowItemRepository = new Lazy<IBookBorrowItemRepository>(
+                () => new BookBorrowItemRepository(_context, _tenantContext));
+            _libraryFineRepository = new Lazy<ILibraryFineRepository>(
+                () => new LibraryFineRepository(_context, _tenantContext));
 
             // Identity
             _userRepository = new Lazy<IUserRepository>(
@@ -242,6 +251,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         public IBookInventoryRepository BookInventory => _bookInventoryRepository.Value;
         public IBookReservationRepository BookReservation => _bookReservationRepository.Value;
         public ILibraryMemberRepository LibraryMember => _libraryMemberRepository.Value;
+        public IBookBorrowRepository BookBorrow => _bookBorrowRepository.Value;
+        public IBookBorrowItemRepository BookBorrowItem => _bookBorrowItemRepository.Value;
+        public ILibraryFineRepository LibraryFine => _libraryFineRepository.Value;
 
 
         // ── Identity Properties ──────────────────────────────────────────────

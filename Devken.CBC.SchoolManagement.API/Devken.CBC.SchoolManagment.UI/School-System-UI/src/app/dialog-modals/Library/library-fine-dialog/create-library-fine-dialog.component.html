@@ -1,0 +1,141 @@
+<!-- Dialog Header -->
+<div class="relative overflow-hidden rounded-t-xl px-6 py-5" [ngClass]="headerGradient">
+  <div class="absolute inset-0 opacity-10 pointer-events-none">
+    <div class="absolute top-0 right-0 w-28 h-28 bg-white rounded-full blur-2xl"></div>
+    <div class="absolute bottom-0 left-0 w-36 h-36 bg-yellow-300 rounded-full blur-2xl"></div>
+  </div>
+
+  <div class="relative z-10 flex items-center gap-3 pr-10">
+    <div class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center shrink-0">
+      <mat-icon class="text-white icon-size-6">
+        {{ isWaiveMode ? 'do_not_disturb_on' : 'receipt_long' }}
+      </mat-icon>
+    </div>
+    <div>
+      <h2 class="text-xl font-bold text-white m-0 leading-tight">{{ dialogTitle }}</h2>
+      <p class="text-white/80 text-sm mt-0.5 mb-0">{{ dialogSubtitle }}</p>
+    </div>
+  </div>
+
+  <button mat-icon-button class="close-btn absolute top-3 right-3 text-white z-20"
+          (click)="onCancel()" matTooltip="Close">
+    <mat-icon>close</mat-icon>
+  </button>
+</div>
+
+<!-- Form -->
+<form [formGroup]="form" (ngSubmit)="onSubmit()" mat-dialog-content class="p-5">
+
+  <!-- Validation Summary -->
+  <div *ngIf="formSubmitted && form.invalid"
+       class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg">
+    <div class="flex items-center gap-2 text-red-800 dark:text-red-200">
+      <mat-icon class="icon-size-5">error_outline</mat-icon>
+      <span class="font-medium">Please fix the errors below</span>
+    </div>
+    <ul class="mt-1 ml-6 text-sm text-red-700 dark:text-red-300 list-disc">
+      <li *ngIf="form.get('borrowItemId')?.hasError('required')">Borrow item ID is required</li>
+      <li *ngIf="form.get('amount')?.hasError('required') || form.get('amount')?.hasError('min')">A valid amount greater than 0 is required</li>
+      <li *ngIf="form.get('reason')?.hasError('required')">Reason is required</li>
+    </ul>
+  </div>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- WAIVE MODE                             -->
+  <!-- ══════════════════════════════════════ -->
+  <ng-container *ngIf="isWaiveMode && data.fine">
+
+    <!-- Fine Summary -->
+    <div class="mb-5 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center
+                    bg-amber-100 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-700 shrink-0">
+          <mat-icon class="text-amber-600 dark:text-amber-400 icon-size-5">receipt_long</mat-icon>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-amber-900 dark:text-amber-200">
+            Fine Amount: {{ formatCurrency(data.fine.amount) }}
+          </p>
+          <p class="text-xs text-amber-700 dark:text-amber-400">{{ data.fine.reason || 'No reason provided' }}</p>
+          <p *ngIf="data.fine.memberName" class="text-xs text-amber-600 dark:text-amber-500 mt-0.5">
+            Member: {{ data.fine.memberName }}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Waive Reason -->
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>Reason for Waiving <span class="text-red-500">*</span></mat-label>
+      <textarea matInput formControlName="reason" rows="4"
+                placeholder="Explain why this fine is being waived..."></textarea>
+      <mat-icon matPrefix>description</mat-icon>
+      <mat-hint align="end">{{ form.get('reason')?.value?.length || 0 }}/500</mat-hint>
+      <mat-error>{{ getFieldError('reason') }}</mat-error>
+    </mat-form-field>
+  </ng-container>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- CREATE MODE                            -->
+  <!-- ══════════════════════════════════════ -->
+  <ng-container *ngIf="isCreateMode">
+    <div class="space-y-4">
+
+      <!-- Borrow Item ID -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Borrow Item ID <span class="text-red-500">*</span></mat-label>
+        <input matInput formControlName="borrowItemId"
+               placeholder="Enter borrow item ID" autocomplete="off" />
+        <mat-icon matPrefix>link</mat-icon>
+        <mat-hint>The ID of the specific borrowed book copy</mat-hint>
+        <mat-error>{{ getFieldError('borrowItemId') }}</mat-error>
+      </mat-form-field>
+
+      <!-- Amount -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Fine Amount (KES) <span class="text-red-500">*</span></mat-label>
+        <input matInput type="number" formControlName="amount"
+               placeholder="0.00" min="0.01" step="0.01" />
+        <mat-icon matPrefix>payments</mat-icon>
+        <mat-hint>Amount in Kenyan Shillings</mat-hint>
+        <mat-error>{{ getFieldError('amount') }}</mat-error>
+      </mat-form-field>
+
+      <!-- Reason -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Reason <span class="text-red-500">*</span></mat-label>
+        <textarea matInput formControlName="reason" rows="3"
+                  placeholder="e.g. Overdue return, lost book..."></textarea>
+        <mat-icon matPrefix>description</mat-icon>
+        <mat-hint align="end">{{ form.get('reason')?.value?.length || 0 }}/500</mat-hint>
+        <mat-error>{{ getFieldError('reason') }}</mat-error>
+      </mat-form-field>
+
+      <!-- Issued On -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Issue Date</mat-label>
+        <input matInput [matDatepicker]="issuedPicker" formControlName="issuedOn" />
+        <mat-datepicker-toggle matIconSuffix [for]="issuedPicker"></mat-datepicker-toggle>
+        <mat-datepicker #issuedPicker></mat-datepicker>
+        <mat-icon matPrefix>event</mat-icon>
+        <mat-hint>Defaults to today if left blank</mat-hint>
+      </mat-form-field>
+    </div>
+  </ng-container>
+</form>
+
+<!-- Dialog Actions -->
+<div mat-dialog-actions class="flex justify-end gap-3 px-5 pb-5">
+  <button mat-button type="button" (click)="onCancel()" [disabled]="isSaving">Cancel</button>
+  <button mat-flat-button type="button" (click)="onSubmit()"
+    [disabled]="isSaving"
+    [ngClass]="isWaiveMode
+      ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white min-w-28'
+      : 'bg-gradient-to-r from-rose-600 to-red-600 text-white min-w-28'">
+    <mat-spinner *ngIf="isSaving" diameter="18" class="mr-2 inline-block"></mat-spinner>
+    <mat-icon *ngIf="!isSaving" class="icon-size-5 mr-1">
+      {{ isWaiveMode ? 'do_not_disturb_on' : 'check_circle' }}
+    </mat-icon>
+    {{ isSaving ? 'Saving...' : (isWaiveMode ? 'Waive Fine' : 'Issue Fine') }}
+  </button>
+</div>

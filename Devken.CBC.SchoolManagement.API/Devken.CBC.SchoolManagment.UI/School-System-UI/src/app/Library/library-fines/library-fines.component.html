@@ -1,0 +1,134 @@
+<div class="absolute inset-0 flex min-w-0 flex-col overflow-y-auto" cdkScrollable>
+
+  <!-- Page Header -->
+  <app-page-header
+    title="Library Fines"
+    description="Track and manage overdue fines for library members"
+    icon="receipt_long"
+    [breadcrumbs]="breadcrumbs"
+    [actionTemplate]="headerActions">
+  </app-page-header>
+
+  <ng-template #headerActions>
+    <button mat-flat-button
+      class="bg-white text-rose-700 hover:bg-yellow-200 hover:text-rose-900 shadow-lg transition-all font-bold"
+      (click)="openCreate()">
+      <mat-icon class="icon-size-5">add</mat-icon>
+      <span class="ml-2">Issue Fine</span>
+    </button>
+  </ng-template>
+
+  <!-- Main Content -->
+  <div class="bg-card -mt-10 flex-auto rounded-t-2xl p-6 shadow sm:p-10">
+
+    <app-stats-cards [cards]="statsCards" [columns]="4"></app-stats-cards>
+
+    <div class="mb-6">
+      <app-filter-panel
+        [fields]="filterFields"
+        [showPanel]="showFilterPanel"
+        [columns]="3"
+        (filterChange)="onFilterChange($event)"
+        (clearAll)="onClearFilters()"
+        (togglePanel)="toggleFilterPanel()">
+      </app-filter-panel>
+    </div>
+
+    <app-data-table
+      [columns]="tableColumns"
+      [data]="paginatedData"
+      [actions]="tableActions"
+      [loading]="isLoading"
+      [header]="tableHeader"
+      [emptyState]="tableEmptyState"
+      [cellTemplates]="cellTemplates">
+    </app-data-table>
+
+    <app-pagination
+      *ngIf="!isLoading"
+      [currentPage]="currentPage"
+      [totalItems]="filteredData.length"
+      [itemsPerPage]="itemsPerPage"
+      [itemLabel]="'fines'"
+      [showItemsPerPageSelector]="true"
+      [showPageNumbers]="true"
+      (pageChange)="onPageChange($event)"
+      (itemsPerPageChange)="onItemsPerPageChange($event)">
+    </app-pagination>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- Cell Templates                                                        -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+
+<!-- Amount Cell -->
+<ng-template #amountCell let-row>
+  <div class="flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0
+                bg-gradient-to-br from-rose-100 to-red-100
+                border border-rose-200 dark:border-rose-800">
+      <mat-icon class="text-rose-600 dark:text-rose-400 icon-size-5">receipt_long</mat-icon>
+    </div>
+    <div>
+      <p class="text-sm font-bold text-gray-900 dark:text-white">
+        {{ formatCurrency(row.amount) }}
+      </p>
+      <p *ngIf="row.reason" class="text-xs text-gray-500 dark:text-gray-400 max-w-[140px] truncate">
+        {{ row.reason }}
+      </p>
+    </div>
+  </div>
+</ng-template>
+
+<!-- Member Cell -->
+<ng-template #memberCell let-row>
+  <div class="flex items-center gap-2">
+    <div class="w-7 h-7 rounded-lg flex items-center justify-center
+                bg-indigo-100 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 shrink-0">
+      <mat-icon class="text-indigo-600 dark:text-indigo-400 icon-size-4">person</mat-icon>
+    </div>
+    <span class="text-sm text-gray-700 dark:text-gray-300">{{ row.memberName || '—' }}</span>
+  </div>
+</ng-template>
+
+<!-- Book Cell -->
+<ng-template #bookCell let-row>
+  <div class="flex items-center gap-2">
+    <mat-icon class="icon-size-4 text-teal-600 dark:text-teal-400">menu_book</mat-icon>
+    <span class="text-sm text-gray-700 dark:text-gray-300 max-w-[160px] truncate">
+      {{ row.bookTitle || '—' }}
+    </span>
+  </div>
+</ng-template>
+
+<!-- Issued Cell -->
+<ng-template #issuedCell let-row>
+  <div class="space-y-1">
+    <div class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+      <mat-icon class="icon-size-3.5 text-rose-400">calendar_today</mat-icon>
+      <span>Issued: <span class="font-medium text-gray-700 dark:text-gray-300">{{ formatDate(row.issuedOn) }}</span></span>
+    </div>
+    <div *ngIf="row.paidOn" class="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
+      <mat-icon class="icon-size-3.5 text-green-400">check</mat-icon>
+      <span>Paid: <span class="font-medium">{{ formatDate(row.paidOn) }}</span></span>
+    </div>
+  </div>
+</ng-template>
+
+<!-- School Cell (SuperAdmin only) -->
+<ng-template #schoolCell let-row>
+  <div class="flex items-center gap-2">
+    <mat-icon class="icon-size-4 text-violet-600 dark:text-violet-400">school</mat-icon>
+    <span class="text-sm text-gray-700 dark:text-gray-300">{{ row.schoolName || '—' }}</span>
+  </div>
+</ng-template>
+
+<!-- Status Cell -->
+<ng-template #statusCell let-row>
+  <span class="px-2.5 py-1 rounded-full text-xs font-semibold inline-flex items-center gap-1"
+        [ngClass]="getFineStatusColor(row)">
+    <mat-icon class="icon-size-3">{{ getFineStatusIcon(row) }}</mat-icon>
+    {{ getFineStatusLabel(row) }}
+  </span>
+</ng-template>

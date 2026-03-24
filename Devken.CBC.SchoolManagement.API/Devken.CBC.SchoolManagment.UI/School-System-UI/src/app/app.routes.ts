@@ -165,15 +165,18 @@ export const appRoutes: Route[] = [
             {
                 path: 'library',
                 children: [
-                    { path: 'authors', loadChildren: () => import('app/Library/book-author/book-author.routes') },
-                    { path: 'categories', loadChildren: () => import('app/Library/book-category/book-category.routes') },
-                    { path: 'publishers', loadChildren: () => import('app/Library/book-publisher/book-publisher.routes') },
-                    { path: 'books', loadChildren: () => import('app/Library/book/books.routes') },
-                    { path: 'library-branches', loadChildren: () => import('app/Library/library-branch/library-branches.routes') },
-                    { path: 'book-copies',      loadChildren: () => import('app/Library/book-copy/book-copies.routes')             },
-                    { path: 'book-inventory',   loadChildren: () => import('app/Library/book-inventory/book-inventory.routes')     },
-                    { path: 'members',          loadChildren: () => import('app/Library/library-member/library-members.routes') },
-                    { path: 'reservations',     loadChildren: () => import('app/Library/book-reservation/book-reservations.routes') }
+                    { path: 'authors',        loadChildren: () => import('app/Library/book-author/book-author.routes')                   },
+                    { path: 'categories',     loadChildren: () => import('app/Library/book-category/book-category.routes')               },
+                    { path: 'publishers',     loadChildren: () => import('app/Library/book-publisher/book-publisher.routes')             },
+                    { path: 'books',          loadChildren: () => import('app/Library/book/books.routes')                                },
+                    { path: 'library-branches', loadChildren: () => import('app/Library/library-branch/library-branches.routes')         },
+                    { path: 'book-copies',    loadChildren: () => import('app/Library/book-copy/book-copies.routes')                     },
+                    { path: 'book-inventory', loadChildren: () => import('app/Library/book-inventory/book-inventory.routes')             },
+                    { path: 'members',        loadChildren: () => import('app/Library/library-member/library-members.routes')            },
+                    { path: 'reservations',   loadChildren: () => import('app/Library/book-reservation/book-reservations.routes')        },
+                    { path: 'book-issues',    loadChildren: () => import('app/Library/book-borrow/book-borrows.routes')                  },
+                    { path: 'book-returns',   loadChildren: () => import('app/Library/book-borrow/book-borrows.routes')                  },
+                    { path: 'fines',          loadChildren: () => import('app/Library/library-fines/library-fines.routes')               },
                 ]
             },
 

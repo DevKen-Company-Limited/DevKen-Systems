@@ -341,10 +341,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             mb.ApplyConfiguration(new BookPublisherConfiguration(_tenantContext));
 
             // Library — core entities (order matters: Book before BookCopy/Inventory)
-            mb.ApplyConfiguration(new BookConfiguration(_tenantContext));           // ← add
-            mb.ApplyConfiguration(new LibraryBranchConfiguration(_tenantContext));  // ← add
-            mb.ApplyConfiguration(new BookCopyConfiguration(_tenantContext));        // ← add
-            mb.ApplyConfiguration(new BookInventoryConfiguration(_tenantContext));   // ← add
+            mb.ApplyConfiguration(new BookConfiguration(_tenantContext));          
+            mb.ApplyConfiguration(new LibraryBranchConfiguration(_tenantContext));  
+            mb.ApplyConfiguration(new BookCopyConfiguration(_tenantContext));        
+            mb.ApplyConfiguration(new BookInventoryConfiguration(_tenantContext));   
             mb.ApplyConfiguration(new BookReservationConfiguration(_tenantContext));
             mb.ApplyConfiguration(new LibraryMemberConfiguration(_tenantContext));
 
