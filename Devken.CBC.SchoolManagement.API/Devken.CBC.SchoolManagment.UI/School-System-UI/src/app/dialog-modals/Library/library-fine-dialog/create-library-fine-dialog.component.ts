@@ -8,6 +8,7 @@ import {
 } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -20,15 +21,14 @@ import { takeUntil, finalize } from 'rxjs/operators';
 import { AuthService } from 'app/core/auth/auth.service';
 import { AlertService } from 'app/core/DevKenService/Alert/AlertService';
 import { BaseFormDialog } from 'app/shared/dialogs/BaseFormDialog';
-import { CreateLibraryFineRequest, LibraryFineDto } from 'app/Library/library-fines/Types/library-fine.types';
 import { LibraryFineService } from 'app/core/DevKenService/Library/library-fine.service';
-
-
+import { BookBorrowService } from 'app/core/DevKenService/Library/book-borrow.service';
+import { BookBorrowItemDto } from 'app/Library/book-borrow/Types/book-borrow.types';
+import { LibraryFineDto, CreateLibraryFineRequest } from 'app/Library/library-fines/Types/library-fine.types';
 
 export interface CreateLibraryFineDialogData {
   mode: 'create' | 'waive';
   fine?: LibraryFineDto;
-  /** Pre-fill borrow item if opening from within a borrow detail */
   preselectedBorrowItemId?: string;
 }
 
@@ -37,26 +37,29 @@ export interface CreateLibraryFineDialogData {
   standalone: true,
   imports: [
     CommonModule, ReactiveFormsModule, MatDialogModule,
-    MatFormFieldModule, MatInputModule,
+    MatFormFieldModule, MatInputModule, MatSelectModule,
     MatButtonModule, MatIconModule, MatDatepickerModule,
     MatProgressSpinnerModule, MatTooltipModule,
   ],
   templateUrl: './create-library-fine-dialog.component.html',
-  styles: [`:host ::ng-deep .mat-mdc-dialog-container { --mdc-dialog-container-shape: 12px; }`]
+  styles: [':host ::ng-deep .mat-mdc-dialog-container { --mdc-dialog-container-shape: 12px; }']
 })
 export class CreateLibraryFineDialogComponent
   extends BaseFormDialog<CreateLibraryFineRequest, never, LibraryFineDto, CreateLibraryFineDialogData>
   implements OnInit, OnDestroy {
 
-  private readonly _unsubscribe = new Subject<void>();
-  private readonly _alertService: AlertService;
-  private readonly _fineService:  LibraryFineService;
+  private readonly _unsubscribe   = new Subject<void>();
+  private readonly _alertService:  AlertService;
+  private readonly _fineService:   LibraryFineService;
+  private readonly _borrowService: BookBorrowService;
 
+  borrowItems:  BookBorrowItemDto[] = [];
+  isLoading     = false;
   formSubmitted = false;
   isSaving      = false;
 
   get isCreateMode(): boolean { return this.data.mode === 'create'; }
-  get isWaiveMode():  boolean { return this.data.mode === 'waive'; }
+  get isWaiveMode():  boolean { return this.data.mode === 'waive';  }
   get isSuperAdmin(): boolean { return this._authService.authUser?.isSuperAdmin ?? false; }
 
   get dialogTitle(): string {
@@ -65,7 +68,7 @@ export class CreateLibraryFineDialogComponent
 
   get dialogSubtitle(): string {
     if (this.isWaiveMode && this.data.fine) {
-      return `Waiving fine of ${this.formatCurrency(this.data.fine.amount)}`;
+      return 'Waiving fine of ' + this.formatCurrency(this.data.fine.amount);
     }
     return 'Issue a new fine for a borrow item';
   }
@@ -76,19 +79,26 @@ export class CreateLibraryFineDialogComponent
       : 'bg-gradient-to-r from-rose-600 via-red-600 to-orange-600';
   }
 
+  get selectedBorrowItem(): any {
+    const id = this.form.get('borrowItemId')?.value;
+    return id ? this.borrowItems.find((i: any) => i.id === id) : undefined;
+  }
+
   constructor(
-    fb:           FormBuilder,
-    snackBar:     MatSnackBar,
-    alertService: AlertService,
-    dialogRef:    MatDialogRef<CreateLibraryFineDialogComponent>,
+    fb:            FormBuilder,
+    snackBar:      MatSnackBar,
+    alertService:  AlertService,
+    dialogRef:     MatDialogRef<CreateLibraryFineDialogComponent>,
     @Inject(MAT_DIALOG_DATA) data: CreateLibraryFineDialogData,
-    private readonly _authService: AuthService,
-    fineService:  LibraryFineService,
+    private readonly _authService:  AuthService,
+    fineService:   LibraryFineService,
+    borrowService: BookBorrowService,
     private readonly _cdr: ChangeDetectorRef,
   ) {
     super(fb, fineService as any, snackBar, dialogRef, data);
-    this._alertService = alertService;
-    this._fineService  = fineService;
+    this._alertService  = alertService;
+    this._fineService   = fineService;
+    this._borrowService = borrowService;
     dialogRef.addPanelClass(['library-fine-dialog', 'responsive-dialog']);
   }
 
@@ -102,7 +112,7 @@ export class CreateLibraryFineDialogComponent
       });
     }
     return this.fb.group({
-      borrowItemId: [this.data.preselectedBorrowItemId || '', [Validators.required]],
+      borrowItemId: [this.data.preselectedBorrowItemId || null, [Validators.required]],
       amount:       [null, [Validators.required, Validators.min(0.01)]],
       reason:       ['',   [Validators.required, Validators.maxLength(500)]],
       issuedOn:     [new Date()],
@@ -111,6 +121,38 @@ export class CreateLibraryFineDialogComponent
 
   protected override init(): void {
     this.form = this.buildForm();
+    if (this.isCreateMode) this._loadBorrowItems();
+  }
+
+  private _loadBorrowItems(): void {
+    this.isLoading = true;
+    this._borrowService.getActive().pipe(
+      takeUntil(this._unsubscribe),
+      finalize(() => { this.isLoading = false; this._cdr.detectChanges(); })
+    ).subscribe({
+      next: res => {
+        if (res.success) {
+          // Flatten all active borrows to their unreturned items,
+          // carrying the parent member info for display in the dropdown.
+          this.borrowItems = res.data.flatMap(borrow =>
+            borrow.items
+              .filter(item => !item.isReturned)
+              .map(item => ({
+                ...item,
+                _memberName:   borrow.memberName,
+                _memberNumber: borrow.memberNumber,
+              }))
+          ) as any[];
+
+          // Validate preselected id still exists in the list
+          if (this.data.preselectedBorrowItemId) {
+            const exists = this.borrowItems.some((i: any) => i.id === this.data.preselectedBorrowItemId);
+            if (!exists) this.form.patchValue({ borrowItemId: null });
+          }
+        }
+      },
+      error: () => this._alertService.error('Failed to load borrow items'),
+    });
   }
 
   onSubmit(): void {
@@ -170,7 +212,7 @@ export class CreateLibraryFineDialogComponent
     if (!c || !(this.formSubmitted || c.touched)) return '';
     if (c.hasError('required'))  return 'This field is required';
     if (c.hasError('min'))       return 'Amount must be greater than 0';
-    if (c.hasError('maxlength')) return `Maximum ${c.getError('maxlength').requiredLength} characters`;
+    if (c.hasError('maxlength')) return 'Maximum ' + c.getError('maxlength').requiredLength + ' characters';
     return 'Invalid value';
   }
 

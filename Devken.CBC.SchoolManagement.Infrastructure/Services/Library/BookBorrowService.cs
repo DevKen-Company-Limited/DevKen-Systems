@@ -197,30 +197,33 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Library
 
         public async Task<BookBorrowItemDto> ReturnBookAsync(ReturnBookDto dto, Guid? userSchoolId)
         {
+            // 1. Fetch the item with its related BookCopy included
             var borrowItem = await _repository.BookBorrowItem.GetByIdWithDetailsAsync(dto.BorrowItemId);
+
             if (borrowItem == null)
                 throw new KeyNotFoundException("Borrow item not found");
 
             if (userSchoolId.HasValue && borrowItem.TenantId != userSchoolId.Value)
-                throw new UnauthorizedAccessException("Access denied to this borrow item");
+                throw new UnauthorizedAccessException("Access denied");
 
             if (borrowItem.IsReturned)
                 throw new InvalidOperationException("Book has already been returned");
 
-            // Set return date
+            // 2. Update the Return Date
             borrowItem.ReturnedOn = dto.ReturnDate ?? DateTime.UtcNow;
 
-            // Mark book copy as available
-            var bookCopy = await _repository.BookCopy.GetByIdAsync(borrowItem.BookCopyId);
-            if (bookCopy != null)
+            // 3. Update the existing BookCopy instance already attached to borrowItem
+            if (borrowItem.BookCopy != null)
             {
-                bookCopy.IsAvailable = true;
-                _repository.BookCopy.Update(bookCopy);
+                // Simply modify the property on the tracked object
+                borrowItem.BookCopy.IsAvailable = true;
+                // You usually don't even need _repository.BookCopy.Update() here 
+                // because EF is already tracking this instance from GetByIdWithDetailsAsync
             }
 
             _repository.BookBorrowItem.Update(borrowItem);
 
-            // Update borrow status if all items are returned
+            // 4. Update parent borrow status if necessary
             var allItems = await _repository.BookBorrowItem.GetByBorrowIdAsync(borrowItem.BorrowId);
             if (allItems.All(i => i.Id == borrowItem.Id || i.IsReturned))
             {
@@ -234,8 +237,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Library
 
             await _repository.SaveAsync();
 
-            borrowItem = await _repository.BookBorrowItem.GetByIdWithDetailsAsync(dto.BorrowItemId);
-            return MapItemToDto(borrowItem!);
+            // Re-fetch to get fresh state for the DTO
+            var updatedItem = await _repository.BookBorrowItem.GetByIdWithDetailsAsync(dto.BorrowItemId);
+            return MapItemToDto(updatedItem!);
         }
 
         public async Task<IEnumerable<BookBorrowItemDto>> ReturnMultipleBooksAsync(ReturnMultipleBooksDto dto, Guid? userSchoolId)
@@ -351,7 +355,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Services.Library
 
         private async Task<BookBorrowDto> MapToDtoAsync(BookBorrow borrow)
         {
-            var totalFines = borrow.Items.SelectMany(i => i.Fines).Sum(f => f.Amount);
+            var totalFines = borrow.Items
+                .SelectMany(i => i.Fines)
+                .Where(f => !(f.IsPaid && f.Reason != null && f.Reason.Contains("[WAIVED:")))
+                .Sum(f => f.Amount); 
             var today = DateTime.UtcNow.Date;
 
             // Get school name if needed

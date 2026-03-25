@@ -27,6 +27,7 @@ import { BaseListComponent } from 'app/shared/Lists/BaseListComponent';
 import { BookBorrowDto } from './Types/book-borrow.types';
 import { BookBorrowService } from 'app/core/DevKenService/Library/book-borrow.service';
 import { CreateBookBorrowDialogComponent } from 'app/dialog-modals/Library/book-borrow-dialog/create-book-borrow-dialog.component';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-book-borrows',
@@ -129,6 +130,15 @@ export class BookBorrowsComponent
       id: 'delete', label: 'Delete', icon: 'delete', color: 'red',
       handler: r => this._confirmDelete(r),
     },
+    {
+      id: 'manageFines',
+      label: 'Manage Fines',
+      icon: 'payments', // Or 'monetization_on'
+      color: 'rose',
+      handler: r => this._goToFines(r),
+      visible: r => r.totalFines > 0, // Only show if there are fines to manage
+      divider: false
+    },
   ];
 
   tableHeader: TableHeader = {
@@ -193,6 +203,7 @@ export class BookBorrowsComponent
     borrowService: BookBorrowService,
     private readonly _injectedAuth:  AuthService,
     schoolService: SchoolService,
+    private readonly _router: Router,
   ) {
     super(borrowService, dialog, snackBar);
     this._alertService   = alertService;
@@ -363,6 +374,16 @@ export class BookBorrowsComponent
           error: err => this._alertService.error(err.error?.message || 'Failed'),
         });
       },
+    });
+  }
+  private _goToFines(borrow: BookBorrowDto): void {
+    // Navigate to the library fines route
+    // We pass the memberNumber or memberId as a query parameter
+    this._router.navigate(['/library/fines'], {
+        queryParams: { 
+            search: borrow.memberNumber,
+            schoolId: borrow.schoolId 
+        }
     });
   }
 

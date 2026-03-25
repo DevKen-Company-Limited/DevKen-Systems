@@ -27,6 +27,7 @@ import { BaseListComponent } from 'app/shared/Lists/BaseListComponent';
 import { LibraryFineDto } from './Types/library-fine.types';
 import { LibraryFineService } from 'app/core/DevKenService/Library/library-fine.service';
 import { CreateLibraryFineDialogComponent } from 'app/dialog-modals/Library/library-fine-dialog/create-library-fine-dialog.component';
+import { ActivatedRoute } from '@angular/router';
 
 
 @Component({
@@ -189,6 +190,7 @@ export class LibraryFinesComponent
     fineService:   LibraryFineService,
     private readonly _injectedAuth:  AuthService,
     schoolService: SchoolService,
+    private _route: ActivatedRoute,
   ) {
     super(fineService, dialog, snackBar);
     this._alertService  = alertService;
@@ -196,7 +198,20 @@ export class LibraryFinesComponent
     this._schoolService = schoolService;
   }
 
-  ngOnInit():    void { this._loadMeta(); }
+  ngOnInit(): void {
+    // Listen for incoming search parameters from the Borrow page
+  this._route.queryParams.pipe(takeUntil(this._destroy$)).subscribe(params => {
+    if (params['search']) {
+      this.filterValues.search = params['search'];
+    }
+    if (params['schoolId']) {
+      this.filterValues.schoolId = params['schoolId'];
+    }
+    
+    // Now that filterValues is updated, load the UI and Data
+        this._loadMeta();
+    });
+  }
   ngOnDestroy(): void { this._destroy$.next(); this._destroy$.complete(); }
 
   // ── Data ──────────────────────────────────────────────────────────────────
@@ -253,12 +268,17 @@ export class LibraryFinesComponent
 
   private _initFilters(): void {
     this.filterFields = [
-      { id: 'search', label: 'Search', type: 'text', placeholder: 'Member, book or reason...', value: '' },
+      { id: 'search', label: 'Search', type: 'text', placeholder: 'Member, book or reason...', 
+        // Use the value already in state (potentially from the URL)
+         value: this.filterValues.search
+      },
     ];
 
     if (this.isSuperAdmin) {
       this.filterFields.push({
-        id: 'schoolId', label: 'School', type: 'select', value: 'all',
+        id: 'schoolId', label: 'School', type: 'select',
+        value: this.filterValues.schoolId, // Use the state value 
+        // value: 'all',
         options: [
           { label: 'All Schools', value: 'all' },
           ...this.schools.map(s => ({ label: s.name, value: s.id })),

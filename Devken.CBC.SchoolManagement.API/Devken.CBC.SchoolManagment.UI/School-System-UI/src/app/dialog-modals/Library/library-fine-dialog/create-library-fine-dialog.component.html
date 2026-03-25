@@ -23,6 +23,20 @@
   </button>
 </div>
 
+<!-- Loading Overlay -->
+<div *ngIf="isLoading"
+     class="absolute inset-0 bg-white/98 dark:bg-gray-900/98 z-50 flex items-center justify-center backdrop-blur-sm">
+  <div class="text-center p-8">
+    <div class="relative w-14 h-14 mx-auto mb-4">
+      <mat-spinner diameter="56"></mat-spinner>
+      <mat-icon class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-rose-600">
+        receipt_long
+      </mat-icon>
+    </div>
+    <p class="text-base font-semibold text-gray-800 dark:text-gray-200">Loading borrow items...</p>
+  </div>
+</div>
+
 <!-- Form -->
 <form [formGroup]="form" (ngSubmit)="onSubmit()" mat-dialog-content class="p-5">
 
@@ -34,8 +48,10 @@
       <span class="font-medium">Please fix the errors below</span>
     </div>
     <ul class="mt-1 ml-6 text-sm text-red-700 dark:text-red-300 list-disc">
-      <li *ngIf="form.get('borrowItemId')?.hasError('required')">Borrow item ID is required</li>
-      <li *ngIf="form.get('amount')?.hasError('required') || form.get('amount')?.hasError('min')">A valid amount greater than 0 is required</li>
+      <li *ngIf="form.get('borrowItemId')?.hasError('required')">Borrow item is required</li>
+      <li *ngIf="form.get('amount')?.hasError('required') || form.get('amount')?.hasError('min')">
+        A valid amount greater than 0 is required
+      </li>
       <li *ngIf="form.get('reason')?.hasError('required')">Reason is required</li>
     </ul>
   </div>
@@ -45,20 +61,25 @@
   <!-- ══════════════════════════════════════ -->
   <ng-container *ngIf="isWaiveMode && data.fine">
 
-    <!-- Fine Summary -->
+    <!-- Fine Summary Card -->
     <div class="mb-5 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl flex items-center justify-center
-                    bg-amber-100 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-700 shrink-0">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0
+                    bg-amber-100 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-700">
           <mat-icon class="text-amber-600 dark:text-amber-400 icon-size-5">receipt_long</mat-icon>
         </div>
-        <div>
+        <div class="space-y-0.5">
           <p class="text-sm font-semibold text-amber-900 dark:text-amber-200">
             Fine Amount: {{ formatCurrency(data.fine.amount) }}
           </p>
-          <p class="text-xs text-amber-700 dark:text-amber-400">{{ data.fine.reason || 'No reason provided' }}</p>
-          <p *ngIf="data.fine.memberName" class="text-xs text-amber-600 dark:text-amber-500 mt-0.5">
+          <p class="text-xs text-amber-700 dark:text-amber-400">
+            {{ data.fine.reason || 'No reason provided' }}
+          </p>
+          <p *ngIf="data.fine.memberName" class="text-xs text-amber-600 dark:text-amber-500">
             Member: {{ data.fine.memberName }}
+          </p>
+          <p *ngIf="data.fine.bookTitle" class="text-xs text-amber-600 dark:text-amber-500">
+            Book: {{ data.fine.bookTitle }}
           </p>
         </div>
       </div>
@@ -81,17 +102,81 @@
   <ng-container *ngIf="isCreateMode">
     <div class="space-y-4">
 
-      <!-- Borrow Item ID -->
+      <!-- ── Borrow Item Dropdown ─────────────────────────────────────────── -->
       <mat-form-field appearance="outline" class="w-full">
-        <mat-label>Borrow Item ID <span class="text-red-500">*</span></mat-label>
-        <input matInput formControlName="borrowItemId"
-               placeholder="Enter borrow item ID" autocomplete="off" />
+        <mat-label>Borrow Item <span class="text-red-500">*</span></mat-label>
+        <mat-select formControlName="borrowItemId" placeholder="Select a borrowed book copy">
+
+          <mat-option [value]="null">— Select Borrow Item —</mat-option>
+
+          <mat-option *ngFor="let item of borrowItems" [value]="item.id">
+            <div class="flex items-center gap-2 py-0.5">
+              <!-- Overdue badge -->
+              <mat-icon *ngIf="item.isOverdue"
+                        class="icon-size-4 text-red-500 shrink-0"
+                        matTooltip="Overdue">schedule</mat-icon>
+              <mat-icon *ngIf="!item.isOverdue"
+                        class="icon-size-4 text-blue-400 shrink-0">menu_book</mat-icon>
+              <span class="flex-1 min-w-0">
+                <span class="font-medium">{{ item.bookTitle }}</span>
+                <span class="text-xs text-gray-400 ml-1">({{ item.accessionNumber }})</span>
+                <span *ngIf="item._memberName" class="text-xs text-gray-500 ml-1">
+                  · {{ item._memberName }}
+                </span>
+                <span *ngIf="item.isOverdue" class="text-xs text-red-500 ml-1">
+                  · {{ item.daysOverdue }}d overdue
+                </span>
+              </span>
+            </div>
+          </mat-option>
+        </mat-select>
+
         <mat-icon matPrefix>link</mat-icon>
-        <mat-hint>The ID of the specific borrowed book copy</mat-hint>
+        <mat-hint *ngIf="borrowItems.length === 0 && !isLoading" class="text-amber-600">
+          No unreturned borrow items found
+        </mat-hint>
         <mat-error>{{ getFieldError('borrowItemId') }}</mat-error>
       </mat-form-field>
 
-      <!-- Amount -->
+      <!-- ── Selected Item Context Card ──────────────────────────────────── -->
+      <div *ngIf="selectedBorrowItem"
+           class="flex items-start gap-3 p-3 rounded-xl border"
+           [ngClass]="selectedBorrowItem.isOverdue
+             ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+             : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'">
+        <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+             [ngClass]="selectedBorrowItem.isOverdue
+               ? 'bg-red-100 dark:bg-red-900/40'
+               : 'bg-blue-100 dark:bg-blue-900/40'">
+          <mat-icon class="icon-size-5"
+                    [ngClass]="selectedBorrowItem.isOverdue
+                      ? 'text-red-600 dark:text-red-400'
+                      : 'text-blue-600 dark:text-blue-400'">
+            {{ selectedBorrowItem.isOverdue ? 'schedule' : 'menu_book' }}
+          </mat-icon>
+        </div>
+        <div class="min-w-0 flex-1 space-y-0.5">
+          <p class="text-sm font-semibold text-gray-900 dark:text-white">
+            {{ selectedBorrowItem.bookTitle }}
+          </p>
+          <p class="text-xs text-gray-500 font-mono">
+            {{ selectedBorrowItem.accessionNumber }}
+            <span *ngIf="selectedBorrowItem.barcode"> · {{ selectedBorrowItem.barcode }}</span>
+          </p>
+          <p *ngIf="selectedBorrowItem._memberName" class="text-xs text-gray-500">
+            Member: <span class="font-medium">{{ selectedBorrowItem._memberName }}</span>
+            <span *ngIf="selectedBorrowItem._memberNumber" class="font-mono ml-1">
+              ({{ selectedBorrowItem._memberNumber }})
+            </span>
+          </p>
+          <p *ngIf="selectedBorrowItem.isOverdue"
+             class="text-xs font-semibold text-red-600 dark:text-red-400">
+            ⚠ {{ selectedBorrowItem.daysOverdue }} day(s) overdue
+          </p>
+        </div>
+      </div>
+
+      <!-- ── Amount ──────────────────────────────────────────────────────── -->
       <mat-form-field appearance="outline" class="w-full">
         <mat-label>Fine Amount (KES) <span class="text-red-500">*</span></mat-label>
         <input matInput type="number" formControlName="amount"
@@ -101,7 +186,7 @@
         <mat-error>{{ getFieldError('amount') }}</mat-error>
       </mat-form-field>
 
-      <!-- Reason -->
+      <!-- ── Reason ──────────────────────────────────────────────────────── -->
       <mat-form-field appearance="outline" class="w-full">
         <mat-label>Reason <span class="text-red-500">*</span></mat-label>
         <textarea matInput formControlName="reason" rows="3"
@@ -111,7 +196,7 @@
         <mat-error>{{ getFieldError('reason') }}</mat-error>
       </mat-form-field>
 
-      <!-- Issued On -->
+      <!-- ── Issue Date ──────────────────────────────────────────────────── -->
       <mat-form-field appearance="outline" class="w-full">
         <mat-label>Issue Date</mat-label>
         <input matInput [matDatepicker]="issuedPicker" formControlName="issuedOn" />

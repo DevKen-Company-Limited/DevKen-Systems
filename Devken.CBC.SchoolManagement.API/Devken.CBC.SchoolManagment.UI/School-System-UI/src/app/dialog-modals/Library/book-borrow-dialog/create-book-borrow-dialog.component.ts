@@ -303,4 +303,6 @@ export class CreateBookBorrowDialogComponent
   formatCurrency(amount: number): string {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'KES' }).format(amount);
   }
+
+  
 }
