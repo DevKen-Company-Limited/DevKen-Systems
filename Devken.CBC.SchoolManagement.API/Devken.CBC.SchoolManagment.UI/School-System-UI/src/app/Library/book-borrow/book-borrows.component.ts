@@ -27,7 +27,7 @@ import { BaseListComponent } from 'app/shared/Lists/BaseListComponent';
 import { BookBorrowDto } from './Types/book-borrow.types';
 import { BookBorrowService } from 'app/core/DevKenService/Library/book-borrow.service';
 import { CreateBookBorrowDialogComponent } from 'app/dialog-modals/Library/book-borrow-dialog/create-book-borrow-dialog.component';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 @Component({
   selector: 'app-book-borrows',
@@ -116,6 +116,14 @@ export class BookBorrowsComponent
       visible: r => r.borrowStatus === 'Borrowed' || r.borrowStatus === 'Overdue',
     },
     {
+      id: 'returnItems',
+      label: 'Process Return',
+      icon: 'keyboard_return',
+      color: 'emerald',
+      handler: r => this._openView(r), // This opens the dialog where they can click "Return" per book
+      visible: r => r.unreturnedItems > 0
+    },
+    {
       id: 'returnAll', label: 'Return All', icon: 'assignment_return', color: 'green',
       handler: r => this._returnAll(r),
       visible: r => r.unreturnedItems > 0,
@@ -176,18 +184,32 @@ export class BookBorrowsComponent
   // ── Filtered & Paginated ──────────────────────────────────────────────────
 
   get filteredData(): BookBorrowDto[] {
-    const q = this.filterValues.search.toLowerCase();
-    return this.dataSource.data.filter(b =>
-      (!q || b.memberName?.toLowerCase().includes(q)
-          || b.memberNumber?.toLowerCase().includes(q)) &&
-      (this.filterValues.status   === 'all' || b.borrowStatus?.toLowerCase() === this.filterValues.status.toLowerCase()) &&
-      (this.filterValues.view     === 'all'
-        || (this.filterValues.view === 'overdue'  && b.isOverdue)
-        || (this.filterValues.view === 'active'   && b.borrowStatus === 'Borrowed' && !b.isOverdue)
-        || (this.filterValues.view === 'returned' && b.borrowStatus === 'Returned')) &&
-      (this.filterValues.schoolId === 'all' || b.schoolId === this.filterValues.schoolId)
-    );
-  }
+  const q = this.filterValues.search.toLowerCase();
+  
+  return this.dataSource.data.filter(b => {
+    // 1. Search Filter (Member Name/Number)
+    const matchesSearch = !q || 
+      b.memberName?.toLowerCase().includes(q) || 
+      b.memberNumber?.toLowerCase().includes(q);
+
+    // 2. School Filter (SuperAdmin Only)
+    const matchesSchool = this.filterValues.schoolId === 'all' || 
+      b.schoolId === this.filterValues.schoolId;
+
+    // 3. Status/View Filter (This is what controls the "Returns" view)
+    let matchesView = true;
+    if (this.filterValues.view === 'active') {
+      // Show ONLY those with items still out
+      matchesView = b.unreturnedItems > 0; 
+    } else if (this.filterValues.view === 'overdue') {
+      matchesView = b.isOverdue;
+    } else if (this.filterValues.view === 'returned') {
+      matchesView = b.borrowStatus === 'Returned';
+    }
+
+    return matchesSearch && matchesSchool && matchesView;
+  });
+}
 
   get paginatedData(): BookBorrowDto[] {
     const start = (this.currentPage - 1) * this.itemsPerPage;
@@ -204,6 +226,7 @@ export class BookBorrowsComponent
     private readonly _injectedAuth:  AuthService,
     schoolService: SchoolService,
     private readonly _router: Router,
+    private readonly _route: ActivatedRoute,
   ) {
     super(borrowService, dialog, snackBar);
     this._alertService   = alertService;
@@ -211,7 +234,34 @@ export class BookBorrowsComponent
     this._schoolService  = schoolService;
   }
 
-  ngOnInit():    void { this._loadMeta(); }
+  ngOnInit(): void {
+  this._loadMeta();
+
+  this._route.data.pipe(takeUntil(this._destroy$)).subscribe(data => {
+    if (data['mode'] === 'returns') {
+      // 1. Set the filter to only show unreturned items
+      this.filterValues.view = 'active'; 
+      
+      // 2. Update the UI Labels
+      this.tableHeader.title = 'Pending Book Returns';
+      this.tableHeader.icon = 'assignment_return';
+      this.tableHeader.iconGradient = 'bg-gradient-to-br from-teal-500 via-emerald-600 to-green-700';
+      
+      // 3. Update Breadcrumbs
+      this.breadcrumbs = [
+        { label: 'Dashboard', url: '/dashboard' },
+        { label: 'Library',   url: '/library'   },
+        { label: 'Returns' }
+      ];
+    } else {
+      // Reset to default Borrow Log view
+      this.filterValues.view = 'all';
+      this.tableHeader.title = 'Book Borrows';
+      this.tableHeader.icon = 'library_books';
+    }
+  });
+}
+
   ngOnDestroy(): void { this._destroy$.next(); this._destroy$.complete(); }
 
   // ── Data ──────────────────────────────────────────────────────────────────

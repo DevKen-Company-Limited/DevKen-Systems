@@ -174,8 +174,17 @@ export const appRoutes: Route[] = [
                     { path: 'book-inventory', loadChildren: () => import('app/Library/book-inventory/book-inventory.routes')             },
                     { path: 'members',        loadChildren: () => import('app/Library/library-member/library-members.routes')            },
                     { path: 'reservations',   loadChildren: () => import('app/Library/book-reservation/book-reservations.routes')        },
-                    { path: 'book-issues',    loadChildren: () => import('app/Library/book-borrow/book-borrows.routes')                  },
-                    { path: 'book-returns',   loadChildren: () => import('app/Library/book-borrow/book-borrows.routes')                  },
+                    { 
+                        path: 'book-issues', 
+                        loadChildren: () => import('app/Library/book-borrow/book-borrows.routes') 
+                    },
+                    { 
+                        path: 'book-returns', 
+                        loadChildren: () => import('app/Library/book-borrow/book-borrows.routes'),
+                        data: { mode: 'returns' } // This is the key!
+                    },
+                    // { path: 'book-issues',    loadChildren: () => import('app/Library/book-borrow/book-borrows.routes')                  },
+                    // { path: 'book-returns',   loadChildren: () => import('app/Library/book-borrow/book-borrows.routes')                  },
                     { path: 'fines',          loadChildren: () => import('app/Library/library-fines/library-fines.routes')               },
                 ]
             },
