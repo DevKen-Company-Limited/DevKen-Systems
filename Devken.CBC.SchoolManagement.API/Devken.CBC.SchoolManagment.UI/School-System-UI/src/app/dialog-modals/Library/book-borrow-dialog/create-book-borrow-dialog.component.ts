@@ -59,6 +59,8 @@ export interface CreateBookBorrowDialogData {
 export class CreateBookBorrowDialogComponent
   extends BaseFormDialog<CreateBookBorrowRequest, UpdateBookBorrowRequest, BookBorrowDto, CreateBookBorrowDialogData>
   implements OnInit, OnDestroy {
+  Array = Array;
+  showBulkInput = false;  
 
   private readonly _unsubscribe = new Subject<void>();
   private readonly _alertService: AlertService;
@@ -72,6 +74,72 @@ export class CreateBookBorrowDialogComponent
   formSubmitted     = false;
   isSaving          = false;
 
+  onBulkAdd(rawInput: string): void {
+  if (!rawInput.trim()) return;
+
+  // Split by comma, newline, or space, then clean up empty strings
+  const inputCodes = rawInput.split(/[\n, ]+/).map(c => c.trim()).filter(c => c.length > 0);
+  let addedCount = 0;
+  let notFound: string[] = [];
+
+  inputCodes.forEach(code => {
+    const book = this.availableCopies.find(c => 
+      c.barcode?.toLowerCase() === code.toLowerCase() || 
+      c.accessionNumber?.toLowerCase() === code.toLowerCase()
+    );
+
+      if (book && !this.selectedCopyIds.has(book.id)) {
+        this.selectedCopyIds.add(book.id);
+        addedCount++;
+      } else if (!book) {
+        notFound.push(code);
+      }
+    });
+
+    if (addedCount > 0) {
+      this._alertService.success(`Successfully added ${addedCount} books.`, 'OK');
+    }
+
+    if (notFound.length > 0) {
+      this._alertService.error(`Could not find: ${notFound.join(', ')}`);
+    }
+
+    this.showBulkInput = false; // Close the bulk area after processing
+  }
+  // Call this when user presses Enter or scans a barcode
+  onQuickAdd(value: string): void {
+    const code = value.trim();
+    if (!code) return;
+
+    // Search for the book in the available list
+    const book = this.availableCopies.find(c => 
+      c.barcode?.toLowerCase() === code.toLowerCase() || 
+      c.accessionNumber?.toLowerCase() === code.toLowerCase()
+    );
+
+    if (book) {
+      if (this.selectedCopyIds.has(book.id)) {
+        this._alertService.info('This book is already selected', 'OK');
+      } else {
+        this.toggleCopySelection(book.id);
+        this._alertService.success(`Added: ${book.bookTitle}`, 'OK');
+      }
+    } else {
+      this._alertService.error(`Book with code "${code}" not found or not available.`);
+    }
+  }
+// Finds the full BookCopy object from the ID so we can pass it to the child component
+getSelectedCopyDetails(id: string): BookCopyDto {
+  return this.availableCopies.find(c => c.id === id)!;
+}
+// Helpers to show info in the "Selected" chips
+getBookTitle(id: string): string {
+  return this.availableCopies.find(c => c.id === id)?.bookTitle || 'Unknown Book';
+}
+
+getAccession(id: string): string {
+  return this.availableCopies.find(c => c.id === id)?.accessionNumber || '';
+}
   get isEditMode(): boolean { return this.data.mode === 'edit'; }
   get isViewMode(): boolean { return this.data.mode === 'view'; }
   get isCreateMode(): boolean { return this.data.mode === 'create'; }

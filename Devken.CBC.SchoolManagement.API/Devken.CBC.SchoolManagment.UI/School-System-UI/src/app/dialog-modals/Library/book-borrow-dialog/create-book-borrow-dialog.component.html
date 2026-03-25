@@ -245,55 +245,163 @@
       </div>
 
       <!-- Book Copy Selection -->
-      <div>
+       <ng-container *ngIf="!isViewMode">
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" mat-dialog-content class="p-5">
+
+    <div *ngIf="formSubmitted && form.invalid" class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg">
+       </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+       </div>
+
+    <ng-container *ngIf="isCreateMode">
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+          <mat-icon class="icon-size-4 text-indigo-500">library_add</mat-icon>
+          Add Books to Borrow
+        </p>
+        <button mat-button color="primary" class="text-xs" type="button" (click)="showBulkInput = !showBulkInput">
+          <mat-icon class="icon-size-4">{{ showBulkInput ? 'keyboard' : 'description' }}</mat-icon>
+          {{ showBulkInput ? 'Back to Scanner' : 'Bulk Paste Accessions' }}
+        </button>
+      </div>
+
+      <div *ngIf="showBulkInput" class="bg-amber-50/50 dark:bg-amber-900/10 p-4 rounded-xl border border-amber-200 dark:border-amber-800 mb-4 animate-in fade-in duration-300">
+        <mat-form-field appearance="outline" class="w-full no-subscript">
+          <mat-label>Paste Accession Numbers</mat-label>
+          <textarea matInput #bulkInput rows="4" placeholder="ACC-001&#10;ACC-002"></textarea>
+          <mat-hint>Separate by commas or new lines</mat-hint>
+        </mat-form-field>
+        <div class="flex justify-end mt-2">
+          <button mat-flat-button color="primary" type="button" (click)="onBulkAdd(bulkInput.value); bulkInput.value = ''">
+            Add All to Selection
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="!showBulkInput" class="bg-indigo-50/50 dark:bg-indigo-900/10 p-3 rounded-xl border border-indigo-100 dark:border-indigo-800 mb-4">
+        <mat-form-field appearance="fill" class="w-full no-subscript">
+          <mat-label>Scan Barcode or Type Accession Number</mat-label>
+          <input matInput #quickInput 
+                 (keyup.enter)="onQuickAdd(quickInput.value); quickInput.value = ''"
+                 placeholder="Focus here to scan..." autocomplete="off">
+          <mat-icon matPrefix class="text-indigo-500">qr_code_scanner</mat-icon>
+          <mat-hint>Press <strong>Enter</strong> to add instantly</mat-hint>
+        </mat-form-field>
+      </div>
+
+      <div class="mb-6" *ngIf="selectedCopyIds.size > 0">
         <div class="flex items-center justify-between mb-2">
-          <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-            <mat-icon class="icon-size-4 text-indigo-500">library_books</mat-icon>
-            Select Book Copies
-            <span class="text-xs font-normal text-gray-500">({{ selectedCopyIds.size }} selected)</span>
-          </p>
-          <span *ngIf="formSubmitted && selectedCopyIds.size === 0"
-                class="text-xs text-red-500">At least one copy required</span>
+          <h3 class="text-[11px] uppercase tracking-wider text-indigo-600 dark:text-indigo-400 font-bold">
+            Selected for Issue ({{selectedCopyIds.size}})
+          </h3>
+          <button mat-button color="warn" class="text-[10px] h-6 min-w-0" type="button" (click)="selectedCopyIds.clear()">
+            Remove All
+          </button>
         </div>
 
-        <div *ngIf="availableCopies.length === 0 && !isLoading"
-             class="flex flex-col items-center justify-center p-8 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700">
-          <mat-icon class="text-gray-400 icon-size-10 mb-2">library_add</mat-icon>
-          <p class="text-sm text-gray-500">No available book copies found</p>
+        <div class="max-h-48 overflow-y-auto custom-scrollbar">
+          <app-book-borrow-item 
+            *ngFor="let id of Array.from(selectedCopyIds)"
+            [copy]="getSelectedCopyDetails(id)"
+            (onRemove)="toggleCopySelection(id)">
+          </app-book-borrow-item>
         </div>
+      </div>
 
-        <div class="max-h-64 overflow-y-auto space-y-2 pr-1">
+      <div class="mt-4">
+        <p class="text-[11px] uppercase tracking-wider text-gray-400 font-bold mb-2">Available in Library</p>
+        <div class="max-h-48 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
           <div *ngFor="let copy of availableCopies"
                class="flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all"
-               [ngClass]="isCopySelected(copy.id)
-                 ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 dark:border-indigo-600'
-                 : 'border-gray-200 dark:border-gray-700 hover:border-indigo-200 dark:hover:border-indigo-800 bg-white dark:bg-gray-800'"
+               [ngClass]="isCopySelected(copy.id) 
+                 ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' 
+                 : 'border-gray-100 dark:border-gray-800 hover:border-indigo-200 bg-white dark:bg-gray-900'"
                (click)="toggleCopySelection(copy.id)">
-
-            <div class="w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-all"
-                 [ngClass]="isCopySelected(copy.id)
-                   ? 'border-indigo-500 bg-indigo-500'
-                   : 'border-gray-300 dark:border-gray-600'">
-              <mat-icon *ngIf="isCopySelected(copy.id)" class="text-white icon-size-3.5">check</mat-icon>
+            
+            <div class="w-5 h-5 rounded border-2 flex items-center justify-center shrink-0"
+                 [ngClass]="isCopySelected(copy.id) ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-gray-300'">
+              <mat-icon *ngIf="isCopySelected(copy.id)" class="icon-size-3">check</mat-icon>
             </div>
-
-            <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0
-                        bg-gradient-to-br from-cyan-100 to-teal-100
-                        border border-cyan-200 dark:border-cyan-800">
-              <mat-icon class="text-cyan-600 dark:text-cyan-400 icon-size-4">menu_book</mat-icon>
-            </div>
-
+            
             <div class="min-w-0 flex-1">
-              <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ copy.bookTitle }}</p>
-              <p class="text-xs text-gray-400 font-mono">{{ copy.accessionNumber }} · {{ copy.barcode }}</p>
+              <p class="text-sm font-semibold truncate" [ngClass]="isCopySelected(copy.id) ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-900 dark:text-white'">
+                {{ copy.bookTitle }}
+              </p>
+              <p class="text-xs text-gray-400 font-mono">{{ copy.accessionNumber }}</p>
             </div>
+          </div>
 
-            <span class="text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 shrink-0">
-              Available
-            </span>
+          <div *ngIf="availableCopies.length === 0" class="text-center py-4 border-2 border-dashed rounded-xl">
+             <p class="text-xs text-gray-400">No books available for borrowing</p>
           </div>
         </div>
       </div>
+    </ng-container>
+  </form>
+
+  <div mat-dialog-actions class="flex justify-end gap-3 px-5 pb-5">
+    </div>
+</ng-container>
+      
+     <!-- <div *ngIf="isCreateMode">
+  <div class="flex items-center justify-between mb-3">
+    <p class="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+      <mat-icon class="icon-size-4 text-indigo-500">library_add</mat-icon>
+      Add Books to Borrow
+    </p>
+    <span *ngIf="formSubmitted && selectedCopyIds.size === 0" class="text-xs text-red-500 font-medium animate-pulse">
+      At least one book is required
+    </span>
+  </div>
+
+  <div class="bg-indigo-50/50 dark:bg-indigo-900/10 p-3 rounded-xl border border-indigo-100 dark:border-indigo-800 mb-4">
+    <mat-form-field appearance="fill" class="w-full no-subscript">
+      <mat-label>Scan Barcode or Type Accession Number</mat-label>
+      <input matInput #quickInput 
+             (keyup.enter)="onQuickAdd(quickInput.value); quickInput.value = ''"
+             placeholder="e.g. ACC-0001" autocomplete="off">
+      <mat-icon matPrefix class="text-indigo-500">qr_code_scanner</mat-icon>
+      <mat-hint>Type and press <strong>Enter</strong> to add instantly</mat-hint>
+    </mat-form-field>
+  </div>
+
+  <div class="mb-4" *ngIf="selectedCopyIds.size > 0">
+    <p class="text-[11px] uppercase tracking-wider text-gray-400 font-bold mb-2">Current Selection ({{selectedCopyIds.size}})</p>
+    <div class="flex flex-wrap gap-2">
+      <div *ngFor="let id of Array.from(selectedCopyIds)" 
+           class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-gray-800 border border-indigo-200 dark:border-indigo-700 shadow-sm animate-in fade-in zoom-in duration-200">
+        <div class="flex flex-col">
+          <span class="text-xs font-bold text-gray-700 dark:text-gray-200">{{ getBookTitle(id) }}</span>
+          <span class="text-[10px] text-gray-400 font-mono">{{ getAccession(id) }}</span>
+        </div>
+        <button type="button" (click)="toggleCopySelection(id)" class="ml-1 text-red-400 hover:text-red-600 transition-colors">
+          <mat-icon class="icon-size-4">cancel</mat-icon>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <p class="text-[11px] uppercase tracking-wider text-gray-400 font-bold mb-2">Available in Library</p>
+  <div class="max-h-60 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+    <div *ngFor="let copy of availableCopies"
+         class="flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all"
+         [ngClass]="isCopySelected(copy.id) 
+           ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' 
+           : 'border-gray-100 dark:border-gray-800 hover:border-indigo-200 bg-white dark:bg-gray-900'"
+         (click)="toggleCopySelection(copy.id)">
+      
+      <mat-checkbox [checked]="isCopySelected(copy.id)" color="primary" class="pointer-events-none"></mat-checkbox>
+      
+      <div class="min-w-0 flex-1">
+        <p class="text-sm font-semibold truncate" [ngClass]="isCopySelected(copy.id) ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-900 dark:text-white'">
+          {{ copy.bookTitle }}
+        </p>
+        <p class="text-xs text-gray-400 font-mono">{{ copy.accessionNumber }}</p>
+      </div>
+    </div>
+  </div>
+</div> -->
     </ng-container>
   </form>
 
