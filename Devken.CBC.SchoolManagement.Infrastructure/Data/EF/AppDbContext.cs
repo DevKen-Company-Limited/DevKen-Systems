@@ -133,6 +133,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();// ← addPasswordResetTokens
         public DbSet<BookReservation> BookReservations => Set<BookReservation>();
         public DbSet<LibraryMember> LibraryMembers => Set<LibraryMember>();
+        public DbSet<BookBorrow> BookBorrows => Set<BookBorrow>();
+        public DbSet<BookBorrowItem> BookBorrowItems => Set<BookBorrowItem>();
+        public DbSet<LibraryFine> LibraryFines => Set<LibraryFine>();
+        public DbSet<BookRecommendation> BookRecommendations => Set<BookRecommendation>();
+        
 
 
         #endregion
@@ -347,6 +352,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             mb.ApplyConfiguration(new BookInventoryConfiguration(_tenantContext));   
             mb.ApplyConfiguration(new BookReservationConfiguration(_tenantContext));
             mb.ApplyConfiguration(new LibraryMemberConfiguration(_tenantContext));
+            mb.ApplyConfiguration(new BookBorrowConfiguration(_tenantContext)); 
+            mb.ApplyConfiguration(new BookBorrowItemConfiguration(_tenantContext));
+            mb.ApplyConfiguration(new LibraryFineConfiguration(_tenantContext));
+            mb.ApplyConfiguration(new BookReservationConfiguration(_tenantContext));
+            mb.ApplyConfiguration(new BookRecommendationConfiguration(_tenantContext));
 
 
             // Identity & School

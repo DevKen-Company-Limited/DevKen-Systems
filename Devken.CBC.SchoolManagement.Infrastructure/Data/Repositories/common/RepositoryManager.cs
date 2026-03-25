@@ -77,6 +77,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         private readonly Lazy<IBookBorrowRepository> _bookBorrowRepository;
         private readonly Lazy<IBookBorrowItemRepository> _bookBorrowItemRepository;
         private readonly Lazy<ILibraryFineRepository> _libraryFineRepository;
+        private readonly Lazy<IBookRecommendationRepository> _bookRecommendationRepository;
 
         // ── Identity ─────────────────────────────────────────────────────────
         private readonly Lazy<IUserRepository> _userRepository;
@@ -180,6 +181,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
                 () => new BookBorrowItemRepository(_context, _tenantContext));
             _libraryFineRepository = new Lazy<ILibraryFineRepository>(
                 () => new LibraryFineRepository(_context, _tenantContext));
+            _bookRecommendationRepository = new Lazy<IBookRecommendationRepository>(
+                () => new BookRecommendationRepository(_context, _tenantContext));
 
             // Identity
             _userRepository = new Lazy<IUserRepository>(
@@ -254,6 +257,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         public IBookBorrowRepository BookBorrow => _bookBorrowRepository.Value;
         public IBookBorrowItemRepository BookBorrowItem => _bookBorrowItemRepository.Value;
         public ILibraryFineRepository LibraryFine => _libraryFineRepository.Value;
+        public IBookRecommendationRepository BookRecommendation => _bookRecommendationRepository.Value;
 
 
         // ── Identity Properties ──────────────────────────────────────────────

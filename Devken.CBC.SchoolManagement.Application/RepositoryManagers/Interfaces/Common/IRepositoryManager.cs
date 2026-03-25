@@ -71,6 +71,7 @@ namespace Devken.CBC.SchoolManagement.Application.RepositoryManagers.Interfaces.
         IBookBorrowRepository BookBorrow { get; }
         IBookBorrowItemRepository BookBorrowItem { get; }
         ILibraryFineRepository LibraryFine { get; }
+        IBookRecommendationRepository BookRecommendation { get; }
 
         // ================= PAYMENTS =================
         IMpesaPaymentRepository MpesaPayment { get; }

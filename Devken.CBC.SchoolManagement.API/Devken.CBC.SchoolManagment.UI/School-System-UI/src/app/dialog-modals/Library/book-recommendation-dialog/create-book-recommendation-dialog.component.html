@@ -1,0 +1,233 @@
+<!-- dialog-modals/Library/book-recommendation-dialog/create-book-recommendation-dialog.component.html -->
+
+<!-- Dialog Header -->
+<div class="relative overflow-hidden rounded-t-xl px-6 py-5" [ngClass]="headerGradient">
+  <div class="absolute inset-0 opacity-10 pointer-events-none">
+    <div class="absolute top-0 right-0 w-28 h-28 bg-white rounded-full blur-2xl"></div>
+    <div class="absolute bottom-0 left-0 w-36 h-36 bg-yellow-300 rounded-full blur-2xl"></div>
+  </div>
+
+  <div class="relative z-10 flex items-center gap-3 pr-10">
+    <div class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center shrink-0">
+      <mat-icon class="text-white icon-size-6">
+        {{ isGenerateMode ? 'auto_awesome' : 'stars' }}
+      </mat-icon>
+    </div>
+    <div>
+      <h2 class="text-xl font-bold text-white m-0 leading-tight">{{ dialogTitle }}</h2>
+      <p class="text-white/80 text-sm mt-0.5 mb-0">{{ dialogSubtitle }}</p>
+    </div>
+  </div>
+
+  <button mat-icon-button class="close-btn absolute top-3 right-3 text-white z-20"
+          (click)="onCancel()" matTooltip="Close">
+    <mat-icon>close</mat-icon>
+  </button>
+</div>
+
+<!-- Form -->
+<form [formGroup]="form" (ngSubmit)="onSubmit()" mat-dialog-content class="p-5">
+
+  <!-- Validation Summary -->
+  <div *ngIf="formSubmitted && form.invalid"
+       class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg">
+    <div class="flex items-center gap-2 text-red-800 dark:text-red-200">
+      <mat-icon class="icon-size-5">error_outline</mat-icon>
+      <span class="font-medium">Please fix the errors below</span>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- VIEW MODE                              -->
+  <!-- ══════════════════════════════════════ -->
+  <ng-container *ngIf="isViewMode && recommendation">
+    <div class="space-y-4">
+      
+      <!-- Book Info -->
+      <div class="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center
+                      bg-amber-100 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-700 shrink-0">
+            <mat-icon class="text-amber-600 dark:text-amber-400 icon-size-6">menu_book</mat-icon>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-amber-900 dark:text-amber-200">{{ recommendation.bookTitle }}</p>
+            <p *ngIf="recommendation.authorName" class="text-xs text-amber-700 dark:text-amber-400">
+              {{ recommendation.authorName }}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Student Info -->
+      <div class="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center
+                      bg-indigo-100 dark:bg-indigo-900/40 border border-indigo-300 dark:border-indigo-700 shrink-0">
+            <mat-icon class="text-indigo-600 dark:text-indigo-400 icon-size-6">person</mat-icon>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-indigo-900 dark:text-indigo-200">{{ recommendation.studentName }}</p>
+            <p *ngIf="recommendation.studentNumber" class="text-xs text-indigo-700 dark:text-indigo-400 font-mono">
+              {{ recommendation.studentNumber }}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Score -->
+      <div class="p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700">
+        <p class="text-xs text-green-700 dark:text-green-400 mb-2">Recommendation Score</p>
+        <div class="flex items-center gap-2">
+          <mat-icon class="text-green-600 dark:text-green-400 icon-size-7">grade</mat-icon>
+          <span class="text-2xl font-bold text-green-900 dark:text-green-200">{{ recommendation.score }}%</span>
+        </div>
+      </div>
+
+      <!-- Reason -->
+      <div class="p-4 rounded-xl bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700">
+        <p class="text-xs text-gray-700 dark:text-gray-400 mb-2">Recommendation Reason</p>
+        <p class="text-sm text-gray-900 dark:text-gray-200">{{ recommendation.reason }}</p>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- GENERATE MODE                          -->
+  <!-- ══════════════════════════════════════ -->
+  <ng-container *ngIf="isGenerateMode">
+    <div class="space-y-4">
+
+      <!-- Info Banner -->
+      <div class="p-4 rounded-xl bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-700">
+        <div class="flex items-start gap-3">
+          <mat-icon class="text-violet-600 dark:text-violet-400 icon-size-5 mt-0.5">info</mat-icon>
+          <div class="text-sm text-violet-900 dark:text-violet-200">
+            <p class="font-medium mb-1">AI-Powered Recommendations</p>
+            <p class="text-violet-700 dark:text-violet-400">
+              Our algorithm analyzes the student's borrowing history, preferred categories, and authors to suggest personalized books.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- School (SuperAdmin only) -->
+      <mat-form-field *ngIf="isSuperAdmin" appearance="outline" class="w-full">
+        <mat-label>School <span class="text-red-500">*</span></mat-label>
+        <mat-select formControlName="schoolId">
+          <mat-option *ngFor="let school of schools" [value]="school.id">{{ school.name }}</mat-option>
+        </mat-select>
+        <mat-icon matPrefix>school</mat-icon>
+        <mat-error>{{ getFieldError('schoolId') }}</mat-error>
+      </mat-form-field>
+
+      <!-- Student -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Student <span class="text-red-500">*</span></mat-label>
+        <mat-select formControlName="studentId">
+          <mat-option *ngFor="let student of students" [value]="student.id">
+            {{ student.fullName }} ({{ student.admissionNumber }})
+          </mat-option>
+        </mat-select>
+        <mat-icon matPrefix>person</mat-icon>
+        <mat-error>{{ getFieldError('studentId') }}</mat-error>
+      </mat-form-field>
+
+      <!-- Max Recommendations -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Number of Recommendations <span class="text-red-500">*</span></mat-label>
+        <input matInput type="number" formControlName="maxRecommendations" min="1" max="50" />
+        <mat-icon matPrefix>tag</mat-icon>
+        <mat-hint>How many books to recommend (1-50)</mat-hint>
+        <mat-error>{{ getFieldError('maxRecommendations') }}</mat-error>
+      </mat-form-field>
+    </div>
+  </ng-container>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- CREATE / EDIT MODE                     -->
+  <!-- ══════════════════════════════════════ -->
+  <ng-container *ngIf="isCreateMode || isEditMode">
+    <div class="space-y-4">
+
+      <!-- School (SuperAdmin only, Create mode only) -->
+      <mat-form-field *ngIf="isSuperAdmin && isCreateMode" appearance="outline" class="w-full">
+        <mat-label>School <span class="text-red-500">*</span></mat-label>
+        <mat-select formControlName="schoolId">
+          <mat-option *ngFor="let school of schools" [value]="school.id">{{ school.name }}</mat-option>
+        </mat-select>
+        <mat-icon matPrefix>school</mat-icon>
+        <mat-error>{{ getFieldError('schoolId') }}</mat-error>
+      </mat-form-field>
+
+      <!-- Book (Create only) -->
+      <mat-form-field *ngIf="isCreateMode" appearance="outline" class="w-full">
+        <mat-label>Book <span class="text-red-500">*</span></mat-label>
+        <mat-select formControlName="bookId">
+          <mat-option *ngFor="let book of books" [value]="book.id">
+            {{ book.title }} ({{ book.isbn }})
+          </mat-option>
+        </mat-select>
+        <mat-icon matPrefix>menu_book</mat-icon>
+        <mat-error>{{ getFieldError('bookId') }}</mat-error>
+      </mat-form-field>
+
+      <!-- Student (Create only) -->
+      <mat-form-field *ngIf="isCreateMode" appearance="outline" class="w-full">
+        <mat-label>Student <span class="text-red-500">*</span></mat-label>
+        <mat-select formControlName="studentId">
+          <mat-option *ngFor="let student of students" [value]="student.id">
+            {{ student.fullName }} ({{ student.admissionNumber }})
+          </mat-option>
+        </mat-select>
+        <mat-icon matPrefix>person</mat-icon>
+        <mat-error>{{ getFieldError('studentId') }}</mat-error>
+      </mat-form-field>
+
+      <!-- Score -->
+      <div class="w-full">
+        <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
+          Recommendation Score <span class="text-red-500">*</span>
+        </label>
+        <div class="flex items-center gap-4">
+          <mat-slider min="0" max="100" step="5" discrete class="flex-1">
+            <input matSliderThumb formControlName="score" />
+          </mat-slider>
+          <span class="text-2xl font-bold min-w-[4rem] text-right"
+                [ngClass]="getScoreColor(form.get('score')?.value || 0)">
+            {{ formatScore(form.get('score')?.value || 0) }}
+          </span>
+        </div>
+        <p *ngIf="getFieldError('score')" class="text-xs text-red-600 dark:text-red-400 mt-1">
+          {{ getFieldError('score') }}
+        </p>
+      </div>
+
+      <!-- Reason -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Reason <span class="text-red-500">*</span></mat-label>
+        <textarea matInput formControlName="reason" rows="4"
+                  placeholder="Why is this book recommended for this student?"></textarea>
+        <mat-icon matPrefix>description</mat-icon>
+        <mat-hint align="end">{{ form.get('reason')?.value?.length || 0 }}/500</mat-hint>
+        <mat-error>{{ getFieldError('reason') }}</mat-error>
+      </mat-form-field>
+    </div>
+  </ng-container>
+</form>
+
+<!-- Dialog Actions -->
+<div mat-dialog-actions class="flex justify-end gap-3 px-5 pb-5">
+  <button mat-button type="button" (click)="onCancel()" [disabled]="isSaving">
+    {{ isViewMode ? 'Close' : 'Cancel' }}
+  </button>
+  <button *ngIf="!isViewMode" mat-flat-button type="button" (click)="onSubmit()"
+    [disabled]="isSaving"
+    class="bg-gradient-to-r from-amber-500 to-orange-500 text-white min-w-32">
+    <mat-spinner *ngIf="isSaving" diameter="18" class="mr-2 inline-block"></mat-spinner>
+    <mat-icon *ngIf="!isSaving" class="icon-size-5 mr-1">
+      {{ isGenerateMode ? 'auto_awesome' : (isEditMode ? 'save' : 'add') }}
+    </mat-icon>
+    {{ isSaving ? 'Saving...' : (isGenerateMode ? 'Generate' : (isEditMode ? 'Update' : 'Create')) }}
+  </button>
+</div>

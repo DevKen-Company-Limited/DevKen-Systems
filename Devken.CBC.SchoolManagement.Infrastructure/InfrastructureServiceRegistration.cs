@@ -428,6 +428,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IBookBorrowRepository, BookBorrowRepository>();
             services.AddScoped<IBookBorrowItemRepository, BookBorrowItemRepository>();
             services.AddScoped<ILibraryFineRepository, LibraryFineRepository>();
+            services.AddScoped<IBookRecommendationRepository, BookRecommendationRepository>();
 
 
             // ── Library Application Services ──────────────────────────────────
