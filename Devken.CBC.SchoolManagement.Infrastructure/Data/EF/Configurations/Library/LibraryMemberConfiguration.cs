@@ -43,7 +43,7 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF.Configurations.Libr
             // LibraryMember.UserId is a plain FK column — no navigation property exists
             // on the entity (User has a global query filter which would cause EF 10622).
             // EF Core will track it as a shadow FK. The DB constraint is still enforced.
-            builder.HasOne<User>()
+            builder.HasOne(m => m.User)
                    .WithMany()
                    .HasForeignKey(m => m.UserId)
                    .IsRequired()

@@ -429,7 +429,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IBookBorrowItemRepository, BookBorrowItemRepository>();
             services.AddScoped<ILibraryFineRepository, LibraryFineRepository>();
             services.AddScoped<IBookRecommendationRepository, BookRecommendationRepository>();
+            services.AddScoped<ILibrarySettingsRepository, LibrarySettingsRepository>();
+            services.AddScoped<ILibraryFeeRepository, LibraryFeeRepository>();
 
+            services.AddScoped<ILibraryFeeService, LibraryFeeService>();
 
             // ── Library Application Services ──────────────────────────────────
             services.AddScoped<IBookAuthorService, BookAuthorService>();
@@ -442,7 +445,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure
             services.AddScoped<IBookReservationService, BookReservationService>();
             services.AddScoped<ILibraryMemberService, LibraryMemberService>();
             services.AddScoped<IBookBorrowService, BookBorrowService>();
-            services.AddScoped<ILibraryFineService, LibraryFineService>();
+            services.AddScoped<ILibraryFineService, LibraryFineService>(); 
+            services.AddScoped<ILibrarySettingsService, LibrarySettingsService>();
+            services.AddScoped<ILibraryFeeService, LibraryFeeService>();
+
 
             // ── Academic Application Services ─────────────────────────────────
             services.AddScoped<IStudentService, StudentService>();

@@ -1,0 +1,181 @@
+<!-- app/dialog-modals/Library/library-fee/create-edit-library-fee-dialog.component.html -->
+
+<!-- Dialog Header -->
+<div class="bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 relative overflow-hidden rounded-t-xl px-6 py-5">
+  <div class="absolute inset-0 opacity-10 pointer-events-none">
+    <div class="absolute top-0 right-0 w-32 h-32 bg-yellow-200 rounded-full blur-2xl"></div>
+    <div class="absolute bottom-0 left-0 w-40 h-40 bg-red-300 rounded-full blur-2xl"></div>
+  </div>
+
+  <div class="relative z-10 flex items-center gap-3 pr-10">
+    <div class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center shrink-0">
+      <mat-icon class="text-white icon-size-6">{{ isEditMode ? 'edit' : 'payments' }}</mat-icon>
+    </div>
+    <div>
+      <h2 class="text-xl font-bold text-white m-0 leading-tight">{{ dialogTitle }}</h2>
+      <p class="text-white/80 text-sm mt-0.5 mb-0">{{ dialogSubtitle }}</p>
+    </div>
+  </div>
+
+  <button mat-icon-button
+    class="absolute top-3 right-3 text-white z-20"
+    (click)="onCancel()"
+    matTooltip="Close">
+    <mat-icon>close</mat-icon>
+  </button>
+</div>
+
+<!-- Loading Overlay -->
+<div *ngIf="isLoading && !formSubmitted"
+  class="absolute inset-0 bg-white/98 dark:bg-gray-900/98 z-50 flex items-center justify-center backdrop-blur-sm">
+  <div class="text-center p-8">
+    <div class="relative w-16 h-16 mx-auto mb-4">
+      <mat-spinner diameter="60"></mat-spinner>
+      <mat-icon class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-amber-500">payments</mat-icon>
+    </div>
+    <p class="text-lg font-semibold text-gray-800 dark:text-gray-200">Preparing Form...</p>
+    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Loading fee data</p>
+  </div>
+</div>
+
+<!-- Form -->
+<form [formGroup]="form" (ngSubmit)="onSubmit()" mat-dialog-content class="p-4">
+
+  <!-- Validation Summary -->
+  <div *ngIf="formSubmitted && form.invalid"
+    class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg">
+    <div class="flex items-center gap-2 text-red-800 dark:text-red-200">
+      <mat-icon class="icon-size-5">error_outline</mat-icon>
+      <span class="font-medium">Please fix the following errors:</span>
+    </div>
+    <ul class="mt-1 ml-6 text-sm text-red-700 dark:text-red-300 list-disc">
+      <li *ngIf="form.get('schoolId')?.hasError('required')">School is required</li>
+      <li *ngIf="form.get('memberId')?.hasError('required')">Member is required</li>
+      <li *ngIf="form.get('feeType')?.hasError('required')">Fee type is required</li>
+      <li *ngIf="form.get('amount')?.hasError('required') || form.get('amount')?.hasError('min')">
+        A valid amount greater than 0 is required
+      </li>
+      <li *ngIf="form.get('feeDate')?.hasError('required')">Fee date is required</li>
+    </ul>
+  </div>
+
+  <!-- School (SuperAdmin only) -->
+  <div *ngIf="isSuperAdmin" class="mb-4">
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>School <span class="text-red-500">*</span></mat-label>
+      <mat-select formControlName="schoolId" placeholder="Select school">
+        <mat-option [value]="null">— Select School —</mat-option>
+        <mat-option *ngFor="let school of schools" [value]="school.id">
+          {{ school.name }}{{ school.code ? ' (' + school.code + ')' : '' }}
+        </mat-option>
+      </mat-select>
+      <mat-icon matPrefix>business</mat-icon>
+      <mat-error>{{ getFieldError('schoolId') }}</mat-error>
+    </mat-form-field>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+    <!-- LEFT COLUMN -->
+    <div class="space-y-4">
+
+      <!-- Member -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Member <span class="text-red-500">*</span></mat-label>
+        <mat-select formControlName="memberId" placeholder="Select member"
+          [disabled]="isEditMode">
+          <mat-option [value]="null">— Select Member —</mat-option>
+          <mat-option *ngFor="let member of filteredMembers" [value]="member.id">
+            {{ member.memberNumber }} — {{ member.userFullName }}
+          </mat-option>
+        </mat-select>
+        <mat-icon matPrefix>person</mat-icon>
+        <mat-hint *ngIf="isSuperAdmin && !form.get('schoolId')?.value" class="text-amber-600">
+          Select a school first
+        </mat-hint>
+        <mat-error>{{ getFieldError('memberId') }}</mat-error>
+      </mat-form-field>
+
+      <!-- Fee Type -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Fee Type <span class="text-red-500">*</span></mat-label>
+        <mat-select formControlName="feeType" placeholder="Select fee type">
+          <mat-option *ngFor="let type of feeTypes" [value]="type.value">
+            <div class="flex items-center gap-2">
+              <mat-icon class="icon-size-4">{{ type.icon }}</mat-icon>
+              <span>{{ type.label }}</span>
+            </div>
+          </mat-option>
+        </mat-select>
+        <mat-icon matPrefix>category</mat-icon>
+        <mat-error>{{ getFieldError('feeType') }}</mat-error>
+      </mat-form-field>
+
+      <!-- Amount -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Amount (KES) <span class="text-red-500">*</span></mat-label>
+        <input matInput
+          type="number"
+          formControlName="amount"
+          placeholder="e.g. 50"
+          min="0.01"
+          step="0.5" />
+        <mat-icon matPrefix>money</mat-icon>
+        <mat-hint>Total fee amount charged to the member</mat-hint>
+        <mat-error>{{ getFieldError('amount') }}</mat-error>
+      </mat-form-field>
+
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="space-y-4">
+
+      <!-- Fee Date -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Fee Date <span class="text-red-500">*</span></mat-label>
+        <input matInput
+          [matDatepicker]="feeDatePicker"
+          formControlName="feeDate"
+          placeholder="Select date" />
+        <mat-datepicker-toggle matSuffix [for]="feeDatePicker"></mat-datepicker-toggle>
+        <mat-datepicker #feeDatePicker></mat-datepicker>
+        <mat-icon matPrefix>calendar_today</mat-icon>
+        <mat-error>{{ getFieldError('feeDate') }}</mat-error>
+      </mat-form-field>
+
+      <!-- Description -->
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Description (Optional)</mat-label>
+        <textarea matInput
+          formControlName="description"
+          placeholder="Reason for the fee, book title, etc."
+          rows="5"
+          maxlength="500">
+        </textarea>
+        <mat-icon matPrefix>description</mat-icon>
+        <mat-hint align="end">{{ descriptionLength }}/500</mat-hint>
+        <mat-error>{{ getFieldError('description') }}</mat-error>
+      </mat-form-field>
+
+    </div>
+  </div>
+</form>
+
+<!-- Dialog Actions -->
+<div mat-dialog-actions class="flex justify-end gap-3 px-4 pb-4">
+  <button mat-button type="button" (click)="onCancel()" [disabled]="isSaving">
+    Cancel
+  </button>
+  <button mat-flat-button
+    color="primary"
+    type="button"
+    (click)="onSubmit()"
+    [disabled]="isSaving"
+    class="bg-gradient-to-r from-amber-500 to-orange-500 text-white min-w-28">
+    <mat-spinner *ngIf="isSaving" diameter="18" class="mr-2 inline-block"></mat-spinner>
+    <mat-icon *ngIf="!isSaving" class="icon-size-5 mr-1">
+      {{ isEditMode ? 'save' : 'check_circle' }}
+    </mat-icon>
+    {{ isSaving ? 'Saving...' : (isEditMode ? 'Update Fee' : 'Add Fee') }}
+  </button>
+</div>

@@ -78,6 +78,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         private readonly Lazy<IBookBorrowItemRepository> _bookBorrowItemRepository;
         private readonly Lazy<ILibraryFineRepository> _libraryFineRepository;
         private readonly Lazy<IBookRecommendationRepository> _bookRecommendationRepository;
+        private readonly Lazy<ILibrarySettingsRepository> _librarySettingsRepository;
+        private readonly Lazy<ILibraryFeeRepository> _libraryFeeRepository;
 
         // ── Identity ─────────────────────────────────────────────────────────
         private readonly Lazy<IUserRepository> _userRepository;
@@ -183,6 +185,10 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
                 () => new LibraryFineRepository(_context, _tenantContext));
             _bookRecommendationRepository = new Lazy<IBookRecommendationRepository>(
                 () => new BookRecommendationRepository(_context, _tenantContext));
+            _librarySettingsRepository = new Lazy<ILibrarySettingsRepository>(
+                () => new LibrarySettingsRepository(_context, _tenantContext));
+            _libraryFeeRepository = new Lazy<ILibraryFeeRepository>(
+                () => new LibraryFeeRepository(_context, _tenantContext));
 
             // Identity
             _userRepository = new Lazy<IUserRepository>(
@@ -258,6 +264,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.Repositories.Common
         public IBookBorrowItemRepository BookBorrowItem => _bookBorrowItemRepository.Value;
         public ILibraryFineRepository LibraryFine => _libraryFineRepository.Value;
         public IBookRecommendationRepository BookRecommendation => _bookRecommendationRepository.Value;
+        public ILibrarySettingsRepository LibrarySettings => _librarySettingsRepository.Value;
+        public ILibraryFeeRepository LibraryFee => _libraryFeeRepository.Value;
 
 
         // ── Identity Properties ──────────────────────────────────────────────

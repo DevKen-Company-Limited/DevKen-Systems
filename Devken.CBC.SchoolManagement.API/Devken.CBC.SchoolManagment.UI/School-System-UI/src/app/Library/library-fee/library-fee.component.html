@@ -1,0 +1,143 @@
+<!-- app/Library/library-fee/library-fee.component.html -->
+<div class="absolute inset-0 flex min-w-0 flex-col overflow-y-auto" cdkScrollable>
+
+  <!-- Page Header -->
+  <app-page-header
+    title="Library Fees"
+    description="Track, collect and manage all library fees and fines"
+    icon="receipt_long"
+    [breadcrumbs]="breadcrumbs"
+    [actionTemplate]="headerActions">
+  </app-page-header>
+
+  <ng-template #headerActions>
+    <button mat-flat-button
+      class="bg-white text-amber-700 hover:bg-yellow-200 hover:text-amber-900 shadow-lg transition-all hover:shadow-xl font-bold"
+      (click)="openCreate()">
+      <mat-icon class="icon-size-5">add</mat-icon>
+      <span class="ml-2">Add Fee</span>
+    </button>
+  </ng-template>
+
+  <!-- Main Content -->
+  <div class="bg-card -mt-10 flex-auto rounded-t-2xl p-6 shadow sm:p-10">
+
+    <app-stats-cards [cards]="statsCards" [columns]="4"></app-stats-cards>
+
+    <div class="mb-6">
+      <app-filter-panel
+        [fields]="filterFields"
+        [showPanel]="showFilterPanel"
+        [columns]="4"
+        (filterChange)="onFilterChange($event)"
+        (clearAll)="onClearFilters()"
+        (togglePanel)="toggleFilterPanel()">
+      </app-filter-panel>
+    </div>
+
+    <app-data-table
+      [columns]="tableColumns"
+      [data]="paginatedData"
+      [actions]="tableActions"
+      [loading]="isLoading"
+      [header]="tableHeader"
+      [emptyState]="tableEmptyState"
+      [cellTemplates]="cellTemplates">
+    </app-data-table>
+
+    <app-pagination
+      *ngIf="!isLoading"
+      [currentPage]="currentPage"
+      [totalItems]="filteredData.length"
+      [itemsPerPage]="itemsPerPage"
+      [itemLabel]="'fees'"
+      [showItemsPerPageSelector]="true"
+      [showPageNumbers]="true"
+      (pageChange)="onPageChange($event)"
+      (itemsPerPageChange)="onItemsPerPageChange($event)">
+    </app-pagination>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- Cell Templates                                                        -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+
+<!-- Member Cell -->
+<ng-template #memberCell let-row>
+   <div class="flex items-center gap-3">
+    <!-- Avatar initial -->
+    <div class="w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br from-violet-100 to-indigo-100 border border-violet-200 dark:border-violet-800 flex-shrink-0">
+      <span class="text-sm font-bold text-violet-600 dark:text-violet-300">
+        {{ (row.userFullName || row.memberNumber || '?').charAt(0).toUpperCase() }}
+      </span>
+    </div>
+    <div class="min-w-0">
+      <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">
+        {{ row.userFullName || '—' }}
+      </p>
+      <p class="text-xs text-gray-500 dark:text-gray-400 font-mono">{{ row.memberNumber }}</p>
+    </div>
+  </div>
+</ng-template>
+
+<!-- Fee Type Cell -->
+<ng-template #feeTypeCell let-row>
+  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold
+    bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">
+    <mat-icon class="icon-size-3">{{ getFeeTypeIcon(row.feeType) }}</mat-icon>
+    {{ row.feeTypeDisplay }}
+  </span>
+</ng-template>
+
+<!-- Amount Cell -->
+<ng-template #amountCell let-row>
+  <div class="text-right">
+    <p class="text-sm font-bold text-gray-900 dark:text-white">
+      KES {{ row.amount | number:'1.2-2' }}
+    </p>
+    <p class="text-xs" [ngClass]="{
+      'text-green-600 dark:text-green-400': row.amountPaid >= row.amount,
+      'text-amber-600 dark:text-amber-400': row.amountPaid > 0 && row.amountPaid < row.amount,
+      'text-red-500 dark:text-red-400':     row.amountPaid === 0
+    }">
+      <ng-container *ngIf="row.balance > 0">Bal: KES {{ row.balance | number:'1.2-2' }}</ng-container>
+      <ng-container *ngIf="row.balance === 0 && row.feeStatus !== 'Waived'">Fully Paid</ng-container>
+      <ng-container *ngIf="row.feeStatus === 'Waived'">Waived</ng-container>
+    </p>
+  </div>
+</ng-template>
+
+<!-- Status Cell -->
+<ng-template #statusCell let-row>
+  <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold"
+    [ngClass]="getStatusClasses(row.feeStatus)">
+    <mat-icon class="icon-size-3">{{ getStatusIcon(row.feeStatus) }}</mat-icon>
+    {{ row.feeStatusDisplay }}
+  </span>
+</ng-template>
+
+<!-- Fee Date Cell -->
+<ng-template #feeDateCell let-row>
+  <div class="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300">
+    <mat-icon class="icon-size-4 text-gray-400">calendar_today</mat-icon>
+    {{ row.feeDate | date:'dd MMM yyyy' }}
+  </div>
+  <p *ngIf="row.paidOn" class="text-xs text-green-600 dark:text-green-400 mt-0.5 flex items-center gap-1">
+    <mat-icon class="icon-size-3">check</mat-icon>
+    Paid: {{ row.paidOn | date:'dd MMM yyyy' }}
+  </p>
+  <p *ngIf="row.waivedReason"
+    class="text-xs text-violet-600 dark:text-violet-400 mt-0.5 truncate max-w-xs"
+    [title]="row.waivedReason">
+    Waived: {{ row.waivedReason }}
+  </p>
+</ng-template>
+
+<!-- School Cell (SuperAdmin only) -->
+<ng-template #schoolCell let-row>
+   <div class="flex items-center gap-2">
+    <mat-icon class="icon-size-4 text-violet-500 dark:text-violet-400">school</mat-icon>
+    <span class="text-sm text-gray-700 dark:text-gray-300">{{ row.schoolName || '—' }}</span>
+  </div>
+</ng-template>

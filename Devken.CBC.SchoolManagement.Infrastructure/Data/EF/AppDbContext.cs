@@ -137,7 +137,9 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         public DbSet<BookBorrowItem> BookBorrowItems => Set<BookBorrowItem>();
         public DbSet<LibraryFine> LibraryFines => Set<LibraryFine>();
         public DbSet<BookRecommendation> BookRecommendations => Set<BookRecommendation>();
-        
+        public DbSet<LibrarySettings> LibrarySettings => Set<LibrarySettings>();
+        public DbSet<LibraryFee> LibraryFee => Set<LibraryFee>();
+
 
 
         #endregion
@@ -336,6 +338,29 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
 
                 entity.HasIndex(e => e.CreatedOn)
                       .HasDatabaseName("IX_PesaPalTransactions_CreatedOn");
+               
+                // LibraryFee to School mapping
+                mb.Entity<LibraryFee>(entity =>
+                {
+                    entity.HasOne(f => f.School)
+                          .WithMany()
+                          .HasForeignKey(f => f.TenantId) // Maps the base TenantId to the School entity
+                          .OnDelete(DeleteBehavior.Restrict);
+
+                    entity.HasOne(f => f.Member)
+                          .WithMany()
+                          .HasForeignKey(f => f.MemberId)
+                          .OnDelete(DeleteBehavior.Restrict);
+                });
+
+                // LibraryMember to User mapping
+                mb.Entity<LibraryMember>(entity =>
+                {
+                    entity.HasOne(m => m.User)
+                          .WithMany()
+                          .HasForeignKey(m => m.UserId)
+                          .OnDelete(DeleteBehavior.Restrict);
+                });
             });
 
             // ── APPLY ENTITY CONFIGURATIONS ───────────────────────────────────

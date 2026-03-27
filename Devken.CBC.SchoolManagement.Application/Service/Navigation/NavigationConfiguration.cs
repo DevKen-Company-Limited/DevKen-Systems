@@ -176,7 +176,11 @@ namespace Devken.CBC.SchoolManagement.Application.Service.Navigation
                 new NavItem("book-issues",       "Book Issues",      "heroicons_outline:arrow-right-on-rectangle", "/library/book-issues",      PermissionKeys.BookIssueRead),
                 new NavItem("book-returns",      "Book Returns",     "heroicons_outline:arrow-left-on-rectangle",  "/library/book-returns",     PermissionKeys.BookReturnRead),
                 new NavItem("fines",             "Fines",            "heroicons_outline:receipt-percent",          "/library/fines",            PermissionKeys.LibraryRead),
-                new NavItem("recommendations",   "Recommendations",  "heroicons_outline:sparkles",                 "/library/recommendations",   PermissionKeys.LibraryRead),
+                new NavItem("recommendations",   "Recommendations",  "heroicons_outline:sparkles",                 "/library/recommendations",  PermissionKeys.LibraryRead),
+                new NavItem("library-fees",      "Library Fees",     "heroicons_outline:currency-dollar",          "/library/fees",             PermissionKeys.LibraryRead),
+                new NavItem("library-settings",  "Library Settings", "heroicons_outline:credit-card",              "library/settings",          PermissionKeys.LibraryRead),
+
+
             }
         };
 

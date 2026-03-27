@@ -185,6 +185,9 @@ export const appRoutes: Route[] = [
                         data: { mode: 'returns' } // This is the key!
                     },
                     { path: 'fines',          loadChildren: () => import('app/Library/library-fines/library-fines.routes')               },
+                    { path: 'fees',          loadChildren: () => import('app/Library/library-fee/library-fee.routes')               },
+                    { path: 'settings',          loadChildren: () => import('app/Library/library-settings/library-settings.routes')               },
+                
                 ]
             },
 
