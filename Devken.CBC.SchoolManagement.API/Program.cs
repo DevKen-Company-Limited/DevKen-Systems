@@ -57,6 +57,9 @@ builder.Services.AddCors(options =>
             .AllowCredentials()                            // required for cookie-based refresh tokens
             .SetPreflightMaxAge(TimeSpan.FromMinutes(10)); // cache preflight responses
     });
+
+
+
 });
 
 // ══════════════════════════════════════════════════════════════
@@ -72,13 +75,23 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-    options.UseSqlServer(connectionString, sql =>
+    //options.UseSqlServer(connectionString, sql =>
+    //{
+    //    sql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName);
+    //    sql.EnableRetryOnFailure(
+    //        maxRetryCount: 5,
+    //        maxRetryDelay: TimeSpan.FromSeconds(30),
+    //        errorNumbersToAdd: null);
+    //});
+
+
+    options.UseNpgsql(connectionString, npgsql =>
     {
-        sql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName);
-        sql.EnableRetryOnFailure(
+        npgsql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName);
+        npgsql.EnableRetryOnFailure(
             maxRetryCount: 5,
             maxRetryDelay: TimeSpan.FromSeconds(30),
-            errorNumbersToAdd: null);
+            errorCodesToAdd: null);
     });
 
     options.UseQueryTrackingBehavior(QueryTrackingBehavior.TrackAll);

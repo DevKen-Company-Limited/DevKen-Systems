@@ -1,4 +1,15 @@
 ﻿// Devken.CBC.SchoolManagement.Infrastructure/Data/EF/AppDbContext.cs
+//
+// ── PostgreSQL migration notes ────────────────────────────────────────────────
+//  1. Remove:   Microsoft.EntityFrameworkCore.SqlServer
+//  2. Add:      Npgsql.EntityFrameworkCore.PostgreSQL
+//  3. appsettings.json connection string format:
+//       "DefaultConnection": "Host=localhost;Port=5432;Database=SchoolMgmt;Username=postgres;Password=yourpassword"
+//  4. After adding the package, re-run:
+//       dotnet ef migrations add InitPostgres
+//       dotnet ef database update
+// ─────────────────────────────────────────────────────────────────────────────
+
 using Devken.CBC.SchoolManagement.Domain.Common;
 using Devken.CBC.SchoolManagement.Domain.Entities.Academic;
 using Devken.CBC.SchoolManagement.Domain.Entities.Administration;
@@ -126,14 +137,13 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
         public DbSet<BookAuthor> BookAuthors => Set<BookAuthor>();
         public DbSet<BookCategory> BookCategories => Set<BookCategory>();
         public DbSet<BookPublisher> BookPublishers => Set<BookPublisher>();
-        public DbSet<Book> Books => Set<Book>();           // ← add
-        public DbSet<LibraryBranch> LibraryBranches => Set<LibraryBranch>(); // ← add
-        public DbSet<BookCopy> BookCopies => Set<BookCopy>();       // ← add
+        public DbSet<Book> Books => Set<Book>();
+        public DbSet<LibraryBranch> LibraryBranches => Set<LibraryBranch>();
+        public DbSet<BookCopy> BookCopies => Set<BookCopy>();
         public DbSet<BookInventory> BookInventories => Set<BookInventory>();
-        public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();// ← addPasswordResetTokens
+        public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
         public DbSet<BookReservation> BookReservations => Set<BookReservation>();
         public DbSet<LibraryMember> LibraryMembers => Set<LibraryMember>();
-
 
         #endregion
 
@@ -143,6 +153,17 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
 
             // ── GLOBAL CONVENTIONS ────────────────────────────────────────────
             DecimalPrecisionConvention.Apply(mb);
+
+            // ── PostgreSQL: use lowercase table / column names by convention ──
+            // Npgsql recommends snake_case. If your existing migrations already
+            // use PascalCase table names you can remove these two lines and keep
+            // the explicit ToTable() calls you already have.
+            foreach (var entity in mb.Model.GetEntityTypes())
+            {
+                entity.SetTableName(entity.GetTableName());   // keeps explicit names
+                // If you want auto snake_case, replace the line above with:
+                // entity.SetTableName(ToSnakeCase(entity.GetTableName()!));
+            }
 
             // ── GENERIC BASE ENTITY KEY CONFIGURATION ─────────────────────────
             foreach (var entityType in mb.Model.GetEntityTypes())
@@ -275,6 +296,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
                 entity.ToTable("PesaPalTransactions");
                 entity.HasKey(e => e.Id);
 
+                // PostgreSQL: use uuid for Guid PKs (ValueGeneratedOnAdd works
+                // with gen_random_uuid() which Npgsql sets automatically).
                 entity.Property(e => e.Id)
                       .ValueGeneratedOnAdd();
 
@@ -295,7 +318,8 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
 
                 entity.Property(e => e.Status)
                       .IsRequired()
-                      .HasConversion<string>()   // store enum name as VARCHAR in DB
+                      // PostgreSQL: store enum as text (same intent as HasConversion<string>)
+                      .HasConversion<string>()
                       .HasMaxLength(20);
 
                 entity.Property(e => e.Amount)
@@ -341,13 +365,12 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
             mb.ApplyConfiguration(new BookPublisherConfiguration(_tenantContext));
 
             // Library — core entities (order matters: Book before BookCopy/Inventory)
-            mb.ApplyConfiguration(new BookConfiguration(_tenantContext));           // ← add
-            mb.ApplyConfiguration(new LibraryBranchConfiguration(_tenantContext));  // ← add
-            mb.ApplyConfiguration(new BookCopyConfiguration(_tenantContext));        // ← add
-            mb.ApplyConfiguration(new BookInventoryConfiguration(_tenantContext));   // ← add
+            mb.ApplyConfiguration(new BookConfiguration(_tenantContext));
+            mb.ApplyConfiguration(new LibraryBranchConfiguration(_tenantContext));
+            mb.ApplyConfiguration(new BookCopyConfiguration(_tenantContext));
+            mb.ApplyConfiguration(new BookInventoryConfiguration(_tenantContext));
             mb.ApplyConfiguration(new BookReservationConfiguration(_tenantContext));
             mb.ApplyConfiguration(new LibraryMemberConfiguration(_tenantContext));
-
 
             // Identity & School
             mb.ApplyConfiguration(new SchoolConfiguration());
@@ -471,11 +494,11 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // DESIGN-TIME FACTORY
-    // Must be a top-level class (not nested inside AppDbContext) so that the
-    // EF Core tooling can discover and instantiate it automatically.
-    // Provides stub TenantContext and PasswordHasher since they are not needed
-    // at design time — only the DbContextOptions matter for migrations.
+    // DESIGN-TIME FACTORY  (PostgreSQL edition)
+    //
+    // Replaces UseSqlServer with UseNpgsql.
+    // Connection string format (appsettings.json):
+    //   "Host=localhost;Port=5432;Database=SchoolMgmt;Username=postgres;Password=secret"
     // ─────────────────────────────────────────────────────────────────────────
     public sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
     {
@@ -500,7 +523,16 @@ namespace Devken.CBC.SchoolManagement.Infrastructure.Data.EF
                     "Connection string 'DefaultConnection' not found in appsettings.json.");
 
             var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
-            optionsBuilder.UseSqlServer(connectionString);
+
+            // ── KEY CHANGE: UseNpgsql instead of UseSqlServer ─────────────────
+            optionsBuilder.UseNpgsql(connectionString, npgsqlOptions =>
+            {
+                // Optional: enable retry on transient failures
+                npgsqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(10),
+                    errorCodesToAdd: null);
+            });
 
             // Stub dependencies — only needed at runtime, not during migrations
             var tenantContext = new TenantContext();
